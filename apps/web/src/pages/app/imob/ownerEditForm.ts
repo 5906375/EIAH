@@ -13,7 +13,32 @@ export function isOwnerEditForm(form: Pick<ImobPresentationForm, "submitTarget">
   return form?.submitTarget === OWNER_EDIT_SUBMIT_TARGET;
 }
 
-export function buildOwnerEditForm(): ImobPresentationForm {
+export function buildOwnerEditForm(mode: "edit" | "archive" = "edit"): ImobPresentationForm {
+  if (mode === "archive") {
+    return {
+      entity: "proprietario",
+      action: "archive",
+      submitTarget: OWNER_EDIT_SUBMIT_TARGET,
+      label: "Arquivar proprietário",
+      description: "O proprietário sai das listas; o histórico fica guardado. Quem tem imóveis ou casos ligados não pode ser arquivado.",
+      fields: [
+        {
+          name: "ownerId",
+          label: "Proprietário",
+          type: "select",
+          required: true,
+          placeholder: "Selecione o proprietário",
+          value: "",
+          optionsSource: "imob_owners",
+          options: [],
+        },
+      ],
+      actions: [
+        { id: "cancel", label: "Cancelar", kind: "secondary" },
+        { id: "archive", label: "Arquivar", kind: "primary" },
+      ],
+    };
+  }
   return {
     entity: "proprietario",
     action: "update",

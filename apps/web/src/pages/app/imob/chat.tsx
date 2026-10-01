@@ -28,6 +28,8 @@ import {
   apiCreateImobOwner,
   apiUpdateImobOwner,
   apiArchiveImobOwner,
+  apiUpdateImobProperty,
+  apiArchiveImobProperty,
   apiCreateImobProperty,
   apiCreateImobRentalLease,
   apiUpsertImobChatInterviewState,
@@ -44,6 +46,7 @@ import {
   type ImobPresentationBlock,
   type ImobPresentationForm,
   type ImobOwner,
+  type ImobProperty,
   type ImobPresentationFormField,
   type ImobPresentationFormFieldOption,
   type ImobPresentationWidget,
@@ -75,6 +78,18 @@ import {
   isOwnerEditForm,
   ownerToEditValues,
 } from "./ownerEditForm";
+import {
+  buildPropertyEditForm,
+  buildPropertyUpdateRequest,
+  isPropertyEditForm,
+  propertyToEditValues,
+} from "./propertyEditForm";
+import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
+import {
+  IMOB_ACTION_MENUS,
+  listImobActionMenuPrompts,
+  type ImobActionMenuItem,
+} from "@/features/imob/imobActionMenus";
 import { useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
@@ -615,13 +630,6 @@ const QUICK_PROMPTS = [
     prompt: "cadastrar proprietário",
   },
   {
-    label: "Editar proprietário",
-    shortLabel: "Editar",
-    prompt: "editar proprietário",
-    // Abre o formulário de edição direto no cliente (ação explícita, sem interpretar texto).
-    localForm: "owner_edit",
-  },
-  {
     label: "Cadastrar imóvel",
     shortLabel: "Imóvel",
     prompt: "cadastrar imóvel",
@@ -649,6 +657,7 @@ const QUICK_PROMPTS = [
 ] as const;
 
 const STRUCTURED_IMOB_AUTOPROMPTS = [
+  ...listImobActionMenuPrompts(),
   ...QUICK_PROMPTS.map((prompt) => ({ label: prompt.label, prompt: prompt.prompt })),
   ...IMOB_BUSINESS_QUICK_ACTIONS.map((action) => ({ label: action.title, prompt: action.autoprompt })),
 ] as const;
@@ -2190,6 +2199,7 @@ const ImobChatPage: React.FC = () => {
   const ownerNameConfirmedRef = React.useRef<Record<string, string>>({});
   const ownerRecordsRef = React.useRef<ImobOwner[]>([]);
   const ownerArchiveConfirmedRef = React.useRef<Record<string, string>>({});
+  const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
@@ -2325,7 +2335,10 @@ const ImobChatPage: React.FC = () => {
     // lista precisa chegar mesmo assim (o form já foi marcado como carregado).
     if (sources.has("imob_properties")) {
       void apiListImobProperties()
-        .then((response) => setImobPropertyOptions(buildImobPropertyOptions(response.data.items ?? [])))
+        .then((response) => {
+          propertyRecordsRef.current = response.data.items ?? [];
+          setImobPropertyOptions(buildImobPropertyOptions(response.data.items ?? []));
+        })
         .catch(() => setImobPropertyOptions((prev) => prev ?? []));
     }
     if (sources.has("imob_owners")) {
@@ -4811,15 +4824,132 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
-  function openOwnerEditForm() {
+  function openOwnerEditForm(mode: "edit" | "archive" = "edit") {
     const threadId = activeThread?.id ?? makeId("thread");
     appendMessage({
       id: makeId("assistant"),
       role: "assistant",
-      text: "Escolha o proprietário que você quer corrigir ou arquivar.",
-      form: buildOwnerEditForm(),
+      text: mode === "archive" ? "Escolha o proprietário que você quer arquivar." : "Escolha o proprietário que você quer corrigir ou arquivar.",
+      form: buildOwnerEditForm(mode),
       thread: { id: threadId, label: "Cadastro", status: "active" },
     });
+  }
+
+  function openPropertyEditForm(mode: "edit" | "archive" = "edit") {
+    const threadId = activeThread?.id ?? makeId("thread");
+    appendMessage({
+      id: makeId("assistant"),
+      role: "assistant",
+      text: mode === "archive" ? "Escolha o imóvel que você quer arquivar." : "Escolha o imóvel que você quer corrigir.",
+      form: buildPropertyEditForm(mode),
+      thread: { id: threadId, label: "Cadastro", status: "active" },
+    });
+  }
+
+  function handleActionMenuSelect(item: ImobActionMenuItem) {
+    if (item.kind === "prompt") {
+      void sendMessageText(item.prompt, { displayText: item.label });
+      return;
+    }
+    if (item.form === "owner_edit") openOwnerEditForm("edit");
+    else if (item.form === "owner_archive") openOwnerEditForm("archive");
+    else if (item.form === "property_edit") openPropertyEditForm("edit");
+    else if (item.form === "property_archive") openPropertyEditForm("archive");
+  }
+
+  function prefillPropertyEditForm(messageId: string, propertyId: string) {
+    const property = propertyRecordsRef.current.find((item) => item.id === propertyId);
+    if (!property) return;
+    setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { ...(prev[messageId] ?? {}), ...propertyToEditValues(property) } }));
+    setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: {} }));
+  }
+
+  async function handlePropertyEditFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeId("assistant"), role: "assistant", text: "Nada foi alterado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const propertyId = (values.propertyId ?? "").trim();
+    if (!propertyId) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { propertyId: "Selecione o imóvel." } }));
+      return;
+    }
+    const label = (imobPropertyOptions ?? []).find((option) => option.value === propertyId)?.label ?? "imóvel";
+
+    if (actionId === "archive") {
+      if (ownerArchiveConfirmedRef.current[message.id] !== propertyId) {
+        ownerArchiveConfirmedRef.current[message.id] = propertyId;
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { _form: `Arquivar ${label}? Ele sai das listas, mas o histórico fica guardado. Clique em Arquivar de novo para confirmar.` },
+        }));
+        return;
+      }
+      formSubmittingRef.current.add(message.id);
+      try {
+        await apiArchiveImobProperty(propertyId);
+        updateMessageById(message.id, { form: undefined });
+        const done: ChatMessage = { id: makeId("assistant"), role: "assistant", text: `Imóvel arquivado: ${label}.`, thread: message.thread };
+        appendMessage(done);
+        void persistMessage(done, { intent: "property.archived", action: "imob.properties.archive" });
+      } catch (error) {
+        const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+        const status = error instanceof ApiError ? error.status : 0;
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: {
+            _form: body?.error?.code === "PROPERTY_DELETE_BLOCKED"
+              ? "Não dá para arquivar: há locação ou caso ligado a este imóvel. Nada foi alterado."
+              : `Não foi possível arquivar agora${status ? ` (HTTP ${status})` : ""}. Nada foi alterado.`,
+          },
+        }));
+      } finally {
+        delete ownerArchiveConfirmedRef.current[message.id];
+        formSubmittingRef.current.delete(message.id);
+      }
+      return;
+    }
+
+    const built = buildPropertyUpdateRequest(values, propertyRecordsRef.current);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const response = await apiUpdateImobProperty(built.propertyId, built.request);
+      propertyRecordsRef.current = propertyRecordsRef.current.map((item) => (item.id === built.propertyId ? response.data : item));
+      updateMessageById(message.id, { form: undefined });
+      const [updatedLabel] = buildImobPropertyOptions([response.data]).map((option) => option.label);
+      const done: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: `Imóvel atualizado: ${updatedLabel ?? label}.`,
+        thread: message.thread,
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: "property.updated", action: "imob.properties.update" });
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: body?.error?.code === "OWNER_NOT_FOUND"
+          ? ({ ownerId: "Proprietário não encontrado neste workspace." } as Record<string, string>)
+          : {
+              _form: status === 404
+                ? "Imóvel não encontrado (pode ter sido arquivado). Nada foi alterado."
+                : `Não foi possível salvar agora${status ? ` (HTTP ${status})` : ""}. Nada foi alterado; tente de novo.`,
+            },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
   }
 
   function prefillOwnerEditForm(messageId: string, ownerId: string) {
@@ -4918,6 +5048,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (!form) return;
     if (isOwnerEditForm(form)) {
       await handleOwnerEditFormAction(message, actionId);
+      return;
+    }
+    if (isPropertyEditForm(form)) {
+      await handlePropertyEditFormAction(message, actionId);
       return;
     }
     if (actionId === "archive") return;
@@ -6175,8 +6309,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                             value={formValues[field.name] ?? ""}
                                             onChange={(event) => {
                                               updateFormFieldValue(message.id, field.name, event.target.value);
-                                              if (isOwnerEditForm(message.form) && field.name === "ownerId") {
+                                              if (isOwnerEditForm(message.form) && message.form?.action === "update" && field.name === "ownerId") {
                                                 prefillOwnerEditForm(message.id, event.target.value);
+                                              }
+                                              if (isPropertyEditForm(message.form) && message.form?.action === "update" && field.name === "propertyId") {
+                                                prefillPropertyEditForm(message.id, event.target.value);
                                               }
                                             }}
                                             className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
@@ -6582,26 +6719,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
             <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
-                <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
-                  {QUICK_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt.label}
-                      type="button"
-                      title={prompt.label}
-                      aria-label={prompt.label}
-                      onClick={() =>
-                        "localForm" in prompt && prompt.localForm === "owner_edit"
-                          ? openOwnerEditForm()
-                          : void sendMessageText(prompt.prompt, { displayText: prompt.label })
-                      }
-                      className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
-                    >
-                      {/* Celular: rótulo curto; o nome completo fica na dica (title) e no aria-label. */}
-                      <span className="sm:hidden">{prompt.shortLabel}</span>
-                      <span className="hidden sm:inline">{prompt.label}</span>
-                    </button>
-                  ))}
-                </div>
+                <ImobActionMenuBar menus={IMOB_ACTION_MENUS} onSelect={handleActionMenuSelect} />
                 <div className="flex items-end gap-2 rounded-[16px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-sm sm:rounded-[18px] sm:p-2.5">
                   <input
                     ref={fileInputRef}
