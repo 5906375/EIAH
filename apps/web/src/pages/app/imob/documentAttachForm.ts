@@ -34,6 +34,8 @@ const CATEGORY_OPTIONS: Record<DocumentAttachSubject, Array<{ value: string; lab
     { value: "planta", label: "Planta" },
     { value: "habite_se", label: "Habite-se" },
     { value: "fotos", label: "Fotos" },
+    { value: "contrato_compra_venda", label: "Contrato de compra e venda assinado" },
+    { value: "minuta_compra_venda", label: "Minuta de compra e venda" },
     { value: "outro", label: "Outro" },
   ],
   rentals: [
@@ -183,6 +185,7 @@ const INLINE_DOCUMENT_SUBJECT_BY_TARGET: Record<string, DocumentAttachSubject> =
   "imob.properties.create": "properties",
   "imob.rentals.create": "rentals",
   "imob.contracts.rental": "rentals",
+  "imob.contracts.sale": "properties",
 };
 
 export function inlineDocumentSubjectFor(form: Pick<ImobPresentationForm, "submitTarget"> | null | undefined): DocumentAttachSubject | null {

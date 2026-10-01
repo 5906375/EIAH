@@ -153,6 +153,25 @@ export const imobRentalContractGenerateSchema = z.object({
   }
 });
 
+export const imobSaleContractGenerateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  sellerName: z.string().trim().min(1).max(160),
+  sellerDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  buyerName: z.string().trim().min(1).max(160),
+  buyerDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  propertyAddress: z.string().trim().min(1).max(400),
+  registryNumber: z.union([z.string().trim().max(60), z.null()]).optional(),
+  priceCents: z.number().int().min(1).max(100_000_000_000),
+  downPaymentCents: z.union([z.number().int().min(1).max(100_000_000_000), z.null()]).optional(),
+  paymentMethod: z.enum(["a_vista", "financiamento", "parcelado"]),
+  balanceTerms: z.union([z.string().trim().max(1000), z.null()]).optional(),
+  deedDeadlineDays: z.number().int().min(1).max(3650),
+  possession: z.enum(["assinatura", "escritura", "quitacao"]),
+  commissionPercent: z.union([z.number().min(0.1).max(20), z.null()]).optional(),
+  forumCity: z.string().trim().min(1).max(120),
+  extraClause: z.union([z.string().trim().max(2000), z.null()]).optional(),
+});
+
 export const imobDocumentLinkSchema = z.object({
   subjectType: z.enum(["owner", "property", "rental"]),
   subjectId: z.string().trim().min(1).max(80),

@@ -2688,7 +2688,8 @@ export type ImobPresentationForm = {
     | "imob.rentals.create"
     | "imob.tokenization.interest"
     | "imob.documents.link"
-    | "imob.contracts.rental";
+    | "imob.contracts.rental"
+    | "imob.contracts.sale";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3560,6 +3561,57 @@ export async function apiGenerateImobRentalContract(body: ImobRentalContractGene
     ok: true;
     data: { leaseCaseId: string; propertyId: string; contractText: string; endDate: string; writtenBack: string[]; fileName: string };
   }>(`/imob/contracts/rental/generate`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export type ImobSaleContractPrefill = {
+  propertyId: string;
+  saleCaseId: string | null;
+  sellerName: string | null;
+  sellerDocument: string | null;
+  buyerName: string | null;
+  buyerDocument: string | null;
+  propertyAddress: string | null;
+  registryNumber: string | null;
+  priceCents: number | null;
+  downPaymentCents: number | null;
+  paymentMethod: string | null;
+  balanceTerms: string | null;
+  deedDeadlineDays: number | null;
+  possession: string | null;
+  commissionPercent: number | null;
+  forumCity: string | null;
+  gaps: string[];
+};
+
+export type ImobSaleContractGenerateRequest = {
+  propertyId: string;
+  sellerName: string;
+  sellerDocument: string;
+  buyerName: string;
+  buyerDocument: string;
+  propertyAddress: string;
+  registryNumber?: string | null;
+  priceCents: number;
+  downPaymentCents?: number | null;
+  paymentMethod: "a_vista" | "financiamento" | "parcelado";
+  balanceTerms?: string | null;
+  deedDeadlineDays: number;
+  possession: "assinatura" | "escritura" | "quitacao";
+  commissionPercent?: number | null;
+  forumCity: string;
+  extraClause?: string | null;
+};
+
+export async function apiGetImobSaleContractPrefill(propertyId: string) {
+  const qs = new URLSearchParams({ propertyId });
+  return http<{ ok: true; data: ImobSaleContractPrefill }>(`/imob/contracts/sale/prefill?${qs.toString()}`, { method: "GET" });
+}
+
+export async function apiGenerateImobSaleContract(body: ImobSaleContractGenerateRequest) {
+  return http<{
+    ok: true;
+    data: { saleCaseId: string; propertyId: string; contractText: string; writtenBack: string[]; fileName: string };
+  }>(`/imob/contracts/sale/generate`, { method: "POST", body: JSON.stringify(body) });
 }
 
 export async function apiListImobCases(params?: { flow?: string; status?: string; workspaceId?: string }) {

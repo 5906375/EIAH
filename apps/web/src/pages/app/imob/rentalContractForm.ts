@@ -225,7 +225,7 @@ export async function buildContractPdfFile(contractText: string, fileName: strin
   let y = margin;
   // A fonte padrão do jsPDF (WinAnsi) não tem travessão; usa hífen.
   for (const paragraph of contractText.replace(/[—–]/g, "-").split("\n")) {
-    const isTitle = /^(MINUTA|CONTRATO DE LOCAÇÃO|CLÁUSULA)/.test(paragraph);
+    const isTitle = /^(MINUTA|CONTRATO DE LOCAÇÃO|INSTRUMENTO PARTICULAR|CLÁUSULA)/.test(paragraph);
     doc.setFont("helvetica", isTitle ? "bold" : "normal");
     doc.setFontSize(isTitle ? 11 : 10);
     const lines = paragraph ? (doc.splitTextToSize(paragraph, maxWidth) as string[]) : [""];

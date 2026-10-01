@@ -16,6 +16,7 @@ export type ImobLocalFormKind =
   | "documents_properties"
   | "documents_rentals"
   | "contract_rental"
+  | "contract_sale"
   | "tokenization_owners"
   | "tokenization_properties"
   | "tokenization_rentals"
@@ -76,6 +77,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     items: [
       { id: "deal-proposal", label: "Gerar proposta", kind: "prompt", prompt: "Quero gerar uma proposta comercial para um cliente." },
       { id: "deal-contract", label: "Contrato de locação", kind: "local", form: "contract_rental" },
+      { id: "deal-sale-contract", label: "Contrato de venda", kind: "local", form: "contract_sale" },
       { id: "deal-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_deals" },
     ],
   },
