@@ -3707,8 +3707,9 @@ const ImobChatPage: React.FC = () => {
       interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
+    let userMessagePersisted: Promise<unknown> = Promise.resolve();
     if (shouldEchoUserMessage && userMessageId) {
-      void persistMessage(
+      userMessagePersisted = persistMessage(
         {
           id: userMessageId,
           role: "user",
@@ -4042,6 +4043,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         thread: { ...baseThread, label: threadLabel },
       };
       appendMessage(formReply);
+      // Persiste só o texto (sem o formulário nem valores) para o histórico
+      // não mostrar o pedido do usuário sem resposta ao recarregar.
+      // Depois da mensagem do usuário, para manter a ordem no histórico.
+      void userMessagePersisted
+        .catch(() => undefined)
+        .then(() => persistMessage({ ...formReply, form: undefined }, { conversationId: activeConversationId }));
       setActiveThread({ id: baseThread.id, label: threadLabel });
       setState("done");
       return;
@@ -6435,7 +6442,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
             <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
-                <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
+                <div className="mb-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-0.5 sm:flex-wrap">
                   {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt.label}
