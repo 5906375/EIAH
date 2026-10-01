@@ -25,6 +25,7 @@ import {
   apiListImobChatThreads,
   apiListImobProperties,
   apiListImobOwners,
+  apiCreateImobOwner,
   apiCreateImobProperty,
   apiCreateImobRentalLease,
   apiUpsertImobChatInterviewState,
@@ -58,6 +59,12 @@ import {
   findDuplicateProperty,
   isPropertyCreateForm,
 } from "./propertyCreateForm";
+import {
+  buildOwnerCreateConfirmationText,
+  buildOwnerCreateRequest,
+  findOwnerDuplicate,
+  isOwnerCreateForm,
+} from "./ownerCreateForm";
 import { useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
@@ -592,6 +599,10 @@ const SHOW_CHAT_FEEDBACK = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
   // Formulários estruturados: abrem na hora e gravam direto (sem texto livre).
+  {
+    label: "Cadastrar proprietário",
+    prompt: "cadastrar proprietário",
+  },
   {
     label: "Cadastrar imóvel",
     prompt: "cadastrar imóvel",
@@ -2152,6 +2163,8 @@ const ImobChatPage: React.FC = () => {
   const [imobOwnerOptions, setImobOwnerOptions] = React.useState<ImobPresentationFormFieldOption[] | null>(null);
   const propertyOptionsLoadedForRef = React.useRef<Set<string>>(new Set());
   const formSubmittingRef = React.useRef<Set<string>>(new Set());
+  // Nome igual a um proprietário existente: o segundo clique confirma o cadastro.
+  const ownerNameConfirmedRef = React.useRef<Record<string, string>>({});
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
@@ -4006,18 +4019,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
-    if (isRentalLeaseForm(turn.presentation.form) || isPropertyCreateForm(turn.presentation.form)) {
+    if (
+      isRentalLeaseForm(turn.presentation.form)
+      || isPropertyCreateForm(turn.presentation.form)
+      || isOwnerCreateForm(turn.presentation.form)
+    ) {
       // Formulários estruturados gravam direto na API (POST /imob/rentals ou
       // /imob/properties): não há execução de agente a negociar, então só
       // exibimos o formulário.
       const isLease = isRentalLeaseForm(turn.presentation.form);
+      const isOwner = isOwnerCreateForm(turn.presentation.form);
       const threadLabel = isLease ? "Locação" : "Captação";
       const formReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: isLease
           ? "Preencha os dados da locação. Só imóvel e nome do inquilino são obrigatórios."
-          : "Preencha os dados do imóvel. Tipo, finalidade, cidade e endereço são obrigatórios.",
+          : isOwner
+            ? "Preencha os dados do proprietário. Só o nome é obrigatório."
+            : "Preencha os dados do imóvel. Tipo, finalidade, cidade e endereço são obrigatórios.",
         form: turn.presentation.form,
         thread: { ...baseThread, label: threadLabel },
       };
@@ -4684,9 +4704,85 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
+  async function handleOwnerCreateFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Cadastro de proprietário cancelado. Nada foi gravado.",
+        thread: message.thread,
+      });
+      return;
+    }
+
+    if (formSubmittingRef.current.has(message.id)) return;
+    const built = buildOwnerCreateRequest(resolveFormValuesForMessage(message));
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const existing = await apiListImobOwners();
+      const duplicate = findOwnerDuplicate(built.request, existing.data.items ?? []);
+      if (duplicate?.kind === "strong") {
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { _form: `Este proprietário já está cadastrado: ${duplicate.owner.name} (mesmo documento, telefone ou e-mail). Nada foi gravado.` },
+        }));
+        return;
+      }
+      if (duplicate?.kind === "name" && ownerNameConfirmedRef.current[message.id] !== built.request.name) {
+        ownerNameConfirmedRef.current[message.id] = built.request.name;
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { ownerName: `Já existe um proprietário chamado ${duplicate.owner.name}. Se for outra pessoa, clique em Salvar de novo para cadastrar.` },
+        }));
+        return;
+      }
+      const response = await apiCreateImobOwner(built.request);
+      updateMessageById(message.id, { form: undefined });
+      clearThreadOperationalState(message);
+      const confirmation: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildOwnerCreateConfirmationText({
+          name: response.data.name,
+          personType: built.request.personType,
+          document: built.request.document,
+          pendingItems: built.request.pendingItems,
+        }),
+        thread: message.thread,
+      };
+      appendMessage(confirmation);
+      void persistMessage(confirmation, { intent: "owner.registered", action: "imob.owners.create" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          _form: status === 400
+            ? "Algum campo foi recusado pelo servidor. Confira os valores e tente de novo. Nada foi gravado."
+            : `Não foi possível salvar o proprietário agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.`,
+        },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
   async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
     const form = message.form;
     if (!form) return;
+    if (isOwnerCreateForm(form)) {
+      await handleOwnerCreateFormAction(message, actionId);
+      return;
+    }
     if (isRentalLeaseForm(form)) {
       await handleRentalLeaseFormAction(message, actionId);
       return;

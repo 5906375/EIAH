@@ -1073,43 +1073,52 @@ function buildOwnerCreateForm(ownerDraft?: {
   return {
     entity: ownerCopy.entity,
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/owners (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.owners.create" as const,
     label: ownerCopy.label,
-    description: ownerCopy.description,
+    description: "Só o nome é obrigatório; o que ficar em branco vira pendência do cadastro.",
     fields: [
+      {
+        name: "personType",
+        label: "Tipo de pessoa",
+        type: "select" as const,
+        value: "person",
+        options: [
+          { value: "person", label: "Pessoa física (CPF)" },
+          { value: "company", label: "Pessoa jurídica (CNPJ)" },
+        ],
+      },
       {
         name: "ownerName",
         label: ownerCopy.nameLabel,
         type: "text" as const,
         required: true,
-        placeholder: "Ex.: João da Silva",
+        placeholder: "Nome completo ou razão social",
         value: ownerDraft?.ownerName ?? "",
+      },
+      {
+        name: "ownerDocument",
+        label: "CPF ou CNPJ",
+        type: "text" as const,
+        placeholder: "000.000.000-00 ou 00.000.000/0000-00",
+        inputMode: "numeric" as const,
+        maxLength: 18,
+        value: ownerDraft?.ownerDocument ?? "",
       },
       {
         name: "ownerPhone",
         label: ownerCopy.phoneLabel,
         type: "tel" as const,
-        required: true,
-        placeholder: "Ex.: (11) 99999-9999",
+        placeholder: "Ex.: (47) 99999-9999",
         value: ownerDraft?.ownerPhone ?? "",
       },
       {
         name: "ownerEmail",
         label: ownerCopy.emailLabel,
         type: "email" as const,
-        required: true,
         placeholder: "Ex.: joao@email.com",
         value: ownerDraft?.ownerEmail ?? "",
-      },
-      {
-        name: "ownerDocument",
-        label: ownerCopy.documentLabel,
-        type: "text" as const,
-        required: true,
-        placeholder: "Ex.: CPF ou CNPJ",
-        value: ownerDraft?.ownerDocument ?? "",
-        helperText: "Informe CPF/CNPJ ou anexe o documento.",
-        allowAttachment: true,
-        attachmentLabel: "Anexar documento",
       },
     ],
     actions: [
@@ -3540,7 +3549,10 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 }
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
-  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(response);
+  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(
+    // A locação vigente não é lead: o fio da conversa leva o rótulo certo.
+    response.presentation?.form?.entity === "locacao" ? { ...response, threadLabel: "Locação" } : response,
+  );
   const message = request.message.trim();
   const normalizedMessage = normalizeImobText(message);
   const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);

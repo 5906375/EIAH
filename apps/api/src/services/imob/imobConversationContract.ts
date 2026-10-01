@@ -833,7 +833,7 @@ export type ImobPresentationForm = {
    * Formulário estruturado: o cliente envia os campos direto para a rota
    * indicada, sem execução de agente e sem transformar em texto de conversa.
    */
-  submitTarget?: "imob.properties.create" | "imob.rentals.create";
+  submitTarget?: "imob.owners.create" | "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
