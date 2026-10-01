@@ -125,6 +125,7 @@ import {
   getContractTypeLabel,
   getStepQuestionText,
   getContractTypePrompt,
+  getContractChoiceOptions,
   isAffirmativeAnswer,
   isNegativeAnswer,
   moveInterviewToEditableField,
@@ -1211,6 +1212,29 @@ function isOpenAttachmentMenuAction(action?: CardCta["action"]): action is "open
 
 function isSendSuggestedMessageAction(action?: CardCta["action"]): action is "send_suggested_message" {
   return action === "send_suggested_message";
+}
+
+/** Botões de escolha da entrevista de contrato (tipo, opções, sim/não). */
+function withContractInterviewChoices(message: ChatMessage, state: ContractInterviewState | null): ChatMessage {
+  const options = getContractChoiceOptions(state);
+  if (options.length === 0) return message;
+  return {
+    ...message,
+    presentationMetadata: { ...(message.presentationMetadata ?? {}), choiceStyle: "inline" },
+    card: {
+      type: "action",
+      title: "Escolha uma opção",
+      lines: [],
+      thread: message.thread,
+      ctas: options.map((option, index) => ({
+        id: `contract-choice-${option.id}`,
+        label: option.label,
+        kind: index === 0 ? ("primary" as const) : ("neutral" as const),
+        action: "send_suggested_message" as const,
+        nextMessage: option.reply,
+      })),
+    },
+  };
 }
 
 function isInlineChoicePresentation(message: ChatMessage) {
@@ -2310,9 +2334,12 @@ const ImobChatPage: React.FC = () => {
   const appendMessage = React.useCallback((message: ChatMessage) => {
     setMessages((prev) => [
       // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
-      ...(message.form
+      // Quando o usuário segue para outro pedido, o formulário estruturado aberto também fecha.
+      ...(message.form || message.role === "user"
         ? prev.map((item) =>
-            item.form ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` } : item,
+            item.form && (message.form || item.form.submitTarget)
+              ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` }
+              : item,
           )
         : prev),
       message,
@@ -3379,7 +3406,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: state },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
       const editedState = editResult.state;
@@ -3399,7 +3426,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: editedState },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3418,12 +3445,12 @@ const ImobChatPage: React.FC = () => {
       setContractInterviewState(restarted);
       setSingleEditFieldId(null);
       await persistInterviewState(activeConversationId, restarted);
-      const restartMessage: ChatMessage = {
+      const restartMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: `Sem problemas. Vamos revisar desde o inicio deste tipo de contrato.\n\n${getStepQuestionText(restarted) ?? "Qual o primeiro dado?"}`,
         thread: threadForInterview,
-      };
+      }, restarted);
       appendMessage(restartMessage);
       void persistMessage(restartMessage, {
         conversationId: activeConversationId,
@@ -3431,7 +3458,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: restarted },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3585,7 +3612,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: recoveryState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
       }
     },
     [appendMessage, persistInterviewState, persistMessage]
@@ -3809,12 +3836,12 @@ const ImobChatPage: React.FC = () => {
         setContractInterviewState(initialInterview);
         setSingleEditFieldId(null);
         await persistInterviewState(activeConversationId, initialInterview);
-        const kickoffMessage: ChatMessage = {
+        const kickoffMessage: ChatMessage = withContractInterviewChoices({
           id: makeId("assistant"),
           role: "assistant",
           text: getContractTypePrompt(),
           thread: threadForInterview,
-        };
+        }, initialInterview);
         appendMessage(kickoffMessage);
         void persistMessage(kickoffMessage, {
           conversationId: activeConversationId,
@@ -3822,7 +3849,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: initialInterview },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3853,7 +3880,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: contractInterviewState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3885,7 +3912,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         if (editApplied.ok) {
           setSingleEditFieldId(null);
         }
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3896,12 +3923,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       };
       setContractInterviewState(nextInterviewState);
       await persistInterviewState(activeConversationId, nextInterviewState);
-      const interviewMessage: ChatMessage = {
+      const interviewMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: result.message ?? "Resumo atualizado. Responda: sim, nao ou editar <campo>.",
         thread: threadForInterview,
-      };
+      }, nextInterviewState);
       appendMessage(interviewMessage);
       void persistMessage(interviewMessage, {
         conversationId: activeConversationId,
@@ -3909,7 +3936,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         action: "realestate.create_contract",
         metadata: { contractInterview: nextInterviewState },
       });
-      setState("awaiting_user_action");
+      // Entrevista em coleta: a resposta é digitada (ou clicada), então a caixa de texto fica livre.
+      setState(nextInterviewState.status === "review" ? "awaiting_user_action" : "idle");
       return;
     }
 

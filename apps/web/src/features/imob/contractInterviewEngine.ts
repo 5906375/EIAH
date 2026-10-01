@@ -29,20 +29,46 @@ export function createInitialContractInterviewState(): ContractInterviewState {
 
 export function getContractTypePrompt() {
   return [
-    "Vou ajudar voce a gerar um contrato.",
+    "Vou ajudar você a gerar um contrato.",
     "",
-    "Qual tipo de contrato voce deseja?",
-    "1) Locacao",
+    "Qual tipo de contrato você deseja?",
+    "1) Locação",
     "2) Compra e venda",
-    "3) Administracao",
+    "3) Administração",
     "4) Temporada",
     "",
-    "Responda com o numero ou nome da opcao.",
+    "Escolha uma opção abaixo ou responda com o número ou o nome.",
   ].join("\n");
 }
 
+/**
+ * Opções clicáveis da pergunta atual da entrevista de contrato: tipo de
+ * contrato, perguntas de escolha e sim/não. Cada opção envia o mesmo texto que
+ * o usuário digitaria (o parser continua aceitando a resposta escrita).
+ * Perguntas abertas (nome, valor, data, CPF) não têm opções.
+ */
+export function getContractChoiceOptions(state: ContractInterviewState | null): Array<{ id: string; label: string; reply: string }> {
+  if (!state || state.status !== "collecting") return [];
+  if (!state.contractType) {
+    return CONTRACT_TYPE_OPTIONS.map((option) => ({ id: option.id, label: option.label, reply: option.label }));
+  }
+  const step = getCurrentContractStep(state);
+  if (!step) return [];
+  if (step.type === "choice" && step.options?.length) {
+    return step.options.map((option) => ({ id: option.id, label: option.label, reply: option.label }));
+  }
+  if (step.type === "boolean") {
+    return [
+      { id: "sim", label: "Sim", reply: "sim" },
+      { id: "nao", label: "Não", reply: "não" },
+    ];
+  }
+  return [];
+}
+
 export function getContractTypeByText(rawText: string): ContractType | null {
-  const text = rawText.trim().toLowerCase();
+  // Sem acento: "Locação"/"Administração" (rótulo do botão) casam com os apelidos.
+  const text = rawText.trim().toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
   if (!text) return null;
   for (const option of CONTRACT_TYPE_OPTIONS) {
     if (option.aliases.some((alias) => text.includes(alias))) {
