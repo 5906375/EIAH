@@ -11,7 +11,7 @@ import {
 
 test("tipo de contrato vira botões e o rótulo com acento é aceito", () => {
   const options = getContractChoiceOptions(createInitialContractInterviewState());
-  assert.deepEqual(options.map((option) => option.label), ["Locação", "Compra e Venda", "Administração", "Temporada"]);
+  assert.deepEqual(options.map((option) => option.label), ["1) Locação", "2) Compra e Venda", "3) Administração", "4) Temporada"]);
   for (const option of options) assert.ok(getContractTypeByText(option.reply), option.reply);
   assert.equal(getContractTypeByText("Locação"), "locacao");
   assert.equal(getContractTypeByText("administração"), "administracao");

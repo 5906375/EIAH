@@ -261,6 +261,8 @@ type ChatMessage = {
   dispatchBadge?: string | null;
   /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
   slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
+  /** Respostas clicáveis (só na última mensagem): cada uma envia o texto que o usuário digitaria. */
+  quickReplies?: Array<{ id: string; label: string; reply: string }>;
 };
 
 type AssistantMessageDedupeInput = {
@@ -1214,27 +1216,10 @@ function isSendSuggestedMessageAction(action?: CardCta["action"]): action is "se
   return action === "send_suggested_message";
 }
 
-/** Botões de escolha da entrevista de contrato (tipo, opções, sim/não). */
+/** Botões de escolha da entrevista de contrato (tipo, opções, sim/não), abaixo da própria pergunta. */
 function withContractInterviewChoices(message: ChatMessage, state: ContractInterviewState | null): ChatMessage {
   const options = getContractChoiceOptions(state);
-  if (options.length === 0) return message;
-  return {
-    ...message,
-    presentationMetadata: { ...(message.presentationMetadata ?? {}), choiceStyle: "inline" },
-    card: {
-      type: "action",
-      title: "Escolha uma opção",
-      lines: [],
-      thread: message.thread,
-      ctas: options.map((option, index) => ({
-        id: `contract-choice-${option.id}`,
-        label: option.label,
-        kind: index === 0 ? ("primary" as const) : ("neutral" as const),
-        action: "send_suggested_message" as const,
-        nextMessage: option.reply,
-      })),
-    },
-  };
+  return options.length === 0 ? message : { ...message, quickReplies: options };
 }
 
 function isInlineChoicePresentation(message: ChatMessage) {
@@ -3618,7 +3603,10 @@ const ImobChatPage: React.FC = () => {
     [appendMessage, persistInterviewState, persistMessage]
   );
 
-  const sendMessageText = async (rawText: string, options?: { displayText?: string; suppressUserEcho?: boolean }) => {
+  const sendMessageText = async (
+    rawText: string,
+    options?: { displayText?: string; suppressUserEcho?: boolean; startContractInterview?: boolean },
+  ) => {
     const text = rawText.trim();
     const displayText = options?.displayText?.trim() || text;
     const shouldEchoUserMessage = shouldEchoImobUserMessage(options);
@@ -3795,7 +3783,10 @@ const ImobChatPage: React.FC = () => {
         },
       });
     }
+    // "Iniciar contrato" do menu sempre recomeça a entrevista (não é resposta da pergunta aberta).
+    const restartContractInterview = options?.startContractInterview === true;
     const interviewIsActive =
+      !restartContractInterview &&
       !!contractInterviewState &&
       (contractInterviewState.status === "collecting" ||
         contractInterviewState.status === "review" ||
@@ -3824,14 +3815,14 @@ const ImobChatPage: React.FC = () => {
         }
       );
     }
-    if (shouldContinueContractInterview || resolvedIntent === "contract") {
+    if (restartContractInterview || shouldContinueContractInterview || resolvedIntent === "contract") {
       const threadForInterview = {
         id: operationThread.id,
         label: "Contrato",
         status: "active" as const,
       };
 
-      if (!contractInterviewState || contractInterviewState.status === "generated") {
+      if (restartContractInterview || !contractInterviewState || contractInterviewState.status === "generated") {
         const initialInterview = createInitialContractInterviewState();
         setContractInterviewState(initialInterview);
         setSingleEditFieldId(null);
@@ -4905,7 +4896,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
   function handleActionMenuSelect(item: ImobActionMenuItem) {
     if (item.kind === "prompt") {
-      void sendMessageText(item.prompt, { displayText: item.label });
+      void sendMessageText(item.prompt, { displayText: item.label, startContractInterview: item.id === "deal-contract" });
       return;
     }
     if (item.form === "owner_edit") openOwnerEditForm("edit");
@@ -6483,6 +6474,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             </div>
                           ) : null}
 
+                          {!isUser && isLastMessage && message.quickReplies?.length && !shouldAnimateAssistantText ? (
+                            <div className="mt-2 flex flex-col items-start gap-1.5" role="group" aria-label="Opções">
+                              {message.quickReplies.map((option) => (
+                                <button
+                                  key={`${message.id}-reply-${option.id}`}
+                                  type="button"
+                                  disabled={state === "typing" || state === "executing"}
+                                  onClick={() => void sendMessageText(option.reply, { displayText: option.label.replace(/^\d+\)\s*/, "") })}
+                                  className="min-w-[180px] rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-left text-[13px] normal-case tracking-normal text-foreground transition hover:border-accent/60 hover:bg-accent/20 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                           {!shouldDelayForm && message.form ? (() => {
                             const formValues = resolveFormValuesForMessage(message);
                             const formErrors = formErrorsByMessageId[message.id] ?? {};

@@ -28,16 +28,12 @@ export function createInitialContractInterviewState(): ContractInterviewState {
 }
 
 export function getContractTypePrompt() {
+  // As opções (Locação, Compra e venda, Administração, Temporada) aparecem
+  // como botões logo abaixo desta pergunta; digitar o número ou o nome também vale.
   return [
     "Vou ajudar você a gerar um contrato.",
     "",
     "Qual tipo de contrato você deseja?",
-    "1) Locação",
-    "2) Compra e venda",
-    "3) Administração",
-    "4) Temporada",
-    "",
-    "Escolha uma opção abaixo ou responda com o número ou o nome.",
   ].join("\n");
 }
 
@@ -50,7 +46,7 @@ export function getContractTypePrompt() {
 export function getContractChoiceOptions(state: ContractInterviewState | null): Array<{ id: string; label: string; reply: string }> {
   if (!state || state.status !== "collecting") return [];
   if (!state.contractType) {
-    return CONTRACT_TYPE_OPTIONS.map((option) => ({ id: option.id, label: option.label, reply: option.label }));
+    return CONTRACT_TYPE_OPTIONS.map((option, index) => ({ id: option.id, label: `${index + 1}) ${option.label}`, reply: option.label }));
   }
   const step = getCurrentContractStep(state);
   if (!step) return [];
