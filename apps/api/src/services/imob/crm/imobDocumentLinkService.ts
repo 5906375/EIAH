@@ -22,7 +22,7 @@ const MAX_DOCUMENTS_PER_SUBJECT = 50;
 export const DOCUMENT_CATEGORIES = {
   owner: ["documento_identidade", "comprovante_endereco", "procuracao", "contrato_social", "outro"],
   property: ["matricula", "iptu", "escritura", "planta", "habite_se", "fotos", "outro"],
-  rental: ["contrato_assinado", "aditivo", "vistoria", "garantia", "comprovante_pagamento", "outro"],
+  rental: ["contrato_assinado", "minuta_contrato", "aditivo", "vistoria", "garantia", "comprovante_pagamento", "outro"],
 } as const;
 
 export type DocumentSubjectType = keyof typeof DOCUMENT_CATEGORIES;

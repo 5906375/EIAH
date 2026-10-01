@@ -38,6 +38,7 @@ const CATEGORY_OPTIONS: Record<DocumentAttachSubject, Array<{ value: string; lab
   ],
   rentals: [
     { value: "contrato_assinado", label: "Contrato assinado" },
+    { value: "minuta_contrato", label: "Minuta de contrato" },
     { value: "aditivo", label: "Aditivo" },
     { value: "vistoria", label: "Vistoria" },
     { value: "garantia", label: "Garantia (fiador, seguro, caução)" },

@@ -100,6 +100,7 @@ import {
   imobPropertyUpdateSchema,
   imobRentalLeaseCreateSchema,
   imobDocumentLinkSchema,
+  imobRentalContractGenerateSchema,
 } from "./imobCrmSchemas";
 import {
   resolveImobInstallationStatus,
@@ -1490,6 +1491,7 @@ registerImobCrmRoutes({
     imobCaseCreateSchema,
     imobRentalLeaseCreateSchema,
     imobDocumentLinkSchema,
+    imobRentalContractGenerateSchema,
     imobCaseUpdateSchema,
     imobCaseAssignOwnerSchema,
     imobFollowUpRunSchema,

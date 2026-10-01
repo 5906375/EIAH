@@ -15,6 +15,7 @@ export type ImobLocalFormKind =
   | "documents_owners"
   | "documents_properties"
   | "documents_rentals"
+  | "contract_rental"
   | "tokenization_owners"
   | "tokenization_properties"
   | "tokenization_rentals"
@@ -65,6 +66,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     items: [
       { id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" },
       { id: "rental-documents", label: "Anexar documento", kind: "local", form: "documents_rentals" },
+      { id: "rental-contract", label: "Gerar contrato", kind: "local", form: "contract_rental" },
       { id: "rental-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_rentals" },
     ],
   },
@@ -73,7 +75,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     label: "Negócios",
     items: [
       { id: "deal-proposal", label: "Gerar proposta", kind: "prompt", prompt: "Quero gerar uma proposta comercial para um cliente." },
-      { id: "deal-contract", label: "Iniciar contrato", kind: "prompt", prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário." },
+      { id: "deal-contract", label: "Contrato de locação", kind: "local", form: "contract_rental" },
       { id: "deal-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_deals" },
     ],
   },

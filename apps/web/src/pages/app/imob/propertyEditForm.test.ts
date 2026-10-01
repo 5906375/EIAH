@@ -28,7 +28,7 @@ const property = {
 test("menus group actions by subject and only list working actions", () => {
   assert.deepEqual(IMOB_ACTION_MENUS.map((menu) => menu.label), ["Proprietários", "Imóveis", "Locações", "Negócios"]);
   const labels = IMOB_ACTION_MENUS.flatMap((menu) => menu.items.map((item) => item.label));
-  for (const label of ["Cadastrar proprietário", "Editar proprietário", "Arquivar proprietário", "Cadastrar imóvel", "Editar imóvel", "Arquivar imóvel", "Captar imóvel", "Cadastrar locação", "Gerar proposta", "Iniciar contrato"]) {
+  for (const label of ["Cadastrar proprietário", "Editar proprietário", "Arquivar proprietário", "Cadastrar imóvel", "Editar imóvel", "Arquivar imóvel", "Captar imóvel", "Cadastrar locação", "Gerar proposta", "Contrato de locação", "Gerar contrato"]) {
     assert.ok(labels.includes(label), label);
   }
   assert.ok(listImobActionMenuPrompts().some((item) => item.prompt === "cadastrar locatário"));
