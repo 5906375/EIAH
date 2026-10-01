@@ -104,6 +104,11 @@ import {
   isDocumentAttachForm,
   validateDocumentAttachValues,
   type DocumentAttachSubject,
+  INLINE_DOCUMENT_CATEGORY_FIELD,
+  buildInlineDocumentsNote,
+  inlineDocumentSubjectFor,
+  validateInlineDocuments,
+  withInlineDocumentFields,
 } from "./documentAttachForm";
 import {
   buildContractPdfFile,
@@ -2245,6 +2250,8 @@ const ImobChatPage: React.FC = () => {
   const formFilesRef = React.useRef<Record<string, File[]>>({});
   /** Valores a aplicar no próximo formulário com este destino (ex.: proprietário recém-cadastrado no "Cadastrar imóvel"). */
   const pendingFormPrefillRef = React.useRef<{ submitTarget: string; values: Record<string, string> } | null>(null);
+  /** Imóvel cuja locação, ao ser salva, abre direto o contrato. */
+  const contractAfterLeaseRef = React.useRef<string | null>(null);
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
@@ -2332,7 +2339,9 @@ const ImobChatPage: React.FC = () => {
     []
   );
 
-  const appendMessage = React.useCallback((message: ChatMessage) => {
+  const appendMessage = React.useCallback((incoming: ChatMessage) => {
+    // Formulários de cadastro e contrato ganham "Anexar documentos" no próprio formulário.
+    const message = incoming.form ? { ...incoming, form: withInlineDocumentFields(incoming.form) } : incoming;
     const pendingPrefill = pendingFormPrefillRef.current;
     if (pendingPrefill && message.form?.submitTarget === pendingPrefill.submitTarget) {
       pendingFormPrefillRef.current = null;
@@ -4708,11 +4717,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
 
     if (formSubmittingRef.current.has(message.id)) return;
-    const built = buildRentalLeaseRequest(resolveFormValuesForMessage(message));
+    const leaseValues = resolveFormValuesForMessage(message);
+    const built = buildRentalLeaseRequest(leaseValues);
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
     }
+    if (!checkInlineDocuments(message, leaseValues)) return;
 
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
@@ -4721,18 +4732,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
       const leasePropertyId = response.data.propertyId;
+      const documentsNote = await attachInlineDocuments(message, leaseValues, leasePropertyId);
+      const openContractNow = contractAfterLeaseRef.current === leasePropertyId;
+      contractAfterLeaseRef.current = null;
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildRentalLeaseConfirmationText(response.data),
+        text: [buildRentalLeaseConfirmationText(response.data), documentsNote].filter(Boolean).join(" "),
         thread: message.thread,
-        quickReplies: [
-          { id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) },
-          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("rentals", leasePropertyId) },
-        ],
+        ...(openContractNow
+          ? {}
+          : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+      if (openContractNow) openRentalContractForm(leasePropertyId);
     } catch (error) {
       const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
       const code = body?.error?.code;
@@ -4770,6 +4784,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
     const built = buildPropertyCreateRequest(values);
+    if (built.ok && !checkInlineDocuments(message, values)) return;
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -4791,21 +4806,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
       const created = response.data;
+      const documentsNote = await attachInlineDocuments(message, values, created.id);
       const [label] = buildImobPropertyOptions([created]).map((option) => option.label);
       const occupancy = typeof values.occupancy === "string" ? values.occupancy.trim() : "";
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildPropertyCreateConfirmationText({
-          label: label ?? created.id,
-          ownerName: created.owner?.name ?? null,
-          occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
-        }),
+        text: [
+          buildPropertyCreateConfirmationText({
+            label: label ?? created.id,
+            ownerName: created.owner?.name ?? null,
+            occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
+          }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
         thread: message.thread,
-        quickReplies: [
-          { id: "next-rental", label: "Locar (cadastrar locação)", onSelect: () => startRentalFor(created.id) },
-          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("properties", created.id) },
-        ],
+        // Próximo passo segue a finalidade escolhida no formulário; venda ainda não tem contrato.
+        ...(built.request.goal === "locacao"
+          ? { quickReplies: [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }] }
+          : {}),
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "property.registered", action: "imob.properties.create" });
@@ -4839,7 +4858,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
 
     if (formSubmittingRef.current.has(message.id)) return;
-    const built = buildOwnerCreateRequest(resolveFormValuesForMessage(message));
+    const ownerValues = resolveFormValuesForMessage(message);
+    const built = buildOwnerCreateRequest(ownerValues);
+    if (built.ok && !checkInlineDocuments(message, ownerValues)) return;
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -4866,21 +4887,24 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         return;
       }
       const response = await apiCreateImobOwner(built.request);
+      const documentsNote = await attachInlineDocuments(message, ownerValues, response.data.id);
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildOwnerCreateConfirmationText({
-          name: response.data.name,
-          personType: built.request.personType,
-          document: built.request.document,
-          pendingItems: built.request.pendingItems,
-        }),
+        text: [
+          buildOwnerCreateConfirmationText({
+            name: response.data.name,
+            personType: built.request.personType,
+            document: built.request.document,
+            pendingItems: built.request.pendingItems,
+          }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
         thread: message.thread,
         quickReplies: [
           { id: "next-property", label: "Cadastrar imóvel deste proprietário", onSelect: () => startPropertyCreateFor(response.data.id) },
-          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("owners", response.data.id) },
         ],
       };
       appendMessage(confirmation);
@@ -4940,6 +4964,40 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
+  /** Arquivos escolhidos no próprio formulário: valida antes de salvar (com arquivo, o tipo é obrigatório). */
+  function checkInlineDocuments(message: ChatMessage, values: Record<string, string>) {
+    const errors = validateInlineDocuments(values, (formFilesRef.current[message.id] ?? []).length);
+    if (Object.keys(errors).length === 0) return true;
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    return false;
+  }
+
+  /** Depois de salvar: sobe e vincula os arquivos ao cadastro criado. Nunca desfaz o cadastro. */
+  async function attachInlineDocuments(message: ChatMessage, values: Record<string, string>, subjectId: string) {
+    const files = formFilesRef.current[message.id] ?? [];
+    delete formFilesRef.current[message.id];
+    const subject = inlineDocumentSubjectFor(message.form);
+    if (files.length === 0 || !subject) return null;
+    try {
+      const formData = new FormData();
+      for (const file of files) formData.append("files", file);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const linked = await apiLinkImobDocuments({
+        subjectType: subject === "owners" ? "owner" : subject === "properties" ? "property" : "rental",
+        subjectId,
+        category: (values[INLINE_DOCUMENT_CATEGORY_FIELD] ?? "").trim(),
+        documentIds: (uploaded.data ?? []).map((item) => item.id),
+      });
+      return buildInlineDocumentsNote({ linked: linked.data.added.length, contractPendingCleared: linked.data.contractPendingCleared });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      return buildInlineDocumentsNote({
+        linked: 0,
+        failed: status === 403 ? "sem permissão" : status === 413 ? "arquivo acima de 5 MB" : status === 415 ? "tipo de arquivo não aceito" : `erro ${status || "de rede"}`,
+      });
+    }
+  }
+
   function openRentalContractForm(propertyId?: string) {
     const threadId = activeThread?.id ?? makeId("thread");
     const messageId = makeId("assistant");
@@ -4959,9 +5017,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     void sendMessageText("cadastrar imóvel", { displayText: "Cadastrar imóvel" });
   }
 
-  function startRentalFor(propertyId: string) {
+  /** "Gerar contrato de locação" a partir do imóvel: primeiro os dados da locação, depois o contrato abre sozinho. */
+  function startRentalContractFor(propertyId: string) {
     pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
-    void sendMessageText("cadastrar locatário", { displayText: "Cadastrar locação" });
+    contractAfterLeaseRef.current = propertyId;
+    void sendMessageText("cadastrar locatário", { displayText: "Gerar contrato de locação" });
   }
 
   async function prefillRentalContractForm(messageId: string, propertyId: string) {
@@ -4997,6 +5057,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
     }
+    if (!checkInlineDocuments(message, values)) return;
     const propertyLabel = (imobPropertyOptions ?? []).find((option) => option.value === built.request.propertyId)?.label ?? "o imóvel";
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
@@ -5012,13 +5073,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         category: "minuta_contrato",
         documentIds: (uploaded.data ?? []).map((item) => item.id),
       });
+      const documentsNote = await attachInlineDocuments(message, values, built.request.propertyId);
       updateMessageById(message.id, { form: undefined });
       const added = linked.data.added;
       // Só o nome do arquivo e o imóvel vão para a conversa; o texto do contrato fica no PDF anexado.
       const done: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildRentalContractConfirmationText({ propertyLabel, fileName: generated.data.fileName, writtenBack: generated.data.writtenBack }),
+        text: [
+          buildRentalContractConfirmationText({ propertyLabel, fileName: generated.data.fileName, writtenBack: generated.data.writtenBack }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
         thread: message.thread,
         ...(added.length > 0
           ? {

@@ -78,3 +78,22 @@ test("confirmação e erros em português", () => {
   assert.match(describeDocumentAttachError("owners", 403, "IMOB_WORKSPACE_PERMISSION_FORBIDDEN"), /Sua função atual/);
   assert.match(describeDocumentAttachError("owners", 413, undefined), /5 MB/);
 });
+
+test("formulários de cadastro e contrato ganham 'Anexar documentos' no fim", async () => {
+  const { withInlineDocumentFields, validateInlineDocuments, buildInlineDocumentsNote, inlineDocumentSubjectFor } = await import("./documentAttachForm");
+  const base = { entity: "imovel", action: "create", label: "x", fields: [{ name: "city", label: "Cidade", type: "text" as const }] };
+  for (const [target, subject] of [["imob.owners.create", "owners"], ["imob.properties.create", "properties"], ["imob.rentals.create", "rentals"], ["imob.contracts.rental", "rentals"]] as const) {
+    const form = withInlineDocumentFields({ ...base, submitTarget: target });
+    assert.equal(inlineDocumentSubjectFor(form), subject);
+    assert.deepEqual(form.fields.slice(-2).map((field) => field.name), ["documentCategory", "documents"]);
+    assert.equal(form.fields.at(-1)?.type, "file");
+    assert.equal(withInlineDocumentFields(form).fields.length, form.fields.length, "não duplica");
+  }
+  const untouched = withInlineDocumentFields({ ...base, submitTarget: "imob.tokenization.interest" });
+  assert.equal(untouched.fields.length, 1);
+  assert.deepEqual(validateInlineDocuments({}, 0), {});
+  assert.ok(validateInlineDocuments({}, 1).documentCategory);
+  assert.deepEqual(validateInlineDocuments({ documentCategory: "matricula" }, 1), {});
+  assert.equal(buildInlineDocumentsNote({ linked: 2 }), "2 documentos anexados.");
+  assert.match(buildInlineDocumentsNote({ linked: 0, failed: "sem permissão" }) ?? "", /cadastro foi salvo, mas os documentos não foram anexados/);
+});
