@@ -2675,6 +2675,8 @@ export type ImobPresentationForm = {
   action: string;
   label: string;
   description?: string;
+  /** Linhas informativas exibidas sob a descrição (ex.: imóveis do proprietário escolhido). */
+  infoLines?: string[];
   subjectId?: string;
   /**
    * Formulário estruturado: o cliente envia os campos direto para a rota

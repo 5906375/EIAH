@@ -126,3 +126,28 @@ export function buildOwnerUpdateConfirmationText(data: { name: string; personTyp
   const doc = data.document ? ` (${data.personType === "company" ? "CNPJ" : "CPF"} final ${data.document.slice(-2)})` : "";
   return `Proprietário atualizado: ${data.name}${doc}.`;
 }
+
+/**
+ * Imóveis já ligados ao proprietário escolhido (não arquivados), para a tela
+ * de edição mostrar a carteira dele. Só unidade/tipo, endereço e situação.
+ */
+export function buildOwnerPropertiesSummary(
+  ownerId: string,
+  properties: Array<{ id: string; ownerId?: string | null; status?: string | null; propertyType?: string | null; address?: string | null; city?: string | null; metadata?: unknown }>,
+  labelFor: (property: { id: string; status?: string | null; propertyType?: string | null; address?: string | null; city?: string | null; metadata?: unknown }) => string,
+) {
+  const owned = properties.filter((item) => item.ownerId === ownerId && item.status !== "archived");
+  const occupancyLabels: Record<string, string> = { locado: "Locado", vago: "Vago", em_obra: "Em obra" };
+  const lines = owned
+    .map((item) => {
+      const metadata = item.metadata && typeof item.metadata === "object" ? (item.metadata as Record<string, unknown>) : {};
+      const occupancy = metadata.occupancy && typeof metadata.occupancy === "object" ? (metadata.occupancy as Record<string, unknown>).value : null;
+      const situation = typeof occupancy === "string" ? occupancyLabels[occupancy] : null;
+      return `${labelFor(item)}${situation ? ` — ${situation}` : ""}`;
+    })
+    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const title = owned.length === 0
+    ? "Nenhum imóvel ligado a este proprietário ainda."
+    : owned.length === 1 ? "1 imóvel deste proprietário:" : `${owned.length} imóveis deste proprietário:`;
+  return [title, ...lines];
+}

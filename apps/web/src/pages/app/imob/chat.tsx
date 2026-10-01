@@ -81,6 +81,7 @@ import {
   buildOwnerEditForm,
   buildOwnerUpdateConfirmationText,
   buildOwnerUpdateRequest,
+  buildOwnerPropertiesSummary,
   isOwnerEditForm,
   ownerToEditValues,
 } from "./ownerEditForm";
@@ -4831,12 +4832,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           documentsNote,
         ].filter(Boolean).join(" "),
         thread: message.thread,
-        // Próximo passo segue a finalidade escolhida no formulário (temporada ainda não tem contrato).
-        ...(built.request.goal === "locacao"
-          ? { quickReplies: [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }] }
-          : built.request.goal === "venda"
-            ? { quickReplies: [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(created.id) }] }
-            : {}),
+        // Próximo passo segue a finalidade escolhida no formulário (temporada ainda não tem contrato);
+        // com proprietário, dá para seguir cadastrando a carteira dele.
+        quickReplies: [
+          ...(built.request.goal === "locacao"
+            ? [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }]
+            : built.request.goal === "venda"
+              ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(created.id) }]
+              : []),
+          ...(created.ownerId && created.owner?.name
+            ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created.owner.name}`, onSelect: () => startPropertyCreateFor(created.ownerId as string) }]
+            : []),
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "property.registered", action: "imob.properties.create" });
@@ -5453,6 +5460,28 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (!owner) return;
     setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { ...(prev[messageId] ?? {}), ...ownerToEditValues(owner) } }));
     setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: {} }));
+    void showOwnerProperties(messageId, ownerId);
+  }
+
+  /** Mostra no formulário os imóveis já ligados ao proprietário e oferece cadastrar mais um. */
+  async function showOwnerProperties(messageId: string, ownerId: string) {
+    try {
+      const response = await apiListImobProperties();
+      const items = response.data.items ?? [];
+      propertyRecordsRef.current = items;
+      const infoLines = buildOwnerPropertiesSummary(ownerId, items, (item) => buildImobPropertyOptions([item])[0]?.label ?? item.id);
+      setMessages((prev) => prev.map((item) => (
+        item.id === messageId && item.form
+          ? {
+              ...item,
+              form: { ...item.form, infoLines },
+              quickReplies: [{ id: "owner-add-property", label: "Cadastrar imóvel deste proprietário", onSelect: () => startPropertyCreateFor(ownerId) }],
+            }
+          : item
+      )));
+    } catch {
+      // Sem a lista, o formulário de edição continua funcionando normalmente.
+    }
   }
 
   async function handleOwnerEditFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
@@ -6829,6 +6858,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
                                     {formDescription ? (
                                       <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{formDescription}</p>
+                                    ) : null}
+                                    {message.form.infoLines?.length ? (
+                                      <div className="mt-1.5 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11.5px] normal-case tracking-normal text-foreground/90">
+                                        <p className="font-medium">{message.form.infoLines[0]}</p>
+                                        {message.form.infoLines.length > 1 ? (
+                                          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                                            {message.form.infoLines.slice(1).map((line, index) => (
+                                              <li key={`${message.id}-info-${index}`}>{line}</li>
+                                            ))}
+                                          </ul>
+                                        ) : null}
+                                      </div>
                                     ) : null}
                                   </div>
                                 ) : null}
