@@ -36,6 +36,7 @@ before(async () => {
 
 after(async () => {
   await prismaGlobal.workspaceAgentAssignment.deleteMany({ where: { tenantId, workspaceId } });
+  await prismaGlobal.tenantActionPolicy.deleteMany({ where: { tenantId, workspaceId } });
   await prismaGlobal.$executeRaw`
     DELETE FROM tenant_product_installations
     WHERE tenant_id = ${tenantId}
@@ -69,6 +70,17 @@ test("POST /api/marketplace/installations/activate ativa IMOB e retorna rotas li
     ["EIAH", "imob-chat-audit"],
   );
   assert.ok(assignments.every((item) => item.enabled));
+
+  // ADR-010 (PR A2): activation grants only the approved IMOB registration policies.
+  const policies = await prismaGlobal.tenantActionPolicy.findMany({
+    where: { tenantId, workspaceId },
+    select: { actionName: true, allowed: true },
+  });
+  assert.deepEqual(
+    policies.map((item) => item.actionName).sort(),
+    ["realestate.collect_documents", "realestate.qualify_lead", "realestate.register_property"],
+  );
+  assert.ok(policies.every((item) => item.allowed));
 
   const list = await request
     .get("/api/marketplace/installations")
@@ -108,6 +120,9 @@ test("POST /api/marketplace/installations/activate é idempotente por tenant/wor
 
   const assignmentCount = await prismaGlobal.workspaceAgentAssignment.count({ where: { tenantId, workspaceId } });
   assert.equal(assignmentCount, 2, "re-activation must not duplicate agent assignments");
+
+  const policyCount = await prismaGlobal.tenantActionPolicy.count({ where: { tenantId, workspaceId } });
+  assert.equal(policyCount, 3, "re-activation must not duplicate action policies");
 });
 
 test("POST /api/marketplace/installations/activate rejeita produto inválido", async () => {

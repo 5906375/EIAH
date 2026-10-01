@@ -4,6 +4,8 @@ import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
+import { provisionWorkspaceActionPolicies } from "../services/workspaceActionPolicyProvisioning";
+import { getProductDefaultActionPolicies } from "@eiah/core/catalog/workspaceActionPolicyProvisioning";
 import {
   getProductProvisionedAgents,
   WORKSPACE_AGENT_PROVISIONING_VERSION,
@@ -613,6 +615,7 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
   const workspaceId = request.authContext.workspaceId;
   try {
     const productAgents = getProductProvisionedAgents(parsed.data.product);
+    const productActionPolicies = getProductDefaultActionPolicies(parsed.data.product);
     await request.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         INSERT INTO tenant_product_installations (
@@ -651,6 +654,13 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
         agents: productAgents,
         trigger: `product_activation:${parsed.data.product}`,
         catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
+      });
+      // ADR-010 (PR A2): grant only the approved default action policies.
+      await provisionWorkspaceActionPolicies({
+        prisma: tx as unknown as PrismaClient,
+        tenantId,
+        workspaceId,
+        actionNames: productActionPolicies,
       });
     });
   } catch (error) {
