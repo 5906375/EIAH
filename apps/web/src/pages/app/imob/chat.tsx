@@ -70,6 +70,7 @@ import {
   buildPropertyCreateRequest,
   findDuplicateProperty,
   isPropertyCreateForm,
+  matchOptionByName,
 } from "./propertyCreateForm";
 import {
   buildOwnerCreateConfirmationText,
@@ -2470,9 +2471,16 @@ const ImobChatPage: React.FC = () => {
         }
       }
 
+      // Nome citado no chat ("… no proprietário Carlos"): escolhe o cadastro existente quando há um só compatível.
+      for (const field of form.fields) {
+        if (!field.preferredOptionLabel || normalizeImobFormValue(values[field.name] ?? "")) continue;
+        const matched = matchOptionByName(resolveFormFieldOptions(field), field.preferredOptionLabel);
+        if (matched) values[field.name] = matched;
+      }
+
       return values;
     },
-    [formValuesByMessageId, messages],
+    [formValuesByMessageId, messages, resolveFormFieldOptions],
   );
 
   const updateMessageById = React.useCallback((messageId: string, patch: Partial<ChatMessage>) => {
@@ -6964,6 +6972,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       </div>
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
+                                      ) : null}
+                                      {field.preferredOptionLabel && !formValues[field.name] && field.optionsSource
+                                        && (field.optionsSource === "imob_properties" ? imobPropertyOptions !== null : imobOwnerOptions !== null) ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-amber-200">
+                                          {`Não achei um cadastro único para "${field.preferredOptionLabel}". Escolha na lista${field.optionsSource === "imob_owners" ? " ou cadastre em Proprietários → Cadastrar proprietário" : ""}.`}
+                                        </p>
                                       ) : null}
                                       {field.required && field.optionsSource && resolveFormFieldOptions(field).length === 0
                                         && (field.optionsSource === "imob_properties" ? imobPropertyOptions !== null : imobOwnerOptions !== null) ? (

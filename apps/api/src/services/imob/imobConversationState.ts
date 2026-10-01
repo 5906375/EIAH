@@ -613,8 +613,20 @@ function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
   return Boolean(explicitPropertySignal || slots.goal);
 }
 
+const PROPERTY_AS_CREATE_OBJECT = /(?:cadastrar|cadastro|incluir|registrar)\s+(?:de\s+)?(?:(?:mais|novos?|novas?|um|uma|outros?|outras?|os|as|o|a|meus?|minhas?|\d+)\s+)*(?:imove|imovei|apartament|aptos?\b|casas?\b|kitnets?|salas?\b|terrenos?|studios?|galpo|galpa|coberturas?|lojas?)/;
+
+/** "proprietário Carlos A Merlo" → "Carlos A Merlo" (até vírgula/ponto, no máximo 6 palavras). */
+export function extractOwnerNameHint(message: string) {
+  const match = message.match(/propriet[aá]ri[oa]s?\s+(?:(?:de|do|da|o|a)\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.]*(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.]*){0,5})/i);
+  if (!match) return null;
+  const name = match[1].replace(/[.']+$/g, "").trim();
+  return name.length >= 2 ? name : null;
+}
+
 function hasExplicitOwnerCreateRequest(message: string) {
   const normalized = normalizeImobText(message);
+  // "cadastrar mais imóveis no proprietário X": o que se cadastra é o imóvel.
+  if (PROPERTY_AS_CREATE_OBJECT.test(normalized)) return false;
   const wantsCreate = normalized.includes("cadastrar")
     || normalized.includes("cadastro")
     || normalized.includes("incluir")
@@ -660,6 +672,7 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
     address: normalizedAddress ?? extractAddress(message) ?? previous?.address ?? null,
+    ownerNameHint: extractOwnerNameHint(message) ?? previous?.ownerNameHint ?? null,
     origin: previous?.origin ?? null,
   };
 }

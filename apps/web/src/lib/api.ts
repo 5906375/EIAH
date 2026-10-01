@@ -2661,6 +2661,8 @@ export type ImobPresentationFormField = {
   options?: ImobPresentationFormFieldOption[];
   /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
   optionsSource?: "imob_properties" | "imob_owners";
+  /** Nome a procurar entre as opções carregadas (só seleciona quando há um único cadastro compatível). */
+  preferredOptionLabel?: string;
   lookup?: ImobPresentationFormFieldLookup;
 };
 

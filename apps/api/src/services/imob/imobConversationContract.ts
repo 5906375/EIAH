@@ -244,6 +244,8 @@ export type ImobPropertyDraft = {
   bedrooms: number | null;
   bathrooms: number | null;
   address: string | null;
+  /** Nome do proprietário citado na frase ("… no proprietário Carlos"); o cliente escolhe o cadastro existente. */
+  ownerNameHint?: string | null;
   origin?: {
     source: string;
     sourceId: string;
@@ -814,6 +816,8 @@ export type ImobPresentationFormField = {
   options?: ImobPresentationFormFieldOption[];
   /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
   optionsSource?: "imob_properties" | "imob_owners";
+  /** Nome a procurar entre as opções carregadas (só seleciona quando há um único cadastro compatível). */
+  preferredOptionLabel?: string;
   lookup?: ImobPresentationFormFieldLookup;
 };
 
