@@ -601,26 +601,32 @@ const QUICK_PROMPTS = [
   // Formulários estruturados: abrem na hora e gravam direto (sem texto livre).
   {
     label: "Cadastrar proprietário",
+    shortLabel: "Proprietário",
     prompt: "cadastrar proprietário",
   },
   {
     label: "Cadastrar imóvel",
+    shortLabel: "Imóvel",
     prompt: "cadastrar imóvel",
   },
   {
     label: "Cadastrar locação",
+    shortLabel: "Locação",
     prompt: "cadastrar locatário",
   },
   {
     label: "Captar imóvel",
+    shortLabel: "Captar",
     prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
   },
   {
     label: "Gerar proposta",
+    shortLabel: "Proposta",
     prompt: "Quero gerar uma proposta comercial para um cliente.",
   },
   {
     label: "Iniciar contrato",
+    shortLabel: "Contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
   },
 ] as const;
@@ -6442,15 +6448,19 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
             <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
-                <div className="mb-1 flex flex-nowrap items-center gap-1 overflow-x-auto px-0.5 sm:flex-wrap">
+                <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
                   {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt.label}
                       type="button"
+                      title={prompt.label}
+                      aria-label={prompt.label}
                       onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
                       className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
                     >
-                      {prompt.label}
+                      {/* Celular: rótulo curto; o nome completo fica na dica (title) e no aria-label. */}
+                      <span className="sm:hidden">{prompt.shortLabel}</span>
+                      <span className="hidden sm:inline">{prompt.label}</span>
                     </button>
                   ))}
                 </div>
