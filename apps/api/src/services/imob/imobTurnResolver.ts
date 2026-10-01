@@ -1243,6 +1243,9 @@ function buildLeadCreateForm(leadDraft?: {
   desiredCity?: string | null;
   budgetMax?: number | null;
 } | null) {
+  if (leadDraft?.leadPersona === "locatario") {
+    return buildRentalLeaseCreateForm(leadDraft);
+  }
   const leadCopy = getLeadPersonaCopy(leadDraft);
   return {
     entity: leadCopy.entity,
@@ -1309,6 +1312,99 @@ function buildLeadCreateForm(leadDraft?: {
         label: "Salvar cadastro",
         kind: "primary" as const,
       },
+    ],
+  };
+}
+
+const RENTAL_CHARGE_PAYER_OPTIONS = [
+  { value: "inquilino", label: "Inquilino paga" },
+  { value: "proprietario", label: "Proprietário paga" },
+  { value: "dispensado", label: "Dispensado" },
+  { value: "nao_existe", label: "Não existe" },
+  { value: "desconhecido", label: "Não sei" },
+];
+
+const RENTAL_MONTH_OPTIONS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+].map((label, index) => ({ value: String(index + 1), label }));
+
+/**
+ * "Cadastrar locatário" = locação vigente (inquilino com contrato assinado ou
+ * acordo verbal). Enviado pelo cliente direto para POST /imob/rentals, sem
+ * virar texto de conversa; o inquilino não entra no funil de leads.
+ */
+export function buildRentalLeaseCreateForm(leadDraft?: {
+  leadName?: string | null;
+  leadPhone?: string | null;
+  leadEmail?: string | null;
+} | null) {
+  return {
+    entity: "locacao",
+    action: "create",
+    label: "Cadastrar locação",
+    description: "Locação vigente: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios; o que ficar em branco vira pendência.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel locado",
+        type: "select" as const,
+        required: true,
+        placeholder: "Selecione o imóvel",
+        value: "",
+        optionsSource: "imob_properties" as const,
+        options: [],
+        helperText: "Só aparecem imóveis já cadastrados neste workspace.",
+      },
+      { name: "tenantName", label: "Nome do inquilino", type: "text" as const, required: true, placeholder: "Nome completo ou razão social", value: leadDraft?.leadName ?? "" },
+      { name: "tenantDocument", label: "CPF ou CNPJ do inquilino", type: "text" as const, placeholder: "000.000.000-00", inputMode: "numeric" as const, maxLength: 18, value: "" },
+      { name: "tenantPhone", label: "Telefone do inquilino", type: "tel" as const, placeholder: "(47) 99999-9999", value: leadDraft?.leadPhone ?? "" },
+      { name: "tenantEmail", label: "E-mail do inquilino", type: "email" as const, placeholder: "inquilino@email.com", value: leadDraft?.leadEmail ?? "" },
+      {
+        name: "agreementType",
+        label: "Contrato",
+        type: "select" as const,
+        value: "escrito",
+        options: [
+          { value: "escrito", label: "Escrito (assinado)" },
+          { value: "verbal", label: "Verbal" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "startDate", label: "Início da locação", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "endDate", label: "Fim do contrato", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "rent", label: "Aluguel mensal (R$)", type: "text" as const, placeholder: "1.200,00", inputMode: "numeric" as const, value: "" },
+      { name: "dueDay", label: "Dia do vencimento", type: "text" as const, placeholder: "10", inputMode: "numeric" as const, maxLength: 2, value: "" },
+      {
+        name: "adjustmentIndex",
+        label: "Índice de reajuste",
+        type: "select" as const,
+        placeholder: "Não informado",
+        value: "",
+        options: ["IGPM", "IPCA", "INPC", "IVAR"].map((value) => ({ value, label: value })),
+      },
+      { name: "adjustmentMonth", label: "Mês do reajuste", type: "select" as const, placeholder: "Não informado", value: "", options: RENTAL_MONTH_OPTIONS },
+      {
+        name: "guaranteeType",
+        label: "Garantia",
+        type: "select" as const,
+        value: "desconhecido",
+        options: [
+          { value: "caucao", label: "Caução" },
+          { value: "fiador", label: "Fiador" },
+          { value: "seguro_fianca", label: "Seguro-fiança" },
+          { value: "titulo_capitalizacao", label: "Título de capitalização" },
+          { value: "nenhuma", label: "Sem garantia" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "guaranteeAmount", label: "Valor da caução prevista (R$)", type: "text" as const, placeholder: "2.400,00", inputMode: "numeric" as const, value: "" },
+      { name: "iptu", label: "IPTU", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominio", label: "Condomínio", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+    ],
+    actions: [
+      { id: "cancel" as const, label: "Cancelar", kind: "secondary" as const },
+      { id: "submit" as const, label: "Salvar locação", kind: "primary" as const },
     ],
   };
 }

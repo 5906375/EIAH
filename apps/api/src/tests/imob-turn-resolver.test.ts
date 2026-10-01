@@ -1376,8 +1376,23 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
 
   assert.equal(result.mode, "execute");
   assert.equal(result.executionRequest?.operation, "lead.qualify");
-  assert.equal(result.presentation.form?.entity, "locatario");
-  assert.equal(result.presentation.form?.label, "Cadastrar locatário");
+  assert.equal(result.presentation.form?.entity, "locacao");
+  assert.equal(result.presentation.form?.label, "Cadastrar locação");
+  assert.deepEqual(
+    result.presentation.form?.fields.map((field) => field.name),
+    [
+      "propertyId", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
+      "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
+      "guaranteeType", "guaranteeAmount", "iptu", "condominio",
+    ],
+  );
+  const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");
+  assert.equal(propertyField?.optionsSource, "imob_properties");
+  assert.equal(propertyField?.required, true);
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["propertyId", "tenantName"],
+  );
 });
 
 test("IMOB turn resolver accepts form-style lead budget labels", () => {

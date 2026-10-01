@@ -2658,6 +2658,8 @@ export type ImobPresentationFormField = {
   inputMode?: "text" | "numeric";
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
+  /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
+  optionsSource?: "imob_properties";
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -3301,6 +3303,43 @@ export async function apiLookupImobCep(cep: string) {
 export async function apiListImobOwners() {
   return http<{ ok: true; data: { items: ImobOwner[] } }>(`/imob/owners`, {
     method: "GET",
+  });
+}
+
+export type ImobRentalChargePayer = "inquilino" | "proprietario" | "dispensado" | "nao_existe" | "desconhecido";
+
+export type ImobRentalLeaseCreateRequest = {
+  propertyId: string;
+  tenantName: string;
+  tenantDocument: string | null;
+  tenantPhone: string | null;
+  tenantEmail: string | null;
+  agreementType: "escrito" | "verbal" | "desconhecido";
+  startDate: string | null;
+  endDate: string | null;
+  rentCents: number | null;
+  dueDay: number | null;
+  adjustmentIndex: string | null;
+  adjustmentMonth: number | null;
+  guaranteeType: "caucao" | "fiador" | "seguro_fianca" | "titulo_capitalizacao" | "nenhuma" | "desconhecido";
+  guaranteeAmountCents: number | null;
+  iptu: ImobRentalChargePayer;
+  condominio: ImobRentalChargePayer;
+};
+
+export type ImobRentalLeaseCreateResponse = {
+  caseId: string;
+  propertyId: string;
+  propertyLabel: string;
+  tenantName: string;
+  tenantDocumentMasked: string | null;
+  pendingItems: string[];
+};
+
+export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateRequest) {
+  return http<{ ok: true; data: ImobRentalLeaseCreateResponse }>(`/imob/rentals`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 

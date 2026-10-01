@@ -812,6 +812,8 @@ export type ImobPresentationFormField = {
   inputMode?: "text" | "numeric";
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
+  /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
+  optionsSource?: "imob_properties";
   lookup?: ImobPresentationFormFieldLookup;
 };
 

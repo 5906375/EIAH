@@ -1052,6 +1052,11 @@ export class ImobCrmMutationService {
     const shouldPersistConsultiveMarketScan = params.resolved?.mode === "consult"
       && operational?.flow === "property.market_scan";
     if (!operational || (params.resolved?.mode !== "execute" && !shouldPersistConsultiveMarketScan)) return null;
+    // O formulário de locação vigente grava só no envio (POST /imob/rentals):
+    // abrir o formulário não pode criar lead nem caso vazio.
+    if (asString((params.resolved as { presentation?: { form?: { entity?: unknown } } })?.presentation?.form?.entity) === "locacao") {
+      return null;
+    }
 
     const nowIso = new Date().toISOString();
     const pendingItems = asStringList(params.resolved?.presentation?.pendingFieldLabels).length > 0

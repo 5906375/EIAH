@@ -3,6 +3,7 @@ import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContract";
 import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
+import { ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
 import { ImobCrmDocumentService } from "../services/imob/crm/imobCrmDocumentService";
 import { ImobCrmFollowUpService } from "../services/imob/crm/imobCrmFollowUpService";
 import { ImobCrmKpiService } from "../services/imob/crm/imobCrmKpiService";
@@ -71,6 +72,7 @@ export type RegisterImobCrmRoutesParams = {
     imobLeadCreateSchema: SafeParseSchema;
     imobLeadUpdateSchema: SafeParseSchema;
     imobCaseCreateSchema: SafeParseSchema;
+    imobRentalLeaseCreateSchema: SafeParseSchema;
     imobCaseUpdateSchema: SafeParseSchema;
     imobCaseAssignOwnerSchema: SafeParseSchema;
     imobFollowUpRunSchema: SafeParseSchema;
@@ -956,6 +958,46 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
         case: withImobCanonicalCase(updated.data),
       },
     });
+  });
+
+  router.post("/rentals", async (req, res) => {
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!authContext || !prisma) {
+      return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return;
+    }
+    if (!ensureImobStagePermission(res, workspaceAccess.permissions, "active", "Sua função atual não pode cadastrar locações neste workspace.")) {
+      return;
+    }
+
+    const parsed = schemas.imobRentalLeaseCreateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const result = await new ImobRentalLeaseService(prisma).registerLease({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId ?? null,
+    }, parsed.data);
+    if (result.status === "invalid_document") {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_TENANT_DOCUMENT", message: "CPF do inquilino inválido" } });
+    }
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    if (result.status === "lease_already_active") {
+      return res.status(409).json({ ok: false, error: { code: "RENTAL_LEASE_ALREADY_ACTIVE", message: "Este imóvel já tem uma locação ativa", caseId: result.caseId } });
+    }
+    if (result.status !== "created") {
+      return res.status(422).json({ ok: false, error: { code: "RENTAL_LEASE_NOT_CREATED", message: `Locação não criada: ${result.status}` } });
+    }
+
+    return res.status(201).json({ ok: true, data: result.data });
   });
 
   router.post("/cases", async (req, res) => {

@@ -23,6 +23,8 @@ import {
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
+  apiListImobProperties,
+  apiCreateImobRentalLease,
   apiUpsertImobChatInterviewState,
   type ImobCaseContext,
   type ImobCaseRecommendedAction,
@@ -36,8 +38,16 @@ import {
   type ImobPresentationMetadata,
   type ImobPresentationBlock,
   type ImobPresentationForm,
+  type ImobPresentationFormField,
+  type ImobPresentationFormFieldOption,
   type ImobPresentationWidget,
 } from "@/lib/api";
+import {
+  buildImobPropertyOptions,
+  buildRentalLeaseConfirmationText,
+  buildRentalLeaseRequest,
+  isRentalLeaseForm,
+} from "./rentalLeaseForm";
 import { useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
@@ -2119,6 +2129,9 @@ const ImobChatPage: React.FC = () => {
   const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
+  const [imobPropertyOptions, setImobPropertyOptions] = React.useState<ImobPresentationFormFieldOption[] | null>(null);
+  const propertyOptionsLoadedForRef = React.useRef<Set<string>>(new Set());
+  const formSubmittingRef = React.useRef<Set<string>>(new Set());
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
@@ -2230,6 +2243,27 @@ const ImobChatPage: React.FC = () => {
       setSequentialChoiceMessageIds((prev) => ({ ...prev, [message.id]: true }));
     }
   }, []);
+
+  const resolveFormFieldOptions = React.useCallback(
+    (field: ImobPresentationFormField): ImobPresentationFormFieldOption[] =>
+      field.optionsSource === "imob_properties" ? imobPropertyOptions ?? [] : field.options ?? [],
+    [imobPropertyOptions],
+  );
+
+  React.useEffect(() => {
+    const pending = messages.filter(
+      (message) =>
+        message.form?.fields.some((field) => field.optionsSource === "imob_properties")
+        && !propertyOptionsLoadedForRef.current.has(message.id),
+    );
+    if (pending.length === 0) return;
+    for (const message of pending) propertyOptionsLoadedForRef.current.add(message.id);
+    // Sem cancelamento no cleanup: `messages` muda a cada nova mensagem e a
+    // lista precisa chegar mesmo assim (o form já foi marcado como carregado).
+    void apiListImobProperties()
+      .then((response) => setImobPropertyOptions(buildImobPropertyOptions(response.data.items ?? [])))
+      .catch(() => setImobPropertyOptions((prev) => prev ?? []));
+  }, [messages]);
 
   const resolveFormValuesForMessage = React.useCallback(
     (message: ChatMessage) => {
@@ -3940,6 +3974,22 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
+    if (isRentalLeaseForm(turn.presentation.form)) {
+      // O formulário de locação grava direto em POST /imob/rentals: não há
+      // execução de protocolo a negociar, então só exibimos o formulário.
+      const formReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Preencha os dados da locação. Só imóvel e nome do inquilino são obrigatórios.",
+        form: turn.presentation.form,
+        thread: { ...baseThread, label: "Locação" },
+      };
+      appendMessage(formReply);
+      setActiveThread({ id: baseThread.id, label: "Locação" });
+      setState("done");
+      return;
+    }
+
     if (!turn.executionRequest) {
       const failedReply: ChatMessage = {
         id: makeId("assistant"),
@@ -4467,9 +4517,76 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   }, [setFormLookupLoading, updateFormFieldValue]);
 
 
+  function clearThreadOperationalState(message: ChatMessage) {
+    const threadIds = [message.thread?.id, message.card?.thread?.id, activeThread?.id].filter((id): id is string => Boolean(id));
+    for (const threadId of threadIds) {
+      const state = conversationStateByThreadRef.current[threadId];
+      if (state) conversationStateByThreadRef.current[threadId] = { ...state, operational: null };
+    }
+  }
+
+  async function handleRentalLeaseFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Cadastro de locação cancelado. Nada foi gravado.",
+        thread: message.thread,
+      });
+      return;
+    }
+
+    if (formSubmittingRef.current.has(message.id)) return;
+    const built = buildRentalLeaseRequest(resolveFormValuesForMessage(message));
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const response = await apiCreateImobRentalLease(built.request);
+      updateMessageById(message.id, { form: undefined });
+      clearThreadOperationalState(message);
+      const confirmation: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildRentalLeaseConfirmationText(response.data),
+        thread: message.thread,
+      };
+      appendMessage(confirmation);
+      void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      const code = body?.error?.code;
+      const status = error instanceof ApiError ? error.status : 0;
+      const errors: Record<string, string> =
+        code === "RENTAL_LEASE_ALREADY_ACTIVE"
+          ? { propertyId: "Este imóvel já tem uma locação ativa." }
+          : code === "INVALID_TENANT_DOCUMENT"
+            ? { tenantDocument: "CPF inválido: confira os dígitos." }
+            : code === "PROPERTY_NOT_FOUND"
+              ? { propertyId: "Imóvel não encontrado neste workspace. Atualize a lista e tente de novo." }
+              : status === 403
+                ? { _form: "Sua função atual não pode cadastrar locações neste workspace. Nada foi gravado." }
+                : { _form: `Não foi possível salvar a locação agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` };
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
   async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
     const form = message.form;
     if (!form) return;
+    if (isRentalLeaseForm(form)) {
+      await handleRentalLeaseFormAction(message, actionId);
+      return;
+    }
     if (actionId === "cancel") {
       setFormValuesByMessageId((prev) => ({
         ...prev,
@@ -5714,9 +5831,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                             className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
                                           >
                                             <option value="">{field.placeholder ?? ""}</option>
-                                            {Array.from(new Set((field.options ?? []).map((option) => option.group ?? "")))
+                                            {Array.from(new Set(resolveFormFieldOptions(field).map((option) => option.group ?? "")))
                                               .map((group) => {
-                                                const groupedOptions = (field.options ?? []).filter((option) => (option.group ?? "") === group);
+                                                const groupedOptions = resolveFormFieldOptions(field).filter((option) => (option.group ?? "") === group);
                                                 if (!group) {
                                                   return groupedOptions.map((option) => (
                                                     <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
@@ -5767,6 +5884,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
                                       ) : null}
+                                      {field.optionsSource === "imob_properties" && imobPropertyOptions !== null && imobPropertyOptions.length === 0 ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-amber-200">
+                                          Nenhum imóvel cadastrado neste workspace. Cadastre o imóvel antes da locação.
+                                        </p>
+                                      ) : null}
                                       {formLookupLoading[field.name] ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Consultando CEP...</p>
                                       ) : null}
@@ -5776,6 +5898,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     </div>
                                   ))}
                                 </div>
+                                {formErrors._form ? (
+                                  <p role="alert" className="text-[11px] normal-case tracking-normal text-rose-200">{formErrors._form}</p>
+                                ) : null}
                                 <div className="flex flex-wrap gap-1.5">
                                   {(message.form.actions ?? []).map((action) => (
                                     <button

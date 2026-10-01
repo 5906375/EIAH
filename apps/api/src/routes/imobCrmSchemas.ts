@@ -61,6 +61,35 @@ export const imobLeadUpdateSchema = imobLeadCreateSchema.partial().refine((value
   message: "At least one field is required",
 });
 
+const isoDateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value)), {
+  message: "Invalid date",
+});
+const rentalChargePayerSchema = z.enum(["inquilino", "proprietario", "dispensado", "nao_existe", "desconhecido"]);
+
+export const imobRentalLeaseCreateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  tenantName: z.string().trim().min(1).max(160),
+  tenantDocument: z.union([z.string().trim().regex(/^(\d{11}|\d{14})$/), z.null()]).optional(),
+  tenantPhone: z.union([z.string().trim().regex(/^\d{10,13}$/), z.null()]).optional(),
+  tenantEmail: z.union([z.string().trim().email().max(160), z.null()]).optional(),
+  agreementType: z.enum(["escrito", "verbal", "desconhecido"]).default("desconhecido"),
+  startDate: z.union([isoDateSchema, z.null()]).optional(),
+  endDate: z.union([isoDateSchema, z.null()]).optional(),
+  rentCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
+  dueDay: z.union([z.number().int().min(1).max(31), z.null()]).optional(),
+  adjustmentIndex: optionalShortString(20),
+  adjustmentMonth: z.union([z.number().int().min(1).max(12), z.null()]).optional(),
+  guaranteeType: z.enum(["caucao", "fiador", "seguro_fianca", "titulo_capitalizacao", "nenhuma", "desconhecido"]).default("desconhecido"),
+  guaranteeAmountCents: z.union([z.number().int().min(0).max(1_000_000_000), z.null()]).optional(),
+  iptu: rentalChargePayerSchema.default("desconhecido"),
+  condominio: rentalChargePayerSchema.default("desconhecido"),
+  notes: optionalShortString(1000),
+}).superRefine((value, ctx) => {
+  if (value.startDate && value.endDate && value.endDate < value.startDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "endDate must not be before startDate" });
+  }
+});
+
 export const imobCaseEventInputSchema = z.object({
   type: z.string().trim().min(1).max(120),
   actorType: z.string().trim().min(1).max(80),
