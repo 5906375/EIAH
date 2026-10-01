@@ -30,6 +30,7 @@ import {
   apiArchiveImobOwner,
   apiUpdateImobProperty,
   apiArchiveImobProperty,
+  apiCreateImobCase,
   apiCreateImobProperty,
   apiCreateImobRentalLease,
   apiUpsertImobChatInterviewState,
@@ -84,6 +85,13 @@ import {
   isPropertyEditForm,
   propertyToEditValues,
 } from "./propertyEditForm";
+import {
+  buildTokenizationForm,
+  buildTokenizationInterestConfirmationText,
+  buildTokenizationInterestRequest,
+  isTokenizationForm,
+  type TokenizationSubject,
+} from "./tokenizationForm";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import {
   IMOB_ACTION_MENUS,
@@ -2287,7 +2295,15 @@ const ImobChatPage: React.FC = () => {
   );
 
   const appendMessage = React.useCallback((message: ChatMessage) => {
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => [
+      // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
+      ...(message.form
+        ? prev.map((item) =>
+            item.form ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` } : item,
+          )
+        : prev),
+      message,
+    ]);
     const threadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
     if (threadId && message.caseContext) {
       caseContextByThreadRef.current[threadId] = message.caseContext;
@@ -4855,6 +4871,55 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     else if (item.form === "owner_archive") openOwnerEditForm("archive");
     else if (item.form === "property_edit") openPropertyEditForm("edit");
     else if (item.form === "property_archive") openPropertyEditForm("archive");
+    else if (item.form.startsWith("tokenization_")) {
+      openTokenizationForm(item.form.slice("tokenization_".length) as TokenizationSubject);
+    }
+  }
+
+  function openTokenizationForm(subject: TokenizationSubject) {
+    const threadId = activeThread?.id ?? makeId("thread");
+    appendMessage({
+      id: makeId("assistant"),
+      role: "assistant",
+      text: "Tokenização de ativos ainda não está disponível. Veja o que seria tokenizado e, se quiser, registre o seu interesse.",
+      form: buildTokenizationForm(subject),
+      thread: { id: threadId, label: "Tokenização", status: "active" },
+    });
+  }
+
+  async function handleTokenizationFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      appendMessage({ id: makeId("assistant"), role: "assistant", text: "Nada foi registrado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const subject = (message.form?.action ?? "properties") as TokenizationSubject;
+    formSubmittingRef.current.add(message.id);
+    try {
+      await apiCreateImobCase(buildTokenizationInterestRequest(subject, resolveFormValuesForMessage(message)));
+      updateMessageById(message.id, { form: undefined });
+      const done: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildTokenizationInterestConfirmationText(subject),
+        thread: message.thread,
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: "tokenization.interest", action: "imob.cases.create" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          _form: status === 403
+            ? "Sua função atual não pode registrar este interesse neste workspace. Nada foi registrado."
+            : `Não foi possível registrar agora${status ? ` (HTTP ${status})` : ""}. Nada foi registrado.`,
+        },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
   }
 
   function prefillPropertyEditForm(messageId: string, propertyId: string) {
@@ -5052,6 +5117,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (isPropertyEditForm(form)) {
       await handlePropertyEditFormAction(message, actionId);
+      return;
+    }
+    if (isTokenizationForm(form)) {
+      await handleTokenizationFormAction(message, actionId);
       return;
     }
     if (actionId === "archive") return;
@@ -6372,9 +6441,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
                                       ) : null}
-                                      {field.optionsSource === "imob_properties" && imobPropertyOptions !== null && imobPropertyOptions.length === 0 ? (
+                                      {field.required && field.optionsSource && resolveFormFieldOptions(field).length === 0
+                                        && (field.optionsSource === "imob_properties" ? imobPropertyOptions !== null : imobOwnerOptions !== null) ? (
                                         <p className="text-[10px] normal-case tracking-normal text-amber-200">
-                                          Nenhum imóvel cadastrado neste workspace. Cadastre o imóvel antes da locação.
+                                          {field.optionsSource === "imob_properties"
+                                            ? "Nenhum imóvel cadastrado neste workspace ainda. Use Imóveis → Cadastrar imóvel."
+                                            : "Nenhum proprietário cadastrado neste workspace ainda. Use Proprietários → Cadastrar proprietário."}
                                         </p>
                                       ) : null}
                                       {formLookupLoading[field.name] ? (

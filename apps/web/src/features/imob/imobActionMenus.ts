@@ -3,10 +3,19 @@
  * pedido já conhecido do chat (`prompt`) ou abre um formulário local por ação
  * explícita do usuário (`localForm`) — nenhum item interpreta texto livre.
  * Só entram ações que funcionam hoje; as próximas (anexar documento,
- * histórico, editar/encerrar locação) entram quando existirem.
+ * histórico, editar/encerrar locação) entram quando existirem. "Tokenização
+ * de ativos" é informativa e só registra interesse (não está disponível).
  */
 
-export type ImobLocalFormKind = "owner_edit" | "owner_archive" | "property_edit" | "property_archive";
+export type ImobLocalFormKind =
+  | "owner_edit"
+  | "owner_archive"
+  | "property_edit"
+  | "property_archive"
+  | "tokenization_owners"
+  | "tokenization_properties"
+  | "tokenization_rentals"
+  | "tokenization_deals";
 
 export type ImobActionMenuItem =
   | { id: string; label: string; kind: "prompt"; prompt: string }
@@ -26,6 +35,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
       { id: "owner-create", label: "Cadastrar proprietário", kind: "prompt", prompt: "cadastrar proprietário" },
       { id: "owner-edit", label: "Editar proprietário", kind: "local", form: "owner_edit" },
       { id: "owner-archive", label: "Arquivar proprietário", kind: "local", form: "owner_archive" },
+      { id: "owner-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_owners" },
     ],
   },
   {
@@ -41,12 +51,16 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
         kind: "prompt",
         prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
       },
+      { id: "property-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_properties" },
     ],
   },
   {
     id: "rentals",
     label: "Locações",
-    items: [{ id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" }],
+    items: [
+      { id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" },
+      { id: "rental-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_rentals" },
+    ],
   },
   {
     id: "deals",
@@ -54,6 +68,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     items: [
       { id: "deal-proposal", label: "Gerar proposta", kind: "prompt", prompt: "Quero gerar uma proposta comercial para um cliente." },
       { id: "deal-contract", label: "Iniciar contrato", kind: "prompt", prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário." },
+      { id: "deal-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_deals" },
     ],
   },
 ];

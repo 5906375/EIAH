@@ -2679,7 +2679,13 @@ export type ImobPresentationForm = {
    * Formulário estruturado: o cliente envia os campos direto para a rota
    * indicada, sem execução de agente e sem transformar em texto de conversa.
    */
-  submitTarget?: "imob.owners.create" | "imob.owners.update" | "imob.properties.create" | "imob.properties.update" | "imob.rentals.create";
+  submitTarget?:
+    | "imob.owners.create"
+    | "imob.owners.update"
+    | "imob.properties.create"
+    | "imob.properties.update"
+    | "imob.rentals.create"
+    | "imob.tokenization.interest";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3434,6 +3440,23 @@ export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateReques
 export async function apiListImobProperties() {
   return http<{ ok: true; data: { items: ImobProperty[] } }>(`/imob/properties`, {
     method: "GET",
+  });
+}
+
+export type ImobCaseCreateRequest = {
+  flow: string;
+  stage: string;
+  status: string;
+  ownerId?: string;
+  propertyId?: string;
+  nextStep?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export async function apiCreateImobCase(body: ImobCaseCreateRequest) {
+  return http<{ ok: true; data: ImobCase }>(`/imob/cases`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 
