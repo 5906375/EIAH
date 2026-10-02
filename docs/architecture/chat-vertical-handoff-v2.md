@@ -35,6 +35,7 @@ Nao ha alteracao no `ChatAgentLauncher`, resolver operacional, API, frontend, Kn
 - `POST /api/chat/vertical-activation/preview` (só leitura) devolve se a vertical já está ativa ou a proposta: efeitos da ativação e a `registryVersion` atual.
 - `POST /api/chat/vertical-activation/confirm` exige `confirmed: true` e a mesma `registryVersion` da proposta; se o estado mudou, responde `409 ACTIVATION_PROPOSAL_STALE` e nada é ativado. A ativação usa o mesmo serviço do Marketplace (`services/products/productActivation.ts`: instalação + agentes + políticas padrão, atômico).
 - No `/app/chat`, o engine (`verticalActivationEngine`) só envia a confirmação quando a resposta do usuário é uma confirmação explícita ("Confirmar ativação do IMOB") logo depois da proposta; "sim" solto, outra mensagem ou "Cancelar ativação" descartam a proposta.
+- Quem pode ativar (decisão do responsável, 2026-10-02): o Founder ou quem tem a permissão `products.activate` (concedida a quem cria o tenant no onboarding, a quem cria um workspace já podendo ativar, ou por convite/função com a permissão). Vale para o Marketplace e para o chat; sem permissão, a prévia responde `not_permitted` e a confirmação `403 PRODUCT_ACTIVATION_FORBIDDEN`.
 
 **Atualização 2026-10-02 — ADR-010, etapa D (IMOB dentro do `/app/chat`):**
 

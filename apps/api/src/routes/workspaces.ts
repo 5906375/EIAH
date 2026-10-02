@@ -9,7 +9,12 @@ import {
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
   tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import {
+  canActivateProducts,
+  ensureWorkspaceMembershipForUser,
+  PRODUCT_ACTIVATION_PERMISSION,
+  readWorkspaceResponsibleProfile,
+} from "../services/workspaceResponsibility";
 import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
 import {
   FRONT_DOOR_AGENTS,
@@ -117,11 +122,18 @@ workspacesRouter.post("/workspaces", async (req, res) => {
     });
 
     if (authContext.userId) {
+      // Quem já pode ativar produtos no workspace atual leva a permissão para o workspace que criou.
+      const creatorProfile = await readWorkspaceResponsibleProfile({
+        tenantId,
+        workspaceId: authContext.workspaceId,
+        userId: authContext.userId,
+      }).catch(() => null);
       await ensureWorkspaceMembershipForUser({
         tenantId,
         workspaceId: created.id,
         userId: authContext.userId,
         roleKey: "gestor",
+        permissions: canActivateProducts(creatorProfile) ? [PRODUCT_ACTIVATION_PERMISSION] : [],
       });
     }
 

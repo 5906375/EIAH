@@ -3,7 +3,12 @@ import { z } from "zod";
 import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
-import { activateProductInstallation, ensureTenantProductInstallationTable } from "../services/products/productActivation";
+import {
+  activateProductInstallation,
+  canUserActivateProducts,
+  ensureTenantProductInstallationTable,
+  PRODUCT_ACTIVATION_DENIED,
+} from "../services/products/productActivation";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -516,6 +521,16 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
   const parsed = MarketplaceActivateInstallationSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+  }
+
+  const allowedToActivate = await canUserActivateProducts({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+  });
+  if (!allowedToActivate) {
+    return res.status(403).json({ ok: false, error: PRODUCT_ACTIVATION_DENIED });
   }
 
   const activation = await activateProductInstallation({

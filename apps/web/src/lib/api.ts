@@ -5594,6 +5594,7 @@ export async function apiRequestChatVerticalHandoff(body: {
 
 export type ChatVerticalActivationPreview =
   | { status: "already_active"; verticalId: string; registryVersion: string }
+  | { status: "not_permitted"; verticalId: string }
   | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
 
 export type ChatVerticalActivationConfirmResult =

@@ -7,7 +7,7 @@ import {
   RESERVED_DEFAULT_WORKSPACE_NAME,
   tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureWorkspaceMembershipForUser, PRODUCT_ACTIVATION_PERMISSION } from "../services/workspaceResponsibility";
 import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
 import {
   FRONT_DOOR_AGENTS,
@@ -134,6 +134,8 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         workspaceId: workspace.id,
         userId: user.id,
         roleKey: shouldUseReservedDefault ? "founder" : "gestor",
+        // Quem cria o tenant é o proprietário: pode ativar produtos/verticais.
+        permissions: [PRODUCT_ACTIVATION_PERMISSION],
       });
 
       // ADR-010 (PR A): the EIAH front door must work from the first access.
