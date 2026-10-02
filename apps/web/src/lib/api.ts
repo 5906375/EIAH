@@ -1146,6 +1146,38 @@ export async function apiRequestVerticalAccess(body: { vertical: "IMOB" }) {
   );
 }
 
+/** ADR-011 §2.3: fila do administrador da plataforma EIAH (404 para quem não é administrador). */
+export type VerticalApprovalScoreReason = { rule: string; ok: boolean; points: number; maxPoints: number; message: string };
+
+export type VerticalApprovalAdminItem = {
+  id: string;
+  tenantName: string;
+  workspaceName: string;
+  vertical: string;
+  status: Exclude<VerticalAccessClientStatus, "nao_solicitado">;
+  source: "request" | "migration";
+  requestedBy: string | null;
+  requestedAt: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  note: string | null;
+  score: number | null;
+  recommendation: "recomendado" | "revisar" | "nao_recomendado" | null;
+  scoreReasons: VerticalApprovalScoreReason[] | null;
+  scoreRuleVersion: string | null;
+};
+
+export async function apiListVerticalApprovals() {
+  return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[] } }>(`/admin/vertical-approvals`);
+}
+
+export async function apiDecideVerticalApproval(approvalId: string, body: { decision: "aprovar" | "recusar"; note?: string }) {
+  return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/decision`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 /** Mensagem do servidor num erro da API (ex.: 403 de liberação), quando houver. */
 export function apiErrorMessage(error: unknown): string | null {
   if (!(error instanceof ApiError)) return null;
