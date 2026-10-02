@@ -563,7 +563,6 @@ export type ProfileResponse = {
         roleLabel: string;
         permissions: string[];
         status: string;
-        token: string;
         expiresAt: string;
         createdAt: string;
       }>;
@@ -643,6 +642,8 @@ export type WorkspaceInvitationPreviewResponse = {
   ok: boolean;
   data?: {
     token: string;
+    /** ADR-011 §2.7: o e-mail já tem conta; o link só adiciona a pessoa ao workspace pelo login. */
+    accountExists?: boolean;
     tenantId: string;
     tenantName: string;
     workspaceId: string;
@@ -5201,6 +5202,40 @@ export async function apiCreateWorkspaceInvitation(body: {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+/** ADR-011 §2.7: reemitir o link de um convite pendente (o anterior deixa de valer; o novo aparece só aqui). */
+export async function apiReissueWorkspaceInvitation(invitationId: string) {
+  return http<WorkspaceInvitationCreateResponse>(
+    `/profile/workspace-members/invitations/${encodeURIComponent(invitationId)}/reissue`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+/** ADR-011 §2.7: criação de acessos pelo front door. */
+export type FrontDoorAccessOptions = {
+  allowed: boolean;
+  reason: "MEMBERS_FORBIDDEN" | "NO_APPROVED_VERTICAL" | null;
+  message: string | null;
+  roles: Array<{ key: string; label: string; grantsActivation: boolean }>;
+  expiresInHours: number;
+};
+
+export type FrontDoorAccessCreated = {
+  invitationId: string;
+  token: string;
+  maskedEmail: string;
+  roleLabel: string;
+  expiresAt: string;
+  accountExists: boolean;
+};
+
+export async function apiGetFrontDoorAccessOptions() {
+  return http<{ ok: true; data: FrontDoorAccessOptions }>(`/front-door/accesses/options`);
+}
+
+export async function apiCreateFrontDoorAccess(body: { email: string; fullName?: string; roleKey: string }) {
+  return http<{ ok: true; data: FrontDoorAccessCreated }>(`/front-door/accesses`, { method: "POST", body: JSON.stringify(body) });
 }
 
 export async function apiGetProfile(window: "7d" | "30d" = "7d") {

@@ -57,6 +57,7 @@ import {
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
+import { maskAccessCreationInput } from "@/components/agents/frontDoorAccessEngine";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -1053,7 +1054,8 @@ export default function ChatAgentLauncher({
     pushMessage({
       id: `user-${Date.now()}`,
       role: "user",
-      content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
+      // ADR-011 §2.7: num pedido de acesso, o histórico guarda o e-mail mascarado.
+      content: [maskAccessCreationInput(effectiveInput), attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
     const turnDecision = await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(

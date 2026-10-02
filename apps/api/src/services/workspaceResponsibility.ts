@@ -41,7 +41,6 @@ export type WorkspaceInvitationView = {
   roleLabel: string;
   permissions: string[];
   status: string;
-  token: string;
   expiresAt: string;
   createdAt: string;
 };
@@ -641,6 +640,7 @@ export async function listWorkspaceInvitations(params: {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
   const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
+  // ADR-011 §2.7: o link (token) aparece uma única vez, na criação ou reemissão; a lista nunca o devolve.
   const rows = await prisma.$queryRaw<Array<{
     id: string;
     email: string;
@@ -648,11 +648,10 @@ export async function listWorkspaceInvitations(params: {
     role_key: string;
     permissions: unknown;
     status: string;
-    token: string;
     expires_at: Date;
     created_at: Date;
   }>>`
-    SELECT id, email, full_name, role_key, permissions, status, token, expires_at, created_at
+    SELECT id, email, full_name, role_key, permissions, status, expires_at, created_at
     FROM eiah_workspace_invitations
     WHERE tenant_id = ${params.tenantId}
       AND workspace_id = ${params.workspaceId}
@@ -665,7 +664,6 @@ export async function listWorkspaceInvitations(params: {
     role_key: string;
     permissions: unknown;
     status: string;
-    token: string;
     expires_at: Date;
     created_at: Date;
   }) => ({
@@ -676,7 +674,6 @@ export async function listWorkspaceInvitations(params: {
     roleLabel: roleOptions.find((item) => item.key === row.role_key)?.label ?? titleCaseLabel(row.role_key.replace(/_/g, " ")),
     permissions: safeArray(row.permissions),
     status: row.status,
-    token: row.token,
     expiresAt: row.expires_at.toISOString(),
     createdAt: row.created_at.toISOString(),
   }));
@@ -914,6 +911,15 @@ export async function createWorkspaceInvitation(params: {
     });
   }
 
+  // ADR-011 §2.7: um link novo para o mesmo e-mail invalida o anterior ainda pendente.
+  await prisma.$executeRaw`
+    UPDATE eiah_workspace_invitations
+    SET status = 'revoked', updated_at = NOW()
+    WHERE tenant_id = ${params.tenantId}
+      AND workspace_id = ${params.workspaceId}
+      AND email = ${normalizedEmail}
+      AND status = 'pending'
+  `;
   await prisma.$executeRaw`
     INSERT INTO eiah_workspace_invitations (
       id, tenant_id, workspace_id, email, full_name, role_key, permissions, status, token, expires_at, invited_by_user_id, created_at, updated_at
@@ -946,6 +952,51 @@ export async function createWorkspaceInvitation(params: {
     status: "pending",
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+/**
+ * Reemite o link de um convite pendente (ADR-011 §2.7): cria um convite novo com o mesmo e-mail,
+ * função e permissões — pela regra atual de quem gerencia membros e de quem concede `products.activate` —
+ * e o anterior deixa de valer. O link novo aparece só nesta resposta.
+ */
+export async function reissueWorkspaceInvitation(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  actorUserId: string;
+  invitationId: string;
+}) {
+  const prisma = params.prisma ?? prismaGlobal;
+  await ensureWorkspaceResponsibilityStore(prisma);
+  const rows = await prisma.$queryRaw<Array<{
+    email: string;
+    full_name: string | null;
+    role_key: string;
+    permissions: unknown;
+    status: string;
+  }>>`
+    SELECT email, full_name, role_key, permissions, status
+    FROM eiah_workspace_invitations
+    WHERE id = ${params.invitationId} AND tenant_id = ${params.tenantId} AND workspace_id = ${params.workspaceId}
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) {
+    throw Object.assign(new Error("Workspace invitation not found"), { code: "WORKSPACE_INVITATION_NOT_FOUND", status: 404 });
+  }
+  if (row.status !== "pending") {
+    throw Object.assign(new Error("Only pending invitations can be reissued"), { code: "WORKSPACE_INVITATION_NOT_PENDING", status: 409 });
+  }
+  return createWorkspaceInvitation({
+    prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    invitedByUserId: params.actorUserId,
+    email: row.email,
+    fullName: row.full_name,
+    roleKey: row.role_key,
+    permissions: safeArray(row.permissions),
+  });
 }
 
 export async function readWorkspaceInvitationByToken(params: { prisma?: any; token: string }) {

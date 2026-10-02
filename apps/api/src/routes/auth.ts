@@ -301,10 +301,16 @@ authRouter.post("/auth/workspace-invitations/preview", async (req, res) => {
     });
   }
 
+  // ADR-011 §2.7: quem já tem conta só entra no workspace pelo login (sem senha nova).
+  const existingAccount = await prismaGlobal.user.findUnique({
+    where: { email: invitation.email.trim().toLowerCase() },
+    select: { id: true },
+  });
   return res.json({
     ok: true,
     data: {
       token: invitation.token,
+      accountExists: Boolean(existingAccount),
       tenantId: invitation.tenantId,
       tenantName: invitation.tenantName,
       workspaceId: invitation.workspaceId,

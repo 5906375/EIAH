@@ -1528,7 +1528,7 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
-        run: node --import tsx --test --test-force-exit apps/api/src/tests/marketplace.installations.activate.test.ts apps/api/src/tests/workspace.invitation-grant.contract.test.ts apps/api/src/tests/vertical-access.contract.test.ts
+        run: node --import tsx --test --test-force-exit apps/api/src/tests/marketplace.installations.activate.test.ts apps/api/src/tests/workspace.invitation-grant.contract.test.ts apps/api/src/tests/vertical-access.contract.test.ts apps/api/src/tests/front-door-access.contract.test.ts
         timeout-minutes: 5
 
       - name: Check W4 Non Regression Gates
