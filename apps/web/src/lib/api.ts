@@ -5591,3 +5591,19 @@ export async function apiRequestChatVerticalHandoff(body: {
 }) {
   return http<{ ok: true; data: ChatVerticalHandoffResult }>(`/chat/vertical-handoff`, { method: "POST", body: JSON.stringify(body) });
 }
+
+export type ChatVerticalActivationPreview =
+  | { status: "already_active"; verticalId: string; registryVersion: string }
+  | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
+
+export type ChatVerticalActivationConfirmResult =
+  | { status: "already_active"; verticalId: string; registryVersion: string }
+  | { status: "activated"; verticalId: string; registryVersion: string | null; releasedRoutes: string[] };
+
+export async function apiPreviewChatVerticalActivation(body: { verticalId: "imob" }) {
+  return http<{ ok: true; data: ChatVerticalActivationPreview }>(`/chat/vertical-activation/preview`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export async function apiConfirmChatVerticalActivation(body: { verticalId: "imob"; registryVersion: string; confirmed: true }) {
+  return http<{ ok: true; data: ChatVerticalActivationConfirmResult }>(`/chat/vertical-activation/confirm`, { method: "POST", body: JSON.stringify(body) });
+}

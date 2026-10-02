@@ -1,3 +1,4 @@
+import type { VerticalActivationSnapshot } from "@/components/agents/verticalActivationEngine";
 import type { ChatVerticalHandoffResult } from "@/lib/api";
 import type { Agent } from "@/lib/api";
 import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
@@ -11,6 +12,8 @@ export type MessagePresentationSnapshot = {
   verticalContext?: "IMOB" | "LEGAL" | null;
   /** Handoff para vertical na mesma conversa, já avaliado no servidor (chat.vertical_handoff.v2). */
   verticalHandoff?: ChatVerticalHandoffResult | null;
+  /** Ativação de vertical pela conversa; "proposed" guarda a proposta que aguarda confirmação explícita. */
+  verticalActivation?: VerticalActivationSnapshot | null;
   proposalDomain?: ProposalDomain | null;
   conversationStage?: ConversationStage | null;
   routeIntent:

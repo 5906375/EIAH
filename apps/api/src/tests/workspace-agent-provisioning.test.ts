@@ -271,9 +271,13 @@ test("writes live only in the provisioning module; the gate module stays write-f
   );
   assert.doesNotMatch(provisioningSource, /workspaceAgentAssignment\s*\.\s*(?:update|upsert)\s*\(/);
 
-  for (const route of ["onboarding.ts", "workspaces.ts", "marketplace.ts"]) {
-    const source = readFileSync(new URL(`../routes/${route}`, import.meta.url), "utf8");
-    assert.match(source, /provisionWorkspaceAgentAssignments\(/, `${route} must provision agents`);
+  // Ativação de produto (Marketplace e chat, ADR-010 etapa F) passa pelo serviço único de ativação.
+  for (const file of ["routes/onboarding.ts", "routes/workspaces.ts", "services/products/productActivation.ts"]) {
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
+    assert.match(source, /provisionWorkspaceAgentAssignments\(/, `${file} must provision agents`);
     assert.doesNotMatch(source, /workspaceAgentAssignment\s*\.\s*(?:create|update|upsert)\s*\(/);
   }
+  const marketplace = readFileSync(new URL("../routes/marketplace.ts", import.meta.url), "utf8");
+  assert.match(marketplace, /activateProductInstallation\(/, "marketplace.ts must activate through the provisioning service");
+  assert.doesNotMatch(marketplace, /workspaceAgentAssignment\s*\.\s*(?:create|update|upsert)\s*\(/);
 });

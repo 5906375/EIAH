@@ -130,11 +130,17 @@ test("provisioning is isolated per workspace and never writes tenant-wide polici
 });
 
 test("activation wires action policy provisioning from the catalog", () => {
-  const source = readFileSync(new URL("../routes/marketplace.ts", import.meta.url), "utf8");
-  const start = source.indexOf('"/marketplace/installations/activate"');
+  // A rota do Marketplace (e a ativação pelo chat, ADR-010 etapa F) delegam ao serviço único de ativação.
+  const route = readFileSync(new URL("../routes/marketplace.ts", import.meta.url), "utf8");
+  const start = route.indexOf('"/marketplace/installations/activate"');
   assert.ok(start >= 0);
-  const activation = source.slice(start, source.indexOf("marketplaceRouter.", start + 10));
-  assert.match(activation, /getProductDefaultActionPolicies\(parsed\.data\.product\)/);
+  const routeActivation = route.slice(start, route.indexOf("marketplaceRouter.", start + 10));
+  assert.match(routeActivation, /activateProductInstallation\(/);
+  assert.doesNotMatch(routeActivation, /tenantActionPolicy\s*\.\s*(?:create|update|upsert)\s*\(/);
+
+  const service = readFileSync(new URL("../services/products/productActivation.ts", import.meta.url), "utf8");
+  const activation = service.slice(service.indexOf("export async function activateProductInstallation"));
+  assert.match(activation, /getProductDefaultActionPolicies\(product\)/);
   assert.match(activation, /provisionWorkspaceActionPolicies\(/);
   assert.doesNotMatch(activation, /tenantActionPolicy\s*\.\s*(?:create|update|upsert)\s*\(/);
 });

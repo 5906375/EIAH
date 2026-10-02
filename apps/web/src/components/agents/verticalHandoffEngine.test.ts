@@ -65,8 +65,8 @@ test("enriquecimento: resultado do servidor vira texto, próximos passos e conte
   assert.equal(snapshot.verticalContext, "IMOB");
 
   const denied = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => ({ ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" }));
-  assert.match(denied?.content ?? "", /não está instalado/);
-  assert.deepEqual(denied?.resolvedQuickReplies, ["Ver opções no Marketplace", "Entender planos com IMOB"]);
+  assert.match(denied?.content ?? "", /não está ativo neste workspace/);
+  assert.deepEqual(denied?.resolvedQuickReplies, ["Ativar o IMOB neste workspace", "Ver opções no Marketplace"]);
   assert.equal(attachVerticalHandoffToSnapshot({ verticalContext: null as "IMOB" | "LEGAL" | null }, denied).verticalContext, null);
 
   const untouched = { content: "olá" };
@@ -75,7 +75,7 @@ test("enriquecimento: resultado do servidor vira texto, próximos passos e conte
 
 test("cada bloqueio explica sem prometer capacidade; motivo desconhecido cai no fail-closed", () => {
   assert.match(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_SCOPE_DENIED" }).content, /Sua função/);
-  assert.match(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_DISABLED" }).content, /não está ativo/);
+  assert.match(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_DISABLED" }).content, /não está pronto para uso/);
   const unknown = describeVerticalHandoffResult({ ok: false, reasonCode: "" });
   assert.match(unknown.content, /Nada foi executado/);
   assert.deepEqual(unknown.handoff, { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" });
