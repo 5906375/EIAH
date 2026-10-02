@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import { ensureWorkspaceResponsibilityStore, PRODUCT_ACTIVATION_PERMISSION } from "../workspaceResponsibility";
+import { runIdempotentDdl } from "../idempotentDdl";
 import { ensureTenantProductInstallationTable } from "./productActivation";
 import { recordVerticalAccessNotice, type VerticalAccessNoticeKind } from "./verticalAccessNotices";
 import {
@@ -98,7 +99,7 @@ let migrationBackfillDone = false;
 /** Cria as tabelas se faltarem (mesmo SQL da migration) e marca, uma vez, quem já usava. */
 export async function ensureVerticalAccessStore(prisma: PrismaClient) {
   if (!storeReady) {
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE TABLE IF NOT EXISTS "vertical_access_approvals" (
         "id" TEXT NOT NULL,
         "tenant_id" TEXT NOT NULL,
@@ -126,15 +127,15 @@ export async function ensureVerticalAccessStore(prisma: PrismaClient) {
         CONSTRAINT "vertical_access_approvals_score_check" CHECK ("score" IS NULL OR ("score" >= 0 AND "score" <= 100))
       );
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE UNIQUE INDEX IF NOT EXISTS "vertical_access_approvals_scope_key"
         ON "vertical_access_approvals"("tenant_id", "workspace_id", "vertical");
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE INDEX IF NOT EXISTS "vertical_access_approvals_status_idx"
         ON "vertical_access_approvals"("status", "updated_at");
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE TABLE IF NOT EXISTS "vertical_access_approval_events" (
         "id" TEXT NOT NULL,
         "approval_id" TEXT NOT NULL,
@@ -151,17 +152,17 @@ export async function ensureVerticalAccessStore(prisma: PrismaClient) {
         CONSTRAINT "vertical_access_approval_events_pkey" PRIMARY KEY ("id")
       );
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE INDEX IF NOT EXISTS "vertical_access_approval_events_approval_idx"
         ON "vertical_access_approval_events"("approval_id", "created_at");
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       ALTER TABLE "vertical_access_approval_events" ADD COLUMN IF NOT EXISTS "revocation_mode" TEXT;
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       ALTER TABLE "vertical_access_approval_events" ADD COLUMN IF NOT EXISTS "channel" TEXT;
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE TABLE IF NOT EXISTS "vertical_access_notices" (
         "id" TEXT NOT NULL,
         "approval_id" TEXT NOT NULL,
@@ -174,11 +175,11 @@ export async function ensureVerticalAccessStore(prisma: PrismaClient) {
         CONSTRAINT "vertical_access_notices_pkey" PRIMARY KEY ("id")
       );
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE INDEX IF NOT EXISTS "vertical_access_notices_scope_idx"
         ON "vertical_access_notices"("tenant_id", "workspace_id", "created_at");
     `);
-    await prisma.$executeRawUnsafe(`
+    await runIdempotentDdl(prisma, `
       CREATE TABLE IF NOT EXISTS "vertical_access_notice_reads" (
         "notice_id" TEXT NOT NULL,
         "user_id" TEXT NOT NULL,

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { prismaGlobal } from "@repo/db";
+import { runIdempotentDdl } from "./idempotentDdl";
 
 const DEFAULT_WORKSPACE_ROLE_LABELS = ["Founder", "Admin", "Gestor", "Desenvolvedor", "Corretor", "Assistente"] as const;
 // ADR-011 §2.7: todo convite (link para criar a senha) vale 72 horas e uma única vez.
@@ -248,7 +249,7 @@ function safeArray(value: unknown): string[] {
 }
 
 async function ensureLegacyAssignmentStore(prisma: any) {
-  await prisma.$executeRawUnsafe(`
+  await runIdempotentDdl(prisma, `
     CREATE TABLE IF NOT EXISTS eiah_workspace_role_assignments (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -264,7 +265,7 @@ async function ensureLegacyAssignmentStore(prisma: any) {
 export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlobal) {
   if (!workspaceResponsibilityStoreInitPromise) {
     workspaceResponsibilityStoreInitPromise = (async () => {
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_roles (
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
           workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -276,15 +277,15 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           PRIMARY KEY (tenant_id, workspace_id, role_key)
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         ALTER TABLE eiah_workspace_roles
         ADD COLUMN IF NOT EXISTS default_permissions JSONB NOT NULL DEFAULT '[]'::jsonb;
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_roles_lookup_idx
         ON eiah_workspace_roles (tenant_id, workspace_id, updated_at DESC);
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_memberships (
           user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -298,11 +299,11 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           PRIMARY KEY (user_id, workspace_id)
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_memberships_lookup_idx
         ON eiah_workspace_memberships (tenant_id, workspace_id, status, updated_at DESC);
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_invitations (
           id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -321,12 +322,18 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_invitations_lookup_idx
         ON eiah_workspace_invitations (tenant_id, workspace_id, status, updated_at DESC);
       `);
       await ensureLegacyAssignmentStore(prisma);
-    })().then(() => undefined);
+    })()
+      .then(() => undefined)
+      .catch((error) => {
+        // Falha não fica guardada: a próxima chamada tenta de novo em vez de falhar para sempre.
+        workspaceResponsibilityStoreInitPromise = null;
+        throw error;
+      });
   }
   return workspaceResponsibilityStoreInitPromise;
 }
