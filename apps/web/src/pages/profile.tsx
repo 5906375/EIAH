@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  ApiError,
   apiCreateWorkspace,
   apiCreateWorkspaceInvitation,
   apiAutoRenewDelegations,
@@ -265,6 +266,7 @@ export default function ProfilePage() {
   const [workspaceRoleKey, setWorkspaceRoleKey] = React.useState("");
   const [workspaceRoleOptions, setWorkspaceRoleOptions] = React.useState<WorkspaceRoleOption[]>([]);
   const [workspacePermissions, setWorkspacePermissions] = React.useState<string[]>([]);
+  const workspaceCanManageRoles = workspacePermissions.includes("workspace.manage_roles");
   const [workspaceCanManageMembers, setWorkspaceCanManageMembers] = React.useState(false);
   const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([]);
   const [workspaceInvitations, setWorkspaceInvitations] = React.useState<WorkspaceInvitation[]>([]);
@@ -403,6 +405,11 @@ export default function ProfilePage() {
     [applyProfileData]
   );
 
+  /** 403 do servidor (ex.: só Founder ou Gestor altera funções) vira a mensagem mostrada. */
+  const forbiddenMessage = (error: unknown) => error instanceof ApiError && error.status === 403
+    ? (error.body as { error?: { message?: string } } | undefined)?.error?.message ?? null
+    : null;
+
   const saveProfileSection = async (scope: SaveScope) => {
     setSaveErrorMessage((prev) => ({ ...prev, [scope]: null }));
     setSaveStatus((prev) => ({ ...prev, [scope]: "saving" }));
@@ -429,11 +436,11 @@ export default function ProfilePage() {
       setTimeout(() => {
         setSaveStatus((prev) => ({ ...prev, [scope]: "idle" }));
       }, 2500);
-    } catch {
+    } catch (error) {
       setSaveStatus((prev) => ({ ...prev, [scope]: "error" }));
       setSaveErrorMessage((prev) => ({
         ...prev,
-        [scope]: "Falha ao salvar perfil no backend. Tente novamente.",
+        [scope]: forbiddenMessage(error) ?? "Falha ao salvar perfil no backend. Tente novamente.",
       }));
     }
   };
@@ -445,7 +452,7 @@ export default function ProfilePage() {
 
   const handleAddWorkspaceRole = async () => {
     const trimmed = newWorkspaceRoleLabel.trim();
-    if (!trimmed) return;
+    if (!trimmed || !workspaceCanManageRoles) return;
     const label = trimmed
       .split(/\s+/)
       .filter(Boolean)
@@ -467,8 +474,8 @@ export default function ProfilePage() {
       if (response.ok && response.data) {
         applyProfileData(response.data);
       }
-    } catch {
-      setSaveErrorMessage((prev) => ({ ...prev, workspace: "Falha ao salvar a nova função do workspace." }));
+    } catch (error) {
+      setSaveErrorMessage((prev) => ({ ...prev, workspace: forbiddenMessage(error) ?? "Falha ao salvar a nova função do workspace." }));
       setSaveStatus((prev) => ({ ...prev, workspace: "error" }));
     }
   };
@@ -1420,6 +1427,10 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : null}
+              {!workspaceCanManageRoles ? (
+                <p className="mt-3 text-xs text-amber-300">Somente Founder, Gestor, Admin ou Desenvolvedor pode criar ou alterar funções.</p>
+              ) : null}
+              <fieldset disabled={!workspaceCanManageRoles} className="contents disabled:opacity-50">
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
@@ -1504,6 +1515,7 @@ export default function ProfilePage() {
                   A função criada passa a carregar esse acesso padrão dentro do workspace e os convites dessa função herdam essas permissões.
                 </p>
               </div>
+              </fieldset>
               <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Gestão de membros</p>

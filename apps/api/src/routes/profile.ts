@@ -573,12 +573,15 @@ profileRouter.put("/profile/me", async (req, res) => {
       }
     });
   } catch (error) {
-    const maybe = error as { code?: string };
+    const maybe = error as { code?: string; status?: number; message?: string };
     if (maybe?.code === "P2002") {
       return res.status(409).json({
         ok: false,
         error: { code: "EMAIL_ALREADY_EXISTS", message: "Email already in use" },
       });
+    }
+    if (maybe?.status === 403 && maybe.code) {
+      return res.status(403).json({ ok: false, error: { code: maybe.code, message: maybe.message } });
     }
     typedReq.logger?.error({ error }, "profile.update_failed");
     return res.status(500).json({
