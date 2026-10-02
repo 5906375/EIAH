@@ -80,3 +80,19 @@ test("cada bloqueio explica sem prometer capacidade; motivo desconhecido cai no 
   assert.match(unknown.content, /Nada foi executado/);
   assert.deepEqual(unknown.handoff, { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" });
 });
+
+test("barra do IMOB: só com handoff permitido ou ativação confirmada, pela última decisão de vertical", async () => {
+  const { isImobActiveInConversation } = await import("./verticalHandoffEngine");
+  assert.equal(isImobActiveInConversation([]), false);
+  assert.equal(isImobActiveInConversation([{ verticalHandoff: allowed }]), true);
+  assert.equal(isImobActiveInConversation([{ verticalHandoff: allowed }, null, {}]), true, "mensagens sem decisão de vertical não mudam");
+  assert.equal(isImobActiveInConversation([{ verticalHandoff: allowed }, { verticalHandoff: { ok: false, reasonCode: "VERTICAL_SCOPE_DENIED" } }]), false);
+  assert.equal(isImobActiveInConversation([{ verticalActivation: { status: "proposed", verticalId: "imob", registryVersion: "v" } }]), false);
+  assert.equal(isImobActiveInConversation([{ verticalActivation: { status: "activated", verticalId: "imob" } }]), true);
+});
+
+test("o pedido original só segue para o IMOB quando o handoff foi permitido", async () => {
+  const base = { content: "…", verticalHandoffForwardInput: "quero cadastrar um imóvel", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  assert.equal((await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed))?.verticalHandoffForwardInput, "quero cadastrar um imóvel");
+  assert.equal((await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => ({ ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" })))?.verticalHandoffForwardInput, undefined);
+});

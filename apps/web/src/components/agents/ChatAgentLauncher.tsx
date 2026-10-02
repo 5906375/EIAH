@@ -53,9 +53,15 @@ import { emitChatRouteTelemetry } from "@/components/agents/chatRouteTelemetry";
 import {
   attachVerticalHandoffToSnapshot,
   enrichLauncherDecisionWithVerticalHandoff,
+  isImobActiveInConversation,
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
+import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
+import { IMOB_ACTION_MENUS } from "@/features/imob/imobActionMenus";
+import { ImobFrontDoorPart } from "@/features/imob/structured/ImobFrontDoorPart";
+import { useImobFrontDoorForms } from "@/features/imob/structured/useImobFrontDoorForms";
+import type { StructuredMessage } from "@/features/imob/structured/types";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -75,6 +81,8 @@ type ChatMessage = {
   status?: "streaming" | "done";
   runId?: string;
   presentationSnapshot?: MessagePresentationSnapshot;
+  /** Parte do IMOB (formulário, confirmação) quando a conversa está no IMOB (ADR-010, etapa D). */
+  imobStructured?: StructuredMessage;
 };
 
 type ThreadSnapshot = {
@@ -342,6 +350,8 @@ export default function ChatAgentLauncher({
   const [activeAgent, setActiveAgent] = useState(agents[0]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({ messages, setMessages });
+  const isImobConversation = isImobActiveInConversation(messages.map((message) => message.presentationSnapshot));
   const [ledger, setLedger] = useState<LedgerEvent[]>(baseLedger());
   const [isStreaming, setIsStreaming] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
@@ -1113,6 +1123,9 @@ export default function ChatAgentLauncher({
         content: turnDecision.content,
         presentationSnapshot: localSnapshot,
       });
+      if (turnDecision.verticalHandoffForwardInput) {
+        void imobFrontDoor.forwardToImob(turnDecision.verticalHandoffForwardInput);
+      }
       persistHelpdeskSession({
         message: turnInput,
         response: turnDecision.content,
@@ -1674,7 +1687,13 @@ export default function ChatAgentLauncher({
                           className="flex w-full max-w-full animate-in flex-col gap-3 overflow-hidden fade-in slide-in-from-bottom-2"
                         >
                           <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-4 shadow-xl backdrop-blur-md">
-                            {(() => {
+                            {message.imobStructured ? (
+                              <ImobFrontDoorPart
+                                message={message.imobStructured}
+                                frontDoor={imobFrontDoor}
+                                isLast={message.id === messages[messages.length - 1]?.id}
+                              />
+                            ) : (() => {
                               const { recs, docMarkdown, technicalRaw, runId: extractedRunId } =
                                 extractDocAndRecs(message.content);
                               const displayRunId = extractedRunId || message.runId || "";
@@ -1916,6 +1935,11 @@ export default function ChatAgentLauncher({
                       className="mt-3 min-h-[96px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
                     />
                   ) : null}
+                </div>
+              ) : null}
+              {isImobConversation ? (
+                <div className="w-full">
+                  <ImobActionMenuBar menus={IMOB_ACTION_MENUS} onSelect={imobFrontDoor.structuredForms.handleActionMenuSelect} />
                 </div>
               ) : null}
               <textarea
