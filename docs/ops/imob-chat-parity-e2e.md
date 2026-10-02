@@ -23,6 +23,7 @@ Saída: `report.json` (tabela de paridade por passo) e prints em `E2E_ARTIFACT_D
 
 - CI: job `ImobChatParityE2EInformative` (`.github/workflows/ci.yml`), com Postgres, Redis, API e web; `continue-on-error`, artefatos em `imob-chat-parity-e2e-informative`.
 - Local, com a stack no ar: `E2E_API_URL=http://127.0.0.1:58080/api E2E_WEB_URL=http://127.0.0.1:55173 pnpm test:e2e-imob-chat-parity` (use `E2E_CHROMIUM_PATH` se o Chromium não estiver no cache do Playwright).
+- Liberação pela EIAH (ADR-011): cada tenant do teste pede a liberação do IMOB e um administrador EIAH de teste aprova pela API do produto. O e-mail desse administrador (`E2E_ADMIN_EMAIL`, padrão `parity-admin@e2e.local`) precisa estar em `EIAH_PLATFORM_ADMIN_EMAILS` da API; como o onboarding não reaproveita e-mail, use um banco novo ou outro `E2E_ADMIN_EMAIL` a cada execução local.
 
 ## Critério para a decisão de redirect
 

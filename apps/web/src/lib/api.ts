@@ -1118,6 +1118,40 @@ export async function apiSubscribeMarketplace(
   });
 }
 
+/** ADR-011: estado da liberação da vertical pela EIAH neste workspace (sem score nem billing). */
+export type VerticalAccessClientStatus =
+  | "nao_solicitado"
+  | "pendente"
+  | "em_analise"
+  | "aguardando_humano"
+  | "aprovado"
+  | "recusado"
+  | "revogado";
+
+export type VerticalAccessClientView = {
+  vertical: string;
+  status: VerticalAccessClientStatus;
+  requestedAt: string | null;
+  decidedAt: string | null;
+};
+
+export async function apiGetVerticalAccess(vertical: "IMOB" = "IMOB") {
+  return http<{ ok: true; data: VerticalAccessClientView }>(`/vertical-access?vertical=${vertical}`);
+}
+
+export async function apiRequestVerticalAccess(body: { vertical: "IMOB" }) {
+  return http<{ ok: true; data: VerticalAccessClientView & { outcome: "requested" | "already_requested" | "already_approved" } }>(
+    `/vertical-access/request`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+/** Mensagem do servidor num erro da API (ex.: 403 de liberação), quando houver. */
+export function apiErrorMessage(error: unknown): string | null {
+  if (!(error instanceof ApiError)) return null;
+  return (error.body as { error?: { message?: string } } | undefined)?.error?.message ?? null;
+}
+
 export async function apiActivateMarketplaceInstallation(body: {
   product: "IMOB";
 }): Promise<{
@@ -5595,7 +5629,15 @@ export async function apiRequestChatVerticalHandoff(body: {
 export type ChatVerticalActivationPreview =
   | { status: "already_active"; verticalId: string; registryVersion: string }
   | { status: "not_permitted"; verticalId: string }
+  | { status: "approval_required"; verticalId: string; approval: VerticalApprovalBlock }
   | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
+
+/** ADR-011: liberação da vertical pela EIAH antes de ativar. */
+export type VerticalApprovalBlock = {
+  code: "VERTICAL_NOT_APPROVED" | "VERTICAL_APPROVAL_PENDING" | "VERTICAL_APPROVAL_REFUSED" | "VERTICAL_APPROVAL_REVOKED";
+  message: string;
+  accessStatus: string | null;
+};
 
 export type ChatVerticalActivationConfirmResult =
   | { status: "already_active"; verticalId: string; registryVersion: string }

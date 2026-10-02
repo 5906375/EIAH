@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { ApiError } from "@/lib/api";
 import {
   ACTIVATION_CONFIRM_REPLY,
+  describeActivationFailure,
+  describeActivationPreview,
   enrichLauncherDecisionWithVerticalActivation,
   isActivationConfirmation,
   resolveVerticalActivationStep,
@@ -109,4 +111,29 @@ test("sem permissão de ativar: a conversa explica quem pode e não oferece conf
     { preview: async () => { throw new Error("x"); }, confirm: async () => { throw new ApiError(403, "forbidden", { error: { code: "PRODUCT_ACTIVATION_FORBIDDEN" } }); } } as never,
   );
   assert.match(forbidden?.content ?? "", /Só o proprietário do tenant/);
+});
+
+test("ADR-011: sem liberação da EIAH a conversa explica o estado e não propõe ativar", () => {
+  const notRequested = describeActivationPreview({
+    status: "approval_required",
+    verticalId: "imob",
+    approval: { code: "VERTICAL_NOT_APPROVED", message: "Esta vertical precisa ser liberada pela EIAH antes de ativar. Solicite a liberação.", accessStatus: null },
+  });
+  assert.match(notRequested.content, /liberada pela EIAH/);
+  assert.match(notRequested.content, /Solicitar liberação/, "aponta onde pedir");
+  assert.deepEqual(notRequested.quickReplies, [], "não oferece confirmar");
+  assert.equal(notRequested.activation.status, "failed");
+
+  const pending = describeActivationPreview({
+    status: "approval_required",
+    verticalId: "imob",
+    approval: { code: "VERTICAL_APPROVAL_PENDING", message: "O pedido de liberação está em análise pela EIAH.", accessStatus: "aguardando_humano" },
+  });
+  assert.equal(pending.content, "O pedido de liberação está em análise pela EIAH.");
+
+  const refusedOnConfirm = describeActivationFailure(
+    new ApiError(403, "Forbidden", { error: { code: "VERTICAL_APPROVAL_REFUSED", message: "A EIAH não liberou esta vertical." } }),
+  );
+  assert.equal(refusedOnConfirm.content, "A EIAH não liberou esta vertical.");
+  assert.deepEqual(refusedOnConfirm.quickReplies, []);
 });

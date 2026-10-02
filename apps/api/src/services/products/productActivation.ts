@@ -3,6 +3,7 @@ import type { PrismaClient } from "@repo/db";
 import { canActivateProducts, readWorkspaceResponsibleProfile } from "../workspaceResponsibility";
 import { provisionWorkspaceAgentAssignments } from "../workspaceAgentProvisioning";
 import { provisionWorkspaceActionPolicies } from "../workspaceActionPolicyProvisioning";
+import { readVerticalAccess } from "./verticalAccessApproval";
 import { getProductDefaultActionPolicies } from "@eiah/core/catalog/workspaceActionPolicyProvisioning";
 import {
   getProductProvisionedAgents,
@@ -113,6 +114,7 @@ export type ProductInstallationRow = {
 
 export type ProductActivationResult =
   | { ok: true; installation: ProductInstallationRow; releasedRoutes: string[] }
+  | { ok: false; code: "VERTICAL_NOT_APPROVED"; accessStatus: string | null }
   | { ok: false; code: "WORKSPACE_AGENT_PROVISIONING_FAILED"; error: unknown }
   | { ok: false; code: "INSTALLATION_WRITE_FAILED" };
 
@@ -124,6 +126,17 @@ export async function activateProductInstallation(params: {
   product: ActivatableProduct;
 }): Promise<ProductActivationResult> {
   await ensureTenantProductInstallationTable(params.prisma);
+  // ADR-011 §2.4: sem liberação aprovada pela EIAH, nada é ativado (mesma barreira para
+  // Marketplace, chat e, no futuro, WhatsApp — todos passam por aqui).
+  const access = await readVerticalAccess({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    vertical: params.product,
+  });
+  if (access?.status !== "aprovado") {
+    return { ok: false, code: "VERTICAL_NOT_APPROVED", accessStatus: access?.status ?? null };
+  }
   const now = new Date();
   const activatedByUserId = params.userId;
   const { tenantId, workspaceId, product } = params;
@@ -224,3 +237,17 @@ export const PRODUCT_ACTIVATION_DENIED = {
   code: "PRODUCT_ACTIVATION_FORBIDDEN",
   message: "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar verticais neste workspace.",
 } as const;
+
+/** Mensagens para o cliente conforme o estado da liberação pela EIAH (ADR-011 §2.4). */
+export function verticalNotApprovedError(accessStatus: string | null | undefined) {
+  if (accessStatus === "pendente" || accessStatus === "em_analise" || accessStatus === "aguardando_humano") {
+    return { code: "VERTICAL_APPROVAL_PENDING", message: "O pedido de liberação está em análise pela EIAH.", accessStatus };
+  }
+  if (accessStatus === "recusado") {
+    return { code: "VERTICAL_APPROVAL_REFUSED", message: "A EIAH não liberou esta vertical. Fale com a EIAH para entender o motivo.", accessStatus };
+  }
+  if (accessStatus === "revogado") {
+    return { code: "VERTICAL_APPROVAL_REVOKED", message: "A liberação desta vertical foi revogada pela EIAH.", accessStatus };
+  }
+  return { code: "VERTICAL_NOT_APPROVED", message: "Esta vertical precisa ser liberada pela EIAH antes de ativar. Solicite a liberação.", accessStatus: accessStatus ?? null };
+}

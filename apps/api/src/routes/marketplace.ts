@@ -8,7 +8,9 @@ import {
   canUserActivateProducts,
   ensureTenantProductInstallationTable,
   PRODUCT_ACTIVATION_DENIED,
+  verticalNotApprovedError,
 } from "../services/products/productActivation";
+import { readVerticalAccess } from "../services/products/verticalAccessApproval";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -523,6 +525,17 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
+  // ADR-011 §2.4: primeiro a liberação da EIAH, depois a permissão de ativar.
+  const access = await readVerticalAccess({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    vertical: parsed.data.product,
+  });
+  if (access?.status !== "aprovado") {
+    return res.status(403).json({ ok: false, error: verticalNotApprovedError(access?.status) });
+  }
+
   const allowedToActivate = await canUserActivateProducts({
     prisma: request.prisma as unknown as PrismaClient,
     tenantId: request.authContext.tenantId,
@@ -549,6 +562,9 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
         message: "Unable to provision workspace agents for this product; activation was not applied",
       },
     });
+  }
+  if (!activation.ok && activation.code === "VERTICAL_NOT_APPROVED") {
+    return res.status(403).json({ ok: false, error: verticalNotApprovedError(activation.accessStatus) });
   }
   if (!activation.ok) {
     return res.status(500).json({
