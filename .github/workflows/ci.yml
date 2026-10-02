@@ -822,6 +822,128 @@ jobs:
       - name: Run assignment fail-closed suite
         run: pnpm test:assignment-fail-closed
 
+  imob_chat_parity_e2e_informative:
+    # ADR-010 etapa E: mesmas jornadas do IMOB no /app/chat e no /app/imob/chat,
+    # com stack completa (Postgres + Redis + API + web). Informativo até a decisão de redirect.
+    name: ImobChatParityE2EInformative
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+      E2E_API_URL: http://127.0.0.1:58080/api
+      E2E_WEB_URL: http://127.0.0.1:55173
+      E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build workspace artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
+      - name: Run database migrations
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start API
+        working-directory: apps/api
+        env:
+          REDIS_URL: redis://localhost:6379
+          RUN_EVENTS_REDIS_URL: redis://localhost:6379
+          NODE_ENV: development
+          PORT: '58080'
+          FRONTEND_URL: http://127.0.0.1:55173
+          LOG_LEVEL: warn
+          EIAH_ENVIRONMENT_ID: ci-imob-chat-parity
+          SERVICE_ROLE: api
+          RUN_QUEUE_CONSUMER_MODE: api-embedded
+          RUN_ATIVO_CONSUMER_MODE: disabled
+          EIAH_ALLOW_PASSWORD_BOOTSTRAP: 'true'
+          INTENT_SIGNATURE_SECRET: ci-imob-chat-parity-only
+          MCP_PROXY_ALL_ACTIONS: 'true'
+          MCP_ENFORCE_CONTRACTS: 'true'
+          MCP_DEFAULT_VERSION: 1.0.0
+          RUN_EVENTS_USE_OUTBOX: 'true'
+          INTENT_VALIDATOR_MODE: observe
+          SIGNER_REQUIRED: 'false'
+          SIGNATURE_DISABLED: 'true'
+        run: |
+          mkdir -p "../../${E2E_ARTIFACT_DIR}"
+          nohup node --import tsx src/index.ts > "../../${E2E_ARTIFACT_DIR}/api.log" 2>&1 &
+
+      - name: Start web
+        working-directory: apps/web
+        env:
+          VITE_API_PROXY_TARGET: http://127.0.0.1:58080
+          VITE_API_URL: /api
+        run: nohup npx vite --host 127.0.0.1 --port 55173 --strictPort > "../../${E2E_ARTIFACT_DIR}/web.log" 2>&1 &
+
+      - name: Wait for API and web
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:58080/health && curl -sf -o /dev/null http://127.0.0.1:55173/; then
+              echo "stack up"; exit 0
+            fi
+            sleep 3
+          done
+          echo "stack did not come up"; tail -50 "${E2E_ARTIFACT_DIR}/api.log" || true; exit 1
+
+      - name: Run IMOB chat parity journeys
+        run: pnpm test:e2e-imob-chat-parity
+
+      - name: Upload parity artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imob-chat-parity-e2e-informative
+          path: ${{ env.E2E_ARTIFACT_DIR }}
+          if-no-files-found: warn
+
   assignment_fail_closed_http:
     name: AssignmentFailClosedHttp
     runs-on: ubuntu-latest
