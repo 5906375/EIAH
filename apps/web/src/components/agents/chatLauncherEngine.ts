@@ -15,6 +15,7 @@ import {
   type VerticalActivationRequest,
   type VerticalActivationSnapshot,
 } from "@/components/agents/verticalActivationEngine";
+import { describeAccessCreationHint, isAccessCreationRequest } from "@/components/agents/frontDoorAccessEngine";
 import {
   resolveVerticalApprovalChatStep,
   type VerticalApprovalChatRequest,
@@ -2080,6 +2081,20 @@ export async function resolveLauncherTurnDecision(params: {
       renderVariant: "simple_help",
       persistIntent: { intent: "vertical_approval_chat", confidenceFloor: 0.8 },
       verticalApprovalChatRequest: approvalChatStep,
+    };
+  }
+  // Criação de acessos (ADR-011 §2.7): a conversa orienta para o painel; o e-mail não passa por aqui.
+  if (params.isUnifiedEiah && isAccessCreationRequest(params.input)) {
+    return {
+      kind: "front_door_access_hint",
+      shouldCreateRun: false,
+      content: describeAccessCreationHint(),
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_access", confidenceFloor: 0.8 },
     };
   }
   // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).

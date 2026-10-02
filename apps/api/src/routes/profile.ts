@@ -11,6 +11,7 @@ import { readTenantOperationalInsight } from "../services/tenantOperationalInsig
 import {
   createWorkspaceInvitation,
   readWorkspaceManagementSummary,
+  reissueWorkspaceInvitation,
   upsertWorkspaceRoleConfig,
 } from "../services/workspaceResponsibility";
 import {
@@ -638,6 +639,40 @@ profileRouter.post("/profile/workspace-members/invitations", async (req, res) =>
     return res.status(500).json({
       ok: false,
       error: { code: "WORKSPACE_INVITATION_FAILED", message: "Failed to create workspace invitation" },
+    });
+  }
+});
+
+/** ADR-011 §2.7: reemitir o link de um convite pendente; o anterior deixa de valer e o novo aparece só aqui. */
+profileRouter.post("/profile/workspace-members/invitations/:invitationId/reissue", async (req, res) => {
+  const typedReq = req as TenantAwareRequest;
+  const authContext = typedReq.authContext;
+  if (!authContext?.userId) {
+    return res.status(409).json({
+      ok: false,
+      error: { code: "USER_CONTEXT_REQUIRED", message: "Authenticated user context is required for workspace invitations" },
+    });
+  }
+  try {
+    const invitation = await reissueWorkspaceInvitation({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      actorUserId: authContext.userId,
+      invitationId: String(req.params.invitationId),
+    });
+    return res.status(201).json({ ok: true, data: invitation });
+  } catch (error) {
+    const maybe = error as { code?: string; status?: number; message?: string };
+    if (maybe?.status) {
+      return res.status(maybe.status).json({
+        ok: false,
+        error: { code: maybe.code ?? "WORKSPACE_INVITATION_FAILED", message: maybe.message ?? "Invitation failed" },
+      });
+    }
+    typedReq.logger?.error({ error }, "workspace.invitation_reissue_failed");
+    return res.status(500).json({
+      ok: false,
+      error: { code: "WORKSPACE_INVITATION_FAILED", message: "Failed to reissue workspace invitation" },
     });
   }
 });

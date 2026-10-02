@@ -1,4 +1,4 @@
-# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b, 2c-1 e 2c-2)
+# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b, 2c-1, 2c-2 e 2d)
 
 ## O que muda
 
@@ -99,9 +99,28 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
 - A fila é independente de canal: o WhatsApp (PR 2e) vai ler a mesma fila.
 - Migration: `20261003090000_vertical_access_notices_v1`.
 
+## Criar acesso pelo front door (PR 2d, ADR-011 §2.7)
+
+- O botão **Criar acesso** fica no topo do `/app/chat`. Aparece só para quem gerencia membros (Founder, Gestor,
+  Admin) e só em workspace com pelo menos uma vertical **aprovada** pela EIAH. O servidor valida de novo
+  (`GET /api/front-door/accesses/options`, `POST /api/front-door/accesses`).
+- O convite de workspace é reaproveitado:
+  - O link é de uso único e vale 72 horas.
+  - O link aparece **uma única vez**, na criação ou na reemissão. A lista do Perfil não mostra mais o link, só a
+    situação e o botão "Reemitir link".
+  - Um link novo para o mesmo e-mail invalida o anterior, que passa a `revoked`.
+- A pessoa define a própria senha; a EIAH nunca vê nem exibe a senha.
+- Quem já tem conta entra pelo login e só é adicionado ao workspace, sem senha nova. A página de acesso já abre em
+  "Entrar".
+- Só concede `products.activate` quem já tem a permissão (regra do 2a). A função Founder não é concedida por convite.
+- O e-mail não passa pela conversa: o painel envia direto à API, e a resposta traz o e-mail mascarado (`ma***@dominio`).
+  Se alguém escrever um e-mail ao pedir um acesso no chat, o histórico guarda o e-mail mascarado e a conversa orienta
+  para o painel.
+- A barreira de vertical aprovada vale para o front door. O convite pelo Perfil continua pela regra atual de membros.
+
 ## Fora deste PR (ADR-011 §3)
 
-- Criação de acessos pelo front door: PR 2d. WhatsApp: PR 2e.
+- WhatsApp (avisos, ativação e envio do link): PR 2e.
 
 ## Rollback
 

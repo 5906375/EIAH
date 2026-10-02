@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { prismaGlobal } from "@repo/db";
+import { runIdempotentDdl } from "./idempotentDdl";
 
 const DEFAULT_WORKSPACE_ROLE_LABELS = ["Founder", "Admin", "Gestor", "Desenvolvedor", "Corretor", "Assistente"] as const;
 // ADR-011 §2.7: todo convite (link para criar a senha) vale 72 horas e uma única vez.
@@ -41,7 +42,6 @@ export type WorkspaceInvitationView = {
   roleLabel: string;
   permissions: string[];
   status: string;
-  token: string;
   expiresAt: string;
   createdAt: string;
 };
@@ -249,7 +249,7 @@ function safeArray(value: unknown): string[] {
 }
 
 async function ensureLegacyAssignmentStore(prisma: any) {
-  await prisma.$executeRawUnsafe(`
+  await runIdempotentDdl(prisma, `
     CREATE TABLE IF NOT EXISTS eiah_workspace_role_assignments (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -265,7 +265,7 @@ async function ensureLegacyAssignmentStore(prisma: any) {
 export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlobal) {
   if (!workspaceResponsibilityStoreInitPromise) {
     workspaceResponsibilityStoreInitPromise = (async () => {
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_roles (
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
           workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
@@ -277,15 +277,15 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           PRIMARY KEY (tenant_id, workspace_id, role_key)
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         ALTER TABLE eiah_workspace_roles
         ADD COLUMN IF NOT EXISTS default_permissions JSONB NOT NULL DEFAULT '[]'::jsonb;
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_roles_lookup_idx
         ON eiah_workspace_roles (tenant_id, workspace_id, updated_at DESC);
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_memberships (
           user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -299,11 +299,11 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           PRIMARY KEY (user_id, workspace_id)
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_memberships_lookup_idx
         ON eiah_workspace_memberships (tenant_id, workspace_id, status, updated_at DESC);
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE TABLE IF NOT EXISTS eiah_workspace_invitations (
           id TEXT PRIMARY KEY,
           tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -322,12 +322,18 @@ export async function ensureWorkspaceResponsibilityStore(prisma: any = prismaGlo
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `);
-      await prisma.$executeRawUnsafe(`
+      await runIdempotentDdl(prisma, `
         CREATE INDEX IF NOT EXISTS eiah_workspace_invitations_lookup_idx
         ON eiah_workspace_invitations (tenant_id, workspace_id, status, updated_at DESC);
       `);
       await ensureLegacyAssignmentStore(prisma);
-    })().then(() => undefined);
+    })()
+      .then(() => undefined)
+      .catch((error) => {
+        // Falha não fica guardada: a próxima chamada tenta de novo em vez de falhar para sempre.
+        workspaceResponsibilityStoreInitPromise = null;
+        throw error;
+      });
   }
   return workspaceResponsibilityStoreInitPromise;
 }
@@ -641,6 +647,7 @@ export async function listWorkspaceInvitations(params: {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
   const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
+  // ADR-011 §2.7: o link (token) aparece uma única vez, na criação ou reemissão; a lista nunca o devolve.
   const rows = await prisma.$queryRaw<Array<{
     id: string;
     email: string;
@@ -648,11 +655,10 @@ export async function listWorkspaceInvitations(params: {
     role_key: string;
     permissions: unknown;
     status: string;
-    token: string;
     expires_at: Date;
     created_at: Date;
   }>>`
-    SELECT id, email, full_name, role_key, permissions, status, token, expires_at, created_at
+    SELECT id, email, full_name, role_key, permissions, status, expires_at, created_at
     FROM eiah_workspace_invitations
     WHERE tenant_id = ${params.tenantId}
       AND workspace_id = ${params.workspaceId}
@@ -665,7 +671,6 @@ export async function listWorkspaceInvitations(params: {
     role_key: string;
     permissions: unknown;
     status: string;
-    token: string;
     expires_at: Date;
     created_at: Date;
   }) => ({
@@ -676,7 +681,6 @@ export async function listWorkspaceInvitations(params: {
     roleLabel: roleOptions.find((item) => item.key === row.role_key)?.label ?? titleCaseLabel(row.role_key.replace(/_/g, " ")),
     permissions: safeArray(row.permissions),
     status: row.status,
-    token: row.token,
     expiresAt: row.expires_at.toISOString(),
     createdAt: row.created_at.toISOString(),
   }));
@@ -914,6 +918,15 @@ export async function createWorkspaceInvitation(params: {
     });
   }
 
+  // ADR-011 §2.7: um link novo para o mesmo e-mail invalida o anterior ainda pendente.
+  await prisma.$executeRaw`
+    UPDATE eiah_workspace_invitations
+    SET status = 'revoked', updated_at = NOW()
+    WHERE tenant_id = ${params.tenantId}
+      AND workspace_id = ${params.workspaceId}
+      AND email = ${normalizedEmail}
+      AND status = 'pending'
+  `;
   await prisma.$executeRaw`
     INSERT INTO eiah_workspace_invitations (
       id, tenant_id, workspace_id, email, full_name, role_key, permissions, status, token, expires_at, invited_by_user_id, created_at, updated_at
@@ -946,6 +959,51 @@ export async function createWorkspaceInvitation(params: {
     status: "pending",
     expiresAt: expiresAt.toISOString(),
   };
+}
+
+/**
+ * Reemite o link de um convite pendente (ADR-011 §2.7): cria um convite novo com o mesmo e-mail,
+ * função e permissões — pela regra atual de quem gerencia membros e de quem concede `products.activate` —
+ * e o anterior deixa de valer. O link novo aparece só nesta resposta.
+ */
+export async function reissueWorkspaceInvitation(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  actorUserId: string;
+  invitationId: string;
+}) {
+  const prisma = params.prisma ?? prismaGlobal;
+  await ensureWorkspaceResponsibilityStore(prisma);
+  const rows = await prisma.$queryRaw<Array<{
+    email: string;
+    full_name: string | null;
+    role_key: string;
+    permissions: unknown;
+    status: string;
+  }>>`
+    SELECT email, full_name, role_key, permissions, status
+    FROM eiah_workspace_invitations
+    WHERE id = ${params.invitationId} AND tenant_id = ${params.tenantId} AND workspace_id = ${params.workspaceId}
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) {
+    throw Object.assign(new Error("Workspace invitation not found"), { code: "WORKSPACE_INVITATION_NOT_FOUND", status: 404 });
+  }
+  if (row.status !== "pending") {
+    throw Object.assign(new Error("Only pending invitations can be reissued"), { code: "WORKSPACE_INVITATION_NOT_PENDING", status: 409 });
+  }
+  return createWorkspaceInvitation({
+    prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    invitedByUserId: params.actorUserId,
+    email: row.email,
+    fullName: row.full_name,
+    roleKey: row.role_key,
+    permissions: safeArray(row.permissions),
+  });
 }
 
 export async function readWorkspaceInvitationByToken(params: { prisma?: any; token: string }) {

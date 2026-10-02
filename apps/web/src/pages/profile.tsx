@@ -4,6 +4,7 @@ import {
   ApiError,
   apiCreateWorkspace,
   apiCreateWorkspaceInvitation,
+  apiReissueWorkspaceInvitation,
   apiAutoRenewDelegations,
   apiGetShadowExecution,
   apiGetTenantEconomyOpportunities,
@@ -60,9 +61,15 @@ type WorkspaceInvitation = {
   roleLabel: string;
   permissions: string[];
   status: string;
-  token: string;
   expiresAt: string;
   createdAt: string;
+};
+
+/** O link do convite aparece só na criação ou reemissão (ADR-011 §2.7); a lista mostra a situação. */
+const INVITATION_STATUS_LABEL: Record<string, string> = {
+  pending: "aguardando a pessoa (link mostrado só na criação)",
+  accepted: "aceito",
+  revoked: "substituído por um link novo",
 };
 
 type DelegationView = {
@@ -525,20 +532,53 @@ export default function ProfilePage() {
           roleLabel: data.roleLabel,
           permissions: data.permissions,
           status: data.status,
-          token: data.token,
           expiresAt: data.expiresAt,
           createdAt: new Date().toISOString(),
         },
-        ...prev,
+        // Um link novo para o mesmo e-mail invalida o anterior (ADR-011 §2.7).
+        ...prev.map((item) => (item.email === data.email && item.status === "pending" ? { ...item, status: "revoked" } : item)),
       ]);
       setInviteState("success");
-      setInviteMessage(`Convite criado: ${inviteUrl}`);
+      setInviteMessage(`Convite criado. Copie o link agora; ele não aparece de novo: ${inviteUrl}`);
       setInviteFullName("");
       setInviteEmail("");
       setInviteStagePermissions([]);
     } catch (error) {
       setInviteState("error");
       setInviteMessage(error instanceof Error ? error.message : "Falha ao criar convite para o workspace.");
+    }
+  };
+
+  /** ADR-011 §2.7: o link aparece só na criação; reemitir gera um novo e invalida o anterior. */
+  const handleReissueInvitation = async (invitationId: string) => {
+    setInviteState("creating");
+    setInviteMessage(null);
+    try {
+      const response = await apiReissueWorkspaceInvitation(invitationId);
+      if (!response.ok || !response.data) throw new Error("Falha ao reemitir o link do convite.");
+      const data = response.data;
+      const inviteUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/access?invite=${encodeURIComponent(data.token)}`
+        : data.token;
+      setWorkspaceInvitations((prev) => [
+        {
+          id: data.id,
+          email: data.email,
+          fullName: data.fullName,
+          roleKey: data.roleKey,
+          roleLabel: data.roleLabel,
+          permissions: data.permissions,
+          status: data.status,
+          expiresAt: data.expiresAt,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev.map((item) => (item.id === invitationId ? { ...item, status: "revoked" } : item)),
+      ]);
+      setInviteState("success");
+      setInviteMessage(`Link reemitido; o anterior deixou de valer. Copie agora, ele não aparece de novo: ${inviteUrl}`);
+    } catch (error) {
+      setInviteState("error");
+      setInviteMessage(error instanceof Error ? error.message : "Falha ao reemitir o link do convite.");
     }
   };
 
@@ -1596,7 +1636,7 @@ export default function ProfilePage() {
                     {inviteState === "creating" ? "Criando convite..." : "Convidar por email"}
                   </button>
                   {inviteMessage ? (
-                    <span className={`text-xs ${inviteState === "success" ? "text-emerald-300" : "text-rose-300"}`}>
+                    <span className={`break-all text-xs ${inviteState === "success" ? "text-emerald-300" : "text-rose-300"}`}>
                       {inviteMessage}
                     </span>
                   ) : null}
@@ -1636,9 +1676,7 @@ export default function ProfilePage() {
                         {(expanded) => (
                           <div className="mt-3 space-y-2">
                             {workspaceInvitations.slice(0, expanded ? workspaceInvitations.length : 4).map((invitation) => {
-                              const inviteUrl = typeof window !== "undefined"
-                                ? `${window.location.origin}/access?invite=${encodeURIComponent(invitation.token)}`
-                                : invitation.token;
+                              const statusLabel = INVITATION_STATUS_LABEL[invitation.status] ?? invitation.status;
                               return (
                                 <div key={invitation.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
                                   <p className="text-sm font-medium text-foreground">{invitation.fullName}</p>
@@ -1648,7 +1686,17 @@ export default function ProfilePage() {
                                     <p className="mt-1">Permissões: {invitation.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
                                   ) : null}
                                   <p className="mt-1">Expira em: {formatDateTime(invitation.expiresAt)}</p>
-                                  <p className="mt-2 break-all text-[11px] text-accent">{inviteUrl}</p>
+                                  <p className="mt-1">Situação: {statusLabel}</p>
+                                  {invitation.status === "pending" ? (
+                                    <button
+                                      type="button"
+                                      disabled={inviteState === "creating"}
+                                      onClick={() => void handleReissueInvitation(invitation.id)}
+                                      className="mt-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-foreground transition hover:border-accent/40 disabled:opacity-60"
+                                    >
+                                      Reemitir link
+                                    </button>
+                                  ) : null}
                                 </div>
                               );
                             })}

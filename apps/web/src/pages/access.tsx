@@ -38,6 +38,7 @@ type SignupForm = {
 
 type WorkspaceInvitationPreview = {
   token: string;
+  accountExists?: boolean;
   tenantId: string;
   tenantName: string;
   workspaceId: string;
@@ -132,6 +133,8 @@ export default function AccessPage() {
           }));
           setPasswordForm((prev) => ({ ...prev, email: prev.email || data.email }));
           setNewPasswordForm((prev) => ({ ...prev, email: prev.email || data.email }));
+          // ADR-011 §2.7: quem já tem conta entra pelo login e só é adicionado ao workspace (sem senha nova).
+          if (data.accountExists) setAuthMode("login");
           return;
         }
         setInvitePreview(null);
@@ -421,6 +424,17 @@ export default function AccessPage() {
               <p>{invitePreview.tenantName} · {invitePreview.workspaceName}</p>
               <p>Função atribuída: {invitePreview.roleLabel}</p>
               <p>Email convidado: {invitePreview.email}</p>
+              {invitePreview.status === "accepted" ? (
+                <p className="text-amber-200">Este link já foi usado. Peça um link novo a quem convidou você.</p>
+              ) : invitePreview.status === "revoked" ? (
+                <p className="text-amber-200">Este link foi substituído por um novo. Use o link mais recente.</p>
+              ) : invitePreview.expired ? (
+                <p className="text-amber-200">Este link expirou. Peça um link novo a quem convidou você.</p>
+              ) : invitePreview.accountExists ? (
+                <p className="text-emerald-200">Você já tem conta: entre com sua senha para ser adicionado ao workspace.</p>
+              ) : (
+                <p className="text-muted-foreground">Crie sua senha abaixo. Ninguém da EIAH vê ou recebe a sua senha.</p>
+              )}
             </div>
           ) : (
             <p>Convite do workspace não encontrado ou expirado.</p>
