@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { redactUrlCredentials } from "../services/redactUrlCredentials";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -3014,7 +3015,7 @@ export function startRunQueueBullMqWorker() {
 
   worker.on("ready", () => {
     console.log(
-      `[EIAH_BUILDER runQueueWorker] Listening on queue=${QueueName.RUNS} redis=${redisUrl} concurrency=${concurrency}`
+      `[EIAH_BUILDER runQueueWorker] Listening on queue=${QueueName.RUNS} redis=${redactUrlCredentials(redisUrl)} concurrency=${concurrency}`
     );
   });
 
