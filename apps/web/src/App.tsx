@@ -305,7 +305,7 @@ function DefaultLanding() {
     return <Navigate to="/access" replace />;
   }
 
-  return <Navigate to={session.experience?.landingPath || "/app/runs"} replace />;
+  return <Navigate to={session.experience?.landingPath || "/app/chat"} replace />;
 }
 
 function LegacyAgentsRedirect() {

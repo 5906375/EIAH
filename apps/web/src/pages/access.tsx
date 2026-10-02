@@ -56,8 +56,8 @@ export default function AccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hasExplicitNext = searchParams.has("next");
-  const nextParam = searchParams.get("next") ?? "/app/runs";
-  const nextPath = nextParam.startsWith("/") ? nextParam : "/app/runs";
+  const nextParam = searchParams.get("next") ?? "/app/chat";
+  const nextPath = nextParam.startsWith("/") ? nextParam : "/app/chat";
   const inviteToken = searchParams.get("invite")?.trim() ?? "";
 
   const [passwordForm, setPasswordForm] = React.useState<PasswordForm>({

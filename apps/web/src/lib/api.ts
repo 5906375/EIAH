@@ -808,6 +808,7 @@ export type SessionContextResponse = {
         | "founder_global"
         | "service_operator";
       landingSurface:
+        | "chat"
         | "runs"
         | "billing"
         | "economy"
@@ -820,6 +821,7 @@ export type SessionContextResponse = {
       landingPath: string;
       primaryNavigation: Array<{
         surfaceId:
+          | "chat"
           | "runs"
           | "billing"
           | "economy"
@@ -835,6 +837,7 @@ export type SessionContextResponse = {
       recommendedActions: Array<{
         actionId: string;
         surfaceId:
+          | "chat"
           | "runs"
           | "billing"
           | "economy"
@@ -903,6 +906,7 @@ export type ExperienceAuditResponse = {
       activeDomain: "core" | "imob";
       installedProducts: string[];
       surfaceId:
+        | "chat"
         | "runs"
         | "billing"
         | "economy"
@@ -5375,6 +5379,7 @@ export async function apiPostExperienceAudit(
       | {
         auditType: "landing_action_alignment";
         surfaceId:
+          | "chat"
           | "runs"
           | "billing"
           | "economy"

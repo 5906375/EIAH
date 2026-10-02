@@ -142,7 +142,8 @@ const ImobMarketplacePage: React.FC = () => {
         });
       }
 
-      navigate("/app/imob/chat?domain=imob", { replace: true });
+      // ADR-010: depois de ativar, a conversa segue no front door com o IMOB ativo.
+      navigate("/app/chat", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(apiErrorMessage(err) ?? `Falha ao ativar IMOB (${err.status}).`);
@@ -320,6 +321,8 @@ const ImobMarketplacePage: React.FC = () => {
             )}
             {topAgent ? <p className="text-xs text-muted-foreground">Agente dominante no workspace: {topAgent.agent}</p> : null}
           </div>
+          {isInstalled ? (
+          <>
           <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
             <li>
@@ -343,6 +346,8 @@ const ImobMarketplacePage: React.FC = () => {
               </Link>
             </li>
           </ul>
+          </>
+          ) : null}
         </aside>
       </section>
 
