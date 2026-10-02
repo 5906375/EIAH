@@ -1428,7 +1428,7 @@ export default function ProfilePage() {
                 </div>
               ) : null}
               {!workspaceCanManageRoles ? (
-                <p className="mt-3 text-xs text-amber-300">Somente Founder ou Gestor pode criar ou alterar funções.</p>
+                <p className="mt-3 text-xs text-amber-300">Somente Founder, Gestor, Admin ou Desenvolvedor pode criar ou alterar funções.</p>
               ) : null}
               <fieldset disabled={!workspaceCanManageRoles} className="contents disabled:opacity-50">
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">

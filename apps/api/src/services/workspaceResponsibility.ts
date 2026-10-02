@@ -746,7 +746,7 @@ export const WORKSPACE_ROLES_MANAGE_PERMISSION = "workspace.manage_roles";
 
 export const WORKSPACE_ROLES_DENIED = {
   code: "WORKSPACE_ROLES_FORBIDDEN",
-  message: "Só quem gerencia as funções do workspace (Founder ou Gestor) pode criar ou alterar funções.",
+  message: "Só quem gerencia as funções do workspace (Founder, Gestor, Admin ou Desenvolvedor) pode criar ou alterar funções.",
 } as const;
 
 async function readActorRoleAuthority(params: {
