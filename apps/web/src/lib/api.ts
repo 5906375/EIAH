@@ -1132,9 +1132,15 @@ export type VerticalAccessClientStatus =
   | "recusado"
   | "revogado";
 
+/** ADR-011 §2.5: modos de revogação escolhidos pelo administrador EIAH. */
+export type VerticalRevocationMode = "somente_leitura" | "bloqueio_total" | "sem_nova_ativacao";
+
 export type VerticalAccessClientView = {
   vertical: string;
   status: VerticalAccessClientStatus;
+  /** Uso permitido pela liberação: tudo, só consulta ou nada. */
+  usage: "full" | "read_only" | "blocked";
+  revocationMode: VerticalRevocationMode | null;
   requestedAt: string | null;
   decidedAt: string | null;
 };
@@ -1160,6 +1166,7 @@ export type VerticalApprovalAdminItem = {
   vertical: string;
   status: Exclude<VerticalAccessClientStatus, "nao_solicitado">;
   source: "request" | "migration";
+  revocationMode: VerticalRevocationMode | null;
   requestedBy: string | null;
   requestedAt: string | null;
   decidedBy: string | null;
@@ -1177,6 +1184,16 @@ export async function apiListVerticalApprovals() {
 
 export async function apiDecideVerticalApproval(approvalId: string, body: { decision: "aprovar" | "recusar"; note?: string }) {
   return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/decision`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiChangeVerticalApprovalRevocation(
+  approvalId: string,
+  body: { action: "revogar" | "alterar_modo" | "restaurar"; mode?: VerticalRevocationMode; note?: string },
+) {
+  return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/revocation`, {
     method: "POST",
     body: JSON.stringify(body),
   });

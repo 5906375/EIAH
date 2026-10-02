@@ -106,6 +106,7 @@ import {
   imobSaleContractGenerateSchema,
 } from "./imobCrmSchemas";
 import { sendImobAccessDenied } from "../services/imob/imobAccessGate";
+import { imobRevocationGate } from "../services/imob/imobRevocationGate";
 import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
@@ -142,6 +143,8 @@ import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 
 export const imobRouter = createGovernedRouter();
 imobRouter.use(enforceTenant);
+// ADR-011 §2.5: revogação pela EIAH (somente leitura ou bloqueio total) vale para todas as rotas do IMOB.
+imobRouter.use(imobRevocationGate);
 
 function parseWindowStart(windowRaw: unknown) {
   const normalized = typeof windowRaw === "string" ? windowRaw : "7d";

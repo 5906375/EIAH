@@ -38,7 +38,9 @@ function describeVerticalAccess(access: VerticalAccessClientView | null) {
     case "recusado":
       return "não liberado pela EIAH";
     case "revogado":
-      return "liberação revogada pela EIAH";
+      if (access.usage === "read_only") return "liberação revogada pela EIAH: somente consulta, os dados estão preservados";
+      if (access.usage === "blocked") return "liberação revogada pela EIAH: acesso bloqueado, os dados estão preservados";
+      return "liberação revogada pela EIAH: o uso atual continua, sem nova ativação";
     default:
       return "ainda não solicitado";
   }
@@ -175,6 +177,10 @@ const ImobMarketplacePage: React.FC = () => {
   };
 
   const accessApproved = access?.status === "aprovado";
+
+  // ADR-011 §2.5: com bloqueio total pela EIAH, a instalação continua, mas nada do IMOB abre.
+
+  const accessBlocked = isInstalled && access?.usage === "blocked";
   const accessInReview = access ? ["pendente", "em_analise", "aguardando_humano"].includes(access.status) : false;
 
   const activeWorkspaceBilling = React.useMemo(
@@ -242,7 +248,11 @@ const ImobMarketplacePage: React.FC = () => {
           ) : null}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {isInstalled ? (
+            {accessBlocked ? (
+              <p className="text-xs text-amber-200">
+                O acesso ao IMOB está bloqueado pela EIAH neste workspace. Os dados estão preservados.
+              </p>
+            ) : isInstalled ? (
               <button
                 type="button"
                 onClick={() => navigate("/app/imob/chat?domain=imob")}
@@ -321,7 +331,7 @@ const ImobMarketplacePage: React.FC = () => {
             )}
             {topAgent ? <p className="text-xs text-muted-foreground">Agente dominante no workspace: {topAgent.agent}</p> : null}
           </div>
-          {isInstalled ? (
+          {isInstalled && !accessBlocked ? (
           <>
           <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
@@ -365,7 +375,7 @@ const ImobMarketplacePage: React.FC = () => {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {IMOB_BUSINESS_QUICK_ACTIONS.map((item) => {
-            const target = isInstalled
+            const target = isInstalled && !accessBlocked
               ? `/app/imob/chat?domain=imob&autoprompt=${encodeURIComponent(item.autoprompt)}`
               : "/app/marketplace/imob";
             return (
@@ -377,7 +387,7 @@ const ImobMarketplacePage: React.FC = () => {
                 <p className="text-sm font-semibold text-foreground">{item.title}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{item.summary}</p>
                 <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-accent">
-                  {isInstalled ? "Abrir no chat IMOB" : "Ativar IMOB para usar"}
+                  {accessBlocked ? "Bloqueado pela EIAH" : isInstalled ? "Abrir no chat IMOB" : "Ativar IMOB para usar"}
                 </p>
               </Link>
             );

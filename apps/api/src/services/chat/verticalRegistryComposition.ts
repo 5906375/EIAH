@@ -34,14 +34,27 @@ export type VerticalRegistryFacts = {
     entitled: boolean;
     agentsReady: boolean;
     userCanUse: boolean;
+    /** Uso permitido pela liberação EIAH (ADR-011 §2.5). Ausente = sem restrição da liberação. */
+    usage?: "full" | "read_only" | "blocked";
   };
 };
+
+/** Somente leitura: só as capacidades e modos de consulta continuam oferecidos na conversa. */
+function capabilitiesForUsage(usage: "full" | "read_only" | "blocked") {
+  const copies = IMOB_FRONT_DOOR_CAPABILITIES.map((capability) => ({ ...capability, allowedModes: [...capability.allowedModes] }));
+  if (usage !== "read_only") return copies;
+  return copies
+    .map((capability) => ({ ...capability, allowedModes: capability.allowedModes.filter((mode) => mode === "read_only") }))
+    .filter((capability) => capability.allowedModes.length > 0);
+}
 
 export type VerticalGovernance = Record<string, { rbac: Decision; entitlement: Decision }>;
 
 /** Composição pura (testável) do registry a partir dos fatos lidos do banco. */
 export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registry: VerticalRegistryV1; governance: VerticalGovernance } {
-  const imobEnabled = facts.imob.installationStatus === "active" && facts.imob.entitled && facts.imob.agentsReady;
+  const usage = facts.imob.usage ?? "full";
+  const imobEnabled =
+    facts.imob.installationStatus === "active" && facts.imob.entitled && facts.imob.agentsReady && usage !== "blocked";
   const verticals: VerticalRegistryV1["verticals"] = [
     {
       id: "core",
@@ -59,7 +72,7 @@ export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registr
       id: "imob",
       label: "IMOB",
       status: imobEnabled ? "enabled" : "disabled",
-      capabilities: IMOB_FRONT_DOOR_CAPABILITIES.map((capability) => ({ ...capability, allowedModes: [...capability.allowedModes] })),
+      capabilities: capabilitiesForUsage(usage),
       entitlement: { required: true, key: "REAL_ESTATE_CORE" },
       rbac: { requiredRoles: [] },
       policyGates: [IMOB_CHAT_PERMISSION],
