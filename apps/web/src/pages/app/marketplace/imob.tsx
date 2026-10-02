@@ -4,7 +4,11 @@ import { formatBRL } from "@/lib/formatters";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiErrorMessage,
   apiGetAgentBillingSummary,
+  apiGetVerticalAccess,
+  apiRequestVerticalAccess,
+  type VerticalAccessClientView,
   apiGetSessionContext,
   apiGetTenantBillingSummary,
   apiListMarketplaceInstallations,
@@ -20,6 +24,26 @@ function hasActiveImobInstall(items: Array<{ product: string; status: string }>)
   );
 }
 
+/** ADR-011: texto do estado da liberação pela EIAH. */
+function describeVerticalAccess(access: VerticalAccessClientView | null) {
+  if (!access) return "—";
+  const since = access.requestedAt ? ` desde ${new Date(access.requestedAt).toLocaleString("pt-BR")}` : "";
+  switch (access.status) {
+    case "aprovado":
+      return "liberado pela EIAH";
+    case "pendente":
+    case "em_analise":
+    case "aguardando_humano":
+      return `pedido em análise pela EIAH${since}`;
+    case "recusado":
+      return "não liberado pela EIAH";
+    case "revogado":
+      return "liberação revogada pela EIAH";
+    default:
+      return "ainda não solicitado";
+  }
+}
+
 function averageCostPerRun(item: { costCents: number; runs: number } | null | undefined) {
   if (!item || item.runs <= 0) return 0;
   return Math.round(item.costCents / item.runs);
@@ -32,6 +56,8 @@ const ImobMarketplacePage: React.FC = () => {
   const [activating, setActivating] = React.useState(false);
   const [isInstalled, setIsInstalled] = React.useState(false);
   const [activatedAt, setActivatedAt] = React.useState<string | null>(null);
+  const [access, setAccess] = React.useState<VerticalAccessClientView | null>(null);
+  const [requestingAccess, setRequestingAccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [billingSummary, setBillingSummary] = React.useState<TenantBillingSummary | null>(null);
@@ -43,12 +69,14 @@ const ImobMarketplacePage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [installations, context, billing, agents] = await Promise.all([
+      const [installations, context, billing, agents, accessResponse] = await Promise.all([
         apiListMarketplaceInstallations(),
         apiGetSessionContext().catch(() => null),
         apiGetTenantBillingSummary().catch(() => null),
         apiGetAgentBillingSummary({ workspaceId: session.workspaceId }).catch(() => null),
+        apiGetVerticalAccess("IMOB").catch(() => null),
       ]);
+      setAccess(accessResponse?.data ?? null);
       setBillingSummary(billing?.data ?? null);
       setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
@@ -117,7 +145,7 @@ const ImobMarketplacePage: React.FC = () => {
       navigate("/app/imob/chat?domain=imob", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Falha ao ativar IMOB (${err.status}).`);
+        setError(apiErrorMessage(err) ?? `Falha ao ativar IMOB (${err.status}).`);
       } else {
         setError(err instanceof Error ? err.message : "Falha ao ativar IMOB");
       }
@@ -125,6 +153,28 @@ const ImobMarketplacePage: React.FC = () => {
       setActivating(false);
     }
   };
+
+  const handleRequestAccess = async () => {
+    setRequestingAccess(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await apiRequestVerticalAccess({ vertical: "IMOB" });
+      setAccess(response.data);
+      setNotice(
+        response.data.outcome === "already_approved"
+          ? "O IMOB já está liberado pela EIAH. Pode ativar."
+          : "Pedido de liberação enviado. A EIAH vai analisar e você verá a resposta aqui.",
+      );
+    } catch (err) {
+      setError(apiErrorMessage(err) ?? "Não foi possível enviar o pedido de liberação.");
+    } finally {
+      setRequestingAccess(false);
+    }
+  };
+
+  const accessApproved = access?.status === "aprovado";
+  const accessInReview = access ? ["pendente", "em_analise", "aguardando_humano"].includes(access.status) : false;
 
   const activeWorkspaceBilling = React.useMemo(
     () => billingSummary?.byWorkspace.find((item) => item.workspaceId === session.workspaceId) ?? null,
@@ -173,6 +223,9 @@ const ImobMarketplacePage: React.FC = () => {
                 Status: <span className="text-foreground">{isInstalled ? "ativo" : "não instalado"}</span>
               </p>
               <p>
+                Liberação EIAH: <span className="text-foreground">{describeVerticalAccess(access)}</span>
+              </p>
+              <p>
                 Ativado em: <span className="text-foreground">{activatedAt ? new Date(activatedAt).toLocaleString("pt-BR") : "—"}</span>
               </p>
               <p>
@@ -196,6 +249,24 @@ const ImobMarketplacePage: React.FC = () => {
               >
                 Abrir IMOB
               </button>
+            ) : !accessApproved ? (
+              <div className="space-y-2">
+                <p className="text-xs text-amber-200">
+                  {accessInReview
+                    ? "A EIAH está analisando o pedido de liberação. A ativação fica disponível depois da aprovação."
+                    : "Antes de ativar, a EIAH precisa liberar o IMOB para este workspace."}
+                </p>
+                {!accessInReview ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestAccess()}
+                    disabled={requestingAccess}
+                    className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {requestingAccess ? "Enviando..." : "Solicitar liberação"}
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-amber-200">

@@ -900,6 +900,8 @@ jobs:
           FRONTEND_URL: http://127.0.0.1:55173
           LOG_LEVEL: warn
           EIAH_ENVIRONMENT_ID: ci-imob-chat-parity
+          # ADR-011: administrador EIAH do E2E (libera o IMOB para os tenants de teste).
+          EIAH_PLATFORM_ADMIN_EMAILS: parity-admin@e2e.local
           SERVICE_ROLE: api
           RUN_QUEUE_CONSUMER_MODE: api-embedded
           RUN_ATIVO_CONSUMER_MODE: disabled
@@ -1526,7 +1528,7 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
           REDIS_URL: redis://localhost:6379
           NODE_ENV: test
-        run: node --import tsx --test --test-force-exit apps/api/src/tests/marketplace.installations.activate.test.ts apps/api/src/tests/workspace.invitation-grant.contract.test.ts
+        run: node --import tsx --test --test-force-exit apps/api/src/tests/marketplace.installations.activate.test.ts apps/api/src/tests/workspace.invitation-grant.contract.test.ts apps/api/src/tests/vertical-access.contract.test.ts
         timeout-minutes: 5
 
       - name: Check W4 Non Regression Gates

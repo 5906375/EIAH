@@ -72,7 +72,27 @@ export type VerticalActivationPresentation = {
 const NOT_PERMITTED_TEXT =
   "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar o IMOB neste workspace. Peça ao proprietário para ativar ou para conceder a permissão (Perfil → Gerir funções).";
 
+const APPROVAL_CODES = new Set([
+  "VERTICAL_NOT_APPROVED",
+  "VERTICAL_APPROVAL_PENDING",
+  "VERTICAL_APPROVAL_REFUSED",
+  "VERTICAL_APPROVAL_REVOKED",
+]);
+
+/** ADR-011: sem liberação da EIAH a conversa explica o estado; não propõe ativar. */
+function describeApprovalBlock(code: string | undefined, message: string | undefined): VerticalActivationPresentation {
+  const hint = code === "VERTICAL_NOT_APPROVED" ? " Peça a liberação pelo Marketplace (IMOB → Solicitar liberação)." : "";
+  return {
+    content: `${message ?? "O IMOB precisa ser liberado pela EIAH antes de ativar."}${hint}`,
+    quickReplies: [],
+    activation: { status: "failed", verticalId: "imob" },
+  };
+}
+
 export function describeActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
+  if (preview.status === "approval_required") {
+    return describeApprovalBlock(preview.approval.code, preview.approval.message);
+  }
   if (preview.status === "not_permitted") {
     return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
   }
@@ -111,7 +131,9 @@ export function describeActivationConfirmation(result: ChatVerticalActivationCon
 }
 
 export function describeActivationFailure(error: unknown): VerticalActivationPresentation {
-  const code = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined)?.error?.code : undefined;
+  const body = error instanceof ApiError ? (error.body as { error?: { code?: string; message?: string } } | undefined) : undefined;
+  const code = body?.error?.code;
+  if (code && APPROVAL_CODES.has(code)) return describeApprovalBlock(code, body?.error?.message);
   if (code === "PRODUCT_ACTIVATION_FORBIDDEN") {
     return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
   }

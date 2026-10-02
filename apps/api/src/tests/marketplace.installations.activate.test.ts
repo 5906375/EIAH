@@ -4,6 +4,7 @@ import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
 import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
 
 let request: ReturnType<typeof supertest>;
 
@@ -45,6 +46,12 @@ before(async () => {
     data: { token: memberToken, tenantId, workspaceId, userId: memberUserId, description: "marketplace-member-test", revoked: false },
   });
   await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId: memberUserId, roleKey: "corretor" });
+  // ADR-011: a EIAH já liberou o IMOB neste workspace (o fluxo de liberação tem teste próprio).
+  await ensureVerticalAccessStore(prismaGlobal);
+  await prismaGlobal.$executeRaw`
+    INSERT INTO vertical_access_approvals (id, tenant_id, workspace_id, vertical, status, source, decided_by, decided_at)
+    VALUES (${`approval-${suffix}`}, ${tenantId}, ${workspaceId}, 'IMOB', 'aprovado', 'request', 'admin:test@example.com', NOW())
+  `;
 });
 
 test("POST /api/marketplace/installations/activate recusa quem não é proprietário nem tem permissão de ativar", async () => {
@@ -69,6 +76,8 @@ after(async () => {
     WHERE tenant_id = ${tenantId}
       AND workspace_id = ${workspaceId}
   `;
+  await prismaGlobal.$executeRaw`DELETE FROM vertical_access_approval_events WHERE tenant_id = ${tenantId}`;
+  await prismaGlobal.$executeRaw`DELETE FROM vertical_access_approvals WHERE tenant_id = ${tenantId}`;
   await prismaGlobal.$disconnect();
 });
 

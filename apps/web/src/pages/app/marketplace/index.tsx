@@ -4,6 +4,7 @@ import { formatBRL } from "@/lib/formatters";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiErrorMessage,
   apiGetAgentBillingSummary,
   apiGetSessionContext,
   apiGetTenantBillingSummary,
@@ -196,7 +197,7 @@ const MarketplaceIndexPage: React.FC = () => {
       await refresh();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Falha ao ativar IMOB (${err.status}).`);
+        setError(apiErrorMessage(err) ?? `Falha ao ativar IMOB (${err.status}).`);
       } else {
         setError(err instanceof Error ? err.message : "Falha ao ativar IMOB");
       }

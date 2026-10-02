@@ -204,6 +204,51 @@ model TenantProductInstallation {
   @@map("tenant_product_installations")
 }
 
+/// ADR-011 §2.1: liberação de vertical pela EIAH (tenant + workspace + vertical).
+model VerticalAccessApproval {
+  id                String    @id
+  tenantId          String    @map("tenant_id")
+  workspaceId       String    @map("workspace_id")
+  vertical          String
+  status            String
+  source            String
+  revocationMode    String?   @map("revocation_mode")
+  requestedByUserId String?   @map("requested_by_user_id")
+  requestedAt       DateTime? @map("requested_at")
+  decidedBy         String?   @map("decided_by")
+  decidedAt         DateTime? @map("decided_at")
+  note              String?
+  score             Int?
+  recommendation    String?
+  scoreReasons      Json?     @map("score_reasons")
+  scoreRuleVersion  String?   @map("score_rule_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @map("updated_at")
+
+  @@unique([tenantId, workspaceId, vertical], map: "vertical_access_approvals_scope_key")
+  @@index([status, updatedAt], map: "vertical_access_approvals_status_idx")
+  @@map("vertical_access_approvals")
+}
+
+/// ADR-011 §2.1: auditoria de cada mudança de estado da liberação.
+model VerticalAccessApprovalEvent {
+  id             String   @id
+  approvalId     String   @map("approval_id")
+  tenantId       String   @map("tenant_id")
+  workspaceId    String   @map("workspace_id")
+  vertical       String
+  fromStatus     String?  @map("from_status")
+  toStatus       String   @map("to_status")
+  actor          String
+  note           String?
+  score          Int?
+  recommendation String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([approvalId, createdAt], map: "vertical_access_approval_events_approval_idx")
+  @@map("vertical_access_approval_events")
+}
+
 model ApiToken {
   id          String    @id @default(cuid())
   token       String    @unique

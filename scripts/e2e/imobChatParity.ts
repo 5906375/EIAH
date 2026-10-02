@@ -43,15 +43,48 @@ async function api<T = any>(session: Session | null, method: string, route: stri
   return json as T;
 }
 
-/** Tenant/workspace novos, com o IMOB ativado pelo Marketplace (mesmo caminho do produto). */
+/**
+ * ADR-011: administrador da plataforma EIAH que libera o IMOB para os tenants do teste.
+ * O e-mail precisa estar em EIAH_PLATFORM_ADMIN_EMAILS da API (E2E_ADMIN_EMAIL, padrão abaixo).
+ */
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL ?? "parity-admin@e2e.local";
+let adminSession: Session | null = null;
+
+async function platformAdmin(): Promise<Session> {
+  if (adminSession) return adminSession;
+  const onboarding = await api<{ data: { tenantId: string; workspaceId: string; token: string } }>(null, "POST", "/auth/onboarding", {
+    email: ADMIN_EMAIL,
+    name: "Admin EIAH (E2E)",
+    orgName: `Admin EIAH E2E ${STAMP}`,
+    mode: "provision",
+  }).catch((error: unknown) => {
+    throw new Error(`administrador EIAH do E2E (${ADMIN_EMAIL}) não pôde ser criado; use um banco novo ou outro E2E_ADMIN_EMAIL: ${String(error)}`);
+  });
+  adminSession = { tenantId: onboarding.data.tenantId, workspaceId: onboarding.data.workspaceId, token: onboarding.data.token };
+  return adminSession;
+}
+
+/** O cliente pede a liberação e o administrador EIAH aprova (ADR-011), pela API do produto. */
+async function approveImobForTenant(session: Session, orgName: string) {
+  await api(session, "POST", "/vertical-access/request", { vertical: "IMOB" });
+  const admin = await platformAdmin();
+  const queue = await api<{ data: { items: Array<{ id: string; tenantName: string; status: string }> } }>(admin, "GET", "/admin/vertical-approvals");
+  const item = queue.data.items.find((entry) => entry.tenantName === orgName && entry.status === "aguardando_humano");
+  if (!item) throw new Error(`pedido de liberação de ${orgName} não apareceu na fila do administrador`);
+  await api(admin, "POST", `/admin/vertical-approvals/${item.id}/decision`, { decision: "aprovar", note: "E2E de paridade" });
+}
+
+/** Tenant/workspace novos, liberados pela EIAH; com `activateImob`, o IMOB é ativado pelo Marketplace. */
 async function provisionSession(label: string, activateImob: boolean): Promise<Session> {
+  const orgName = `Paridade ${label} ${STAMP}`;
   const onboarding = await api<{ data: { tenantId: string; workspaceId: string; token: string } }>(null, "POST", "/auth/onboarding", {
     email: `parity-${label}-${STAMP}@e2e.local`,
     name: `Paridade ${label}`,
-    orgName: `Paridade ${label} ${STAMP}`,
+    orgName,
     mode: "provision",
   });
   const session = { tenantId: onboarding.data.tenantId, workspaceId: onboarding.data.workspaceId, token: onboarding.data.token };
+  await approveImobForTenant(session, orgName);
   if (activateImob) {
     await api(session, "POST", "/marketplace/installations/activate", { product: "IMOB" });
     // A interface guarda os produtos instalados no navegador (como depois da ativação pelo Marketplace).

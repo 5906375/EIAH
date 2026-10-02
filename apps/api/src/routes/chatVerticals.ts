@@ -10,7 +10,13 @@ import {
 } from "../services/chat/workspaceVerticalRegistry";
 import { VERTICAL_CAPABILITY_MODES } from "../types/chatVerticalHandoffV2Contract";
 import type { PrismaClient } from "@repo/db";
-import { activateProductInstallation, canUserActivateProducts, PRODUCT_ACTIVATION_DENIED } from "../services/products/productActivation";
+import {
+  activateProductInstallation,
+  canUserActivateProducts,
+  PRODUCT_ACTIVATION_DENIED,
+  verticalNotApprovedError,
+} from "../services/products/productActivation";
+import { readVerticalAccess } from "../services/products/verticalAccessApproval";
 
 /**
  * Front door (`/app/chat`): verticais ativas do workspace, handoff para uma
@@ -107,6 +113,21 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
     return res.json({ ok: true, data: { status: "already_active", verticalId: parsed.data.verticalId, registryVersion: composed.registry.registryVersion } });
   }
   const request = req as TenantAwareRequest;
+  // ADR-011 §2.4: primeiro a liberação da EIAH, depois a permissão de ativar.
+  const access = request.authContext && request.prisma
+    ? await readVerticalAccess({
+        prisma: request.prisma as unknown as PrismaClient,
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        vertical: ACTIVATABLE_VERTICALS[parsed.data.verticalId],
+      })
+    : null;
+  if (access?.status !== "aprovado") {
+    return res.json({
+      ok: true,
+      data: { status: "approval_required", verticalId: parsed.data.verticalId, approval: verticalNotApprovedError(access?.status) },
+    });
+  }
   const allowedToActivate = request.authContext && request.prisma
     ? await canUserActivateProducts({
         prisma: request.prisma as unknown as PrismaClient,
@@ -167,6 +188,9 @@ chatVerticalsRouter.post("/chat/vertical-activation/confirm", async (req, res) =
     userId: request.authContext.userId ?? null,
     product: ACTIVATABLE_VERTICALS[parsed.data.verticalId],
   });
+  if (!activation.ok && activation.code === "VERTICAL_NOT_APPROVED") {
+    return res.status(403).json({ ok: false, error: verticalNotApprovedError(activation.accessStatus) });
+  }
   if (!activation.ok) {
     if (activation.code === "WORKSPACE_AGENT_PROVISIONING_FAILED") {
       request.logger?.error({ error: activation.error, verticalId: parsed.data.verticalId }, "chat.vertical_activation_provisioning_failed");
