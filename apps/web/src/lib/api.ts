@@ -2661,6 +2661,8 @@ export type ImobPresentationFormField = {
   options?: ImobPresentationFormFieldOption[];
   /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
   optionsSource?: "imob_properties" | "imob_owners";
+  /** Nome a procurar entre as opções carregadas (só seleciona quando há um único cadastro compatível). */
+  preferredOptionLabel?: string;
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -2675,6 +2677,8 @@ export type ImobPresentationForm = {
   action: string;
   label: string;
   description?: string;
+  /** Linhas informativas exibidas sob a descrição (ex.: imóveis do proprietário escolhido). */
+  infoLines?: string[];
   subjectId?: string;
   /**
    * Formulário estruturado: o cliente envia os campos direto para a rota
@@ -2687,7 +2691,9 @@ export type ImobPresentationForm = {
     | "imob.properties.update"
     | "imob.rentals.create"
     | "imob.tokenization.interest"
-    | "imob.documents.link";
+    | "imob.documents.link"
+    | "imob.contracts.rental"
+    | "imob.contracts.sale";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3496,6 +3502,120 @@ export async function apiLinkImobDocuments(body: ImobDocumentLinkRequest) {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export type ImobRentalContractPrefill = {
+  propertyId: string;
+  leaseCaseId: string;
+  landlordName: string | null;
+  landlordDocument: string | null;
+  tenantName: string | null;
+  tenantDocument: string | null;
+  propertyAddress: string | null;
+  purpose: "residencial" | "comercial" | null;
+  registryNumber: string | null;
+  startDate: string | null;
+  durationMonths: number | null;
+  rentCents: number | null;
+  dueDay: number | null;
+  adjustmentIndex: string | null;
+  adjustmentMonth: number | null;
+  guaranteeType: string | null;
+  guaranteeAmountCents: number | null;
+  guarantorName: string | null;
+  iptu: string | null;
+  condominio: string | null;
+  condominioAmountCents: number | null;
+  forumCity: string | null;
+  gaps: string[];
+};
+
+export type ImobRentalContractGenerateRequest = {
+  propertyId: string;
+  landlordName: string;
+  landlordDocument: string;
+  tenantName: string;
+  tenantDocument: string;
+  propertyAddress: string;
+  purpose: "residencial" | "comercial";
+  registryNumber?: string | null;
+  startDate: string;
+  durationMonths: number;
+  rentCents: number;
+  dueDay: number;
+  adjustmentIndex?: "IPCA" | "IGP-M" | "INPC" | null;
+  adjustmentMonth?: number | null;
+  guaranteeType: "caucao" | "fiador" | "seguro_fianca" | "titulo_capitalizacao" | "nenhuma" | "desconhecido";
+  guaranteeAmountCents?: number | null;
+  guarantorName?: string | null;
+  iptu: string;
+  condominio: string;
+  condominioAmountCents?: number | null;
+  forumCity: string;
+  extraClause?: string | null;
+};
+
+export async function apiGetImobRentalContractPrefill(propertyId: string) {
+  const qs = new URLSearchParams({ propertyId });
+  return http<{ ok: true; data: ImobRentalContractPrefill }>(`/imob/contracts/rental/prefill?${qs.toString()}`, { method: "GET" });
+}
+
+export async function apiGenerateImobRentalContract(body: ImobRentalContractGenerateRequest) {
+  return http<{
+    ok: true;
+    data: { leaseCaseId: string; propertyId: string; contractText: string; endDate: string; writtenBack: string[]; fileName: string };
+  }>(`/imob/contracts/rental/generate`, { method: "POST", body: JSON.stringify(body) });
+}
+
+export type ImobSaleContractPrefill = {
+  propertyId: string;
+  saleCaseId: string | null;
+  sellerName: string | null;
+  sellerDocument: string | null;
+  buyerName: string | null;
+  buyerDocument: string | null;
+  propertyAddress: string | null;
+  registryNumber: string | null;
+  priceCents: number | null;
+  downPaymentCents: number | null;
+  paymentMethod: string | null;
+  balanceTerms: string | null;
+  deedDeadlineDays: number | null;
+  possession: string | null;
+  commissionPercent: number | null;
+  forumCity: string | null;
+  gaps: string[];
+};
+
+export type ImobSaleContractGenerateRequest = {
+  propertyId: string;
+  sellerName: string;
+  sellerDocument: string;
+  buyerName: string;
+  buyerDocument: string;
+  propertyAddress: string;
+  registryNumber?: string | null;
+  priceCents: number;
+  downPaymentCents?: number | null;
+  paymentMethod: "a_vista" | "financiamento" | "parcelado";
+  balanceTerms?: string | null;
+  deedDeadlineDays: number;
+  possession: "assinatura" | "escritura" | "quitacao";
+  commissionPercent?: number | null;
+  forumCity: string;
+  extraClause?: string | null;
+};
+
+export async function apiGetImobSaleContractPrefill(propertyId: string) {
+  const qs = new URLSearchParams({ propertyId });
+  return http<{ ok: true; data: ImobSaleContractPrefill }>(`/imob/contracts/sale/prefill?${qs.toString()}`, { method: "GET" });
+}
+
+export async function apiGenerateImobSaleContract(body: ImobSaleContractGenerateRequest) {
+  return http<{
+    ok: true;
+    data: { saleCaseId: string; propertyId: string; contractText: string; writtenBack: string[]; fileName: string };
+  }>(`/imob/contracts/sale/generate`, { method: "POST", body: JSON.stringify(body) });
 }
 
 export async function apiListImobCases(params?: { flow?: string; status?: string; workspaceId?: string }) {

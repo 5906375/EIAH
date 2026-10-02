@@ -103,6 +103,5 @@ export function buildOwnerCreateConfirmationText(data: { name: string; personTyp
   return [
     `Proprietário cadastrado: ${data.name}${doc}.`,
     pending.length ? `Pendências: ${pending.join(", ")}.` : "Sem pendências.",
-    "Ele já aparece na lista do \"Cadastrar imóvel\".",
   ].join(" ");
 }

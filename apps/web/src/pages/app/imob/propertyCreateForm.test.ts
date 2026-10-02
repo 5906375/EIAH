@@ -6,6 +6,7 @@ import {
   buildPropertyCreateRequest,
   findDuplicateProperty,
   isPropertyCreateForm,
+  matchOptionByName,
 } from "./propertyCreateForm";
 
 const base = { propertyType: "kitnet", goal: "locacao", city: "Itapema", address: "Rua A, 100" };
@@ -83,7 +84,7 @@ test("duplicate check matches address, city and unit label ignoring case and acc
 test("confirmation text and owner options", () => {
   assert.equal(
     buildPropertyCreateConfirmationText({ label: "Kitnet 01 — Rua A, 100 · Itapema", ownerName: "Fulano", occupancyLabel: "Locado" }),
-    'Imóvel cadastrado: Kitnet 01 — Rua A, 100 · Itapema. Proprietário: Fulano. Situação: Locado. Para registrar o contrato, peça "cadastrar locatário".',
+    'Imóvel cadastrado: Kitnet 01 — Rua A, 100 · Itapema. Proprietário: Fulano. Situação: Locado.',
   );
   assert.deepEqual(
     buildImobOwnerOptions([
@@ -93,4 +94,18 @@ test("confirmation text and owner options", () => {
     ]),
     [{ value: "o1", label: "Ana" }, { value: "o2", label: "Bruno" }],
   );
+});
+
+test("matchOptionByName acha o proprietário citado no chat só quando há um único compatível", () => {
+  const options = [
+    { value: "o1", label: "Carlos Alberto Merlo" },
+    { value: "o2", label: "Carla Souza" },
+    { value: "o3", label: "Maria da Silva" },
+    { value: "o4", label: "Maria Souza" },
+  ];
+  assert.equal(matchOptionByName(options, "carlos a merlo"), "o1");
+  assert.equal(matchOptionByName(options, "Maria Silva"), "o3");
+  assert.equal(matchOptionByName(options, "maria"), null);
+  assert.equal(matchOptionByName(options, "João"), null);
+  assert.equal(matchOptionByName(options, ""), null);
 });

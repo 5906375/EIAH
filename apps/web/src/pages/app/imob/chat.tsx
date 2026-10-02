@@ -17,6 +17,10 @@ import {
   apiSearchImobKnowledge,
   apiUploadDocuments,
   apiLinkImobDocuments,
+  apiGetImobRentalContractPrefill,
+  apiGenerateImobRentalContract,
+  apiGetImobSaleContractPrefill,
+  apiGenerateImobSaleContract,
   apiResolveImobAttachment,
   apiApplyImobAttachmentCrmSuggestion,
   apiFetchUploadBlob,
@@ -66,6 +70,7 @@ import {
   buildPropertyCreateRequest,
   findDuplicateProperty,
   isPropertyCreateForm,
+  matchOptionByName,
 } from "./propertyCreateForm";
 import {
   buildOwnerCreateConfirmationText,
@@ -77,6 +82,7 @@ import {
   buildOwnerEditForm,
   buildOwnerUpdateConfirmationText,
   buildOwnerUpdateRequest,
+  buildOwnerPropertiesSummary,
   isOwnerEditForm,
   ownerToEditValues,
 } from "./ownerEditForm";
@@ -102,7 +108,29 @@ import {
   isDocumentAttachForm,
   validateDocumentAttachValues,
   type DocumentAttachSubject,
+  INLINE_DOCUMENT_CATEGORY_FIELD,
+  buildInlineDocumentsNote,
+  inlineDocumentSubjectFor,
+  validateInlineDocuments,
+  withInlineDocumentFields,
 } from "./documentAttachForm";
+import {
+  buildContractPdfFile,
+  buildRentalContractConfirmationText,
+  buildRentalContractForm,
+  buildRentalContractRequest,
+  describeRentalContractError,
+  isRentalContractForm,
+  rentalContractPrefillToValues,
+} from "./rentalContractForm";
+import {
+  buildSaleContractConfirmationText,
+  buildSaleContractForm,
+  buildSaleContractRequest,
+  describeSaleContractError,
+  isSaleContractForm,
+  saleContractPrefillToValues,
+} from "./saleContractForm";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import {
   IMOB_ACTION_MENUS,
@@ -125,6 +153,7 @@ import {
   getContractTypeLabel,
   getStepQuestionText,
   getContractTypePrompt,
+  getContractChoiceOptions,
   isAffirmativeAnswer,
   isNegativeAnswer,
   moveInterviewToEditableField,
@@ -260,6 +289,11 @@ type ChatMessage = {
   dispatchBadge?: string | null;
   /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
   slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
+  /**
+   * Respostas clicáveis (só na última mensagem): enviam o texto que o usuário
+   * digitaria (`reply`) ou abrem o próximo formulário já existente (`onSelect`).
+   */
+  quickReplies?: Array<{ id: string; label: string; reply?: string; onSelect?: () => void }>;
 };
 
 type AssistantMessageDedupeInput = {
@@ -1211,6 +1245,12 @@ function isOpenAttachmentMenuAction(action?: CardCta["action"]): action is "open
 
 function isSendSuggestedMessageAction(action?: CardCta["action"]): action is "send_suggested_message" {
   return action === "send_suggested_message";
+}
+
+/** Botões de escolha da entrevista de contrato (tipo, opções, sim/não), abaixo da própria pergunta. */
+function withContractInterviewChoices(message: ChatMessage, state: ContractInterviewState | null): ChatMessage {
+  const options = getContractChoiceOptions(state);
+  return options.length === 0 ? message : { ...message, quickReplies: options };
 }
 
 function isInlineChoicePresentation(message: ChatMessage) {
@@ -2220,6 +2260,10 @@ const ImobChatPage: React.FC = () => {
   const ownerArchiveConfirmedRef = React.useRef<Record<string, string>>({});
   /** Arquivos escolhidos nos formulários "Anexar documento", por mensagem. */
   const formFilesRef = React.useRef<Record<string, File[]>>({});
+  /** Valores a aplicar no próximo formulário com este destino (ex.: proprietário recém-cadastrado no "Cadastrar imóvel"). */
+  const pendingFormPrefillRef = React.useRef<{ submitTarget: string; values: Record<string, string> } | null>(null);
+  /** Imóvel cuja locação, ao ser salva, abre direto o contrato. */
+  const contractAfterLeaseRef = React.useRef<string | null>(null);
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
@@ -2307,12 +2351,22 @@ const ImobChatPage: React.FC = () => {
     []
   );
 
-  const appendMessage = React.useCallback((message: ChatMessage) => {
+  const appendMessage = React.useCallback((incoming: ChatMessage) => {
+    // Formulários de cadastro e contrato ganham "Anexar documentos" no próprio formulário.
+    const message = incoming.form ? { ...incoming, form: withInlineDocumentFields(incoming.form) } : incoming;
+    const pendingPrefill = pendingFormPrefillRef.current;
+    if (pendingPrefill && message.form?.submitTarget === pendingPrefill.submitTarget) {
+      pendingFormPrefillRef.current = null;
+      setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...(prev[message.id] ?? {}), ...pendingPrefill.values } }));
+    }
     setMessages((prev) => [
       // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
-      ...(message.form
+      // Quando o usuário segue para outro pedido, o formulário estruturado aberto também fecha.
+      ...(message.form || message.role === "user"
         ? prev.map((item) =>
-            item.form ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` } : item,
+            item.form && (message.form || item.form.submitTarget)
+              ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` }
+              : item,
           )
         : prev),
       message,
@@ -2417,9 +2471,16 @@ const ImobChatPage: React.FC = () => {
         }
       }
 
+      // Nome citado no chat ("… no proprietário Carlos"): escolhe o cadastro existente quando há um só compatível.
+      for (const field of form.fields) {
+        if (!field.preferredOptionLabel || normalizeImobFormValue(values[field.name] ?? "")) continue;
+        const matched = matchOptionByName(resolveFormFieldOptions(field), field.preferredOptionLabel);
+        if (matched) values[field.name] = matched;
+      }
+
       return values;
     },
-    [formValuesByMessageId, messages],
+    [formValuesByMessageId, messages, resolveFormFieldOptions],
   );
 
   const updateMessageById = React.useCallback((messageId: string, patch: Partial<ChatMessage>) => {
@@ -3379,7 +3440,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: state },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
       const editedState = editResult.state;
@@ -3399,7 +3460,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: editedState },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3418,12 +3479,12 @@ const ImobChatPage: React.FC = () => {
       setContractInterviewState(restarted);
       setSingleEditFieldId(null);
       await persistInterviewState(activeConversationId, restarted);
-      const restartMessage: ChatMessage = {
+      const restartMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: `Sem problemas. Vamos revisar desde o inicio deste tipo de contrato.\n\n${getStepQuestionText(restarted) ?? "Qual o primeiro dado?"}`,
         thread: threadForInterview,
-      };
+      }, restarted);
       appendMessage(restartMessage);
       void persistMessage(restartMessage, {
         conversationId: activeConversationId,
@@ -3431,7 +3492,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: restarted },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3585,7 +3646,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: recoveryState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
       }
     },
     [appendMessage, persistInterviewState, persistMessage]
@@ -3809,12 +3870,12 @@ const ImobChatPage: React.FC = () => {
         setContractInterviewState(initialInterview);
         setSingleEditFieldId(null);
         await persistInterviewState(activeConversationId, initialInterview);
-        const kickoffMessage: ChatMessage = {
+        const kickoffMessage: ChatMessage = withContractInterviewChoices({
           id: makeId("assistant"),
           role: "assistant",
           text: getContractTypePrompt(),
           thread: threadForInterview,
-        };
+        }, initialInterview);
         appendMessage(kickoffMessage);
         void persistMessage(kickoffMessage, {
           conversationId: activeConversationId,
@@ -3822,7 +3883,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: initialInterview },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3853,7 +3914,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: contractInterviewState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3885,7 +3946,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         if (editApplied.ok) {
           setSingleEditFieldId(null);
         }
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3896,12 +3957,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       };
       setContractInterviewState(nextInterviewState);
       await persistInterviewState(activeConversationId, nextInterviewState);
-      const interviewMessage: ChatMessage = {
+      const interviewMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: result.message ?? "Resumo atualizado. Responda: sim, nao ou editar <campo>.",
         thread: threadForInterview,
-      };
+      }, nextInterviewState);
       appendMessage(interviewMessage);
       void persistMessage(interviewMessage, {
         conversationId: activeConversationId,
@@ -3909,7 +3970,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         action: "realestate.create_contract",
         metadata: { contractInterview: nextInterviewState },
       });
-      setState("awaiting_user_action");
+      // Entrevista em coleta: a resposta é digitada (ou clicada), então a caixa de texto fica livre.
+      setState(nextInterviewState.status === "review" ? "awaiting_user_action" : "idle");
       return;
     }
 
@@ -4674,11 +4736,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
 
     if (formSubmittingRef.current.has(message.id)) return;
-    const built = buildRentalLeaseRequest(resolveFormValuesForMessage(message));
+    const leaseValues = resolveFormValuesForMessage(message);
+    const built = buildRentalLeaseRequest(leaseValues);
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
     }
+    if (!checkInlineDocuments(message, leaseValues)) return;
 
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
@@ -4686,14 +4750,22 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       const response = await apiCreateImobRentalLease(built.request);
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
+      const leasePropertyId = response.data.propertyId;
+      const documentsNote = await attachInlineDocuments(message, leaseValues, leasePropertyId);
+      const openContractNow = contractAfterLeaseRef.current === leasePropertyId;
+      contractAfterLeaseRef.current = null;
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildRentalLeaseConfirmationText(response.data),
+        text: [buildRentalLeaseConfirmationText(response.data), documentsNote].filter(Boolean).join(" "),
         thread: message.thread,
+        ...(openContractNow
+          ? {}
+          : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+      if (openContractNow) openRentalContractForm(leasePropertyId);
     } catch (error) {
       const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
       const code = body?.error?.code;
@@ -4731,6 +4803,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
     const built = buildPropertyCreateRequest(values);
+    if (built.ok && !checkInlineDocuments(message, values)) return;
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -4752,17 +4825,33 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
       const created = response.data;
+      const documentsNote = await attachInlineDocuments(message, values, created.id);
       const [label] = buildImobPropertyOptions([created]).map((option) => option.label);
       const occupancy = typeof values.occupancy === "string" ? values.occupancy.trim() : "";
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildPropertyCreateConfirmationText({
-          label: label ?? created.id,
-          ownerName: created.owner?.name ?? null,
-          occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
-        }),
+        text: [
+          buildPropertyCreateConfirmationText({
+            label: label ?? created.id,
+            ownerName: created.owner?.name ?? null,
+            occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
+          }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
         thread: message.thread,
+        // Próximo passo segue a finalidade escolhida no formulário (temporada ainda não tem contrato);
+        // com proprietário, dá para seguir cadastrando a carteira dele.
+        quickReplies: [
+          ...(built.request.goal === "locacao"
+            ? [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }]
+            : built.request.goal === "venda"
+              ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(created.id) }]
+              : []),
+          ...(created.ownerId && created.owner?.name
+            ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created.owner.name}`, onSelect: () => startPropertyCreateFor(created.ownerId as string) }]
+            : []),
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "property.registered", action: "imob.properties.create" });
@@ -4796,7 +4885,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
 
     if (formSubmittingRef.current.has(message.id)) return;
-    const built = buildOwnerCreateRequest(resolveFormValuesForMessage(message));
+    const ownerValues = resolveFormValuesForMessage(message);
+    const built = buildOwnerCreateRequest(ownerValues);
+    if (built.ok && !checkInlineDocuments(message, ownerValues)) return;
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -4823,18 +4914,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         return;
       }
       const response = await apiCreateImobOwner(built.request);
+      const documentsNote = await attachInlineDocuments(message, ownerValues, response.data.id);
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildOwnerCreateConfirmationText({
-          name: response.data.name,
-          personType: built.request.personType,
-          document: built.request.document,
-          pendingItems: built.request.pendingItems,
-        }),
+        text: [
+          buildOwnerCreateConfirmationText({
+            name: response.data.name,
+            personType: built.request.personType,
+            document: built.request.document,
+            pendingItems: built.request.pendingItems,
+          }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
         thread: message.thread,
+        quickReplies: [
+          { id: "next-property", label: "Cadastrar imóvel deste proprietário", onSelect: () => startPropertyCreateFor(response.data.id) },
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "owner.registered", action: "imob.owners.create" });
@@ -4888,13 +4986,262 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       openTokenizationForm(item.form.slice("tokenization_".length) as TokenizationSubject);
     } else if (item.form.startsWith("documents_")) {
       openDocumentAttachForm(item.form.slice("documents_".length) as DocumentAttachSubject);
+    } else if (item.form === "contract_rental") {
+      openRentalContractForm();
+    } else if (item.form === "contract_sale") {
+      openSaleContractForm();
     }
   }
 
-  function openDocumentAttachForm(subject: DocumentAttachSubject) {
+  /** Arquivos escolhidos no próprio formulário: valida antes de salvar (com arquivo, o tipo é obrigatório). */
+  function checkInlineDocuments(message: ChatMessage, values: Record<string, string>) {
+    const errors = validateInlineDocuments(values, (formFilesRef.current[message.id] ?? []).length);
+    if (Object.keys(errors).length === 0) return true;
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    return false;
+  }
+
+  /** Depois de salvar: sobe e vincula os arquivos ao cadastro criado. Nunca desfaz o cadastro. */
+  async function attachInlineDocuments(message: ChatMessage, values: Record<string, string>, subjectId: string) {
+    const files = formFilesRef.current[message.id] ?? [];
+    delete formFilesRef.current[message.id];
+    const subject = inlineDocumentSubjectFor(message.form);
+    if (files.length === 0 || !subject) return null;
+    try {
+      const formData = new FormData();
+      for (const file of files) formData.append("files", file);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const linked = await apiLinkImobDocuments({
+        subjectType: subject === "owners" ? "owner" : subject === "properties" ? "property" : "rental",
+        subjectId,
+        category: (values[INLINE_DOCUMENT_CATEGORY_FIELD] ?? "").trim(),
+        documentIds: (uploaded.data ?? []).map((item) => item.id),
+      });
+      return buildInlineDocumentsNote({ linked: linked.data.added.length, contractPendingCleared: linked.data.contractPendingCleared });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      return buildInlineDocumentsNote({
+        linked: 0,
+        failed: status === 403 ? "sem permissão" : status === 413 ? "arquivo acima de 5 MB" : status === 415 ? "tipo de arquivo não aceito" : `erro ${status || "de rede"}`,
+      });
+    }
+  }
+
+  function openRentalContractForm(propertyId?: string) {
     const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
     appendMessage({
-      id: makeId("assistant"),
+      id: messageId,
+      role: "assistant",
+      text: "Escolha o imóvel da locação: os dados do contrato vêm dos cadastros.",
+      form: buildRentalContractForm(),
+      thread: { id: threadId, label: "Contrato", status: "active" },
+    });
+    if (propertyId) void prefillRentalContractForm(messageId, propertyId);
+  }
+
+  function openSaleContractForm(propertyId?: string) {
+    const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: "Escolha o imóvel: o vendedor e o imóvel vêm dos cadastros.",
+      form: buildSaleContractForm(),
+      thread: { id: threadId, label: "Contrato", status: "active" },
+    });
+    if (propertyId) void prefillSaleContractForm(messageId, propertyId);
+  }
+
+  async function prefillSaleContractForm(messageId: string, propertyId: string) {
+    if (!propertyId) return;
+    try {
+      const response = await apiGetImobSaleContractPrefill(propertyId);
+      setFormValuesByMessageId((prev) => ({
+        ...prev,
+        [messageId]: { ...(prev[messageId] ?? {}), propertyId, ...saleContractPrefillToValues(response.data) },
+      }));
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [messageId]: (response.data.gaps.length > 0 ? { _form: response.data.gaps.join(" ") } : {}) as Record<string, string>,
+      }));
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: { _form: describeSaleContractError(status, body?.error?.code) } }));
+    }
+  }
+
+  async function handleSaleContractFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeId("assistant"), role: "assistant", text: "Nenhum contrato foi gerado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const built = buildSaleContractRequest(values);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+    if (!checkInlineDocuments(message, values)) return;
+    const propertyLabel = (imobPropertyOptions ?? []).find((option) => option.value === built.request.propertyId)?.label ?? "selecionado";
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const generated = await apiGenerateImobSaleContract(built.request);
+      const pdf = await buildContractPdfFile(generated.data.contractText, generated.data.fileName);
+      const formData = new FormData();
+      formData.append("files", pdf);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const linked = await apiLinkImobDocuments({
+        subjectType: "property",
+        subjectId: built.request.propertyId,
+        category: "minuta_compra_venda",
+        documentIds: (uploaded.data ?? []).map((item) => item.id),
+      });
+      const documentsNote = await attachInlineDocuments(message, values, built.request.propertyId);
+      updateMessageById(message.id, { form: undefined });
+      const added = linked.data.added;
+      // Só o imóvel e o nome do arquivo vão para a conversa; partes e valores ficam no PDF anexado.
+      const done: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: [
+          buildSaleContractConfirmationText({ propertyLabel, fileName: generated.data.fileName, writtenBack: generated.data.writtenBack }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
+        thread: message.thread,
+        ...(added.length > 0
+          ? {
+              card: {
+                type: "evidence" as const,
+                title: "Minuta de compra e venda",
+                thread: message.thread,
+                lines: added.map((item) => `${item.fileName} | ${formatUploadSize(item.sizeBytes)}`),
+                ctas: added.slice(0, 1).map((item) => ({ id: `doc-${item.documentId}`, label: item.fileName, kind: "neutral" as const, href: item.url })),
+              },
+            }
+          : {}),
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: "contract.sale.draft", action: "imob.contracts.sale" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: describeSaleContractError(status, body?.error?.code) } }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  /** Próximo passo com o formulário que já existe, já ligado ao cadastro anterior. */
+  function startPropertyCreateFor(ownerId: string) {
+    pendingFormPrefillRef.current = { submitTarget: "imob.properties.create", values: { ownerId } };
+    void sendMessageText("cadastrar imóvel", { displayText: "Cadastrar imóvel" });
+  }
+
+  /** "Gerar contrato de locação" a partir do imóvel: primeiro os dados da locação, depois o contrato abre sozinho. */
+  function startRentalContractFor(propertyId: string) {
+    pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
+    contractAfterLeaseRef.current = propertyId;
+    void sendMessageText("cadastrar locatário", { displayText: "Gerar contrato de locação" });
+  }
+
+  async function prefillRentalContractForm(messageId: string, propertyId: string) {
+    if (!propertyId) return;
+    try {
+      const response = await apiGetImobRentalContractPrefill(propertyId);
+      setFormValuesByMessageId((prev) => ({
+        ...prev,
+        [messageId]: { ...(prev[messageId] ?? {}), propertyId, ...rentalContractPrefillToValues(response.data) },
+      }));
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [messageId]: (response.data.gaps.length > 0 ? { _form: response.data.gaps.join(" ") } : {}) as Record<string, string>,
+      }));
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: { _form: describeRentalContractError(status, body?.error?.code) } }));
+    }
+  }
+
+  async function handleRentalContractFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeId("assistant"), role: "assistant", text: "Nenhum contrato foi gerado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const built = buildRentalContractRequest(values);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+    if (!checkInlineDocuments(message, values)) return;
+    const propertyLabel = (imobPropertyOptions ?? []).find((option) => option.value === built.request.propertyId)?.label ?? "o imóvel";
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const generated = await apiGenerateImobRentalContract(built.request);
+      const pdf = await buildContractPdfFile(generated.data.contractText, generated.data.fileName);
+      const formData = new FormData();
+      formData.append("files", pdf);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const linked = await apiLinkImobDocuments({
+        subjectType: "rental",
+        subjectId: built.request.propertyId,
+        category: "minuta_contrato",
+        documentIds: (uploaded.data ?? []).map((item) => item.id),
+      });
+      const documentsNote = await attachInlineDocuments(message, values, built.request.propertyId);
+      updateMessageById(message.id, { form: undefined });
+      const added = linked.data.added;
+      // Só o nome do arquivo e o imóvel vão para a conversa; o texto do contrato fica no PDF anexado.
+      const done: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: [
+          buildRentalContractConfirmationText({ propertyLabel, fileName: generated.data.fileName, writtenBack: generated.data.writtenBack }),
+          documentsNote,
+        ].filter(Boolean).join(" "),
+        thread: message.thread,
+        ...(added.length > 0
+          ? {
+              card: {
+                type: "evidence" as const,
+                title: "Minuta de contrato",
+                thread: message.thread,
+                lines: added.map((item) => `${item.fileName} | ${formatUploadSize(item.sizeBytes)}`),
+                ctas: added.slice(0, 1).map((item) => ({ id: `doc-${item.documentId}`, label: item.fileName, kind: "neutral" as const, href: item.url })),
+              },
+            }
+          : {}),
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: "contract.rental.draft", action: "imob.contracts.rental" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: describeRentalContractError(status, body?.error?.code) } }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  function openDocumentAttachForm(subject: DocumentAttachSubject, subjectId?: string) {
+    const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
+    if (subjectId) {
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { [subject === "owners" ? "ownerId" : "propertyId"]: subjectId } }));
+    }
+    appendMessage({
+      id: messageId,
       role: "assistant",
       text: subject === "rentals"
         ? "Escolha o imóvel da locação, o tipo de documento e o arquivo."
@@ -5121,6 +5468,28 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (!owner) return;
     setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { ...(prev[messageId] ?? {}), ...ownerToEditValues(owner) } }));
     setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: {} }));
+    void showOwnerProperties(messageId, ownerId);
+  }
+
+  /** Mostra no formulário os imóveis já ligados ao proprietário e oferece cadastrar mais um. */
+  async function showOwnerProperties(messageId: string, ownerId: string) {
+    try {
+      const response = await apiListImobProperties();
+      const items = response.data.items ?? [];
+      propertyRecordsRef.current = items;
+      const infoLines = buildOwnerPropertiesSummary(ownerId, items, (item) => buildImobPropertyOptions([item])[0]?.label ?? item.id);
+      setMessages((prev) => prev.map((item) => (
+        item.id === messageId && item.form
+          ? {
+              ...item,
+              form: { ...item.form, infoLines },
+              quickReplies: [{ id: "owner-add-property", label: "Cadastrar imóvel deste proprietário", onSelect: () => startPropertyCreateFor(ownerId) }],
+            }
+          : item
+      )));
+    } catch {
+      // Sem a lista, o formulário de edição continua funcionando normalmente.
+    }
   }
 
   async function handleOwnerEditFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
@@ -5224,6 +5593,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (isDocumentAttachForm(form)) {
       await handleDocumentAttachFormAction(message, actionId);
+      return;
+    }
+    if (isRentalContractForm(form)) {
+      await handleRentalContractFormAction(message, actionId);
+      return;
+    }
+    if (isSaleContractForm(form)) {
+      await handleSaleContractFormAction(message, actionId);
       return;
     }
     if (actionId === "archive") return;
@@ -6455,6 +6832,27 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             </div>
                           ) : null}
 
+                          {!isUser && isLastMessage && message.quickReplies?.length && !shouldAnimateAssistantText ? (
+                            <div className="mt-2 flex flex-col items-start gap-1.5" role="group" aria-label="Opções">
+                              {message.quickReplies.map((option) => (
+                                <button
+                                  key={`${message.id}-reply-${option.id}`}
+                                  type="button"
+                                  disabled={state === "typing" || state === "executing"}
+                                  onClick={() => {
+                                    if (option.onSelect) {
+                                      option.onSelect();
+                                      return;
+                                    }
+                                    if (option.reply) void sendMessageText(option.reply, { displayText: option.label.replace(/^\d+\)\s*/, "") });
+                                  }}
+                                  className="min-w-[180px] rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-left text-[13px] normal-case tracking-normal text-foreground transition hover:border-accent/60 hover:bg-accent/20 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
                           {!shouldDelayForm && message.form ? (() => {
                             const formValues = resolveFormValuesForMessage(message);
                             const formErrors = formErrorsByMessageId[message.id] ?? {};
@@ -6468,6 +6866,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
                                     {formDescription ? (
                                       <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{formDescription}</p>
+                                    ) : null}
+                                    {message.form.infoLines?.length ? (
+                                      <div className="mt-1.5 rounded-lg border border-white/10 bg-black/20 px-2.5 py-2 text-[11.5px] normal-case tracking-normal text-foreground/90">
+                                        <p className="font-medium">{message.form.infoLines[0]}</p>
+                                        {message.form.infoLines.length > 1 ? (
+                                          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">
+                                            {message.form.infoLines.slice(1).map((line, index) => (
+                                              <li key={`${message.id}-info-${index}`}>{line}</li>
+                                            ))}
+                                          </ul>
+                                        ) : null}
+                                      </div>
                                     ) : null}
                                   </div>
                                 ) : null}
@@ -6499,6 +6909,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                               }
                                               if (isPropertyEditForm(message.form) && message.form?.action === "update" && field.name === "propertyId") {
                                                 prefillPropertyEditForm(message.id, event.target.value);
+                                              }
+                                              if (isRentalContractForm(message.form) && field.name === "propertyId") {
+                                                void prefillRentalContractForm(message.id, event.target.value);
+                                              }
+                                              if (isSaleContractForm(message.form) && field.name === "propertyId") {
+                                                void prefillSaleContractForm(message.id, event.target.value);
                                               }
                                             }}
                                             className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
@@ -6556,6 +6972,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       </div>
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
+                                      ) : null}
+                                      {field.preferredOptionLabel && !formValues[field.name] && field.optionsSource
+                                        && (field.optionsSource === "imob_properties" ? imobPropertyOptions !== null : imobOwnerOptions !== null) ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-amber-200">
+                                          {`Não achei um cadastro único para "${field.preferredOptionLabel}". Escolha na lista${field.optionsSource === "imob_owners" ? " ou cadastre em Proprietários → Cadastrar proprietário" : ""}.`}
+                                        </p>
                                       ) : null}
                                       {field.required && field.optionsSource && resolveFormFieldOptions(field).length === 0
                                         && (field.optionsSource === "imob_properties" ? imobPropertyOptions !== null : imobOwnerOptions !== null) ? (

@@ -169,6 +169,12 @@ const IMOB_PROPERTY_TYPE_LABELS: Record<string, string> = {
   casa: "Casa",
 };
 
+/** "terreno_residencial" → "Terreno residencial" (tipos sem rótulo próprio). */
+function humanizePropertyType(value: string) {
+  const text = value.replace(/_/g, " ").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : value;
+}
+
 /** Opções do campo "Imóvel locado": imóveis não arquivados do workspace, rotulados sem dados pessoais. */
 export function buildImobPropertyOptions(
   items: Array<{ id: string; status?: string | null; propertyType?: string | null; address?: string | null; city?: string | null; metadata?: unknown }>,
@@ -178,7 +184,7 @@ export function buildImobPropertyOptions(
     .map((item) => {
       const metadata = item.metadata && typeof item.metadata === "object" ? (item.metadata as Record<string, unknown>) : {};
       const ref = typeof metadata.externalPropertyRef === "string" ? metadata.externalPropertyRef.trim() : "";
-      const typeLabel = item.propertyType ? IMOB_PROPERTY_TYPE_LABELS[item.propertyType] ?? item.propertyType : "Imóvel";
+      const typeLabel = item.propertyType ? IMOB_PROPERTY_TYPE_LABELS[item.propertyType] ?? humanizePropertyType(item.propertyType) : "Imóvel";
       const place = [item.address, item.city].filter(Boolean).join(" · ");
       const label = [ref || typeLabel, place].filter(Boolean).join(" — ") || item.id;
       return { value: item.id, label };

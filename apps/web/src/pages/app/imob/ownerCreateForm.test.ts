@@ -78,6 +78,6 @@ test("duplicates: strong identifiers block, same name only asks for confirmation
 
 test("confirmation never shows the full document", () => {
   const text = buildOwnerCreateConfirmationText({ name: "Fulano", personType: "person", document: "52998224725", pendingItems: ["contato"] });
-  assert.equal(text, 'Proprietário cadastrado: Fulano (CPF final 25). Pendências: telefone ou e-mail. Ele já aparece na lista do "Cadastrar imóvel".');
+  assert.equal(text, 'Proprietário cadastrado: Fulano (CPF final 25). Pendências: telefone ou e-mail.');
   assert.doesNotMatch(text, /52998224725/);
 });

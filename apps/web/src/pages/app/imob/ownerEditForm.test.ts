@@ -57,3 +57,20 @@ test("owner must be selected; confirmation hides the document", () => {
   assert.equal(none.ok, false);
   assert.equal(buildOwnerUpdateConfirmationText({ name: "Carlos", personType: "person", document: "11144477735" }), "Proprietário atualizado: Carlos (CPF final 35).");
 });
+
+test("lista os imóveis do proprietário, sem arquivados e com a situação", async () => {
+  const { buildOwnerPropertiesSummary } = await import("./ownerEditForm");
+  const label = (item: { id: string }) => `Imóvel ${item.id}`;
+  const properties = [
+    { id: "b", ownerId: "o1", status: "ready", metadata: { occupancy: { value: "locado" } } },
+    { id: "a", ownerId: "o1", status: "ready", metadata: { occupancy: { value: "vago" } } },
+    { id: "c", ownerId: "o1", status: "archived", metadata: {} },
+    { id: "d", ownerId: "o2", status: "ready", metadata: {} },
+  ];
+  assert.deepEqual(buildOwnerPropertiesSummary("o1", properties, label), [
+    "2 imóveis deste proprietário:",
+    "Imóvel a — Vago",
+    "Imóvel b — Locado",
+  ]);
+  assert.deepEqual(buildOwnerPropertiesSummary("o3", properties, label), ["Nenhum imóvel ligado a este proprietário ainda."]);
+});

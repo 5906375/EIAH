@@ -300,3 +300,20 @@ test("IMOB conversation state infers cpf document type during document collectio
   assert.deepEqual((result as any)?.documentDraft?.documentTypes, ["cpf"]);
   assert.equal((result as any)?.documentDraft?.deliveryChannel, "upload");
 });
+
+test("'cadastrar mais imóveis no proprietário X' abre cadastro de imóvel com o nome do proprietário, sem criar proprietário", async () => {
+  const { extractOwnerNameHint } = await import("../services/imob/imobConversationState");
+  const slots = { goal: null, city: null, region: null, neighborhood: null, budgetMax: null, bedrooms: null, bathrooms: null, propertyType: null } as any;
+  const result = createNextImobOperationalState(null, "capture", "quero cadastrar mais imóveis no proprietário carlos a merlo", slots);
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.ownerNameHint, "carlos a merlo");
+
+  const kitnets = createNextImobOperationalState(null, "capture", "cadastrar 2 kitnets da proprietária Maria Souza", slots);
+  assert.equal(kitnets?.flow, "property.create");
+
+  const owner = createNextImobOperationalState(null, "capture", "cadastrar proprietário João Silva", slots);
+  assert.equal(owner?.flow, "owner.create");
+
+  assert.equal(extractOwnerNameHint("imóvel do proprietário Carlos Alberto Merlo, em Itapema"), "Carlos Alberto Merlo");
+  assert.equal(extractOwnerNameHint("cadastrar imóvel"), null);
+});

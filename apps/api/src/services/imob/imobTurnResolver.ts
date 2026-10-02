@@ -1142,6 +1142,7 @@ function buildPropertyCreateForm(propertyDraft?: {
   cep?: string | null;
   city?: string | null;
   address?: string | null;
+  ownerNameHint?: string | null;
 } | null) {
   const normalizedPropertyType = normalizeImobCrmPropertyType(propertyDraft?.propertyType ?? null) ?? null;
   const normalizedGoal = normalizeImobCrmPropertyGoal(propertyDraft?.goal ?? null) ?? null;
@@ -1202,6 +1203,7 @@ function buildPropertyCreateForm(propertyDraft?: {
         value: "",
         optionsSource: "imob_owners" as const,
         options: [],
+        ...(propertyDraft?.ownerNameHint ? { preferredOptionLabel: propertyDraft.ownerNameHint } : {}),
       },
       {
         name: "occupancy",

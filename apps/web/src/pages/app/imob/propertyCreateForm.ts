@@ -118,7 +118,6 @@ export function buildPropertyCreateConfirmationText(data: { label: string; owner
     `Imóvel cadastrado: ${data.label}.`,
     data.ownerName ? `Proprietário: ${data.ownerName}.` : "Sem proprietário vinculado.",
     data.occupancyLabel ? `Situação: ${data.occupancyLabel}.` : null,
-    data.occupancyLabel === "Locado" ? "Para registrar o contrato, peça \"cadastrar locatário\"." : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -132,4 +131,25 @@ export function buildImobOwnerOptions(items: Array<{ id: string; name: string; s
     .filter((item) => item.status !== "archived")
     .map((item) => ({ value: item.id, label: item.name }))
     .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
+
+const NAME_STOPWORDS = new Set(["de", "da", "do", "das", "dos", "e"]);
+const nameTokens = (value: string) =>
+  value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").split(/[^a-z0-9]+/).filter((token) => token && !NAME_STOPWORDS.has(token));
+
+/**
+ * Nome citado no chat → cadastro existente. Cada parte do nome digitado tem
+ * de iniciar uma parte do nome cadastrado ("carlos a merlo" ↔ "Carlos Alberto
+ * Merlo"). Só devolve quando há um único compatível (ou um idêntico); nunca cria.
+ */
+export function matchOptionByName(options: ImobPresentationFormFieldOption[], hint: string | null | undefined) {
+  const wanted = nameTokens(hint ?? "");
+  if (wanted.length === 0) return null;
+  const candidates = options.filter((option) => {
+    const have = nameTokens(option.label);
+    return wanted.every((token) => have.some((part) => part.startsWith(token)));
+  });
+  if (candidates.length === 1) return candidates[0].value;
+  const exact = candidates.filter((option) => nameTokens(option.label).join(" ") === wanted.join(" "));
+  return exact.length === 1 ? exact[0].value : null;
 }
