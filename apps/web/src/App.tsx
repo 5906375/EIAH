@@ -4,6 +4,7 @@ import AgentsPage from "./pages/app/agents";
 import BillingPage from "./pages/app/billing";
 import RunsPage from "./pages/app/runs";
 import MarketplacePage from "./pages/app/marketplace";
+import VerticalApprovalsPage from "./pages/app/admin/aprovacoes";
 import ImobMarketplacePage from "./pages/app/marketplace/imob";
 import ImobChatPage from "./pages/app/imob/chat";
 import ImobDashboardPage from "./pages/app/imob/dashboard";
@@ -368,6 +369,16 @@ function AppRoutes() {
       <Route
         path="/app/economy"
         element={<Navigate to="/app/billing?tab=economy" replace />}
+      />
+      <Route
+        path="/app/admin/aprovacoes"
+        element={
+          <Layout>
+            <RequireAuth>
+              <VerticalApprovalsPage />
+            </RequireAuth>
+          </Layout>
+        }
       />
       <Route
         path="/app/marketplace"

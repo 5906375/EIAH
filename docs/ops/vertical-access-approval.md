@@ -12,8 +12,10 @@ Fluxo:
    (`POST /api/vertical-access/request`).
 2. O agente verificador calcula o score por regras fixas e versionadas (`vertical-access-score.v1`). Ele só lê e nunca
    aprova. O pedido fica `aguardando_humano`.
-3. Um administrador da plataforma EIAH decide pela fila (`GET /api/admin/vertical-approvals`,
-   `POST /api/admin/vertical-approvals/:id/decision`). A observação é obrigatória ao recusar e ao aprovar contra a
+3. Um administrador da plataforma EIAH decide pela tela **`/app/admin/aprovacoes`**, que usa
+   `GET /api/admin/vertical-approvals` e `POST /api/admin/vertical-approvals/:id/decision`.
+   A tela tem três abas: "Aguardando decisão", "Aprovados na migração" e "Histórico". Cada pedido mostra o score e os
+   motivos. Para quem não é administrador, a tela responde "Página não encontrada". A observação é obrigatória ao recusar e ao aprovar contra a
    recomendação do agente.
 4. Com a liberação aprovada, o cliente ativa como antes.
 
@@ -54,7 +56,6 @@ Se a leitura dos sinais falhar, o pedido vai ao humano marcado "sem score" e nun
 ## Fora deste PR (ADR-011 §3)
 
 - Pedido e decisão pela conversa, avisos e revogação nos três modos: PR 2c.
-- Tela `/app/admin/aprovacoes`: PR 2b-2. Até lá, a fila está disponível pela API.
 - Criação de acessos pelo front door: PR 2d. WhatsApp: PR 2e.
 
 ## Rollback
