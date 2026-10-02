@@ -72,7 +72,7 @@ export function describeVerticalHandoffResult(result: ChatVerticalHandoffResult)
     return {
       // Os formulários do IMOB entram nesta conversa na etapa D da ADR-010; até lá, o caminho é a tela do IMOB.
       content: result.handoff.vertical.id === "imob"
-        ? `Sigo com o ${label} nesta conversa: o acesso foi confirmado neste workspace. Por enquanto, os formulários de cadastro, locação e contrato abrem na tela do IMOB: [Abrir IMOB](/app/imob/chat).`
+        ? `Sigo com o ${label} nesta conversa. Cadastros, locações, documentos e contratos ficam aqui mesmo, na barra Proprietários, Imóveis, Locações e Negócios.`
         : `Sigo com o ${label} nesta conversa: o acesso foi confirmado neste workspace.`,
       quickReplies: [],
       handoff: result,
@@ -145,6 +145,8 @@ type DecisionWithHandoff = {
   verticalHandoffRequest?: VerticalHandoffRequest;
   verticalHandoff?: ChatVerticalHandoffResult;
   verticalActivation?: VerticalActivationSnapshot;
+  /** Pedido original a seguir para a vertical depois do handoff permitido (ex.: abre o formulário pedido). */
+  verticalHandoffForwardInput?: string;
 };
 
 /** Etapa assíncrona do engine: avalia o handoff no servidor e resolve texto e próximos passos. */
@@ -161,6 +163,8 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
     content: presentation.content,
     resolvedQuickReplies: presentation.quickReplies,
     verticalHandoff: presentation.handoff,
+    // Só segue para a vertical quando o servidor permitiu o handoff.
+    verticalHandoffForwardInput: result.ok ? decision.verticalHandoffForwardInput : undefined,
   };
 }
 
@@ -184,4 +188,25 @@ export function attachVerticalHandoffToSnapshot<S extends {
     verticalHandoff: decision.verticalHandoff,
     ...(allowedImob ? { verticalContext: "IMOB" as const } : {}),
   };
+}
+
+/**
+ * A conversa está no IMOB quando a última decisão de vertical registrada foi
+ * um handoff permitido ou uma ativação confirmada. Controla a barra do IMOB
+ * no front door (etapa D).
+ */
+export function isImobActiveInConversation(
+  snapshots: Array<{ verticalHandoff?: ChatVerticalHandoffResult | null; verticalActivation?: VerticalActivationSnapshot | null } | null | undefined>,
+) {
+  for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+    const snapshot = snapshots[index];
+    if (!snapshot) continue;
+    if (snapshot.verticalHandoff) {
+      return snapshot.verticalHandoff.ok && snapshot.verticalHandoff.handoff.vertical.id === "imob";
+    }
+    if (snapshot.verticalActivation && snapshot.verticalActivation.status !== "proposed" && snapshot.verticalActivation.status !== "cancelled") {
+      return snapshot.verticalActivation.status === "activated" || snapshot.verticalActivation.status === "already_active";
+    }
+  }
+  return false;
 }

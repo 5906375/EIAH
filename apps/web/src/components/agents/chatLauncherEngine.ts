@@ -274,6 +274,7 @@ export type LauncherLocalDecision = {
   /** Pedido de handoff para uma vertical, avaliado no servidor antes de exibir. */
   verticalHandoffRequest?: VerticalHandoffRequest;
   verticalHandoff?: ChatVerticalHandoffResult;
+  verticalHandoffForwardInput?: string;
   /** Ativação de vertical pela conversa: proposta, confirmação explícita ou cancelamento (ADR-010, etapa F). */
   verticalActivationRequest?: VerticalActivationRequest;
   verticalActivation?: VerticalActivationSnapshot;
@@ -2085,6 +2086,7 @@ export async function resolveLauncherTurnDecision(params: {
       renderVariant: "handoff",
       persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
       verticalHandoffRequest: { ...IMOB_CRM_HANDOFF_REQUEST },
+      verticalHandoffForwardInput: params.input,
     };
   }
   const localDecision = resolveLauncherLocalDecision({
