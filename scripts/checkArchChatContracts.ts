@@ -150,6 +150,20 @@ const ALLOWED_V1_HANDOFF_SNAPSHOT_FILES = new Set([
 const ALLOWED_V2_PREFLIGHT_CONSUMERS = new Set([
   path.normalize("apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"),
 ]);
+/**
+ * Consumidores operacionais do `chat.vertical_handoff.v2` autorizados pela
+ * ADR-010 (etapas B — registry operacional — e C — handoff no engine do front
+ * door). Lista fechada por arquivo: qualquer outro consumidor continua proibido.
+ * Estes arquivos não entram nos módulos guardados do preflight (podem ler o banco).
+ */
+const ADR010_AUTHORIZED_V2_OPERATIONAL_CONSUMERS = new Set([
+  path.normalize("apps/api/src/services/chat/verticalRegistryComposition.ts"),
+  path.normalize("apps/api/src/routes/chatVerticals.ts"),
+  path.normalize("apps/web/src/lib/api.ts"),
+  path.normalize("apps/web/src/components/agents/verticalHandoffEngine.ts"),
+  path.normalize("apps/web/src/components/agents/chatPresentationSnapshot.ts"),
+  path.normalize("apps/web/src/components/chat/ChatVerticalHandoffCard.tsx"),
+]);
 const GUARDED_V2_PREFLIGHT_MODULES = new Set([
   ...ALLOWED_V2_PREFLIGHT_CONSUMERS,
   path.normalize("apps/api/src/resolvers/chatVerticalImobConfidence.ts"),
@@ -483,6 +497,7 @@ for (const file of operationalSources) {
   }
   if (
     !ALLOWED_V2_PREFLIGHT_CONSUMERS.has(path.normalize(file)) &&
+    !ADR010_AUTHORIZED_V2_OPERATIONAL_CONSUMERS.has(path.normalize(file)) &&
     (content.includes("chat.vertical_handoff.v2") ||
       content.includes("chatVerticalHandoffV2Contract") ||
       content.includes("chatVerticalHandoffV2ShadowSnapshot"))

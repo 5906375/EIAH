@@ -50,6 +50,11 @@ import {
   type MessagePresentationSnapshot,
 } from "@/components/agents/chatPresentationSnapshot";
 import { emitChatRouteTelemetry } from "@/components/agents/chatRouteTelemetry";
+import {
+  attachVerticalHandoffToSnapshot,
+  enrichLauncherDecisionWithVerticalHandoff,
+} from "@/components/agents/verticalHandoffEngine";
+import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -1036,7 +1041,8 @@ export default function ChatAgentLauncher({
       content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithImobRuntimeShadow(
+    const turnDecision = await enrichLauncherDecisionWithVerticalHandoff(
+      await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
         trimmedInput: effectiveInput,
@@ -1061,6 +1067,7 @@ export default function ChatAgentLauncher({
         },
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
+      ),
     );
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
@@ -1073,7 +1080,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = createLauncherPresentationSnapshot({
+      const localSnapshot = attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1093,7 +1100,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      });
+      }), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
@@ -1723,6 +1730,10 @@ export default function ChatAgentLauncher({
                                       })()}
                                     </ReactMarkdown>
                                   </div>
+
+                                  {messageSnapshot?.verticalHandoff ? (
+                                    <ChatVerticalHandoffCard result={messageSnapshot.verticalHandoff} />
+                                  ) : null}
 
                                   {messageRunFinance ? (
                                     <div className="flex flex-wrap gap-2 text-[10px]">

@@ -1,6 +1,7 @@
 import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
+import { resolveImobEntitlements } from "../services/imob/imobEntitlements";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { generateContractPreview } from "../services/contracts/contractGenerator";
 import type { ContractType } from "../services/contracts/types";
@@ -104,10 +105,7 @@ import {
   imobRentalContractGenerateSchema,
   imobSaleContractGenerateSchema,
 } from "./imobCrmSchemas";
-import {
-  resolveImobInstallationStatus,
-  sendImobAccessDenied,
-} from "../services/imob/imobAccessGate";
+import { sendImobAccessDenied } from "../services/imob/imobAccessGate";
 import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
@@ -1343,52 +1341,6 @@ async function upsertImobCaseFromResolvedTurn(params: {
       property: persisted.property ?? null,
       owner: persisted.owner ?? null,
     }),
-  };
-}
-
-async function resolveImobEntitlements(params: {
-  prisma: NonNullable<TenantAwareRequest["prisma"]>;
-  tenantId: string;
-  workspaceId: string;
-}) {
-  const [realEstatePolicies, productInstallations] = await Promise.all([
-    params.prisma.tenantActionPolicy.findMany({
-      where: {
-        tenantId: params.tenantId,
-        OR: [{ workspaceId: params.workspaceId }, { workspaceId: null }],
-        actionName: {
-          in: [
-            "realestate.apply_adjustment",
-            "action.realestate.apply_adjustment",
-            "realestate.register_property",
-            "realestate.create_contract",
-            "realestate.configure_property_rules",
-            "realestate.release_commission",
-            "realestate.search_knowledge_base",
-          ],
-        },
-        allowed: true,
-      },
-      select: { id: true },
-      take: 1,
-    }),
-    params.prisma
-      .$queryRaw<Array<{ product: string; status: string }>>`
-        SELECT product, status
-        FROM tenant_product_installations
-        WHERE tenant_id = ${params.tenantId}
-          AND workspace_id = ${params.workspaceId}
-      `
-      .catch(() => []),
-  ]);
-
-  const installationStatus = resolveImobInstallationStatus(productInstallations);
-  const hasImobInstallation = installationStatus === "active";
-  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0;
-  return {
-    REAL_ESTATE_CORE: realEstateCore,
-    IMOB_INSTALLED: hasImobInstallation,
-    IMOB_INSTALLATION_STATUS: installationStatus,
   };
 }
 

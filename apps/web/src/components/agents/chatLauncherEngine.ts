@@ -9,6 +9,12 @@ import {
   type ImobRuntimeShadowEngineRequest,
   type ImobRuntimeShadowFetchResult,
 } from "@/features/imob/imobRuntimeShadowClient";
+import type { ChatVerticalHandoffResult } from "@/lib/api";
+import {
+  IMOB_CRM_HANDOFF_REQUEST,
+  isImobOperationalRequest,
+  type VerticalHandoffRequest,
+} from "@/components/agents/verticalHandoffEngine";
 import type { RoleProfile } from "@/lib/roles";
 import { PRICING_PLANS, quotePlan } from "@/config/pricing";
 import {
@@ -260,6 +266,9 @@ export type LauncherLocalDecision = {
   };
   agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
   conversationState?: ConversationState | null;
+  /** Pedido de handoff para uma vertical, avaliado no servidor antes de exibir. */
+  verticalHandoffRequest?: VerticalHandoffRequest;
+  verticalHandoff?: ChatVerticalHandoffResult;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2038,6 +2047,20 @@ export async function resolveLauncherTurnDecision(params: {
   });
   if (agentSwitchDecision) {
     return agentSwitchDecision;
+  }
+  // Pedido operacional de IMOB (cadastrar, encerrar, gerar contrato…): handoff na mesma conversa (ADR-010).
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobOperationalRequest(params.input)) {
+    return {
+      kind: "vertical_handoff",
+      shouldCreateRun: false,
+      content: "Verificando o acesso ao IMOB neste workspace.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+      verticalHandoffRequest: { ...IMOB_CRM_HANDOFF_REQUEST },
+    };
   }
   const localDecision = resolveLauncherLocalDecision({
     input: params.input,

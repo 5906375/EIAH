@@ -5550,3 +5550,44 @@ export async function apiCreatePreDuimpContext(
     body: JSON.stringify(request),
   });
 }
+
+/** Front door: verticais do workspace (`vertical.registry.v1`, projeção sem IDs de governança). */
+export type ChatVerticalRegistrySurface = {
+  version: "vertical.registry.v1";
+  registryVersion: string;
+  verticals: Array<{
+    id: string;
+    label: string;
+    status: "enabled" | "disabled";
+    capabilities: Array<{ id: string; allowedModes: Array<"read_only" | "requires_write" | "critical_action"> }>;
+    rolloutStage: "context_only" | "installed_surface" | "operationalized";
+  }>;
+};
+
+/** Front door: handoff para uma vertical na mesma conversa (`chat.vertical_handoff.v2`, projeção da superfície). */
+export type ChatVerticalHandoffSurfaceV2 = {
+  version: "chat.vertical_handoff.v2";
+  handoffId: string;
+  vertical: { id: string; label?: string; registryVersion: string };
+  capability: { id: string; mode: "read_only" | "requires_write" | "critical_action" };
+  presentation: { source: "fixture" | "shadow" | "operational"; variant: "blocked" | "chat_card" | "result_list" | "cockpit_link" };
+  outcome: "allowed" | "blocked" | "preview_only";
+  reasonCode: string;
+};
+
+export type ChatVerticalHandoffResult =
+  | { ok: true; handoff: ChatVerticalHandoffSurfaceV2 }
+  | { ok: false; reasonCode: string };
+
+export async function apiGetChatVerticalRegistry() {
+  return http<{ ok: true; data: ChatVerticalRegistrySurface }>(`/chat/vertical-registry`, { method: "GET" });
+}
+
+export async function apiRequestChatVerticalHandoff(body: {
+  verticalId: string;
+  capabilityId: string;
+  mode: "read_only" | "requires_write" | "critical_action";
+  refs?: { conversationId?: string; threadId?: string };
+}) {
+  return http<{ ok: true; data: ChatVerticalHandoffResult }>(`/chat/vertical-handoff`, { method: "POST", body: JSON.stringify(body) });
+}

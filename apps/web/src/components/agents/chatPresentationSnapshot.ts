@@ -1,3 +1,4 @@
+import type { ChatVerticalHandoffResult } from "@/lib/api";
 import type { Agent } from "@/lib/api";
 import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
 
@@ -8,6 +9,8 @@ export type MessagePresentationSnapshot = {
   compatibilityMode?: "snapshot" | "legacy_conservative";
   quickReplySource?: "backend_payload" | "agent_contract" | "frontend_copy" | "none";
   verticalContext?: "IMOB" | "LEGAL" | null;
+  /** Handoff para vertical na mesma conversa, já avaliado no servidor (chat.vertical_handoff.v2). */
+  verticalHandoff?: ChatVerticalHandoffResult | null;
   proposalDomain?: ProposalDomain | null;
   conversationStage?: ConversationStage | null;
   routeIntent:
