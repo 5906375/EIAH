@@ -22,6 +22,14 @@ Nao ha alteracao no `ChatAgentLauncher`, resolver operacional, API, frontend, Kn
 
 **Atualização 2026-09-30:** a implementação em PRs sequenciais, para todas as verticais e produtos, foi autorizada pela [ADR-010](../adr/ADR-010-unificacao-chat-front-door-verticais.md); o redirect das rotas dedicadas continua bloqueado até decisão própria após paridade comprovada por E2E.
 
+**Atualização 2026-10-02 — ADR-010, etapas B e C:** primeiro produtor e consumidor operacionais.
+
+- `GET /api/chat/vertical-registry` monta o `vertical.registry.v1` do workspace a partir do estado real (instalação do produto, direito de uso, atribuições de agente provisionadas e permissão `imob.chat.use` do usuário) e devolve à superfície uma projeção sem `tenantId`/`workspaceId`.
+- `POST /api/chat/vertical-handoff` preenche a governança no servidor (registry, RBAC, entitlement; policy `not_required`; HITL exigido para `critical_action`) e avalia com `evaluateChatVerticalHandoffV2` (fail-closed). A superfície recebe só `projectChatVerticalHandoffV2ForSurface` ou o `reasonCode` do bloqueio.
+- No `/app/chat`, o engine (`verticalHandoffEngine`) decide o handoff para pedidos operacionais do IMOB (`crm.forms`, `requires_write`) e o launcher apenas renderiza o resultado.
+- `check:arch-chat-contracts` mantém a proibição para qualquer outro consumidor; os autorizados estão listados por arquivo em `ADR010_AUTHORIZED_V2_OPERATIONAL_CONSUMERS`.
+- Continua bloqueado: redirect de `/app/imob/chat`, ativação de vertical pelo chat (etapa F) e formulários do IMOB dentro do `/app/chat` (etapa D).
+
 ## Definition of Done do preflight
 
 - schemas, baselines, exemplos e reason codes versionados e estritos;
