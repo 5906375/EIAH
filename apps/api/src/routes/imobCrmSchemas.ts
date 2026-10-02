@@ -95,6 +95,13 @@ export const imobRentalLeaseCreateSchema = z.object({
   }
 });
 
+export const imobRentalLeaseCloseSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  endedOn: isoDateSchema,
+  reason: z.enum(["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"]),
+  notes: optionalShortString(500),
+});
+
 export const imobCaseEventInputSchema = z.object({
   type: z.string().trim().min(1).max(120),
   actorType: z.string().trim().min(1).max(80),

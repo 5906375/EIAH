@@ -2,8 +2,7 @@
  * Menus da barra do chat IMOB, agrupados por assunto. Cada item ou envia um
  * pedido já conhecido do chat (`prompt`) ou abre um formulário local por ação
  * explícita do usuário (`localForm`) — nenhum item interpreta texto livre.
- * Só entram ações que funcionam hoje; as próximas (histórico, editar/encerrar
- * locação) entram quando existirem. "Tokenização
+ * Só entram ações que funcionam hoje. "Tokenização
  * de ativos" é informativa e só registra interesse (não está disponível).
  */
 
@@ -16,6 +15,9 @@ export type ImobLocalFormKind =
   | "documents_properties"
   | "documents_rentals"
   | "contract_rental"
+  | "rental_edit"
+  | "rental_close"
+  | "rental_history"
   | "contract_sale"
   | "tokenization_owners"
   | "tokenization_properties"
@@ -66,6 +68,9 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     label: "Locações",
     items: [
       { id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" },
+      { id: "rental-edit", label: "Editar locação", kind: "local", form: "rental_edit" },
+      { id: "rental-close", label: "Encerrar locação", kind: "local", form: "rental_close" },
+      { id: "rental-history", label: "Histórico de locações", kind: "local", form: "rental_history" },
       { id: "rental-documents", label: "Anexar documento", kind: "local", form: "documents_rentals" },
       { id: "rental-contract", label: "Gerar contrato", kind: "local", form: "contract_rental" },
       { id: "rental-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_rentals" },

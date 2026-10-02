@@ -3,7 +3,7 @@ import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContract";
 import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
-import { ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
+import { ImobRentalLeaseLifecycleService, ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
 import { ImobDocumentLinkService } from "../services/imob/crm/imobDocumentLinkService";
 import { ImobRentalContractService } from "../services/imob/crm/imobRentalContractService";
 import { ImobSaleContractService } from "../services/imob/crm/imobSaleContractService";
@@ -76,6 +76,7 @@ export type RegisterImobCrmRoutesParams = {
     imobLeadUpdateSchema: SafeParseSchema;
     imobCaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCreateSchema: SafeParseSchema;
+    imobRentalLeaseCloseSchema: SafeParseSchema;
     imobDocumentLinkSchema: SafeParseSchema;
     imobRentalContractGenerateSchema: SafeParseSchema;
     imobSaleContractGenerateSchema: SafeParseSchema;
@@ -1004,6 +1005,84 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     }
 
     return res.status(201).json({ ok: true, data: result.data });
+  });
+
+  /** Acesso comum às rotas de ciclo da locação (editar, encerrar, histórico). */
+  async function rentalLifecycleScope(req: any, res: any, deniedMessage: string) {
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!authContext || !prisma) {
+      res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+      return null;
+    }
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return null;
+    }
+    if (!ensureImobStagePermission(res, workspaceAccess.permissions, "active", deniedMessage)) {
+      return null;
+    }
+    return {
+      service: new ImobRentalLeaseLifecycleService(prisma),
+      scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId ?? null },
+    };
+  }
+
+  const leaseNotFound = (res: any) =>
+    res.status(404).json({ ok: false, error: { code: "RENTAL_LEASE_NOT_FOUND", message: "Nenhuma locação ativa neste imóvel" } });
+
+  router.get("/rentals/active", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode operar locações neste workspace.");
+    if (!ctx) return;
+    const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : "";
+    if (!propertyId) return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", message: "propertyId is required" } });
+    const result = await ctx.service.getActive(ctx.scope, propertyId);
+    if (result.status === "lease_not_found") return leaseNotFound(res);
+    return res.json({ ok: true, data: result.data });
+  });
+
+  router.patch("/rentals/active", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode alterar locações neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobRentalLeaseCreateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await ctx.service.update(ctx.scope, parsed.data);
+    if (result.status === "invalid_document") {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_TENANT_DOCUMENT", message: "CPF do inquilino inválido" } });
+    }
+    if (result.status === "lease_not_found") return leaseNotFound(res);
+    return res.json({ ok: true, data: { ...result.data, unchanged: result.status === "unchanged" } });
+  });
+
+  router.post("/rentals/close", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode encerrar locações neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobRentalLeaseCloseSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await ctx.service.close(ctx.scope, parsed.data);
+    if (result.status === "lease_not_found") return leaseNotFound(res);
+    if (result.status === "ended_before_start") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_BEFORE_START", message: "A saída não pode ser antes do início da locação" } });
+    }
+    if (result.status === "ended_in_future") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_IN_FUTURE", message: "A data de saída não pode ser futura" } });
+    }
+    return res.json({ ok: true, data: result.data });
+  });
+
+  router.get("/rentals/history", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode consultar locações neste workspace.");
+    if (!ctx) return;
+    const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : "";
+    if (!propertyId) return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", message: "propertyId is required" } });
+    const result = await ctx.service.history(ctx.scope, propertyId);
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    return res.json({ ok: true, data: result.data });
   });
 
   router.get("/contracts/rental/prefill", async (req, res) => {
