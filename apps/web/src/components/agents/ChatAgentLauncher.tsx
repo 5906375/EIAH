@@ -55,6 +55,7 @@ import {
   enrichLauncherDecisionWithVerticalHandoff,
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
+import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -1041,7 +1042,7 @@ export default function ChatAgentLauncher({
       content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1068,7 +1069,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    );
+    ));
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;

@@ -3,13 +3,7 @@ import { z } from "zod";
 import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
-import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
-import { provisionWorkspaceActionPolicies } from "../services/workspaceActionPolicyProvisioning";
-import { getProductDefaultActionPolicies } from "@eiah/core/catalog/workspaceActionPolicyProvisioning";
-import {
-  getProductProvisionedAgents,
-  WORKSPACE_AGENT_PROVISIONING_VERSION,
-} from "@eiah/core/catalog/workspaceAgentProvisioning";
+import { activateProductInstallation, ensureTenantProductInstallationTable } from "../services/products/productActivation";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -52,86 +46,6 @@ const MarketplaceActivateInstallationSchema = z.object({
   ),
 });
 
-let tenantProductInstallationTableReady = false;
-
-async function ensureTenantProductInstallationTable(request: TenantAwareRequest) {
-  if (tenantProductInstallationTableReady) return;
-  if (!request.prisma) return;
-
-  await request.prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "tenant_product_installations" (
-      "id" TEXT NOT NULL,
-      "tenant_id" TEXT NOT NULL,
-      "workspace_id" TEXT NOT NULL,
-      "product" TEXT NOT NULL,
-      "status" TEXT NOT NULL DEFAULT 'active',
-      "activated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "activated_by_user_id" TEXT,
-      "metadata" JSONB,
-      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "tenant_product_installations_pkey" PRIMARY KEY ("id")
-    );
-  `);
-
-  await request.prisma.$executeRawUnsafe(`
-    CREATE UNIQUE INDEX IF NOT EXISTS "tenant_product_installations_tenant_workspace_product_key"
-      ON "tenant_product_installations"("tenant_id", "workspace_id", "product");
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS "tenant_product_installations_tenant_status_idx"
-      ON "tenant_product_installations"("tenant_id", "status");
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS "tenant_product_installations_workspace_product_status_idx"
-      ON "tenant_product_installations"("workspace_id", "product", "status");
-  `);
-
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_tenant_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_tenant_id_fkey"
-          FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_workspace_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_workspace_id_fkey"
-          FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_activated_by_user_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_activated_by_user_id_fkey"
-          FOREIGN KEY ("activated_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-
-  tenantProductInstallationTableReady = true;
-}
 
 function normalizeMarketplaceName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -247,7 +161,7 @@ marketplaceRouter.get("/marketplace/installations", async (req, res) => {
     });
   }
 
-  await ensureTenantProductInstallationTable(request);
+  await ensureTenantProductInstallationTable(request.prisma as unknown as PrismaClient);
 
   type InstallationRow = {
     tenantId: string;
@@ -604,67 +518,15 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
-  await ensureTenantProductInstallationTable(request);
-
-  const now = new Date();
-  const activatedByUserId = request.authContext.userId ?? null;
-
-  // ADR-010 (PR A): installation and agent provisioning are atomic; a product
-  // without an approved agent map, or any provisioning failure, fails the activation.
-  const tenantId = request.authContext.tenantId;
-  const workspaceId = request.authContext.workspaceId;
-  try {
-    const productAgents = getProductProvisionedAgents(parsed.data.product);
-    const productActionPolicies = getProductDefaultActionPolicies(parsed.data.product);
-    await request.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`
-        INSERT INTO tenant_product_installations (
-          id,
-          tenant_id,
-          workspace_id,
-          product,
-          status,
-          activated_at,
-          activated_by_user_id,
-          created_at,
-          updated_at
-        )
-        VALUES (
-          ${crypto.randomUUID()},
-          ${tenantId},
-          ${workspaceId},
-          ${parsed.data.product},
-          'active',
-          ${now},
-          ${activatedByUserId},
-          ${now},
-          ${now}
-        )
-        ON CONFLICT (tenant_id, workspace_id, product)
-        DO UPDATE SET
-          status = 'active',
-          activated_at = EXCLUDED.activated_at,
-          activated_by_user_id = EXCLUDED.activated_by_user_id,
-          updated_at = EXCLUDED.updated_at;
-      `;
-      await provisionWorkspaceAgentAssignments({
-        prisma: tx as unknown as PrismaClient,
-        tenantId,
-        workspaceId,
-        agents: productAgents,
-        trigger: `product_activation:${parsed.data.product}`,
-        catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
-      });
-      // ADR-010 (PR A2): grant only the approved default action policies.
-      await provisionWorkspaceActionPolicies({
-        prisma: tx as unknown as PrismaClient,
-        tenantId,
-        workspaceId,
-        actionNames: productActionPolicies,
-      });
-    });
-  } catch (error) {
-    request.logger?.error({ error, product: parsed.data.product }, "marketplace.activation_provisioning_failed");
+  const activation = await activateProductInstallation({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+    product: parsed.data.product,
+  });
+  if (!activation.ok && activation.code === "WORKSPACE_AGENT_PROVISIONING_FAILED") {
+    request.logger?.error({ error: activation.error, product: parsed.data.product }, "marketplace.activation_provisioning_failed");
     return res.status(500).json({
       ok: false,
       error: {
@@ -673,43 +535,13 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
       },
     });
   }
-
-  type InstallationRow = {
-    tenantId: string;
-    workspaceId: string;
-    product: string;
-    status: string;
-    activatedAt: Date;
-    activatedByUserId: string | null;
-  };
-
-  const rows = await request.prisma.$queryRaw<InstallationRow[]>`
-    SELECT
-      tenant_id AS "tenantId",
-      workspace_id AS "workspaceId",
-      product,
-      status,
-      activated_at AS "activatedAt",
-      activated_by_user_id AS "activatedByUserId"
-    FROM tenant_product_installations
-    WHERE tenant_id = ${request.authContext.tenantId}
-      AND workspace_id = ${request.authContext.workspaceId}
-      AND product = ${parsed.data.product}
-    LIMIT 1;
-  `;
-
-  const installation = rows[0];
-  if (!installation) {
+  if (!activation.ok) {
     return res.status(500).json({
       ok: false,
       error: { code: "INSTALLATION_WRITE_FAILED", message: "Unable to persist installation" },
     });
   }
-
-  const releasedRoutes =
-    parsed.data.product === "IMOB"
-      ? ["/app/imob/chat", "/app/imob/properties", "/app/imob/processes", "/app/imob/partners"]
-      : [];
+  const { installation, releasedRoutes } = activation;
 
   return res.json({
     ok: true,

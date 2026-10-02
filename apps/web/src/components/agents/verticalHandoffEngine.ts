@@ -1,4 +1,5 @@
 import { apiRequestChatVerticalHandoff, type ChatVerticalHandoffResult } from "@/lib/api";
+import { ACTIVATION_REQUEST_REPLY, type VerticalActivationSnapshot } from "./verticalActivationEngine";
 
 /**
  * Engine do front door (`/app/chat`) para handoff a uma vertical na mesma
@@ -41,6 +42,23 @@ export const VERTICAL_HANDOFF_CAPABILITY_LABELS: Record<string, string> = {
   "inventory.preview": "Consulta de imóveis",
 };
 
+/** Rótulo legível do bloqueio, para o card (o código técnico fica só no snapshot). */
+export function verticalHandoffBlockLabel(reasonCode: string) {
+  switch (reasonCode) {
+    case "VERTICAL_NOT_REGISTERED":
+      return "não ativo neste workspace";
+    case "VERTICAL_DISABLED":
+    case "VERTICAL_ENTITLEMENT_REQUIRED":
+      return "ativação pendente";
+    case "VERTICAL_SCOPE_DENIED":
+      return "sem permissão para a sua função";
+    case "VERTICAL_HITL_REQUIRED":
+      return "precisa de aprovação humana";
+    default:
+      return "acesso não confirmado";
+  }
+}
+
 export type VerticalHandoffPresentation = {
   content: string;
   quickReplies: string[];
@@ -63,15 +81,15 @@ export function describeVerticalHandoffResult(result: ChatVerticalHandoffResult)
   switch (result.reasonCode) {
     case "VERTICAL_NOT_REGISTERED":
       return {
-        content: "O IMOB ainda não está instalado neste workspace. Depois de ativado, cadastros, locações e contratos acontecem aqui mesmo nesta conversa.",
-        quickReplies: ["Ver opções no Marketplace", "Entender planos com IMOB"],
+        content: "O IMOB ainda não está ativo neste workspace. Posso ativá-lo por aqui mesmo, com a sua confirmação.",
+        quickReplies: [ACTIVATION_REQUEST_REPLY, "Ver opções no Marketplace"],
         handoff: result,
       };
     case "VERTICAL_DISABLED":
     case "VERTICAL_ENTITLEMENT_REQUIRED":
       return {
-        content: "O IMOB está instalado, mas não está ativo para uso neste workspace (instalação, plano ou agentes pendentes). Regularize a ativação para continuar por aqui.",
-        quickReplies: ["Ver opções no Marketplace", "Falar com comercial"],
+        content: "O IMOB está instalado, mas não está pronto para uso neste workspace (instalação, plano ou agentes pendentes). Posso refazer a ativação por aqui, com a sua confirmação.",
+        quickReplies: [ACTIVATION_REQUEST_REPLY, "Ver opções no Marketplace"],
         handoff: result,
       };
     case "VERTICAL_SCOPE_DENIED":
@@ -126,6 +144,7 @@ type DecisionWithHandoff = {
   resolvedQuickReplies?: string[];
   verticalHandoffRequest?: VerticalHandoffRequest;
   verticalHandoff?: ChatVerticalHandoffResult;
+  verticalActivation?: VerticalActivationSnapshot;
 };
 
 /** Etapa assíncrona do engine: avalia o handoff no servidor e resolve texto e próximos passos. */
@@ -146,10 +165,18 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
 }
 
 /** Congela o handoff no snapshot da mensagem; com handoff permitido, a conversa passa a ter contexto da vertical. */
-export function attachVerticalHandoffToSnapshot<S extends { verticalContext?: "IMOB" | "LEGAL" | null; verticalHandoff?: ChatVerticalHandoffResult | null }>(
+export function attachVerticalHandoffToSnapshot<S extends {
+  verticalContext?: "IMOB" | "LEGAL" | null;
+  verticalHandoff?: ChatVerticalHandoffResult | null;
+  verticalActivation?: VerticalActivationSnapshot | null;
+}>(
   snapshot: S,
   decision: DecisionWithHandoff | null,
 ): S {
+  if (decision?.verticalActivation) {
+    const activated = decision.verticalActivation.status === "activated" || decision.verticalActivation.status === "already_active";
+    snapshot = { ...snapshot, verticalActivation: decision.verticalActivation, ...(activated ? { verticalContext: "IMOB" as const } : {}) };
+  }
   if (!decision?.verticalHandoff) return snapshot;
   const allowedImob = decision.verticalHandoff.ok && decision.verticalHandoff.handoff.vertical.id === "imob";
   return {

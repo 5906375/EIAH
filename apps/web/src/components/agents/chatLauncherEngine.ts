@@ -11,6 +11,11 @@ import {
 } from "@/features/imob/imobRuntimeShadowClient";
 import type { ChatVerticalHandoffResult } from "@/lib/api";
 import {
+  resolveVerticalActivationStep,
+  type VerticalActivationRequest,
+  type VerticalActivationSnapshot,
+} from "@/components/agents/verticalActivationEngine";
+import {
   IMOB_CRM_HANDOFF_REQUEST,
   isImobOperationalRequest,
   type VerticalHandoffRequest,
@@ -269,6 +274,9 @@ export type LauncherLocalDecision = {
   /** Pedido de handoff para uma vertical, avaliado no servidor antes de exibir. */
   verticalHandoffRequest?: VerticalHandoffRequest;
   verticalHandoff?: ChatVerticalHandoffResult;
+  /** Ativação de vertical pela conversa: proposta, confirmação explícita ou cancelamento (ADR-010, etapa F). */
+  verticalActivationRequest?: VerticalActivationRequest;
+  verticalActivation?: VerticalActivationSnapshot;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2047,6 +2055,23 @@ export async function resolveLauncherTurnDecision(params: {
   });
   if (agentSwitchDecision) {
     return agentSwitchDecision;
+  }
+  // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
+  const activationStep = params.isUnifiedEiah
+    ? resolveVerticalActivationStep(params.input, params.previousAssistantSnapshot?.verticalActivation)
+    : null;
+  if (activationStep) {
+    return {
+      kind: `vertical_activation_${activationStep.step}`,
+      shouldCreateRun: false,
+      content: "Verificando a ativação do IMOB neste workspace.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_activation", confidenceFloor: 0.8 },
+      verticalActivationRequest: activationStep,
+    };
   }
   // Pedido operacional de IMOB (cadastrar, encerrar, gerar contrato…): handoff na mesma conversa (ADR-010).
   if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobOperationalRequest(params.input)) {

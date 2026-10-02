@@ -28,7 +28,13 @@ Nao ha alteracao no `ChatAgentLauncher`, resolver operacional, API, frontend, Kn
 - `POST /api/chat/vertical-handoff` preenche a governança no servidor (registry, RBAC, entitlement; policy `not_required`; HITL exigido para `critical_action`) e avalia com `evaluateChatVerticalHandoffV2` (fail-closed). A superfície recebe só `projectChatVerticalHandoffV2ForSurface` ou o `reasonCode` do bloqueio.
 - No `/app/chat`, o engine (`verticalHandoffEngine`) decide o handoff para pedidos operacionais do IMOB (`crm.forms`, `requires_write`) e o launcher apenas renderiza o resultado.
 - `check:arch-chat-contracts` mantém a proibição para qualquer outro consumidor; os autorizados estão listados por arquivo em `ADR010_AUTHORIZED_V2_OPERATIONAL_CONSUMERS`.
-- Continua bloqueado: redirect de `/app/imob/chat`, ativação de vertical pelo chat (etapa F) e formulários do IMOB dentro do `/app/chat` (etapa D).
+- Continua bloqueado: redirect de `/app/imob/chat` e formulários do IMOB dentro do `/app/chat` (etapa D).
+
+**Atualização 2026-10-02 — ADR-010, etapa F (ativação pela conversa):**
+
+- `POST /api/chat/vertical-activation/preview` (só leitura) devolve se a vertical já está ativa ou a proposta: efeitos da ativação e a `registryVersion` atual.
+- `POST /api/chat/vertical-activation/confirm` exige `confirmed: true` e a mesma `registryVersion` da proposta; se o estado mudou, responde `409 ACTIVATION_PROPOSAL_STALE` e nada é ativado. A ativação usa o mesmo serviço do Marketplace (`services/products/productActivation.ts`: instalação + agentes + políticas padrão, atômico).
+- No `/app/chat`, o engine (`verticalActivationEngine`) só envia a confirmação quando a resposta do usuário é uma confirmação explícita ("Confirmar ativação do IMOB") logo depois da proposta; "sim" solto, outra mensagem ou "Cancelar ativação" descartam a proposta.
 
 ## Definition of Done do preflight
 
