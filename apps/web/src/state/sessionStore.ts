@@ -76,6 +76,7 @@ type SessionState = {
     resolverVersion: string;
     roleProfile?: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
     landingSurface:
+      | "chat"
       | "runs"
       | "billing"
       | "economy"
@@ -88,6 +89,7 @@ type SessionState = {
     landingPath: string;
     primaryNavigation: Array<{
       surfaceId:
+        | "chat"
         | "runs"
         | "billing"
         | "economy"
@@ -103,6 +105,7 @@ type SessionState = {
     recommendedActions: Array<{
       actionId: string;
       surfaceId:
+        | "chat"
         | "runs"
         | "billing"
         | "economy"

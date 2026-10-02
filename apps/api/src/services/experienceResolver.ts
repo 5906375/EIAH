@@ -90,7 +90,40 @@ function resolveImobLanding(input: ResolverInput) {
   };
 }
 
+/**
+ * ADR-010: o EIAH em /app/chat é a porta de entrada única. Toda sessão começa no front door;
+ * a superfície que antes era a entrada do perfil continua no menu e como ação secundária.
+ */
+export const FRONT_DOOR_PATH = "/app/chat";
+
+function withFrontDoorLanding(experience: ResolvedExperience): ResolvedExperience {
+  const frontDoorAction = buildRecommendedAction({
+    actionId: "open_front_door",
+    surfaceId: "chat",
+    path: FRONT_DOOR_PATH,
+    label: "Conversar com o EIAH",
+    priority: "primary",
+  });
+  return {
+    ...experience,
+    landingSurface: "chat",
+    landingPath: FRONT_DOOR_PATH,
+    primaryNavigation: [
+      buildResolvedNavigationItem({ surfaceId: "chat", path: FRONT_DOOR_PATH, label: "Chat" }),
+      ...experience.primaryNavigation.filter((item) => item.path !== FRONT_DOOR_PATH),
+    ],
+    recommendedActions: [
+      frontDoorAction,
+      ...experience.recommendedActions.map((action) => ({ ...action, priority: "secondary" as const })),
+    ],
+  };
+}
+
 export function resolvePlatformExperience(input: ResolverInput): ResolvedExperience {
+  return withFrontDoorLanding(resolveSurfaceExperience(input));
+}
+
+function resolveSurfaceExperience(input: ResolverInput): ResolvedExperience {
   const roleProfile = resolveRoleProfile(input.roles);
   const imobDomain = input.activeDomain === "imob";
   const imobResolution = imobDomain ? resolveImobLanding(input) : null;
@@ -135,7 +168,7 @@ export function resolvePlatformExperience(input: ResolverInput): ResolvedExperie
     return {
       resolverVersion: "v0",
       roleProfile,
-      landingSurface: imobResolution.landingSurface as "runs" | "marketplace" | "agents" | "billing" | "economy" | "self_service" | "profile" | "imob_chat" | "imob_dashboard",
+      landingSurface: imobResolution.landingSurface as ResolvedExperience["landingSurface"],
       landingPath: imobResolution.landingPath,
       primaryNavigation: imobResolution.primaryNavigation,
       recommendedActions: imobResolution.recommendedActions,

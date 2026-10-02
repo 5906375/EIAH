@@ -4,6 +4,7 @@ import { z } from "zod";
 // Referência: docs/architecture/adr-experience-surface-contract-source-of-truth.md
 
 export const experienceSurfaceIdSchema = z.enum([
+  "chat",
   "runs",
   "billing",
   "economy",
@@ -33,6 +34,7 @@ export type ExperienceSurfaceClass = z.infer<typeof experienceSurfaceClassSchema
 export type ResolvedNavigationItem = z.infer<typeof resolvedNavigationItemSchema>;
 
 const landingSurfaceMap: Record<ExperienceSurfaceId, ExperienceSurfaceId> = {
+  chat: "chat",
   runs: "runs",
   billing: "billing",
   economy: "economy",
