@@ -94,3 +94,19 @@ test("handoff bloqueado por IMOB inativo oferece ativar pela conversa", () => {
   assert.deepEqual(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" }).quickReplies, ["Ativar o IMOB neste workspace", "Ver opções no Marketplace"]);
   assert.deepEqual(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_SCOPE_DENIED" }).quickReplies, [], "sem permissão não oferece ativar");
 });
+
+test("sem permissão de ativar: a conversa explica quem pode e não oferece confirmar", async () => {
+  const notPermitted = await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "preview", verticalId: "imob" } },
+    { preview: async () => ({ ok: true as const, data: { status: "not_permitted" as const, verticalId: "imob" } }), confirm: async () => { throw new Error("não deve confirmar"); } } as never,
+  );
+  assert.match(notPermitted?.content ?? "", /Só o proprietário do tenant/);
+  assert.deepEqual(notPermitted?.resolvedQuickReplies, []);
+  assert.equal(notPermitted?.verticalActivation?.status, "failed");
+
+  const forbidden = await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "confirm", verticalId: "imob", registryVersion: "v" } },
+    { preview: async () => { throw new Error("x"); }, confirm: async () => { throw new ApiError(403, "forbidden", { error: { code: "PRODUCT_ACTIVATION_FORBIDDEN" } }); } } as never,
+  );
+  assert.match(forbidden?.content ?? "", /Só o proprietário do tenant/);
+});

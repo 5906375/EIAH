@@ -140,8 +140,38 @@ function uniqueNormalizedPermissions(values?: string[] | null) {
   return [...unique];
 }
 
+/**
+ * Ativar produtos/verticais no workspace (Marketplace e chat). Por padrão só
+ * o Founder e quem criou o tenant ou o workspace; os demais só quando a
+ * permissão é concedida (convite ou função com a permissão).
+ */
+export const PRODUCT_ACTIVATION_PERMISSION = "products.activate";
+
+/** Permissões que podem ser concedidas a qualquer função, além das padrão dela. */
+const GRANTABLE_PERMISSIONS = new Set([PRODUCT_ACTIVATION_PERMISSION]);
+
+function grantedExtraPermissions(requestedPermissions?: string[] | null) {
+  return (requestedPermissions ?? []).filter((permission) => typeof permission === "string" && GRANTABLE_PERMISSIONS.has(permission.trim()));
+}
+
+export function canActivateProducts(profile: { selectedRoleKey?: string | null; permissions?: string[] | null } | null | undefined) {
+  if (!profile) return false;
+  if (profile.selectedRoleKey && normalizeWorkspaceRoleKey(profile.selectedRoleKey) === "founder") return true;
+  return hasWorkspacePermission(profile.permissions, PRODUCT_ACTIVATION_PERMISSION);
+}
+
 function defaultPermissionsForRole(roleKey: string) {
   const normalized = normalizeWorkspaceRoleKey(roleKey);
+  if (normalized === "founder") {
+    return [
+      "workspace.manage_members",
+      "workspace.manage_roles",
+      "imob.chat.use",
+      "imob.case.review",
+      IMOB_STAGE_WILDCARD_PERMISSION,
+      PRODUCT_ACTIVATION_PERMISSION,
+    ];
+  }
   if (["gestor", "admin", "founder", "desenvolvedor", "developer"].includes(normalized)) {
     return [
       "workspace.manage_members",
@@ -163,12 +193,14 @@ function defaultPermissionsForRole(roleKey: string) {
 function sanitizePermissionsForRole(roleKey: string, requestedPermissions?: string[] | null) {
   const normalized = normalizeWorkspaceRoleKey(roleKey);
   const basePermissions = defaultPermissionsForRole(normalized);
+  const extra = grantedExtraPermissions(requestedPermissions);
   if (["gestor", "admin", "founder", "desenvolvedor", "developer", "corretor"].includes(normalized)) {
-    return uniqueNormalizedPermissions(basePermissions);
+    return uniqueNormalizedPermissions([...basePermissions, ...extra]);
   }
   if (normalized === "assistente") {
     return uniqueNormalizedPermissions([
       ...basePermissions,
+      ...extra,
       ...listNormalizedStagePermissions(requestedPermissions),
     ]);
   }

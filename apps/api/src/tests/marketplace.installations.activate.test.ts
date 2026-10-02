@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
 let request: ReturnType<typeof supertest>;
 
@@ -11,6 +12,9 @@ const tenantId = `tenant-install-${suffix}`;
 const workspaceId = `workspace-install-${suffix}`;
 const userId = `user-install-${suffix}`;
 const apiToken = `tok-install-${suffix}`;
+// Usuário do workspace sem permissão de ativar produtos (Corretor).
+const memberUserId = `user-member-${suffix}`;
+const memberToken = `tok-member-${suffix}`;
 
 before(async () => {
   process.env.NODE_ENV = "test";
@@ -32,6 +36,29 @@ before(async () => {
       revoked: false,
     },
   });
+  // Só o proprietário (Founder) ou quem tem products.activate ativa produtos.
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "founder" });
+  await prismaGlobal.user.create({
+    data: { id: memberUserId, tenantId, email: `${memberUserId}@example.com`, displayName: "Marketplace Member" },
+  });
+  await prismaGlobal.apiToken.create({
+    data: { token: memberToken, tenantId, workspaceId, userId: memberUserId, description: "marketplace-member-test", revoked: false },
+  });
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId: memberUserId, roleKey: "corretor" });
+});
+
+test("POST /api/marketplace/installations/activate recusa quem não é proprietário nem tem permissão de ativar", async () => {
+  const res = await request
+    .post("/api/marketplace/installations/activate")
+    .set("Authorization", `Bearer ${memberToken}`)
+    .send({ product: "IMOB" });
+  assert.equal(res.status, 403);
+  assert.equal(res.body?.error?.code, "PRODUCT_ACTIVATION_FORBIDDEN");
+  const rows = await prismaGlobal.$queryRaw<Array<{ total: bigint }>>`
+    SELECT COUNT(*)::bigint AS total FROM tenant_product_installations
+    WHERE tenant_id = ${tenantId} AND workspace_id = ${workspaceId}
+  `;
+  assert.equal(Number(rows[0]?.total ?? 0), 0, "nada foi instalado");
 });
 
 after(async () => {

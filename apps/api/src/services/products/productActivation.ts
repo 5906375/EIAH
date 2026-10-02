@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
+import { canActivateProducts, readWorkspaceResponsibleProfile } from "../workspaceResponsibility";
 import { provisionWorkspaceAgentAssignments } from "../workspaceAgentProvisioning";
 import { provisionWorkspaceActionPolicies } from "../workspaceActionPolicyProvisioning";
 import { getProductDefaultActionPolicies } from "@eiah/core/catalog/workspaceActionPolicyProvisioning";
@@ -198,3 +199,28 @@ export async function activateProductInstallation(params: {
   if (!installation) return { ok: false, code: "INSTALLATION_WRITE_FAILED" };
   return { ok: true, installation, releasedRoutes: PRODUCT_RELEASED_ROUTES[product] ?? [] };
 }
+
+/**
+ * Quem pode ativar produtos no workspace: Founder ou quem tem
+ * `products.activate`. Sem usuário identificado, nega (fail-closed).
+ */
+export async function canUserActivateProducts(params: {
+  prisma: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  userId: string | null | undefined;
+}) {
+  if (!params.userId) return false;
+  const profile = await readWorkspaceResponsibleProfile({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+  }).catch(() => null);
+  return canActivateProducts(profile);
+}
+
+export const PRODUCT_ACTIVATION_DENIED = {
+  code: "PRODUCT_ACTIVATION_FORBIDDEN",
+  message: "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar verticais neste workspace.",
+} as const;

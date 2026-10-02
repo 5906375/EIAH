@@ -10,7 +10,7 @@ import {
 } from "../services/chat/workspaceVerticalRegistry";
 import { VERTICAL_CAPABILITY_MODES } from "../types/chatVerticalHandoffV2Contract";
 import type { PrismaClient } from "@repo/db";
-import { activateProductInstallation } from "../services/products/productActivation";
+import { activateProductInstallation, canUserActivateProducts, PRODUCT_ACTIVATION_DENIED } from "../services/products/productActivation";
 
 /**
  * Front door (`/app/chat`): verticais ativas do workspace, handoff para uma
@@ -106,6 +106,18 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
   if (vertical?.status === "enabled") {
     return res.json({ ok: true, data: { status: "already_active", verticalId: parsed.data.verticalId, registryVersion: composed.registry.registryVersion } });
   }
+  const request = req as TenantAwareRequest;
+  const allowedToActivate = request.authContext && request.prisma
+    ? await canUserActivateProducts({
+        prisma: request.prisma as unknown as PrismaClient,
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        userId: request.authContext.userId ?? null,
+      })
+    : false;
+  if (!allowedToActivate) {
+    return res.json({ ok: true, data: { status: "not_permitted", verticalId: parsed.data.verticalId } });
+  }
   return res.json({
     ok: true,
     data: {
@@ -132,6 +144,15 @@ chatVerticalsRouter.post("/chat/vertical-activation/confirm", async (req, res) =
   const vertical = composed.registry.verticals.find((entry) => entry.id === parsed.data.verticalId);
   if (vertical?.status === "enabled") {
     return res.json({ ok: true, data: { status: "already_active", verticalId: parsed.data.verticalId, registryVersion: composed.registry.registryVersion } });
+  }
+  const allowedToActivate = await canUserActivateProducts({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+  });
+  if (!allowedToActivate) {
+    return res.status(403).json({ ok: false, error: PRODUCT_ACTIVATION_DENIED });
   }
   if (composed.registry.registryVersion !== parsed.data.registryVersion) {
     return res.status(409).json({

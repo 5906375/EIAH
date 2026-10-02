@@ -69,7 +69,13 @@ export type VerticalActivationPresentation = {
   activation: VerticalActivationSnapshot;
 };
 
+const NOT_PERMITTED_TEXT =
+  "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar o IMOB neste workspace. Peça ao proprietário para ativar ou para conceder a permissão (Perfil → Gerir funções).";
+
 export function describeActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
+  if (preview.status === "not_permitted") {
+    return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
+  }
   if (preview.status === "already_active") {
     return {
       content: "O IMOB já está ativo neste workspace. Pode pedir, por exemplo, para cadastrar um imóvel.",
@@ -106,6 +112,9 @@ export function describeActivationConfirmation(result: ChatVerticalActivationCon
 
 export function describeActivationFailure(error: unknown): VerticalActivationPresentation {
   const code = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined)?.error?.code : undefined;
+  if (code === "PRODUCT_ACTIVATION_FORBIDDEN") {
+    return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
+  }
   return {
     content: code === "ACTIVATION_PROPOSAL_STALE"
       ? "O estado do workspace mudou desde a proposta, então nada foi ativado. Peça a ativação de novo para ver a proposta atualizada."
