@@ -2,7 +2,8 @@ import crypto from "node:crypto";
 import { prismaGlobal } from "@repo/db";
 
 const DEFAULT_WORKSPACE_ROLE_LABELS = ["Founder", "Admin", "Gestor", "Desenvolvedor", "Corretor", "Assistente"] as const;
-const DEFAULT_INVITATION_EXPIRY_DAYS = 14;
+// ADR-011 §2.7: todo convite (link para criar a senha) vale 72 horas e uma única vez.
+export const DEFAULT_INVITATION_EXPIRY_HOURS = 72;
 const IMOB_STAGE_PERMISSION_PREFIX = "imob.stage.";
 const IMOB_STAGE_WILDCARD_PERMISSION = `${IMOB_STAGE_PERMISSION_PREFIX}*`;
 
@@ -159,6 +160,27 @@ export function canActivateProducts(profile: { selectedRoleKey?: string | null; 
   if (profile.selectedRoleKey && normalizeWorkspaceRoleKey(profile.selectedRoleKey) === "founder") return true;
   return hasWorkspacePermission(profile.permissions, PRODUCT_ACTIVATION_PERMISSION);
 }
+
+/**
+ * ADR-011 §2.7: ninguém dá o que não tem. Quem não pode ativar produtos não concede nem retira
+ * products.activate: para essa pessoa, a permissão fica como estava antes (`previous`).
+ */
+export function governProductActivationGrant(params: {
+  actorCanActivate: boolean;
+  requested: string[];
+  previous?: string[] | null;
+}) {
+  if (params.actorCanActivate) return params.requested;
+  const withoutGrant = params.requested.filter((permission) => permission !== PRODUCT_ACTIVATION_PERMISSION);
+  return hasWorkspacePermission(params.previous, PRODUCT_ACTIVATION_PERMISSION)
+    ? [...withoutGrant, PRODUCT_ACTIVATION_PERMISSION]
+    : withoutGrant;
+}
+
+export const PRODUCT_ACTIVATION_GRANT_DENIED = {
+  code: "PRODUCT_ACTIVATION_GRANT_FORBIDDEN",
+  message: "Só quem pode ativar produtos pode conceder a permissão de ativar produtos (products.activate).",
+} as const;
 
 function defaultPermissionsForRole(roleKey: string) {
   const normalized = normalizeWorkspaceRoleKey(roleKey);
@@ -720,6 +742,36 @@ export async function readWorkspaceResponsibleProfile(params: {
   };
 }
 
+async function readActorCanActivateProducts(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}) {
+  const membership = (await readCurrentMembership(params)) as { role_key?: string; permissions?: unknown } | null;
+  return canActivateProducts({ selectedRoleKey: membership?.role_key ?? null, permissions: safeArray(membership?.permissions) });
+}
+
+/** Mantém, em cada função editada por quem não pode ativar, o products.activate como estava no catálogo. */
+async function governRoleLabelsGrant(params: {
+  prisma: any;
+  tenantId: string;
+  workspaceId: string;
+  roleLabels: Array<string | { label: string; permissions?: string[] | null }>;
+}) {
+  const previous = new Map(
+    (await listWorkspaceRoleOptions(params)).map((option) => [option.key, option.defaultPermissions]),
+  );
+  return params.roleLabels.flatMap((raw) => {
+    const sourceLabel = typeof raw === "string" ? raw : raw?.label;
+    if (typeof sourceLabel !== "string" || !sourceLabel.trim()) return [];
+    const label = sourceLabel.trim();
+    const key = normalizeWorkspaceRoleKey(titleCaseLabel(label));
+    const requested = sanitizePermissionsForRole(key, typeof raw === "string" ? undefined : raw.permissions);
+    return [{ label, permissions: governProductActivationGrant({ actorCanActivate: false, requested, previous: previous.get(key) }) }];
+  });
+}
+
 export async function upsertWorkspaceRoleConfig(params: {
   prisma?: any;
   tenantId: string;
@@ -729,22 +781,36 @@ export async function upsertWorkspaceRoleConfig(params: {
   selectedRoleKey?: string | null;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
+  const actorCanActivate = await readActorCanActivateProducts({ ...params, prisma });
+  const roleLabels = params.roleLabels && !actorCanActivate
+    ? await governRoleLabelsGrant({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId, roleLabels: params.roleLabels })
+    : params.roleLabels;
   const options = await ensureWorkspaceRoleCatalog({
     prisma,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
-    roleLabels: params.roleLabels,
+    roleLabels,
   });
   const selectedRoleKey = params.selectedRoleKey ? normalizeWorkspaceRoleKey(params.selectedRoleKey) : null;
   if (selectedRoleKey && options.some((item) => item.key === selectedRoleKey)) {
+    // Founder ativa sempre: escolher essa função para si exige já poder ativar.
+    if (selectedRoleKey === "founder" && !actorCanActivate) {
+      throw Object.assign(new Error(PRODUCT_ACTIVATION_GRANT_DENIED.message), {
+        code: PRODUCT_ACTIVATION_GRANT_DENIED.code,
+        status: 403,
+      });
+    }
     const selectedRole = options.find((item) => item.key === selectedRoleKey) ?? null;
+    const rolePermissions = sanitizePermissionsForRole(selectedRoleKey, selectedRole?.defaultPermissions)
+      .filter((permission) => permission !== PRODUCT_ACTIVATION_PERMISSION);
     await upsertWorkspaceMembership({
       prisma,
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
       userId: params.userId,
       roleKey: selectedRoleKey,
-      permissions: sanitizePermissionsForRole(selectedRoleKey, selectedRole?.defaultPermissions),
+      // Trocar a própria função não dá nem tira products.activate.
+      permissions: actorCanActivate ? [...rolePermissions, PRODUCT_ACTIVATION_PERMISSION] : rolePermissions,
     });
   }
   return { options, selectedRoleKey };
@@ -779,7 +845,7 @@ export async function createWorkspaceInvitation(params: {
   fullName?: string | null;
   roleKey: string;
   permissions?: string[] | null;
-  expiresInDays?: number;
+  expiresInHours?: number;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
@@ -809,8 +875,14 @@ export async function createWorkspaceInvitation(params: {
 
   const token = `wsi_${crypto.randomBytes(18).toString("hex")}`;
   const invitationId = `wsi_${crypto.randomUUID()}`;
-  const expiresAt = new Date(Date.now() + (params.expiresInDays ?? DEFAULT_INVITATION_EXPIRY_DAYS) * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + (params.expiresInHours ?? DEFAULT_INVITATION_EXPIRY_HOURS) * 60 * 60 * 1000);
   const permissions = sanitizePermissionsForRole(normalizedRoleKey, params.permissions?.length ? params.permissions : roleOptions.find((item) => item.key === normalizedRoleKey)?.defaultPermissions);
+  if (hasWorkspacePermission(permissions, PRODUCT_ACTIVATION_PERMISSION) && !canActivateProducts(manager)) {
+    throw Object.assign(new Error(PRODUCT_ACTIVATION_GRANT_DENIED.message), {
+      code: PRODUCT_ACTIVATION_GRANT_DENIED.code,
+      status: 403,
+    });
+  }
 
   await prisma.$executeRaw`
     INSERT INTO eiah_workspace_invitations (
