@@ -185,6 +185,7 @@ const INLINE_DOCUMENT_SUBJECT_BY_TARGET: Record<string, DocumentAttachSubject> =
   "imob.properties.create": "properties",
   "imob.rentals.create": "rentals",
   "imob.contracts.rental": "rentals",
+  "imob.rentals.close": "rentals",
   "imob.contracts.sale": "properties",
 };
 

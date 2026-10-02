@@ -2693,7 +2693,10 @@ export type ImobPresentationForm = {
     | "imob.tokenization.interest"
     | "imob.documents.link"
     | "imob.contracts.rental"
-    | "imob.contracts.sale";
+    | "imob.contracts.sale"
+    | "imob.rentals.update"
+    | "imob.rentals.close"
+    | "imob.rentals.history";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3443,6 +3446,52 @@ export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateReques
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export type ImobRentalCloseReason = "fim_contrato" | "rescisao_locatario" | "rescisao_locador" | "inadimplencia" | "venda_imovel" | "outro";
+
+export type ImobActiveRentalLease = {
+  caseId: string;
+  values: ImobRentalLeaseCreateRequest & { notes?: string | null };
+  pendingItems: string[];
+};
+
+export type ImobRentalHistoryItem = {
+  caseId: string;
+  status: "active" | "closed";
+  tenantName: string | null;
+  tenantDocumentMasked: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  endedOn: string | null;
+  closeReason: ImobRentalCloseReason | null;
+  rentCents: number | null;
+  documents: Array<{ documentId: string; category: string; fileName: string; url: string | null }>;
+  registeredAt: string;
+};
+
+export async function apiGetImobActiveRentalLease(propertyId: string) {
+  const qs = new URLSearchParams({ propertyId });
+  return http<{ ok: true; data: ImobActiveRentalLease }>(`/imob/rentals/active?${qs.toString()}`, { method: "GET" });
+}
+
+export async function apiUpdateImobRentalLease(body: ImobRentalLeaseCreateRequest) {
+  return http<{
+    ok: true;
+    data: { caseId: string; changed: string[]; pendingItems: string[]; tenantDocumentMasked?: string | null; unchanged: boolean };
+  }>(`/imob/rentals/active`, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export async function apiCloseImobRentalLease(body: { propertyId: string; endedOn: string; reason: ImobRentalCloseReason; notes?: string | null }) {
+  return http<{ ok: true; data: { caseId: string; endedOn: string; reason: ImobRentalCloseReason } }>(`/imob/rentals/close`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetImobRentalHistory(propertyId: string) {
+  const qs = new URLSearchParams({ propertyId });
+  return http<{ ok: true; data: { propertyId: string; items: ImobRentalHistoryItem[] } }>(`/imob/rentals/history?${qs.toString()}`, { method: "GET" });
 }
 
 export async function apiListImobProperties() {

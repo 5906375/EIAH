@@ -18,6 +18,10 @@ import {
   apiUploadDocuments,
   apiLinkImobDocuments,
   apiGetImobRentalContractPrefill,
+  apiGetImobActiveRentalLease,
+  apiUpdateImobRentalLease,
+  apiCloseImobRentalLease,
+  apiGetImobRentalHistory,
   apiGenerateImobRentalContract,
   apiGetImobSaleContractPrefill,
   apiGenerateImobSaleContract,
@@ -124,6 +128,22 @@ import {
   rentalContractPrefillToValues,
 } from "./rentalContractForm";
 import {
+  activeLeaseToFormValues,
+  buildRentalCloseConfirmationText,
+  buildRentalCloseForm,
+  buildRentalCloseRequest,
+  buildRentalEditConfirmationText,
+  buildRentalEditForm,
+  buildRentalEditRequest,
+  buildRentalHistoryForm,
+  buildRentalHistoryLines,
+  buildRentalHistoryText,
+  describeRentalLifecycleError,
+  isRentalCloseForm,
+  isRentalEditForm,
+  isRentalHistoryForm,
+} from "./rentalLifecycleForms";
+import {
   buildSaleContractConfirmationText,
   buildSaleContractForm,
   buildSaleContractRequest,
@@ -224,6 +244,8 @@ type CardCta = {
 
 type MessageCard = {
   type: CardType;
+  /** Rótulo do selo quando o padrão do tipo não descreve o card (ex.: histórico). */
+  chip?: string;
   title: string;
   lines: string[];
   compactConfirm?: boolean;
@@ -4990,6 +5012,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       openRentalContractForm();
     } else if (item.form === "contract_sale") {
       openSaleContractForm();
+    } else if (item.form === "rental_edit" || item.form === "rental_close" || item.form === "rental_history") {
+      openRentalLifecycleForm(item.form);
     }
   }
 
@@ -5038,6 +5062,182 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       thread: { id: threadId, label: "Contrato", status: "active" },
     });
     if (propertyId) void prefillRentalContractForm(messageId, propertyId);
+  }
+
+  function openRentalLifecycleForm(kind: "rental_edit" | "rental_close" | "rental_history", propertyId?: string) {
+    const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
+    const form = kind === "rental_edit"
+      ? buildRentalEditForm()
+      : kind === "rental_close"
+        ? withInlineDocumentFields(buildRentalCloseForm())
+        : buildRentalHistoryForm();
+    if (kind === "rental_close") {
+      const now = new Date();
+      const today = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { endedOn: today, ...(propertyId ? { propertyId } : {}) } }));
+    } else if (propertyId) {
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { propertyId } }));
+    }
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: kind === "rental_edit"
+        ? "Escolha o imóvel da locação que você quer corrigir."
+        : kind === "rental_close"
+          ? "Escolha o imóvel da locação que terminou."
+          : "Escolha o imóvel para ver o histórico de locações.",
+      form,
+      thread: { id: threadId, label: "Locação", status: "active" },
+    });
+    if (kind === "rental_edit" && propertyId) void prefillRentalEditForm(messageId, propertyId);
+  }
+
+  async function prefillRentalEditForm(messageId: string, propertyId: string) {
+    if (!propertyId) return;
+    try {
+      const response = await apiGetImobActiveRentalLease(propertyId);
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { propertyId, ...activeLeaseToFormValues(response.data) } }));
+      setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: {} }));
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { propertyId } }));
+      setFormErrorsByMessageId((prev) => ({ ...prev, [messageId]: { _form: describeRentalLifecycleError(status, body?.error?.code, "alterar") } }));
+    }
+  }
+
+  function closeLifecycleForm(message: ChatMessage, text: string) {
+    delete formFilesRef.current[message.id];
+    updateMessageById(message.id, { form: undefined });
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    appendMessage({ id: makeId("assistant"), role: "assistant", text, thread: message.thread });
+  }
+
+  async function handleRentalLifecycleFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    const form = message.form;
+    if (actionId !== "submit") {
+      closeLifecycleForm(message, isRentalHistoryForm(form) ? "Histórico fechado." : "Nada foi alterado.");
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const propertyId = (values.propertyId ?? "").trim();
+    const propertyLabel = (imobPropertyOptions ?? []).find((option) => option.value === propertyId)?.label ?? "o imóvel";
+    const fail = (error: unknown, verb: "alterar" | "encerrar" | "consultar") => {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: describeRentalLifecycleError(status, body?.error?.code, verb) } }));
+    };
+
+    if (isRentalHistoryForm(form)) {
+      if (!propertyId) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { propertyId: "Selecione o imóvel." } }));
+        return;
+      }
+      formSubmittingRef.current.add(message.id);
+      try {
+        const response = await apiGetImobRentalHistory(propertyId);
+        const items = response.data.items;
+        updateMessageById(message.id, { form: undefined });
+        const documentCtas = items.flatMap((item) => item.documents)
+          .filter((doc) => doc.url)
+          .slice(0, 8)
+          .map((doc) => ({ id: `doc-${doc.documentId}`, label: doc.fileName, kind: "neutral" as const, href: doc.url as string }));
+        const hasActive = items.some((item) => item.status === "active");
+        // Histórico só na tela: nomes de inquilinos não são gravados na conversa.
+        appendMessage({
+          id: makeId("assistant"),
+          role: "assistant",
+          text: buildRentalHistoryText(propertyLabel, items),
+          thread: message.thread,
+          ...(items.length > 0
+            ? { card: { type: "evidence" as const, chip: "Histórico", title: "Locações do imóvel", thread: message.thread, lines: buildRentalHistoryLines(items), ctas: documentCtas } }
+            : {}),
+          quickReplies: hasActive
+            ? [
+                { id: "history-edit", label: "Editar locação", onSelect: () => openRentalLifecycleForm("rental_edit", propertyId) },
+                { id: "history-close", label: "Encerrar locação", onSelect: () => openRentalLifecycleForm("rental_close", propertyId) },
+              ]
+            : [{ id: "history-new", label: "Cadastrar nova locação", onSelect: () => startRentalLeaseFor(propertyId) }],
+        });
+      } catch (error) {
+        fail(error, "consultar");
+      } finally {
+        formSubmittingRef.current.delete(message.id);
+      }
+      return;
+    }
+
+    if (isRentalEditForm(form)) {
+      const built = buildRentalEditRequest(values);
+      if (!built.ok) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+        return;
+      }
+      formSubmittingRef.current.add(message.id);
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      try {
+        const response = await apiUpdateImobRentalLease(built.request);
+        updateMessageById(message.id, { form: undefined });
+        const done: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: buildRentalEditConfirmationText({ propertyLabel, ...response.data }),
+          thread: message.thread,
+        };
+        appendMessage(done);
+        if (!response.data.unchanged) void persistMessage(done, { intent: "rental.lease.updated", action: "imob.rentals.update" });
+      } catch (error) {
+        fail(error, "alterar");
+      } finally {
+        formSubmittingRef.current.delete(message.id);
+      }
+      return;
+    }
+
+    if (isRentalCloseForm(form)) {
+      const now = new Date();
+      const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const built = buildRentalCloseRequest(values, todayIso);
+      if (!built.ok) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+        return;
+      }
+      if (!checkInlineDocuments(message, values)) return;
+      formSubmittingRef.current.add(message.id);
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      try {
+        // A vistoria/termo vai para a locação antes de encerrar (depois ela deixa de ser a ativa).
+        const documentsNote = (formFilesRef.current[message.id] ?? []).length > 0
+          ? await attachInlineDocuments(message, values, built.request.propertyId)
+          : null;
+        const response = await apiCloseImobRentalLease(built.request);
+        updateMessageById(message.id, { form: undefined });
+        const done: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: buildRentalCloseConfirmationText({ propertyLabel, endedOn: response.data.endedOn, reason: response.data.reason, documentsNote }),
+          thread: message.thread,
+          quickReplies: [
+            { id: "close-new-lease", label: "Cadastrar nova locação", onSelect: () => startRentalLeaseFor(built.request.propertyId) },
+            { id: "close-history", label: "Ver histórico", onSelect: () => openRentalLifecycleForm("rental_history", built.request.propertyId) },
+          ],
+        };
+        appendMessage(done);
+        void persistMessage(done, { intent: "rental.lease.closed", action: "imob.rentals.close" });
+      } catch (error) {
+        fail(error, "encerrar");
+      } finally {
+        formSubmittingRef.current.delete(message.id);
+      }
+    }
+  }
+
+  /** Nova locação para o mesmo imóvel, com o formulário de cadastro que já existe. */
+  function startRentalLeaseFor(propertyId: string) {
+    pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
+    void sendMessageText("cadastrar locatário", { displayText: "Cadastrar locação" });
   }
 
   function openSaleContractForm(propertyId?: string) {
@@ -5597,6 +5797,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (isRentalContractForm(form)) {
       await handleRentalContractFormAction(message, actionId);
+      return;
+    }
+    if (isRentalEditForm(form) || isRentalCloseForm(form) || isRentalHistoryForm(form)) {
+      await handleRentalLifecycleFormAction(message, actionId);
       return;
     }
     if (isSaleContractForm(form)) {
@@ -6684,7 +6888,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">{messageCard.title}</p>
                               {messageCard.type !== "action" ? (
                                 <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
-                                  {getCardTypeChip(messageCard.type)}
+                                  {messageCard.chip ?? getCardTypeChip(messageCard.type)}
                                 </span>
                               ) : null}
                             </div>
@@ -6915,6 +7119,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                               }
                                               if (isSaleContractForm(message.form) && field.name === "propertyId") {
                                                 void prefillSaleContractForm(message.id, event.target.value);
+                                              }
+                                              if (isRentalEditForm(message.form) && field.name === "propertyId") {
+                                                void prefillRentalEditForm(message.id, event.target.value);
                                               }
                                             }}
                                             className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
