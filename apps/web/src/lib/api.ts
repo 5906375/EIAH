@@ -1149,7 +1149,7 @@ export async function apiGetVerticalAccess(vertical: "IMOB" = "IMOB") {
   return http<{ ok: true; data: VerticalAccessClientView }>(`/vertical-access?vertical=${vertical}`);
 }
 
-export async function apiRequestVerticalAccess(body: { vertical: "IMOB" }) {
+export async function apiRequestVerticalAccess(body: { vertical: "IMOB"; channel?: "marketplace" | "chat" }) {
   return http<{ ok: true; data: VerticalAccessClientView & { outcome: "requested" | "already_requested" | "already_approved" } }>(
     `/vertical-access/request`,
     { method: "POST", body: JSON.stringify(body) },
@@ -1182,7 +1182,10 @@ export async function apiListVerticalApprovals() {
   return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[] } }>(`/admin/vertical-approvals`);
 }
 
-export async function apiDecideVerticalApproval(approvalId: string, body: { decision: "aprovar" | "recusar"; note?: string }) {
+export async function apiDecideVerticalApproval(
+  approvalId: string,
+  body: { decision: "aprovar" | "recusar"; note?: string; channel?: "tela" | "chat" },
+) {
   return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/decision`, {
     method: "POST",
     body: JSON.stringify(body),
@@ -1191,12 +1194,23 @@ export async function apiDecideVerticalApproval(approvalId: string, body: { deci
 
 export async function apiChangeVerticalApprovalRevocation(
   approvalId: string,
-  body: { action: "revogar" | "alterar_modo" | "restaurar"; mode?: VerticalRevocationMode; note?: string },
+  body: { action: "revogar" | "alterar_modo" | "restaurar"; mode?: VerticalRevocationMode; note?: string; channel?: "tela" | "chat" },
 ) {
   return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/revocation`, {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+/** ADR-011 §2.4: avisos da liberação no app (sem score nem billing), lidos por pessoa. */
+export type VerticalAccessNotice = { id: string; vertical: string; kind: string; message: string; createdAt: string };
+
+export async function apiListVerticalAccessNotices() {
+  return http<{ ok: true; data: { notices: VerticalAccessNotice[] } }>(`/vertical-access/notices`);
+}
+
+export async function apiMarkVerticalAccessNoticeRead(noticeId: string) {
+  return http<{ ok: true }>(`/vertical-access/notices/${encodeURIComponent(noticeId)}/read`, { method: "POST", body: "{}" });
 }
 
 /** Mensagem do servidor num erro da API (ex.: 403 de liberação), quando houver. */
@@ -5683,7 +5697,7 @@ export async function apiRequestChatVerticalHandoff(body: {
 export type ChatVerticalActivationPreview =
   | { status: "already_active"; verticalId: string; registryVersion: string }
   | { status: "not_permitted"; verticalId: string }
-  | { status: "approval_required"; verticalId: string; approval: VerticalApprovalBlock }
+  | { status: "approval_required"; verticalId: string; approval: VerticalApprovalBlock; canRequest?: boolean }
   | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
 
 /** ADR-011: liberação da vertical pela EIAH antes de ativar. */

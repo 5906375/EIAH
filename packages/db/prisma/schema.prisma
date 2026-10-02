@@ -244,10 +244,34 @@ model VerticalAccessApprovalEvent {
   score          Int?
   recommendation String?
   revocationMode String?  @map("revocation_mode")
+  channel        String?
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([approvalId, createdAt], map: "vertical_access_approval_events_approval_idx")
   @@map("vertical_access_approval_events")
+}
+
+model VerticalAccessNotice {
+  id          String   @id
+  approvalId  String   @map("approval_id")
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  vertical    String
+  kind        String
+  message     String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, workspaceId, createdAt], map: "vertical_access_notices_scope_idx")
+  @@map("vertical_access_notices")
+}
+
+model VerticalAccessNoticeRead {
+  noticeId String   @map("notice_id")
+  userId   String   @map("user_id")
+  readAt   DateTime @default(now()) @map("read_at")
+
+  @@id([noticeId, userId])
+  @@map("vertical_access_notice_reads")
 }
 
 model ApiToken {

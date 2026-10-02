@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import { ensureWorkspaceResponsibilityStore, PRODUCT_ACTIVATION_PERMISSION } from "../workspaceResponsibility";
 import { ensureTenantProductInstallationTable } from "./productActivation";
+import { recordVerticalAccessNotice, type VerticalAccessNoticeKind } from "./verticalAccessNotices";
 import {
   scoreVerticalAccess,
   type VerticalAccessRecommendation,
@@ -43,6 +44,10 @@ export const DEFAULT_REVOCATION_MODE: VerticalRevocationMode = "somente_leitura"
 
 /** Uso permitido da vertical, derivado só da liberação. A instalação e as permissões continuam valendo à parte. */
 export type VerticalUsage = "full" | "read_only" | "blocked";
+
+/** Canal de cada mudança, registrado na auditoria (ADR-011 §2.4). */
+export const VERTICAL_ACCESS_CHANNELS = ["marketplace", "tela", "chat"] as const;
+export type VerticalAccessChannel = (typeof VERTICAL_ACCESS_CHANNELS)[number];
 
 export const MIGRATION_ACTOR = "system:migration";
 export const SCORING_ACTOR = "agent:vertical-access-reviewer";
@@ -153,6 +158,34 @@ export async function ensureVerticalAccessStore(prisma: PrismaClient) {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "vertical_access_approval_events" ADD COLUMN IF NOT EXISTS "revocation_mode" TEXT;
     `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "vertical_access_approval_events" ADD COLUMN IF NOT EXISTS "channel" TEXT;
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "vertical_access_notices" (
+        "id" TEXT NOT NULL,
+        "approval_id" TEXT NOT NULL,
+        "tenant_id" TEXT NOT NULL,
+        "workspace_id" TEXT NOT NULL,
+        "vertical" TEXT NOT NULL,
+        "kind" TEXT NOT NULL,
+        "message" TEXT NOT NULL,
+        "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "vertical_access_notices_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "vertical_access_notices_scope_idx"
+        ON "vertical_access_notices"("tenant_id", "workspace_id", "created_at");
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "vertical_access_notice_reads" (
+        "notice_id" TEXT NOT NULL,
+        "user_id" TEXT NOT NULL,
+        "read_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "vertical_access_notice_reads_pkey" PRIMARY KEY ("notice_id", "user_id")
+      );
+    `);
     storeReady = true;
   }
   if (!migrationBackfillDone) {
@@ -214,17 +247,18 @@ async function insertEvent(
     score?: number | null;
     recommendation?: string | null;
     revocationMode?: VerticalRevocationMode | null;
+    channel?: VerticalAccessChannel | null;
   },
 ) {
   await prisma.$executeRaw`
     INSERT INTO vertical_access_approval_events (
       id, approval_id, tenant_id, workspace_id, vertical, from_status, to_status, actor, note, score, recommendation,
-      revocation_mode, created_at
+      revocation_mode, channel, created_at
     )
     VALUES (
       ${crypto.randomUUID()}, ${row.id}, ${row.tenantId}, ${row.workspaceId}, ${row.vertical},
       ${event.from}, ${event.to}, ${event.actor}, ${event.note ?? null}, ${event.score ?? null}, ${event.recommendation ?? null},
-      ${event.revocationMode ?? null}::text, NOW()
+      ${event.revocationMode ?? null}::text, ${event.channel ?? null}::text, NOW()
     )
   `;
 }
@@ -347,8 +381,10 @@ export async function requestVerticalAccess(params: {
   workspaceId: string;
   vertical: string;
   userId: string;
+  channel?: VerticalAccessChannel;
 }): Promise<VerticalAccessRequestResult> {
   const { prisma, tenantId, workspaceId, vertical, userId } = params;
+  const channel = params.channel ?? "marketplace";
   const existing = await readVerticalAccess({ prisma, tenantId, workspaceId, vertical });
   if (existing?.status === "aprovado") return { outcome: "already_approved", approval: existing };
   if (existing && OPEN_REQUEST_STATUSES.includes(existing.status)) return { outcome: "already_requested", approval: existing };
@@ -371,7 +407,7 @@ export async function requestVerticalAccess(params: {
       VALUES (${id}, ${tenantId}, ${workspaceId}, ${vertical}, 'pendente', 'request', ${userId}, NOW(), NOW(), NOW())
     `;
   }
-  await insertEvent(prisma, scope, { from: existing?.status ?? null, to: "pendente", actor: `user:${userId}` });
+  await insertEvent(prisma, scope, { from: existing?.status ?? null, to: "pendente", actor: `user:${userId}`, channel });
 
   // Agente verificador: só lê e pontua. Falha de leitura = "sem score", nunca aprovação.
   let scored: VerticalAccessScore | null = null;
@@ -423,6 +459,7 @@ export async function decideVerticalAccess(params: {
   adminEmail: string;
   decision: VerticalAccessDecision;
   note?: string | null;
+  channel?: VerticalAccessChannel;
 }): Promise<VerticalAccessDecisionResult> {
   const { prisma, approvalId, adminEmail, decision } = params;
   await ensureVerticalAccessStore(prisma);
@@ -451,7 +488,9 @@ export async function decideVerticalAccess(params: {
     score: current.score,
     recommendation: current.recommendation,
     revocationMode: nextStatus === "aprovado" ? null : (current.revocationMode as VerticalRevocationMode | null),
+    channel: params.channel ?? "tela",
   });
+  await recordVerticalAccessNotice(prisma, current, decision === "aprovar" ? "aprovado" : "recusado");
   const approval = await readVerticalAccessById(prisma, approvalId);
   return approval ? { ok: true, approval } : { ok: false, code: "VERTICAL_ACCESS_NOT_FOUND" };
 }
@@ -481,6 +520,7 @@ export async function changeVerticalAccessRevocation(params: {
   action: VerticalAccessRevocationAction;
   mode?: VerticalRevocationMode | null;
   note?: string | null;
+  channel?: VerticalAccessChannel;
 }): Promise<VerticalAccessRevocationResult> {
   const { prisma, approvalId, adminEmail, action } = params;
   await ensureVerticalAccessStore(prisma);
@@ -512,7 +552,10 @@ export async function changeVerticalAccessRevocation(params: {
     score: current.score,
     recommendation: current.recommendation,
     revocationMode: mode,
+    channel: params.channel ?? "tela",
   });
+  const noticeKind: VerticalAccessNoticeKind = mode === null ? "restaurado" : `revogado_${mode}`;
+  await recordVerticalAccessNotice(prisma, current, noticeKind);
   const approval = await readVerticalAccessById(prisma, approvalId);
   return approval ? { ok: true, approval } : { ok: false, code: "VERTICAL_ACCESS_NOT_FOUND" };
 }

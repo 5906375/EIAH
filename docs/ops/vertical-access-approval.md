@@ -1,4 +1,4 @@
-# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b e 2c-1)
+# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b, 2c-1 e 2c-2)
 
 ## O que muda
 
@@ -77,9 +77,30 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
   migration `20261002200000_vertical_access_revocation_v1`).
 - O cliente vê só o estado e o uso permitido (`usage`: `full`, `read_only` ou `blocked`) em `GET /api/vertical-access`.
 
+## Pela conversa do front door (PR 2c-2)
+
+- **Cliente:** ao pedir para ativar o IMOB sem liberação, quem pode ativar (Founder ou `products.activate`) recebe a
+  oferta "Pedir liberação do IMOB". O pedido só sai com essa confirmação logo depois da oferta (um "sim" solto não
+  envia). O preview informa `canRequest`; com pedido em análise, a oferta não aparece.
+- **Administrador EIAH:** "aprovações pendentes" no `/app/chat` lista até 5 pedidos com score e os pontos não
+  atendidos. O fluxo é: escolher "Aprovar/Recusar pedido N"; escrever a observação quando ela é obrigatória; e
+  clicar em "Confirmar aprovação/recusa: …". Nada é decidido antes disso. Para quem não é administrador, a conversa
+  responde que não encontrou aprovações.
+- **Canal na auditoria:** `vertical_access_approval_events.channel` registra `marketplace`, `tela` ou `chat`.
+
+## Avisos no app (PR 2c-2)
+
+- Cada decisão gera um aviso em `vertical_access_notices` (aprovado, recusado, revogado em cada modo e restaurado).
+- O aviso diz só o estado da liberação: nunca score, sinais de billing ou a observação do administrador.
+- Aparece no topo do `/app/chat` e do Marketplace do IMOB, para todas as pessoas do workspace.
+- "Entendi" marca como lido só para quem clicou (`vertical_access_notice_reads`).
+- API: `GET /api/vertical-access/notices` e `POST /api/vertical-access/notices/:id/read`. Um aviso de outro workspace
+  responde 404.
+- A fila é independente de canal: o WhatsApp (PR 2e) vai ler a mesma fila.
+- Migration: `20261003090000_vertical_access_notices_v1`.
+
 ## Fora deste PR (ADR-011 §3)
 
-- Pedido e decisão pela conversa e avisos: PR 2c-2.
 - Criação de acessos pelo front door: PR 2d. WhatsApp: PR 2e.
 
 ## Rollback

@@ -122,12 +122,6 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
         vertical: ACTIVATABLE_VERTICALS[parsed.data.verticalId],
       })
     : null;
-  if (access?.status !== "aprovado") {
-    return res.json({
-      ok: true,
-      data: { status: "approval_required", verticalId: parsed.data.verticalId, approval: verticalNotApprovedError(access?.status) },
-    });
-  }
   const allowedToActivate = request.authContext && request.prisma
     ? await canUserActivateProducts({
         prisma: request.prisma as unknown as PrismaClient,
@@ -136,6 +130,19 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
         userId: request.authContext.userId ?? null,
       })
     : false;
+  if (access?.status !== "aprovado") {
+    // Pode pedir a liberação pela conversa quem pode ativar, quando não há pedido em análise (ADR-011 §2.4).
+    const openRequest = access ? ["pendente", "em_analise", "aguardando_humano"].includes(access.status) : false;
+    return res.json({
+      ok: true,
+      data: {
+        status: "approval_required",
+        verticalId: parsed.data.verticalId,
+        approval: verticalNotApprovedError(access?.status),
+        canRequest: allowedToActivate && !openRequest,
+      },
+    });
+  }
   if (!allowedToActivate) {
     return res.json({ ok: true, data: { status: "not_permitted", verticalId: parsed.data.verticalId } });
   }

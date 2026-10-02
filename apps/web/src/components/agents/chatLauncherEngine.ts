@@ -16,6 +16,11 @@ import {
   type VerticalActivationSnapshot,
 } from "@/components/agents/verticalActivationEngine";
 import {
+  resolveVerticalApprovalChatStep,
+  type VerticalApprovalChatRequest,
+  type VerticalApprovalChatSnapshot,
+} from "@/components/agents/verticalApprovalChatEngine";
+import {
   IMOB_CRM_HANDOFF_REQUEST,
   isImobOperationalRequest,
   type VerticalHandoffRequest,
@@ -278,6 +283,9 @@ export type LauncherLocalDecision = {
   /** Ativação de vertical pela conversa: proposta, confirmação explícita ou cancelamento (ADR-010, etapa F). */
   verticalActivationRequest?: VerticalActivationRequest;
   verticalActivation?: VerticalActivationSnapshot;
+  /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3). */
+  verticalApprovalChatRequest?: VerticalApprovalChatRequest;
+  verticalApprovalChat?: VerticalApprovalChatSnapshot;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2056,6 +2064,23 @@ export async function resolveLauncherTurnDecision(params: {
   });
   if (agentSwitchDecision) {
     return agentSwitchDecision;
+  }
+  // Fila de liberações do administrador EIAH: nada é decidido sem confirmação explícita (ADR-011 §2.3).
+  const approvalChatStep = params.isUnifiedEiah
+    ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat)
+    : null;
+  if (approvalChatStep) {
+    return {
+      kind: `vertical_approval_chat_${approvalChatStep.step}`,
+      shouldCreateRun: false,
+      content: "Verificando a fila de liberações.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "vertical_approval_chat", confidenceFloor: 0.8 },
+      verticalApprovalChatRequest: approvalChatStep,
+    };
   }
   // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
   const activationStep = params.isUnifiedEiah

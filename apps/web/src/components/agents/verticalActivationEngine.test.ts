@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ApiError } from "@/lib/api";
 import {
+  ACCESS_REQUEST_CONFIRM_REPLY,
   ACTIVATION_CONFIRM_REPLY,
   describeActivationFailure,
   describeActivationPreview,
@@ -120,7 +121,7 @@ test("ADR-011: sem liberação da EIAH a conversa explica o estado e não propõ
     approval: { code: "VERTICAL_NOT_APPROVED", message: "Esta vertical precisa ser liberada pela EIAH antes de ativar. Solicite a liberação.", accessStatus: null },
   });
   assert.match(notRequested.content, /liberada pela EIAH/);
-  assert.match(notRequested.content, /Solicitar liberação/, "aponta onde pedir");
+  assert.match(notRequested.content, /pode pedir a liberação/, "explica quem pode pedir");
   assert.deepEqual(notRequested.quickReplies, [], "não oferece confirmar");
   assert.equal(notRequested.activation.status, "failed");
 
@@ -136,4 +137,47 @@ test("ADR-011: sem liberação da EIAH a conversa explica o estado e não propõ
   );
   assert.equal(refusedOnConfirm.content, "A EIAH não liberou esta vertical.");
   assert.deepEqual(refusedOnConfirm.quickReplies, []);
+});
+
+test("ADR-011 §2.4: quem pode ativar recebe a oferta de pedir a liberação; só a confirmação explícita envia", async () => {
+  const offer = describeActivationPreview({
+    status: "approval_required",
+    verticalId: "imob",
+    approval: { code: "VERTICAL_NOT_APPROVED", message: "Esta vertical precisa ser liberada pela EIAH antes de ativar.", accessStatus: null },
+    canRequest: true,
+  });
+  assert.equal(offer.activation.status, "access_request_proposed");
+  assert.deepEqual(offer.quickReplies, [ACCESS_REQUEST_CONFIRM_REPLY, "Agora não"]);
+  assert.match(offer.content, /Nada é enviado até você confirmar/);
+
+  const pending = { status: "access_request_proposed" as const, verticalId: "imob" as const };
+  assert.equal(resolveVerticalActivationStep("sim", pending), null, "um 'sim' solto não pede nada");
+  assert.equal(resolveVerticalActivationStep(ACCESS_REQUEST_CONFIRM_REPLY, null), null, "sem oferta não pede");
+  assert.deepEqual(resolveVerticalActivationStep(ACCESS_REQUEST_CONFIRM_REPLY, pending), { step: "request_access", verticalId: "imob" });
+  assert.deepEqual(resolveVerticalActivationStep("agora não", pending), { step: "cancel_access_request", verticalId: "imob" });
+
+  const calls: unknown[] = [];
+  const api = {
+    preview: async () => { throw new Error("não deveria chamar"); },
+    confirm: async () => { throw new Error("não deveria chamar"); },
+    requestAccess: async (body: unknown) => {
+      calls.push(body);
+      return { ok: true as const, data: { outcome: "requested" as const, vertical: "IMOB", status: "aguardando_humano" as const, usage: "full" as const, revocationMode: null, requestedAt: null, decidedAt: null } };
+    },
+  };
+  const sent = await enrichLauncherDecisionWithVerticalActivation({ verticalActivationRequest: { step: "request_access", verticalId: "imob" } }, api);
+  assert.deepEqual(calls, [{ vertical: "IMOB", channel: "chat" }], "canal registrado");
+  assert.equal(sent?.verticalActivation?.status, "access_requested");
+  assert.match(sent?.content ?? "", /Pedido de liberação enviado/);
+
+  const cancelled = await enrichLauncherDecisionWithVerticalActivation({ verticalActivationRequest: { step: "cancel_access_request", verticalId: "imob" } }, api);
+  assert.equal(calls.length, 1, "cancelar não envia");
+  assert.equal(cancelled?.verticalActivation?.status, "cancelled");
+
+  const forbidden = await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "request_access", verticalId: "imob" } },
+    { ...api, requestAccess: async () => { throw new ApiError(403, "Forbidden", { error: { code: "VERTICAL_ACCESS_REQUEST_FORBIDDEN" } }); } },
+  );
+  assert.equal(forbidden?.verticalActivation?.status, "failed");
+  assert.match(forbidden?.content ?? "", /proprietário do tenant/);
 });

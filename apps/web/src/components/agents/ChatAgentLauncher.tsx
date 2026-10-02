@@ -57,6 +57,10 @@ import {
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
+import {
+  attachVerticalApprovalChatToSnapshot,
+  enrichLauncherDecisionWithVerticalApprovalChat,
+} from "@/components/agents/verticalApprovalChatEngine";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { IMOB_ACTION_MENUS } from "@/features/imob/imobActionMenus";
 import { ImobFrontDoorPart } from "@/features/imob/structured/ImobFrontDoorPart";
@@ -1052,7 +1056,7 @@ export default function ChatAgentLauncher({
       content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1079,7 +1083,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    ));
+    )));
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;
@@ -1091,7 +1095,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+      const localSnapshot = attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1111,7 +1115,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      }), turnDecision);
+      }), turnDecision), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
