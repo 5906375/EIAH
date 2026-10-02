@@ -742,14 +742,33 @@ export async function readWorkspaceResponsibleProfile(params: {
   };
 }
 
-async function readActorCanActivateProducts(params: {
+export const WORKSPACE_ROLES_MANAGE_PERMISSION = "workspace.manage_roles";
+
+export const WORKSPACE_ROLES_DENIED = {
+  code: "WORKSPACE_ROLES_FORBIDDEN",
+  message: "Só quem gerencia as funções do workspace (Founder ou Gestor) pode criar ou alterar funções.",
+} as const;
+
+async function readActorRoleAuthority(params: {
   prisma?: any;
   tenantId: string;
   workspaceId: string;
   userId: string;
 }) {
   const membership = (await readCurrentMembership(params)) as { role_key?: string; permissions?: unknown } | null;
-  return canActivateProducts({ selectedRoleKey: membership?.role_key ?? null, permissions: safeArray(membership?.permissions) });
+  const permissions = safeArray(membership?.permissions);
+  return {
+    canActivate: canActivateProducts({ selectedRoleKey: membership?.role_key ?? null, permissions }),
+    canManageRoles: hasWorkspacePermission(permissions, WORKSPACE_ROLES_MANAGE_PERMISSION),
+  };
+}
+
+function sameRoleCatalog(left: WorkspaceRoleOption[], right: WorkspaceRoleOption[]) {
+  const signature = (options: WorkspaceRoleOption[]) => options
+    .map((option) => `${option.key}|${option.label}|${[...option.defaultPermissions].sort().join(",")}`)
+    .sort()
+    .join("\n");
+  return signature(left) === signature(right);
 }
 
 /** Mantém, em cada função editada por quem não pode ativar, o products.activate como estava no catálogo. */
@@ -781,10 +800,18 @@ export async function upsertWorkspaceRoleConfig(params: {
   selectedRoleKey?: string | null;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
-  const actorCanActivate = await readActorCanActivateProducts({ ...params, prisma });
-  const roleLabels = params.roleLabels && !actorCanActivate
-    ? await governRoleLabelsGrant({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId, roleLabels: params.roleLabels })
-    : params.roleLabels;
+  const { canActivate: actorCanActivate, canManageRoles } = await readActorRoleAuthority({ ...params, prisma });
+  let roleLabels = params.roleLabels;
+  if (roleLabels && !canManageRoles) {
+    // O perfil reenvia o catálogo em todo salvamento: sem mudança, segue sem gravar; com mudança, nega.
+    const current = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
+    if (!sameRoleCatalog(normalizeWorkspaceRoleLabels(roleLabels), current)) {
+      throw Object.assign(new Error(WORKSPACE_ROLES_DENIED.message), { code: WORKSPACE_ROLES_DENIED.code, status: 403 });
+    }
+    roleLabels = undefined;
+  } else if (roleLabels && !actorCanActivate) {
+    roleLabels = await governRoleLabelsGrant({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId, roleLabels });
+  }
   const options = await ensureWorkspaceRoleCatalog({
     prisma,
     tenantId: params.tenantId,
@@ -793,6 +820,9 @@ export async function upsertWorkspaceRoleConfig(params: {
   });
   const selectedRoleKey = params.selectedRoleKey ? normalizeWorkspaceRoleKey(params.selectedRoleKey) : null;
   if (selectedRoleKey && options.some((item) => item.key === selectedRoleKey)) {
+    if (!canManageRoles) {
+      throw Object.assign(new Error(WORKSPACE_ROLES_DENIED.message), { code: WORKSPACE_ROLES_DENIED.code, status: 403 });
+    }
     // Founder ativa sempre: escolher essa função para si exige já poder ativar.
     if (selectedRoleKey === "founder" && !actorCanActivate) {
       throw Object.assign(new Error(PRODUCT_ACTIVATION_GRANT_DENIED.message), {
