@@ -226,7 +226,8 @@ test("com liberação aprovada, o Founder ativa; o cliente vê só o estado", as
   const state = await request.get("/api/vertical-access?vertical=IMOB").set("Authorization", `Bearer ${tokens.founder}`);
   assert.equal(state.status, 200);
   assert.equal(state.body?.data?.status, "aprovado");
-  assert.deepEqual(Object.keys(state.body.data).sort(), ["decidedAt", "requestedAt", "status", "vertical"]);
+  assert.deepEqual(Object.keys(state.body.data).sort(), ["decidedAt", "requestedAt", "revocationMode", "status", "usage", "vertical"]);
+  assert.equal(state.body.data.usage, "full");
 
   const activated = await request
     .post("/api/marketplace/installations/activate")
@@ -234,4 +235,142 @@ test("com liberação aprovada, o Founder ativa; o cliente vê só o estado", as
     .send({ product: "IMOB" });
   assert.equal(activated.status, 200);
   assert.equal(activated.body?.installation?.status, "active");
+});
+
+test("aprovados na migração: o agente calcula o score para revisão sem mudar o estado", async () => {
+  const queue = await request.get("/api/admin/vertical-approvals").set("Authorization", `Bearer ${tokens.admin}`);
+  assert.equal(queue.status, 200);
+  const legacy = queue.body?.data?.items?.find((entry: { workspaceName: string }) => entry.workspaceName === `Legado ${suffix}`);
+  assert.equal(legacy?.source, "migration");
+  assert.equal(legacy?.status, "aprovado", "nada muda para o cliente sem ação humana");
+  assert.equal(typeof legacy?.score, "number");
+  assert.ok(Array.isArray(legacy?.scoreReasons) && legacy.scoreReasons.length > 0);
+  assert.equal(legacy?.scoreRuleVersion, "vertical-access-score.v1");
+
+  const events = await prismaGlobal.$queryRaw<Array<{ from_status: string | null; to_status: string; actor: string }>>`
+    SELECT from_status, to_status, actor FROM vertical_access_approval_events
+    WHERE approval_id = ${legacy.id} ORDER BY created_at ASC
+  `;
+  assert.deepEqual(events.map((event) => [event.from_status, event.to_status, event.actor]), [
+    [null, "aprovado", "system:migration"],
+    ["aprovado", "aprovado", "agent:vertical-access-reviewer"],
+  ]);
+
+  // Ler a fila de novo não recalcula.
+  await request.get("/api/admin/vertical-approvals").set("Authorization", `Bearer ${tokens.admin}`);
+  const count = await prismaGlobal.$queryRaw<Array<{ total: bigint }>>`
+    SELECT COUNT(*)::bigint AS total FROM vertical_access_approval_events WHERE approval_id = ${legacy.id}
+  `;
+  assert.equal(Number(count[0]?.total ?? 0), 2);
+});
+
+async function revocation(approvalId: string, body: Record<string, unknown>, token = tokens.admin) {
+  return request.post(`/api/admin/vertical-approvals/${approvalId}/revocation`).set("Authorization", `Bearer ${token}`).send(body);
+}
+
+async function imobCall(method: "get" | "post") {
+  const call = method === "get" ? request.get("/api/imob/owners") : request.post("/api/imob/owners").send({});
+  return call.set("Authorization", `Bearer ${tokens.founder}`);
+}
+
+const REVOCATION_CODES = ["IMOB_VERTICAL_REVOKED", "IMOB_VERTICAL_READ_ONLY"];
+
+test("revogação: só o administrador, com observação; padrão somente leitura bloqueia escrita e mantém consulta", async () => {
+  const row = await approvalRow(workspaceId);
+  assert.equal(row?.status, "aprovado");
+  const id = row!.id;
+
+  assert.equal((await revocation(id, { action: "revogar", note: "x" }, tokens.founder)).status, 404, "cliente não revoga");
+  const noNote = await revocation(id, { action: "revogar" });
+  assert.equal(noNote.status, 400);
+  assert.equal(noNote.body?.error?.code, "VERTICAL_ACCESS_NOTE_REQUIRED");
+  assert.equal((await revocation(id, { action: "restaurar" })).status, 409, "só revogado é restaurado");
+
+  const revoked = await revocation(id, { action: "revogar", note: "Pagamento em atraso" });
+  assert.equal(revoked.status, 200);
+  assert.equal(revoked.body?.data?.status, "revogado");
+  assert.equal(revoked.body?.data?.revocationMode, "somente_leitura");
+
+  const read = await imobCall("get");
+  assert.equal(REVOCATION_CODES.includes(read.body?.error?.code), false, "consulta continua");
+  const write = await imobCall("post");
+  assert.equal(write.status, 403);
+  assert.equal(write.body?.error?.code, "IMOB_VERTICAL_READ_ONLY");
+
+  const state = await request.get("/api/vertical-access?vertical=IMOB").set("Authorization", `Bearer ${tokens.founder}`);
+  assert.equal(state.body?.data?.status, "revogado");
+  assert.equal(state.body?.data?.usage, "read_only");
+
+  const reactivate = await request
+    .post("/api/marketplace/installations/activate")
+    .set("Authorization", `Bearer ${tokens.founder}`)
+    .send({ product: "IMOB" });
+  assert.equal(reactivate.status, 403);
+  assert.equal(reactivate.body?.error?.code, "VERTICAL_APPROVAL_REVOKED");
+
+  const installs = await prismaGlobal.$queryRaw<Array<{ status: string }>>`
+    SELECT status FROM tenant_product_installations WHERE workspace_id = ${workspaceId}
+  `;
+  assert.deepEqual(installs.map((entry) => entry.status), ["active"], "nada é apagado");
+});
+
+test("troca de modo: bloqueio total nega tudo; sem nova ativação mantém o uso; restaurar volta ao normal", async () => {
+  const id = (await approvalRow(workspaceId))!.id;
+  const sameMode = await revocation(id, { action: "alterar_modo", mode: "somente_leitura", note: "igual" });
+  assert.equal(sameMode.status, 409);
+  assert.equal(sameMode.body?.error?.code, "VERTICAL_ACCESS_MODE_UNCHANGED");
+  assert.equal((await revocation(id, { action: "alterar_modo", note: "sem modo" })).status, 400);
+
+  assert.equal((await revocation(id, { action: "alterar_modo", mode: "bloqueio_total", note: "Disputa aberta" })).status, 200);
+  const blocked = await imobCall("get");
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body?.error?.code, "IMOB_VERTICAL_REVOKED");
+
+  assert.equal((await revocation(id, { action: "alterar_modo", mode: "sem_nova_ativacao", note: "Acordo" })).status, 200);
+  assert.equal(REVOCATION_CODES.includes((await imobCall("get")).body?.error?.code), false);
+  assert.equal(REVOCATION_CODES.includes((await imobCall("post")).body?.error?.code), false, "uso atual continua");
+  const reactivate = await request
+    .post("/api/marketplace/installations/activate")
+    .set("Authorization", `Bearer ${tokens.founder}`)
+    .send({ product: "IMOB" });
+  assert.equal(reactivate.body?.error?.code, "VERTICAL_APPROVAL_REVOKED", "sem nova ativação");
+
+  const restored = await revocation(id, { action: "restaurar" });
+  assert.equal(restored.status, 200);
+  assert.equal(restored.body?.data?.status, "aprovado");
+  assert.equal(restored.body?.data?.revocationMode, null);
+
+  const events = await prismaGlobal.$queryRaw<Array<{ to_status: string; revocation_mode: string | null }>>`
+    SELECT to_status, revocation_mode FROM vertical_access_approval_events
+    WHERE approval_id = ${id} AND actor = ${`admin:${adminEmail}`} ORDER BY created_at ASC
+  `;
+  assert.deepEqual(events.map((event) => [event.to_status, event.revocation_mode]), [
+    ["aprovado", null],
+    ["revogado", "somente_leitura"],
+    ["revogado", "bloqueio_total"],
+    ["revogado", "sem_nova_ativacao"],
+    ["aprovado", null],
+  ]);
+});
+
+test("novo pedido depois da revogação mantém o modo até a EIAH aprovar de novo", async () => {
+  const id = (await approvalRow(workspaceId))!.id;
+  assert.equal((await revocation(id, { action: "revogar", mode: "bloqueio_total", note: "Fraude suspeita" })).status, 200);
+
+  const requested = await request
+    .post("/api/vertical-access/request")
+    .set("Authorization", `Bearer ${tokens.founder}`)
+    .send({ vertical: "IMOB" });
+  assert.equal(requested.status, 201);
+  assert.equal(requested.body?.data?.status, "aguardando_humano");
+  assert.equal(requested.body?.data?.usage, "blocked", "pedir de novo não libera");
+  assert.equal((await imobCall("get")).body?.error?.code, "IMOB_VERTICAL_REVOKED");
+
+  const approved = await request
+    .post(`/api/admin/vertical-approvals/${id}/decision`)
+    .set("Authorization", `Bearer ${tokens.admin}`)
+    .send({ decision: "aprovar", note: "Regularizado" });
+  assert.equal(approved.status, 200);
+  assert.equal(approved.body?.data?.revocationMode, null);
+  assert.equal(REVOCATION_CODES.includes((await imobCall("get")).body?.error?.code), false);
 });

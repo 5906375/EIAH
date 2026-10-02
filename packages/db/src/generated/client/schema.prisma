@@ -243,6 +243,7 @@ model VerticalAccessApprovalEvent {
   note           String?
   score          Int?
   recommendation String?
+  revocationMode String?  @map("revocation_mode")
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([approvalId, createdAt], map: "vertical_access_approval_events_approval_idx")

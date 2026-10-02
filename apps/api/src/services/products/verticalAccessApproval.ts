@@ -16,6 +16,7 @@ import {
  *   um administrador da plataforma EIAH aprova ou recusa. O score nunca aprova sozinho.
  * - Sem liberação aprovada, nenhuma ativação acontece (barreira em `activateProductInstallation`).
  * - Quem já usava uma vertical antes da barreira fica "aprovado na migração" (idempotente).
+ * - Revogação em três modos (§2.5), sem apagar nada; o modo pode ser trocado ou a liberação restaurada.
  * - Toda mudança de estado gera um evento de auditoria.
  */
 
@@ -31,6 +32,17 @@ export type VerticalAccessStatus = (typeof VERTICAL_ACCESS_STATUSES)[number];
 
 /** Estados em que o pedido já está com a EIAH e não precisa ser feito de novo. */
 const OPEN_REQUEST_STATUSES: VerticalAccessStatus[] = ["pendente", "em_analise", "aguardando_humano"];
+
+/**
+ * ADR-011 §2.5. `somente_leitura` (padrão): consulta sim, nenhuma escrita. `bloqueio_total`: nenhum
+ * acesso à vertical. `sem_nova_ativacao`: o uso atual continua, mas não há nova ativação.
+ */
+export const REVOCATION_MODES = ["somente_leitura", "bloqueio_total", "sem_nova_ativacao"] as const;
+export type VerticalRevocationMode = (typeof REVOCATION_MODES)[number];
+export const DEFAULT_REVOCATION_MODE: VerticalRevocationMode = "somente_leitura";
+
+/** Uso permitido da vertical, derivado só da liberação. A instalação e as permissões continuam valendo à parte. */
+export type VerticalUsage = "full" | "read_only" | "blocked";
 
 export const MIGRATION_ACTOR = "system:migration";
 export const SCORING_ACTOR = "agent:vertical-access-reviewer";
@@ -138,6 +150,9 @@ export async function ensureVerticalAccessStore(prisma: PrismaClient) {
       CREATE INDEX IF NOT EXISTS "vertical_access_approval_events_approval_idx"
         ON "vertical_access_approval_events"("approval_id", "created_at");
     `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "vertical_access_approval_events" ADD COLUMN IF NOT EXISTS "revocation_mode" TEXT;
+    `);
     storeReady = true;
   }
   if (!migrationBackfillDone) {
@@ -191,15 +206,25 @@ export async function backfillMigratedApprovals(prisma: PrismaClient) {
 async function insertEvent(
   prisma: PrismaClient,
   row: Pick<VerticalAccessRow, "id" | "tenantId" | "workspaceId" | "vertical">,
-  event: { from: VerticalAccessStatus | null; to: VerticalAccessStatus; actor: string; note?: string | null; score?: number | null; recommendation?: string | null },
+  event: {
+    from: VerticalAccessStatus | null;
+    to: VerticalAccessStatus;
+    actor: string;
+    note?: string | null;
+    score?: number | null;
+    recommendation?: string | null;
+    revocationMode?: VerticalRevocationMode | null;
+  },
 ) {
   await prisma.$executeRaw`
     INSERT INTO vertical_access_approval_events (
-      id, approval_id, tenant_id, workspace_id, vertical, from_status, to_status, actor, note, score, recommendation, created_at
+      id, approval_id, tenant_id, workspace_id, vertical, from_status, to_status, actor, note, score, recommendation,
+      revocation_mode, created_at
     )
     VALUES (
       ${crypto.randomUUID()}, ${row.id}, ${row.tenantId}, ${row.workspaceId}, ${row.vertical},
-      ${event.from}, ${event.to}, ${event.actor}, ${event.note ?? null}, ${event.score ?? null}, ${event.recommendation ?? null}, NOW()
+      ${event.from}, ${event.to}, ${event.actor}, ${event.note ?? null}, ${event.score ?? null}, ${event.recommendation ?? null},
+      ${event.revocationMode ?? null}::text, NOW()
     )
   `;
 }
@@ -239,6 +264,31 @@ export async function isVerticalAccessApproved(params: {
   return row?.status === "aprovado";
 }
 
+/**
+ * Uso permitido pela liberação (ADR-011 §2.5). Sem registro ou nunca revogado: a liberação não restringe
+ * (a instalação e as permissões decidem). Depois de uma revogação o modo continua valendo até a EIAH
+ * aprovar de novo, inclusive enquanto um novo pedido aguarda decisão ou depois de recusado.
+ * Modo desconhecido: bloqueia (fail-closed).
+ */
+export function resolveVerticalUsage(row: Pick<VerticalAccessRow, "status" | "revocationMode"> | null): VerticalUsage {
+  if (!row || row.status === "aprovado") return "full";
+  if (row.status !== "revogado" && !row.revocationMode) return "full";
+  const mode = row.revocationMode ?? DEFAULT_REVOCATION_MODE;
+  if (mode === "somente_leitura") return "read_only";
+  if (mode === "sem_nova_ativacao") return "full";
+  return "blocked";
+}
+
+export async function readVerticalUsage(params: {
+  prisma: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  vertical: string;
+}): Promise<{ usage: VerticalUsage; approval: VerticalAccessRow | null }> {
+  const approval = await readVerticalAccess(params);
+  return { usage: resolveVerticalUsage(approval), approval };
+}
+
 /** Sinais objetivos para o score; qualquer falha de leitura vira "sem score" (nunca aprovação). */
 export async function collectVerticalAccessScoreFacts(params: {
   prisma: PrismaClient;
@@ -263,7 +313,7 @@ export async function collectVerticalAccessScoreFacts(params: {
       WHERE tenant_id = ${tenantId} AND status = 'failed' AND updated_at >= NOW() - INTERVAL '30 days'
     `,
     prisma.$queryRaw<Array<{ total: bigint }>>`
-      SELECT COUNT(*)::bigint AS total FROM vertical_access_approval_events
+      SELECT COUNT(DISTINCT approval_id)::bigint AS total FROM vertical_access_approval_events
       WHERE tenant_id = ${tenantId} AND to_status = 'revogado'
     `,
     prisma.$queryRaw<Array<{ total: bigint }>>`
@@ -289,6 +339,7 @@ export type VerticalAccessRequestResult =
 /**
  * Pedido de liberação (ADR-011 §2.4). Quem pode pedir é verificado pela rota (Founder ou
  * `products.activate`). Pedido aberto não é duplicado; recusado ou revogado pode ser pedido de novo.
+ * Um novo pedido depois de revogação mantém o modo de revogação até a EIAH aprovar.
  */
 export async function requestVerticalAccess(params: {
   prisma: PrismaClient;
@@ -307,7 +358,7 @@ export async function requestVerticalAccess(params: {
   if (existing) {
     await prisma.$executeRaw`
       UPDATE vertical_access_approvals
-      SET status = 'pendente', source = 'request', revocation_mode = NULL, requested_by_user_id = ${userId},
+      SET status = 'pendente', source = 'request', requested_by_user_id = ${userId},
           requested_at = NOW(), decided_by = NULL, decided_at = NULL, note = NULL, score = NULL,
           recommendation = NULL, score_reasons = NULL, score_rule_version = NULL, updated_at = NOW()
       WHERE id = ${id}
@@ -386,7 +437,9 @@ export async function decideVerticalAccess(params: {
   // Só muda se ainda estiver aberto (duas decisões simultâneas não passam as duas).
   const updated = await prisma.$executeRaw`
     UPDATE vertical_access_approvals
-    SET status = ${nextStatus}, decided_by = ${actor}, decided_at = NOW(), note = ${note}, updated_at = NOW()
+    SET status = ${nextStatus}, decided_by = ${actor}, decided_at = NOW(), note = ${note},
+        revocation_mode = CASE WHEN ${nextStatus}::text = 'aprovado' THEN NULL ELSE revocation_mode END,
+        updated_at = NOW()
     WHERE id = ${approvalId} AND status IN ('pendente', 'em_analise', 'aguardando_humano')
   `;
   if (!updated) return { ok: false, code: "VERTICAL_ACCESS_NOT_AWAITING_DECISION" };
@@ -397,9 +450,114 @@ export async function decideVerticalAccess(params: {
     note,
     score: current.score,
     recommendation: current.recommendation,
+    revocationMode: nextStatus === "aprovado" ? null : (current.revocationMode as VerticalRevocationMode | null),
   });
   const approval = await readVerticalAccessById(prisma, approvalId);
   return approval ? { ok: true, approval } : { ok: false, code: "VERTICAL_ACCESS_NOT_FOUND" };
+}
+
+export type VerticalAccessRevocationAction = "revogar" | "alterar_modo" | "restaurar";
+
+export type VerticalAccessRevocationResult =
+  | { ok: true; approval: VerticalAccessRow }
+  | {
+      ok: false;
+      code: "VERTICAL_ACCESS_NOT_FOUND" | "VERTICAL_ACCESS_INVALID_TRANSITION" | "VERTICAL_ACCESS_NOTE_REQUIRED" | "VERTICAL_ACCESS_MODE_UNCHANGED";
+    };
+
+/** Observação obrigatória ao revogar e ao trocar o modo (ADR-011 §2.3); restaurar não exige. */
+export function revocationRequiresNote(action: VerticalAccessRevocationAction) {
+  return action !== "restaurar";
+}
+
+/**
+ * ADR-011 §2.5: revogar (só o que está aprovado), trocar o modo (só o que está revogado) ou restaurar
+ * (revogado volta a aprovado). Nada é apagado; cada mudança gera evento com o modo.
+ */
+export async function changeVerticalAccessRevocation(params: {
+  prisma: PrismaClient;
+  approvalId: string;
+  adminEmail: string;
+  action: VerticalAccessRevocationAction;
+  mode?: VerticalRevocationMode | null;
+  note?: string | null;
+}): Promise<VerticalAccessRevocationResult> {
+  const { prisma, approvalId, adminEmail, action } = params;
+  await ensureVerticalAccessStore(prisma);
+  const current = await readVerticalAccessById(prisma, approvalId);
+  if (!current) return { ok: false, code: "VERTICAL_ACCESS_NOT_FOUND" };
+  const expected: VerticalAccessStatus = action === "revogar" ? "aprovado" : "revogado";
+  if (current.status !== expected) return { ok: false, code: "VERTICAL_ACCESS_INVALID_TRANSITION" };
+  const note = params.note?.trim() || null;
+  if (revocationRequiresNote(action) && !note) return { ok: false, code: "VERTICAL_ACCESS_NOTE_REQUIRED" };
+
+  const mode: VerticalRevocationMode | null = action === "restaurar" ? null : (params.mode ?? DEFAULT_REVOCATION_MODE);
+  if (action === "alterar_modo" && mode === current.revocationMode) return { ok: false, code: "VERTICAL_ACCESS_MODE_UNCHANGED" };
+  const nextStatus: VerticalAccessStatus = action === "restaurar" ? "aprovado" : "revogado";
+  const actor = `admin:${adminEmail}`;
+  // Só muda se o estado ainda for o lido (duas ações simultâneas não passam as duas).
+  const updated = await prisma.$executeRaw`
+    UPDATE vertical_access_approvals
+    SET status = ${nextStatus}, revocation_mode = ${mode}::text, decided_by = ${actor}, decided_at = NOW(), note = ${note},
+        updated_at = NOW()
+    WHERE id = ${approvalId} AND status = ${expected}::text
+      AND revocation_mode IS NOT DISTINCT FROM ${current.revocationMode}::text
+  `;
+  if (!updated) return { ok: false, code: "VERTICAL_ACCESS_INVALID_TRANSITION" };
+  await insertEvent(prisma, current, {
+    from: current.status,
+    to: nextStatus,
+    actor,
+    note,
+    score: current.score,
+    recommendation: current.recommendation,
+    revocationMode: mode,
+  });
+  const approval = await readVerticalAccessById(prisma, approvalId);
+  return approval ? { ok: true, approval } : { ok: false, code: "VERTICAL_ACCESS_NOT_FOUND" };
+}
+
+/**
+ * ADR-011 §2.6: depois do deploy, o agente calcula o score das liberações aprovadas na migração para a
+ * revisão humana. Só lê e pontua: o estado não muda. Falha numa liberação deixa ela sem score e tenta de
+ * novo na próxima leitura da fila.
+ */
+export async function scoreMigratedApprovals(params: { prisma: PrismaClient; limit?: number }) {
+  const { prisma } = params;
+  await ensureVerticalAccessStore(prisma);
+  const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
+  const rows = await prisma.$queryRawUnsafe<VerticalAccessRow[]>(
+    `SELECT ${SELECT_COLUMNS} FROM vertical_access_approvals
+     WHERE source = 'migration' AND score IS NULL ORDER BY created_at ASC LIMIT $1`,
+    limit,
+  );
+  let scoredCount = 0;
+  for (const row of rows) {
+    let scored: VerticalAccessScore;
+    try {
+      scored = scoreVerticalAccess(await collectVerticalAccessScoreFacts({ prisma, tenantId: row.tenantId, workspaceId: row.workspaceId }));
+    } catch {
+      continue;
+    }
+    const updated = await prisma.$executeRaw`
+      UPDATE vertical_access_approvals
+      SET score = ${scored.score}, recommendation = ${scored.recommendation},
+          score_reasons = ${JSON.stringify(scored.reasons)}::jsonb, score_rule_version = ${scored.ruleVersion}, updated_at = NOW()
+      WHERE id = ${row.id} AND score IS NULL
+    `;
+    if (!updated) continue;
+    scoredCount += 1;
+    await insertEvent(prisma, row, {
+      from: row.status,
+      to: row.status,
+      actor: SCORING_ACTOR,
+      note: "Score calculado para revisão do aprovado na migração.",
+      score: scored.score,
+      recommendation: scored.recommendation,
+      revocationMode: row.revocationMode as VerticalRevocationMode | null,
+    });
+  }
+  return { scored: scoredCount };
 }
 
 export type AdminVerticalAccessItem = {
@@ -409,6 +567,7 @@ export type AdminVerticalAccessItem = {
   vertical: string;
   status: VerticalAccessStatus;
   source: "request" | "migration";
+  revocationMode: VerticalRevocationMode | null;
   requestedBy: string | null;
   requestedAt: Date | null;
   decidedBy: string | null;
@@ -426,6 +585,8 @@ export type AdminVerticalAccessItem = {
  */
 export async function listVerticalAccessForAdmin(params: { prisma: PrismaClient; limit?: number }) {
   await ensureVerticalAccessStore(params.prisma);
+  // O agente pontua os aprovados na migração antes de a fila ser mostrada; falha não impede a leitura.
+  await scoreMigratedApprovals({ prisma: params.prisma }).catch(() => undefined);
   const limit = Math.min(Math.max(params.limit ?? 200, 1), 500);
   return params.prisma.$queryRawUnsafe<AdminVerticalAccessItem[]>(
     `
@@ -436,6 +597,7 @@ export async function listVerticalAccessForAdmin(params: { prisma: PrismaClient;
       a.vertical,
       a.status,
       a.source,
+      a.revocation_mode AS "revocationMode",
       u.display_name AS "requestedBy",
       a.requested_at AS "requestedAt",
       a.decided_by AS "decidedBy",
