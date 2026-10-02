@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { updateSession, useSession } from "@/state/sessionStore";
+import { VerticalAccessNotices } from "@/components/verticalAccess/VerticalAccessNotices";
 
 function hasActiveImobInstall(items: Array<{ product: string; status: string }>) {
   return items.some(
@@ -199,6 +200,7 @@ const ImobMarketplacePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <VerticalAccessNotices />
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
         <p className="text-xs uppercase tracking-[0.35em] text-accent">Marketplace</p>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">IMOB Network</h1>

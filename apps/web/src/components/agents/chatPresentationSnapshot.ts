@@ -1,4 +1,5 @@
 import type { VerticalActivationSnapshot } from "@/components/agents/verticalActivationEngine";
+import type { VerticalApprovalChatSnapshot } from "@/components/agents/verticalApprovalChatEngine";
 import type { ChatVerticalHandoffResult } from "@/lib/api";
 import type { Agent } from "@/lib/api";
 import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
@@ -14,6 +15,8 @@ export type MessagePresentationSnapshot = {
   verticalHandoff?: ChatVerticalHandoffResult | null;
   /** Ativação de vertical pela conversa; "proposed" guarda a proposta que aguarda confirmação explícita. */
   verticalActivation?: VerticalActivationSnapshot | null;
+  /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3); aguarda confirmação explícita. */
+  verticalApprovalChat?: VerticalApprovalChatSnapshot | null;
   proposalDomain?: ProposalDomain | null;
   conversationStage?: ConversationStage | null;
   routeIntent:

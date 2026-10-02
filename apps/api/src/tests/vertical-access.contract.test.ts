@@ -128,6 +128,13 @@ test("sem liberação, nada é ativado (Marketplace e chat) — primeiro a liber
     .send({ verticalId: "imob" });
   assert.equal(preview.status, 200);
   assert.equal(preview.body?.data?.status, "approval_required");
+  assert.equal(preview.body?.data?.canRequest, true, "Founder pode pedir pela conversa");
+
+  const corretorPreview = await request
+    .post("/api/chat/vertical-activation/preview")
+    .set("Authorization", `Bearer ${tokens.corretor}`)
+    .send({ verticalId: "imob" });
+  assert.equal(corretorPreview.body?.data?.canRequest, false, "corretor não pode pedir");
 
   const installs = await prismaGlobal.$queryRaw<Array<{ total: bigint }>>`
     SELECT COUNT(*)::bigint AS total FROM tenant_product_installations WHERE workspace_id = ${workspaceId}
@@ -146,10 +153,16 @@ test("pedido: corretor não pede; Founder pede e o agente pontua sem aprovar", a
   const requested = await request
     .post("/api/vertical-access/request")
     .set("Authorization", `Bearer ${tokens.founder}`)
-    .send({ vertical: "IMOB" });
+    .send({ vertical: "IMOB", channel: "chat" });
   assert.equal(requested.status, 201);
   assert.equal(requested.body?.data?.status, "aguardando_humano");
   assert.equal(requested.body?.data?.score, undefined, "o cliente não vê o score");
+
+  const pendingPreview = await request
+    .post("/api/chat/vertical-activation/preview")
+    .set("Authorization", `Bearer ${tokens.founder}`)
+    .send({ verticalId: "imob" });
+  assert.equal(pendingPreview.body?.data?.canRequest, false, "pedido em análise não é oferecido de novo");
 
   const row = await approvalRow(workspaceId);
   assert.equal(row?.status, "aguardando_humano");
@@ -202,7 +215,7 @@ test("fila do administrador EIAH: invisível para os demais; decisão humana com
   const approved = await request
     .post(`/api/admin/vertical-approvals/${item.id}/decision`)
     .set("Authorization", `Bearer ${tokens.admin}`)
-    .send({ decision: "aprovar" });
+    .send({ decision: "aprovar", channel: "chat" });
   assert.equal(approved.status, 200);
   assert.equal(approved.body?.data?.status, "aprovado");
   assert.equal(approved.body?.data?.decidedBy, `admin:${adminEmail}`);
@@ -213,11 +226,12 @@ test("fila do administrador EIAH: invisível para os demais; decisão humana com
     .send({ decision: "recusar", note: "tarde demais" });
   assert.equal(twice.status, 409);
 
-  const events = await prismaGlobal.$queryRaw<Array<{ to_status: string; actor: string }>>`
-    SELECT to_status, actor FROM vertical_access_approval_events
+  const events = await prismaGlobal.$queryRaw<Array<{ to_status: string; actor: string; channel: string | null }>>`
+    SELECT to_status, actor, channel FROM vertical_access_approval_events
     WHERE approval_id = ${item.id} ORDER BY created_at ASC
   `;
   assert.deepEqual(events.map((event) => event.to_status), ["pendente", "aguardando_humano", "aprovado"]);
+  assert.deepEqual(events.map((event) => event.channel), ["chat", null, "chat"], "canal do pedido e da decisão na auditoria");
   assert.equal(events[1]?.actor, "agent:vertical-access-reviewer");
   assert.equal(events[2]?.actor, `admin:${adminEmail}`);
 });
@@ -373,4 +387,45 @@ test("novo pedido depois da revogação mantém o modo até a EIAH aprovar de no
   assert.equal(approved.status, 200);
   assert.equal(approved.body?.data?.revocationMode, null);
   assert.equal(REVOCATION_CODES.includes((await imobCall("get")).body?.error?.code), false);
+});
+
+test("avisos no app: cada decisão vira aviso sem score nem observação; leitura por pessoa e por workspace", async () => {
+  const listed = await request.get("/api/vertical-access/notices").set("Authorization", `Bearer ${tokens.founder}`);
+  assert.equal(listed.status, 200);
+  const kinds = listed.body.data.notices.map((notice: { kind: string }) => notice.kind);
+  // Mais recentes primeiro: aprovação do novo pedido, bloqueio total, restauração, trocas de modo, revogação e aprovação inicial.
+  assert.deepEqual(kinds, [
+    "aprovado",
+    "revogado_bloqueio_total",
+    "restaurado",
+    "revogado_sem_nova_ativacao",
+    "revogado_bloqueio_total",
+    "revogado_somente_leitura",
+    "aprovado",
+  ]);
+  const serialized = JSON.stringify(listed.body);
+  for (const forbidden of ["score", "Pagamento em atraso", "Fraude suspeita", "Regularizado", "recommendation"]) {
+    assert.equal(serialized.includes(forbidden), false, `aviso não leva ${forbidden}`);
+  }
+  assert.match(listed.body.data.notices[1].message, /acesso está bloqueado\. Os dados estão preservados\./);
+
+  const first = listed.body.data.notices[0];
+  const read = await request.post(`/api/vertical-access/notices/${first.id}/read`).set("Authorization", `Bearer ${tokens.founder}`).send({});
+  assert.equal(read.status, 200);
+  const again = await request.get("/api/vertical-access/notices").set("Authorization", `Bearer ${tokens.founder}`);
+  assert.equal(again.body.data.notices.length, 6, "lido some só para quem leu");
+  const corretor = await request.get("/api/vertical-access/notices").set("Authorization", `Bearer ${tokens.corretor}`);
+  assert.equal(corretor.body.data.notices.length, 7, "outra pessoa ainda vê");
+
+  const legacyNotice = await prismaGlobal.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM vertical_access_notices WHERE workspace_id = ${workspaceId} LIMIT 1
+  `;
+  await prismaGlobal.$executeRaw`
+    UPDATE vertical_access_notices SET workspace_id = ${legacyWorkspaceId} WHERE id = ${legacyNotice[0]!.id}
+  `;
+  const otherScope = await request
+    .post(`/api/vertical-access/notices/${legacyNotice[0]!.id}/read`)
+    .set("Authorization", `Bearer ${tokens.corretor}`)
+    .send({});
+  assert.equal(otherScope.status, 404, "aviso de outro workspace não é marcado");
 });

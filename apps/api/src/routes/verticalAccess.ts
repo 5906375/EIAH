@@ -6,6 +6,7 @@ import { canUserActivateProducts } from "../services/products/productActivation"
 import {
   changeVerticalAccessRevocation,
   decideVerticalAccess,
+  ensureVerticalAccessStore,
   listVerticalAccessForAdmin,
   readVerticalAccess,
   requestVerticalAccess,
@@ -13,6 +14,7 @@ import {
   REVOCATION_MODES,
 } from "../services/products/verticalAccessApproval";
 import { readPlatformAdmin } from "../services/platformAdmin";
+import { listUnreadVerticalAccessNotices, markVerticalAccessNoticeRead } from "../services/products/verticalAccessNotices";
 
 /**
  * ADR-011: liberação de verticais pela EIAH.
@@ -26,11 +28,13 @@ verticalAccessRouter.use("/vertical-access", enforceTenant);
 verticalAccessRouter.use("/admin/vertical-approvals", enforceTenant);
 
 const verticalSchema = z.enum(["IMOB"]);
-const requestSchema = z.object({ vertical: verticalSchema }).strict();
+const requestSchema = z.object({ vertical: verticalSchema, channel: z.enum(["marketplace", "chat"]).optional() }).strict();
+const adminChannelSchema = z.enum(["tela", "chat"]).optional();
 const decisionSchema = z
   .object({
     decision: z.enum(["aprovar", "recusar"]),
     note: z.string().trim().max(1000).optional(),
+    channel: adminChannelSchema,
   })
   .strict();
 const revocationSchema = z
@@ -38,6 +42,7 @@ const revocationSchema = z
     action: z.enum(["revogar", "alterar_modo", "restaurar"]),
     mode: z.enum(REVOCATION_MODES).optional(),
     note: z.string().trim().max(1000).optional(),
+    channel: adminChannelSchema,
   })
   .strict()
   .refine((value) => value.action !== "alterar_modo" || Boolean(value.mode), { message: "mode is required", path: ["mode"] });
@@ -108,11 +113,55 @@ verticalAccessRouter.post("/vertical-access/request", async (req, res) => {
   const allowed = await canUserActivateProducts({ prisma, tenantId, workspaceId, userId: userId ?? null });
   if (!allowed || !userId) return res.status(403).json({ ok: false, error: REQUEST_FORBIDDEN });
 
-  const result = await requestVerticalAccess({ prisma, tenantId, workspaceId, vertical: parsed.data.vertical, userId });
+  const result = await requestVerticalAccess({
+    prisma,
+    tenantId,
+    workspaceId,
+    vertical: parsed.data.vertical,
+    userId,
+    channel: parsed.data.channel ?? "marketplace",
+  });
   return res.status(result.outcome === "requested" ? 201 : 200).json({
     ok: true,
     data: { outcome: result.outcome, ...clientView(result.approval, parsed.data.vertical) },
   });
+});
+
+/** ADR-011 §2.4: avisos da liberação para quem está no workspace (sem score nem billing). */
+verticalAccessRouter.get("/vertical-access/notices", async (req, res) => {
+  const request = req as TenantAwareRequest;
+  const userId = request.authContext?.userId;
+  if (!request.authContext || !request.prisma || !userId) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING" } });
+  }
+  const prisma = request.prisma as unknown as PrismaClient;
+  await ensureVerticalAccessStore(prisma);
+  const notices = await listUnreadVerticalAccessNotices({
+    prisma,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId,
+  });
+  return res.json({ ok: true, data: { notices } });
+});
+
+verticalAccessRouter.post("/vertical-access/notices/:noticeId/read", async (req, res) => {
+  const request = req as TenantAwareRequest;
+  const userId = request.authContext?.userId;
+  if (!request.authContext || !request.prisma || !userId) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING" } });
+  }
+  const prisma = request.prisma as unknown as PrismaClient;
+  await ensureVerticalAccessStore(prisma);
+  const found = await markVerticalAccessNoticeRead({
+    prisma,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId,
+    noticeId: String(req.params.noticeId),
+  });
+  if (!found) return res.status(404).json({ ok: false, error: { code: "NOTICE_NOT_FOUND" } });
+  return res.json({ ok: true });
 });
 
 /** Não revela a existência da fila para quem não é administrador EIAH. */
@@ -141,6 +190,7 @@ verticalAccessRouter.post("/admin/vertical-approvals/:approvalId/decision", asyn
     adminEmail: admin.email,
     decision: parsed.data.decision,
     note: parsed.data.note ?? null,
+    channel: parsed.data.channel ?? "tela",
   });
   if (!result.ok) {
     const error = DECISION_ERRORS[result.code];
@@ -163,6 +213,7 @@ verticalAccessRouter.post("/admin/vertical-approvals/:approvalId/revocation", as
     action: parsed.data.action,
     mode: parsed.data.mode ?? null,
     note: parsed.data.note ?? null,
+    channel: parsed.data.channel ?? "tela",
   });
   if (!result.ok) {
     const error = REVOCATION_ERRORS[result.code];
