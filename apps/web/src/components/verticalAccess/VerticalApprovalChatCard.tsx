@@ -22,19 +22,22 @@ export const VerticalApprovalChatCard: React.FC<{
   return (
     <div className="space-y-2" data-approval-card>
       {rows.map((row) => (
-        <div key={row.title} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="font-medium text-foreground">{row.title}</p>
-            {row.detail ? <p className="mt-0.5 text-xs text-muted-foreground">{row.detail}</p> : null}
-            {row.misses?.length ? (
-              <ul className="mt-1 space-y-0.5 text-xs text-rose-200/90">
-                {row.misses.map((message) => (
-                  <li key={message}>✗ {message}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 gap-2">
+        // Leitura de cima para baixo: pedido e score, motivos, e por último a linha de decisão.
+        <div key={row.title} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+          <p className="font-medium text-foreground">
+            {row.title}
+            {row.detail ? <span className="font-normal text-muted-foreground"> — {row.detail}</span> : null}
+          </p>
+          {row.misses?.length ? (
+            <ul className="mt-1 space-y-0.5 text-xs text-rose-200/90">
+              {row.misses.map((message) => (
+                <li key={message}>✗ {message}</li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2">
+            <span className="text-xs text-muted-foreground">{row.title}</span>
+            <div className="flex shrink-0 gap-2">
             {row.actions.map((action) => (
               <button
                 key={action.label}
@@ -46,6 +49,7 @@ export const VerticalApprovalChatCard: React.FC<{
                 {action.label}
               </button>
             ))}
+            </div>
           </div>
         </div>
       ))}
