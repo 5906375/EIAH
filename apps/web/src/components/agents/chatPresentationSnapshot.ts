@@ -1,5 +1,6 @@
 import type { VerticalActivationSnapshot } from "@/components/agents/verticalActivationEngine";
 import type { VerticalApprovalChatSnapshot } from "@/components/agents/verticalApprovalChatEngine";
+import type { VerticalAccessNoticeSnapshot } from "@/components/agents/verticalAccessNoticeEngine";
 import type { ChatVerticalHandoffResult } from "@/lib/api";
 import type { Agent } from "@/lib/api";
 import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
@@ -17,6 +18,10 @@ export type MessagePresentationSnapshot = {
   verticalActivation?: VerticalActivationSnapshot | null;
   /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3); aguarda confirmação explícita. */
   verticalApprovalChat?: VerticalApprovalChatSnapshot | null;
+  /** Aviso da liberação EIAH entregue na conversa (ADR-011 §2.4); "pending" até o "Entendi". */
+  verticalAccessNotice?: VerticalAccessNoticeSnapshot | null;
+  /** Esta mensagem traz o cartão "Criar acesso" (ADR-011 §2.7); o e-mail e o link nunca entram no snapshot. */
+  frontDoorAccessCard?: boolean | null;
   proposalDomain?: ProposalDomain | null;
   conversationStage?: ConversationStage | null;
   routeIntent:

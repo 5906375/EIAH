@@ -57,7 +57,15 @@ import {
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
-import { maskAccessCreationInput } from "@/components/agents/frontDoorAccessEngine";
+import { attachFrontDoorAccessCardToSnapshot, maskAccessCreationInput } from "@/components/agents/frontDoorAccessEngine";
+import {
+  attachVerticalAccessNoticeToSnapshot,
+  describeUnshownNotices,
+  enrichLauncherDecisionWithNoticeAck,
+  fetchVerticalAccessNotices,
+  noticeIdsShownInConversation,
+} from "@/components/agents/verticalAccessNoticeEngine";
+import { FrontDoorAccessPanel } from "@/components/verticalAccess/FrontDoorAccessPanel";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -1058,7 +1066,7 @@ export default function ChatAgentLauncher({
       content: [maskAccessCreationInput(effectiveInput), attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1085,7 +1093,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    )));
+    ))));
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;
@@ -1097,7 +1105,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+      const localSnapshot = attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1117,7 +1125,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      }), turnDecision), turnDecision);
+      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
@@ -1526,6 +1534,49 @@ export default function ChatAgentLauncher({
     });
   }, [activeEiahMode, attachmentIntake, isUnifiedEiahMode, proposalMode, selectedCatalogAgent, threadKey, usedQuickReplyKeys]);
 
+  // ADR-011 §2.4: avisos da liberação EIAH chegam como mensagem na conversa, uma vez por conversa.
+  useEffect(() => {
+    if (!isUnifiedEiahMode || proposalMode) return;
+    let active = true;
+    void fetchVerticalAccessNotices().then((notices) => {
+      if (!active || notices.length === 0) return;
+      setMessages((prev) => {
+        const presentation = describeUnshownNotices(
+          notices,
+          noticeIdsShownInConversation(prev.map((message) => message.presentationSnapshot)),
+        );
+        if (!presentation) return prev;
+        return [
+          ...prev,
+          {
+            id: `assistant-vertical-access-notice-${Date.now()}`,
+            role: "assistant",
+            content: presentation.content,
+            status: "done",
+            presentationSnapshot: attachVerticalAccessNoticeToSnapshot(
+              createLauncherPresentationSnapshot({
+                selectedAgent: selectedCatalogAgent,
+                routeIntent: "help",
+                eiahMode: "help",
+                confidence: 0.9,
+                renderVariant: "simple_help",
+                resolvedQuickReplies: presentation.quickReplies,
+                isHelpCenterMode: isUnifiedEiahMode,
+                proposalMode,
+                attachmentIntake,
+              }),
+              presentation.notice,
+            ),
+          },
+        ];
+      });
+    });
+    return () => {
+      active = false;
+    };
+    // Só ao abrir a conversa (ou trocar de conversa); a lista de mensagens não reabre avisos.
+  }, [threadKey, isUnifiedEiahMode, proposalMode]);
+
   const lastUserMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "user")?.content ?? null,
     [messages]
@@ -1759,6 +1810,11 @@ export default function ChatAgentLauncher({
 
                                   {messageSnapshot?.verticalHandoff ? (
                                     <ChatVerticalHandoffCard result={messageSnapshot.verticalHandoff} />
+                                  ) : null}
+
+                                  {/* ADR-011 §2.7: cartão "Criar acesso" só na última mensagem; e-mail e link ficam fora do histórico. */}
+                                  {messageSnapshot?.frontDoorAccessCard && message.id === messages[messages.length - 1]?.id ? (
+                                    <FrontDoorAccessPanel />
                                   ) : null}
 
                                   {messageRunFinance ? (

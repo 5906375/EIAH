@@ -1,8 +1,8 @@
 /**
- * ADR-011 §2.7: criação de acessos pelo front door. O acesso é criado no painel "Criar acesso" do
- * `/app/chat`, que envia direto à API; a conversa só orienta e nunca guarda o e-mail do convidado:
- * se alguém digitar um e-mail ao pedir um acesso, o histórico guarda o e-mail mascarado.
- * O launcher só renderiza.
+ * ADR-011 §2.7: criação de acessos dentro da conversa do front door (`/app/chat`). O pedido abre um
+ * cartão "Criar acesso" na própria conversa; o cartão envia direto à API e guarda o e-mail e o link
+ * só na tela (nunca no histórico). Se alguém digitar um e-mail ao pedir um acesso, o histórico guarda
+ * o e-mail mascarado. O launcher só renderiza.
  */
 
 export const FRONT_DOOR_ACCESS_PANEL_ID = "criar-acesso";
@@ -30,10 +30,18 @@ export function maskAccessCreationInput(text: string) {
 
 export function describeAccessCreationHint() {
   return [
-    "Para criar um acesso, use o botão **Criar acesso** no topo desta página.",
+    "Vamos criar o acesso. Preencha os dados no cartão abaixo.",
     "",
-    "- Quem pode: Founder, Gestor ou Admin do workspace, em workspace com uma vertical liberada pela EIAH.",
-    "- A pessoa recebe um link de uso único, válido por 72 horas, e cria a própria senha. Quem já tem conta só entra no workspace.",
-    "- O link aparece uma única vez para você copiar. Não escreva o e-mail aqui na conversa: o painel envia direto, sem guardar no histórico.",
+    "A pessoa recebe um link de uso único, válido por 72 horas, e cria a própria senha. Quem já tem conta só entra no workspace.",
+    "",
+    "O e-mail não fica no histórico da conversa e o link aparece uma única vez, para você copiar.",
   ].join("\n");
+}
+
+/** Snapshot: esta mensagem mostra o cartão "Criar acesso" (só na última mensagem da conversa). */
+export function attachFrontDoorAccessCardToSnapshot<S extends { frontDoorAccessCard?: boolean | null }>(
+  snapshot: S,
+  decision: { frontDoorAccessCard?: boolean } | null | undefined,
+): S {
+  return decision?.frontDoorAccessCard ? { ...snapshot, frontDoorAccessCard: true } : snapshot;
 }
