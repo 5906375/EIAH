@@ -26,7 +26,7 @@ test("aviso chega como mensagem uma vez por conversa, com 'Entendi' próprio", (
   assert.ok(first);
   assert.match(first.content, /^\*\*Aviso da EIAH\*\*/);
   assert.match(first.content, /A EIAH liberou o IMOB neste workspace\./);
-  assert.deepEqual(first.notice, { noticeIds: ["n1"], status: "pending" });
+  assert.deepEqual(first.notice, { noticeIds: ["n1"], status: "pending", nextReplies: ["Ativar o IMOB neste workspace"] });
   assert.equal(first.quickReplies.length, 1);
   assert.match(first.quickReplies[0]!, /^Entendi o aviso de \d{2}\/\d{2},? \d{2}:\d{2}$/);
 
@@ -40,12 +40,14 @@ test("aviso chega como mensagem uma vez por conversa, com 'Entendi' próprio", (
   assert.match(two?.content ?? "", /^\*\*Avisos da EIAH \(2\)\*\*/);
   assert.ok((two?.content.indexOf("Restaurado.") ?? 0) < (two?.content.indexOf("Revogado.") ?? 0), "em ordem de data");
   assert.deepEqual(two?.notice.noticeIds, ["n2", "n3"]);
+  const revoked = describeUnshownNotices([{ ...notice("n4", "2026-10-03T10:00:00.000Z"), kind: "revogado_somente_leitura" }], new Set());
+  assert.deepEqual(revoked?.notice.nextReplies, [], "revogação não oferece ativar");
 });
 
 test("'Entendi' marca como lidos os avisos daquela mensagem; um 'Entendi' antigo marca os mostrados", async () => {
-  const pending = { noticeIds: ["n1"], status: "pending" as const };
+  const pending = { noticeIds: ["n1"], status: "pending" as const, nextReplies: ["Ativar o IMOB neste workspace"] };
   const reply = noticeAckReply("2026-10-03T08:23:00.000Z");
-  assert.deepEqual(resolveNoticeAckStep(reply, pending), { noticeIds: ["n1"] });
+  assert.deepEqual(resolveNoticeAckStep(reply, pending), { noticeIds: ["n1"], nextReplies: ["Ativar o IMOB neste workspace"] });
   assert.deepEqual(resolveNoticeAckStep(reply, null), { noticeIds: "all_shown" });
   assert.equal(resolveNoticeAckStep("entendi", pending), null, "texto solto não marca nada");
 
@@ -60,6 +62,16 @@ test("'Entendi' marca como lidos os avisos daquela mensagem; um 'Entendi' antigo
   const done = await enrichLauncherDecisionWithNoticeAck({ verticalAccessNoticeAck: { noticeIds: ["n1"] } }, api);
   assert.deepEqual(marked, ["n1"]);
   assert.equal(done?.content, "Pronto, aviso marcado como lido.");
+  assert.deepEqual(done?.resolvedQuickReplies, []);
+
+  const approved = await enrichLauncherDecisionWithNoticeAck(
+    { verticalAccessNoticeAck: { noticeIds: ["n5"], nextReplies: ["Ativar o IMOB neste workspace"] } },
+    api,
+  );
+  assert.match(approved?.content ?? "", /ative-o neste workspace/);
+  assert.deepEqual(approved?.resolvedQuickReplies, ["Ativar o IMOB neste workspace"], "oferece ativar depois do Entendi");
+  marked.length = 0;
+  marked.push("n1");
   assert.deepEqual(done?.verticalAccessNotice, { noticeIds: ["n1"], status: "acknowledged" });
 
   await enrichLauncherDecisionWithNoticeAck({ verticalAccessNoticeAck: { noticeIds: "all_shown" } }, api);
@@ -89,5 +101,5 @@ test("launcher: o 'Entendi' do aviso vira passo do engine, sem run", async () =>
   });
   assert.equal(decision?.kind, "vertical_access_notice_ack");
   assert.equal(decision?.shouldCreateRun, false);
-  assert.deepEqual(decision?.verticalAccessNoticeAck, { noticeIds: ["n1"] });
+  assert.deepEqual(decision?.verticalAccessNoticeAck, { noticeIds: ["n1"], nextReplies: [] });
 });

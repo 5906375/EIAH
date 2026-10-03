@@ -3,6 +3,7 @@ import {
   apiMarkVerticalAccessNoticeRead,
   type VerticalAccessNotice,
 } from "@/lib/api";
+import { ACTIVATION_REQUEST_REPLY } from "./verticalActivationEngine";
 
 /**
  * ADR-011 §2.4: avisos da liberação EIAH entregues dentro da conversa do front door (`/app/chat`).
@@ -14,7 +15,14 @@ import {
 export type VerticalAccessNoticeSnapshot = {
   noticeIds: string[];
   status: "pending" | "acknowledged";
+  /** Próximo passo oferecido depois do "Entendi" (ex.: ativar o IMOB quando a EIAH liberou). */
+  nextReplies?: string[];
 };
+
+/** Depois de "liberado pela EIAH", o próximo passo útil é ativar; nos demais avisos não há ação a oferecer. */
+function nextRepliesFor(latest: VerticalAccessNotice): string[] {
+  return latest.kind === "aprovado" && latest.vertical === "IMOB" ? [ACTIVATION_REQUEST_REPLY] : [];
+}
 
 const formatWhen = (value: string) =>
   new Date(value).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -55,7 +63,7 @@ export function describeUnshownNotices(
       .join("\n")
       .trim(),
     quickReplies: [noticeAckReply(ordered[ordered.length - 1]!.createdAt)],
-    notice: { noticeIds: ordered.map((notice) => notice.id), status: "pending" },
+    notice: { noticeIds: ordered.map((notice) => notice.id), status: "pending", nextReplies: nextRepliesFor(ordered[ordered.length - 1]!) },
   };
 }
 
@@ -68,7 +76,7 @@ export async function fetchVerticalAccessNotices(api: typeof apiListVerticalAcce
   }
 }
 
-export type VerticalAccessNoticeAckRequest = { noticeIds: string[] | "all_shown" };
+export type VerticalAccessNoticeAckRequest = { noticeIds: string[] | "all_shown"; nextReplies?: string[] };
 
 /**
  * "Entendi" logo depois do aviso marca aqueles avisos como lidos. Se a pessoa clicar num "Entendi"
@@ -79,7 +87,9 @@ export function resolveNoticeAckStep(
   pending: VerticalAccessNoticeSnapshot | null | undefined,
 ): VerticalAccessNoticeAckRequest | null {
   if (!ACK_PATTERN.test(normalize(input))) return null;
-  if (pending?.status === "pending" && pending.noticeIds.length > 0) return { noticeIds: pending.noticeIds };
+  if (pending?.status === "pending" && pending.noticeIds.length > 0) {
+    return { noticeIds: pending.noticeIds, nextReplies: pending.nextReplies ?? [] };
+  }
   return { noticeIds: "all_shown" };
 }
 
@@ -102,14 +112,16 @@ export async function enrichLauncherDecisionWithNoticeAck<D extends DecisionWith
   const ids = request.noticeIds === "all_shown" ? (await fetchVerticalAccessNotices(api.list)).map((notice) => notice.id) : request.noticeIds;
   const results = await Promise.allSettled(ids.map((id) => api.markRead(id)));
   const failed = results.some((result) => result.status === "rejected");
+  const nextReplies = request.nextReplies ?? [];
+  const done = ids.length > 1 ? "Pronto, avisos marcados como lidos." : "Pronto, aviso marcado como lido.";
   return {
     ...decision,
     content: failed
       ? "Não consegui marcar o aviso como lido agora. Ele volta a aparecer na próxima vez que você abrir a conversa."
-      : ids.length > 1
-        ? "Pronto, avisos marcados como lidos."
-        : "Pronto, aviso marcado como lido.",
-    resolvedQuickReplies: [],
+      : nextReplies.length > 0
+        ? `${done} Para começar a usar o IMOB, ative-o neste workspace: responda "${nextReplies[0]}".`
+        : done,
+    resolvedQuickReplies: nextReplies,
     verticalAccessNotice: { noticeIds: ids, status: "acknowledged" },
   };
 }

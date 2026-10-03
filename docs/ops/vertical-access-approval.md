@@ -120,6 +120,14 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
   e-mail ao pedir um acesso no chat, o histórico guarda o e-mail mascarado.
 - A barreira de vertical aprovada vale para o front door. O convite pelo Perfil continua pela regra atual de membros.
 
+## Senha própria no cadastro (ajustes após o teste manual)
+
+- O **Cadastrar** sem convite agora pede senha (mínimo de 8 caracteres). A senha é guardada só como hash
+  (`legacy_auth_credentials`), e a pessoa entra de novo com e-mail e senha depois de sair. A API continua aceitando o
+  cadastro sem senha, para os clientes antigos.
+- Na página de um convite já usado, substituído ou expirado, "Entrar" faz o login normal, sem tentar aceitar o convite de
+  novo.
+
 ## Fora deste PR (ADR-011 §3)
 
 - WhatsApp (avisos, ativação e envio do link): PR 2e.

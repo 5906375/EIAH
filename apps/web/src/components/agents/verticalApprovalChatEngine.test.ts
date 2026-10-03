@@ -43,8 +43,9 @@ test("fila: só pedidos aguardando, com score e motivos não atendidos; nada dec
     item({ id: "x", status: "aprovado" }),
   ]);
   assert.equal(queue.approvalChat.status, "queue");
-  assert.match(queue.content, /1\. IMOB para Imobiliária Sol · Principal — score 55 \(Revisar\)/);
-  assert.match(queue.content, /✗ Sem conta de billing ativa\./);
+  assert.match(queue.content, /\*\*Pedido 1:\*\* IMOB para Imobiliária Sol · Principal — score 55 \(Revisar\)\n\n- ✗ Sem conta de billing ativa\./);
+  assert.match(queue.content, /\n\n\*\*Pedido 2:\*\* IMOB para Casa Azul/, "um bloco por pedido");
+  assert.doesNotMatch(queue.content, /^\s+✗/m, "sem recuo (o markdown juntaria as linhas)");
   assert.doesNotMatch(queue.content, /Nenhuma disputa aberta/, "mostra só o que falhou");
   assert.deepEqual(queue.quickReplies, [
     "Aprovar pedido 1: IMOB para Imobiliária Sol · Principal",

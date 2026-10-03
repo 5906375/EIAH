@@ -171,3 +171,43 @@ test("quem não tem products.activate não vê nem concede função com a chave"
   assert.equal(gestor.body.data.allowed, true);
   for (const role of gestor.body.data.roles as Array<{ grantsActivation: boolean }>) assert.equal(role.grantsActivation, false);
 });
+
+test("cadastro com senha própria: entra de novo depois de sair; sem senha continua compatível", async () => {
+  const email = `cadastro-senha-${suffix}@example.com`;
+  const short = await request.post("/api/auth/onboarding").send({ email, name: "Dona", orgName: `Org Senha ${suffix}`, password: "curta" });
+  assert.equal(short.status, 400, "senha com menos de 8 caracteres é recusada");
+
+  const created = await request
+    .post("/api/auth/onboarding")
+    .send({ email, name: "Dona", orgName: `Org Senha ${suffix}`, mode: "provision", password: "senha-forte-123" });
+  assert.equal(created.status, 201);
+  const stored = await prismaGlobal.$queryRaw<Array<{ password_hash: string }>>`
+    SELECT password_hash FROM legacy_auth_credentials WHERE email = ${email}
+  `;
+  assert.match(stored[0]?.password_hash ?? "", /^scrypt\$/, "guarda só o hash");
+  assert.equal(JSON.stringify(stored).includes("senha-forte-123"), false);
+
+  const login = await request.post("/api/auth/login").send({ email, password: "senha-forte-123" });
+  assert.equal(login.status, 200);
+  assert.equal(login.body.data.tenantId, created.body.data.tenantId);
+  const wrong = await request.post("/api/auth/login").send({ email, password: "senha-errada-1" });
+  assert.equal(wrong.status, 401);
+
+  const legacy = await request
+    .post("/api/auth/onboarding")
+    .send({ email: `cadastro-sem-senha-${suffix}@example.com`, name: "Sem senha", orgName: `Org Sem Senha ${suffix}`, mode: "provision" });
+  assert.equal(legacy.status, 201, "clientes antigos da API (sem senha) seguem funcionando");
+
+  for (const tenant of [created.body.data.tenantId, legacy.body.data.tenantId]) {
+    await prismaGlobal.$executeRaw`DELETE FROM legacy_auth_credentials WHERE user_id IN (SELECT id FROM users WHERE tenant_id = ${tenant})`;
+    await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_memberships WHERE tenant_id = ${tenant}`.catch(() => undefined);
+    await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_roles WHERE tenant_id = ${tenant}`.catch(() => undefined);
+    await prismaGlobal.workspaceAgentAssignment.deleteMany({ where: { tenantId: tenant } }).catch(() => undefined);
+    await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId: tenant } }).catch(() => undefined);
+    await prismaGlobal.guardrailLedger.deleteMany({ where: { tenantId: tenant } }).catch(() => undefined);
+    await prismaGlobal.apiToken.deleteMany({ where: { tenantId: tenant } });
+    await prismaGlobal.user.deleteMany({ where: { tenantId: tenant } }).catch(() => undefined);
+    await prismaGlobal.workspace.deleteMany({ where: { tenantId: tenant } }).catch(() => undefined);
+    await prismaGlobal.tenant.deleteMany({ where: { id: tenant } }).catch(() => undefined);
+  }
+});
