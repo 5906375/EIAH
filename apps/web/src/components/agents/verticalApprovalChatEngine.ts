@@ -202,7 +202,8 @@ export function describeApprovalChatFailure(error: unknown, stage: "list" | "dec
 }
 
 export type ApprovalCardAction = { label: string; reply: string; tone: "approve" | "refuse" | "neutral" };
-export type ApprovalCardRow = { title: string; detail?: string; misses?: string[]; actions: ApprovalCardAction[] };
+/** `title` vazio = linha só com botões (pergunta da conversa logo acima). */
+export type ApprovalCardRow = { title?: string; detail?: string; misses?: string[]; actions: ApprovalCardAction[] };
 
 /** O que o cartão da conversa mostra para o estado atual (ou nada). Os botões enviam o mesmo texto que o resolvedor entende. */
 export function approvalCardRows(snapshot: VerticalApprovalChatSnapshot | null | undefined): ApprovalCardRow[] | null {

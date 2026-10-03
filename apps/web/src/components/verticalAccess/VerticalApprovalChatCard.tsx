@@ -22,9 +22,25 @@ export const ChatActionRowsCard: React.FC<{
   if (!rows?.length) return null;
   return (
     <div className="space-y-2" data-chat-card={testId}>
-      {rows.map((row) => (
+      {rows.map((row, index) =>
+        !row.title ? (
+          // Pergunta já feita no texto: só os botões, sem moldura.
+          <div key={`actions-${index}`} className="flex flex-wrap gap-2 pt-1">
+            {row.actions.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                disabled={disabled}
+                onClick={() => onReply(action.reply)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition disabled:opacity-60 ${TONE[action.tone]}`}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        ) : (
         // Leitura de cima para baixo: título e detalhe, motivos e, por último, os botões.
-        <div key={row.title} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+        <div key={`${row.title}-${index}`} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
           <p className="font-medium text-foreground">
             {row.title}
             {row.detail ? <span className="font-normal text-muted-foreground"> — {row.detail}</span> : null}
@@ -52,7 +68,8 @@ export const ChatActionRowsCard: React.FC<{
             </div>
           </div>
         </div>
-      ))}
+        ),
+      )}
     </div>
   );
 };

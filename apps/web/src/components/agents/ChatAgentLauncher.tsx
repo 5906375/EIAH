@@ -1876,6 +1876,7 @@ export default function ChatAgentLauncher({
                                     </div>
                                   ) : null}
 
+                                  {messageQuickReplies.length > 0 ? (
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                                     <span>Quer aprofundar algo?</span>
                                     <div className="flex flex-wrap gap-2">
@@ -1893,6 +1894,7 @@ export default function ChatAgentLauncher({
                                       ))}
                                     </div>
                                   </div>
+                                  ) : null}
 
                                   {null}
                                 </div>

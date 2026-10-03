@@ -131,12 +131,16 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
 
 ## Conta de billing e primeira mensalidade pela conversa (PR 2f, ADR-011 §2.8)
 
-- Ao pedir "ativar o IMOB" sem liberação, quem pode pedir (Founder ou `products.activate`) e não tem conta de billing
-  ativa recebe o aviso e um cartão com os planos atuais (`solo`, `starter`, `growth`, `scale`) e o botão para pedir a
-  liberação mesmo assim. A conta **não** é obrigatória.
-- **Escolher** → cartão de confirmação → **Confirmar criação da conta** cria `tenant_billing_account` (status `active`,
-  BRL). Conta existente não é alterada. Auditoria: `guardrail_audit_ledger.event_type = 'billing.account.created'`.
-- Em seguida, **Pagar R$ … (simulado)**: só com o meio `bank` em modo `simulated` (padrão; com
+- A conversa vai em etapas, uma pergunta por vez (ajuste após o teste manual de 03/10). Ao pedir "ativar o IMOB" sem
+  liberação, quem pode pedir (Founder ou `products.activate`) e não tem conta de billing ativa recebe: a explicação da
+  liberação e a pergunta "Quer criar a conta agora?", com **Sim, criar a conta**, **Pedir a liberação sem conta** e
+  **Agora não**. A conta **não** é obrigatória.
+- **Sim, criar a conta** → planos atuais (`solo`, `starter`, `growth`, `scale`) → **Escolher** → "Posso criar a conta de
+  billing neste plano?" (**Sim, criar a conta** ou **Ver outros planos**). Só então cria `tenant_billing_account`
+  (status `active`, BRL). Conta existente não é alterada. Auditoria: `guardrail_audit_ledger.event_type =
+  'billing.account.created'`.
+- Em seguida, "Quer pagar a primeira mensalidade agora?" (**Pagar agora (simulado)** ou **Pagar depois**) e, por
+  fim, "Posso enviar o pedido?" (**Sim, enviar o pedido** ou **Agora não**). O pagamento: só com o meio `bank` em modo `simulated` (padrão; com
   `SETTLEMENT_PROVIDER_MODE_BANK=full` a conversa recusa, porque não há integração real). Grava um evento de valor zero
   no `billing_ledger` (`type = 'adjustment'`, `model = 'front_door.first_payment.simulated'`), uma vez por tenant, e a
   auditoria `billing.first_payment.simulated`. Nenhuma cobrança real.

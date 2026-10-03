@@ -183,8 +183,8 @@ export function describeAccessRequestResult(
   }
   return {
     content: outcome === "requested"
-      ? "Pedido de liberação enviado à EIAH. Um administrador analisa e decide; o aviso da decisão aparece aqui e no Marketplace."
-      : "Já existe um pedido de liberação em análise pela EIAH. O aviso da decisão aparece aqui e no Marketplace.",
+      ? "Pedido de liberação enviado à EIAH! Agora é com a gente: um administrador vai analisar e, assim que houver decisão, o aviso aparece aqui na conversa (e no Marketplace)."
+      : "Você já tem um pedido de liberação em análise pela EIAH. Assim que houver decisão, o aviso aparece aqui na conversa (e no Marketplace).",
     quickReplies: [],
     activation: { status: "access_requested", verticalId: "imob" },
   };
@@ -239,7 +239,7 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
   if (request.step === "cancel") {
     presentation = { content: "Ativação cancelada. Nada foi alterado.", quickReplies: [], activation: { status: "cancelled", verticalId: "imob" } };
   } else if (request.step === "cancel_access_request") {
-    presentation = { content: "Tudo bem, nenhum pedido foi enviado.", quickReplies: [], activation: { status: "cancelled", verticalId: "imob" } };
+    presentation = { content: "Tudo bem, nenhum pedido foi enviado. Quando quiser seguir, é só me dizer \"ativar o IMOB\".", quickReplies: [], activation: { status: "cancelled", verticalId: "imob" } };
   } else if (request.step === "request_access") {
     try {
       const requestAccess = api.requestAccess ?? apiRequestVerticalAccess;
