@@ -6,6 +6,7 @@
 - `/sessoes-governadas/` — extensão específica por URL direta; não listada na landing e marcada `noindex,nofollow`.
 - `/levoutec/` — extensão específica por URL direta; não listada na landing e marcada `noindex,nofollow`.
 - `/imobiliarias/` — modelo de site de imobiliária (compra, venda, locação e temporada) para apresentar a imobiliárias e corretores: busca em linguagem natural interpretada no próprio navegador, filtros, custo mensal somado, simulador de financiamento, comparação, favoritos, anúncio para proprietários e espaços para fotos, vídeo e depoimentos. Imóveis e marca fictícios (bloco CONFIG/IMOVEIS no script); endereço público só com bairro e cidade; formulários com envio desativado e aviso na tela. Por URL direta, não listada na landing e marcada `noindex,nofollow`.
+- `/revisores/` — cadastro de interesse para revisores de UI e UX: formulário estático que prepara uma mensagem no aplicativo de e-mail do participante (nada é enviado ou guardado pelo site). Por URL direta, não listada na landing e marcada `noindex,nofollow`. Aviso de privacidade ainda em versão para revisão.
 
 ## O que continua público na landing
 - A vertical **Logística & Comex · Pré-DUIMP** continua apresentada no conjunto de verticais com status **SHADOW** e permanece disponível no simulador institucional.
