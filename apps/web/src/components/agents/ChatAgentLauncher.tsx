@@ -66,6 +66,7 @@ import {
   noticeIdsShownInConversation,
 } from "@/components/agents/verticalAccessNoticeEngine";
 import { FrontDoorAccessPanel } from "@/components/verticalAccess/FrontDoorAccessPanel";
+import { VerticalApprovalChatCard } from "@/components/verticalAccess/VerticalApprovalChatCard";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -631,6 +632,13 @@ export default function ChatAgentLauncher({
       }
     );
   }, [activeAgentId, agents]);
+
+  // Botões de cartão na conversa (ex.: Aprovar/Recusar um pedido) enviam o texto direto, sem passar pelo "Enviar".
+  const [autoSendInput, setAutoSendInput] = useState<string | null>(null);
+  const sendReplyNow = (text: string) => {
+    setInput(text);
+    setAutoSendInput(text);
+  };
 
   useEffect(() => {
     if (!pendingAgentReplayInput) return;
@@ -1252,6 +1260,13 @@ export default function ChatAgentLauncher({
     }
   };
 
+  useEffect(() => {
+    if (!autoSendInput || input !== autoSendInput || isStreaming) return;
+    setAutoSendInput(null);
+    void handleSend();
+    // handleSend lê o input já atualizado; só dispara quando o texto do botão chegou na caixa.
+  }, [autoSendInput, input, isStreaming]);
+
   const handleApprove = async () => {
     if (!runId) return;
     try {
@@ -1810,6 +1825,15 @@ export default function ChatAgentLauncher({
 
                                   {messageSnapshot?.verticalHandoff ? (
                                     <ChatVerticalHandoffCard result={messageSnapshot.verticalHandoff} />
+                                  ) : null}
+
+                                  {/* ADR-011 §2.3: fila de liberações com botões por pedido, só na última mensagem. */}
+                                  {messageSnapshot?.verticalApprovalChat && message.id === messages[messages.length - 1]?.id ? (
+                                    <VerticalApprovalChatCard
+                                      snapshot={messageSnapshot.verticalApprovalChat}
+                                      onReply={sendReplyNow}
+                                      disabled={isStreaming}
+                                    />
                                   ) : null}
 
                                   {/* ADR-011 §2.7: cartão "Criar acesso" só na última mensagem; e-mail e link ficam fora do histórico. */}

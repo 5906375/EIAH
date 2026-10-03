@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ApiError, type VerticalApprovalAdminItem } from "@/lib/api";
 import {
+  approvalCardRows,
   attachVerticalApprovalChatToSnapshot,
   confirmReplyFor,
   describeApprovalQueue,
@@ -43,16 +44,23 @@ test("fila: só pedidos aguardando, com score e motivos não atendidos; nada dec
     item({ id: "x", status: "aprovado" }),
   ]);
   assert.equal(queue.approvalChat.status, "queue");
-  assert.match(queue.content, /\*\*Pedido 1:\*\* IMOB para Imobiliária Sol · Principal — score 55 \(Revisar\)\n\n- ✗ Sem conta de billing ativa\./);
-  assert.match(queue.content, /\n\n\*\*Pedido 2:\*\* IMOB para Casa Azul/, "um bloco por pedido");
-  assert.doesNotMatch(queue.content, /^\s+✗/m, "sem recuo (o markdown juntaria as linhas)");
-  assert.doesNotMatch(queue.content, /Nenhuma disputa aberta/, "mostra só o que falhou");
-  assert.deepEqual(queue.quickReplies, [
-    "Aprovar pedido 1: IMOB para Imobiliária Sol · Principal",
-    "Recusar pedido 1: IMOB para Imobiliária Sol · Principal",
-    "Aprovar pedido 2: IMOB para Casa Azul · Principal",
-    "Recusar pedido 2: IMOB para Casa Azul · Principal",
+  assert.match(queue.content, /Pedidos aguardando decisão \(2\)/);
+  assert.deepEqual(queue.quickReplies, [], "os botões ficam no cartão de cada pedido");
+
+  // Cartão na conversa: uma linha por pedido, com Aprovar e Recusar ao lado.
+  const rows = approvalCardRows(queue.approvalChat);
+  assert.deepEqual(rows?.map((row) => row.title), [
+    "Pedido 1: IMOB para Imobiliária Sol · Principal",
+    "Pedido 2: IMOB para Casa Azul · Principal",
   ]);
+  assert.equal(rows?.[0]?.detail, "score 55 (Revisar)");
+  assert.deepEqual(rows?.[0]?.misses, ["Sem conta de billing ativa."], "mostra só o que falhou");
+  assert.deepEqual(rows?.[1]?.actions.map((action) => [action.label, action.reply]), [
+    ["Aprovar", "Aprovar pedido 2: IMOB para Casa Azul · Principal"],
+    ["Recusar", "Recusar pedido 2: IMOB para Casa Azul · Principal"],
+  ]);
+  // O texto do botão é entendido pelo resolvedor.
+  assert.equal(resolveVerticalApprovalChatStep(rows![1]!.actions[1]!.reply, queue.approvalChat)?.step, "choose");
   assert.equal(describeApprovalQueue([item({ status: "recusado" })]).approvalChat.status, "empty");
 });
 
@@ -99,7 +107,20 @@ test("engine assíncrono: lista, decide pelo canal chat e não revela a fila a q
     api,
   );
   assert.equal(chosen?.verticalApprovalChat?.status, "confirm");
-  assert.deepEqual(chosen?.resolvedQuickReplies, ["Confirmar aprovação: IMOB para Imobiliária Sol · Principal", "Cancelar decisão"]);
+  assert.deepEqual(chosen?.resolvedQuickReplies, []);
+  const confirmRow = approvalCardRows(chosen?.verticalApprovalChat)?.[0];
+  assert.deepEqual(confirmRow?.actions.map((action) => [action.label, action.reply]), [
+    ["Confirmar aprovação", "Confirmar aprovação: IMOB para Imobiliária Sol · Principal"],
+    ["Cancelar", "Cancelar decisão"],
+  ]);
+  assert.equal(
+    resolveVerticalApprovalChatStep(confirmRow!.actions[0]!.reply, chosen!.verticalApprovalChat)?.step,
+    "confirm",
+    "o botão de confirmação é a confirmação explícita",
+  );
+  assert.equal(approvalCardRows({ status: "done" }), null, "depois da decisão não há botões");
+  const withCard = attachVerticalApprovalChatToSnapshot({ quickReplies: ["O que o EIAH pode fazer por mim?"] }, chosen);
+  assert.deepEqual(withCard.quickReplies, [], "sem sugestões genéricas embaixo do cartão");
   assert.equal(decided.length, 0, "escolher não decide");
 
   const done = await enrichLauncherDecisionWithVerticalApprovalChat(

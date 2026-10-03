@@ -83,7 +83,8 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
   oferta "Pedir liberação do IMOB". O pedido só sai com essa confirmação logo depois da oferta (um "sim" solto não
   envia). O preview informa `canRequest`; com pedido em análise, a oferta não aparece.
 - **Administrador EIAH:** "aprovações pendentes" no `/app/chat` lista até 5 pedidos com score e os pontos não
-  atendidos. O fluxo é: escolher "Aprovar/Recusar pedido N"; escrever a observação quando ela é obrigatória; e
+  atendidos, cada um com os botões **Aprovar** e **Recusar** ao lado, dentro da conversa. O clique já envia; a
+  confirmação também é por botão ("Confirmar aprovação/recusa" ou "Cancelar"). O fluxo é: escolher "Aprovar/Recusar pedido N"; escrever a observação quando ela é obrigatória; e
   clicar em "Confirmar aprovação/recusa: …". Nada é decidido antes disso. Para quem não é administrador, a conversa
   responde que não encontrou aprovações.
 - **Canal na auditoria:** `vertical_access_approval_events.channel` registra `marketplace`, `tela` ou `chat`.
