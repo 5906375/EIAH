@@ -1,6 +1,7 @@
 import type { VerticalActivationSnapshot } from "@/components/agents/verticalActivationEngine";
 import type { VerticalApprovalChatSnapshot } from "@/components/agents/verticalApprovalChatEngine";
 import type { VerticalAccessNoticeSnapshot } from "@/components/agents/verticalAccessNoticeEngine";
+import type { FrontDoorBillingSnapshot } from "@/components/agents/frontDoorBillingEngine";
 import type { ChatVerticalHandoffResult } from "@/lib/api";
 import type { Agent } from "@/lib/api";
 import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
@@ -22,6 +23,8 @@ export type MessagePresentationSnapshot = {
   verticalAccessNotice?: VerticalAccessNoticeSnapshot | null;
   /** Esta mensagem traz o cartão "Criar acesso" (ADR-011 §2.7); o e-mail e o link nunca entram no snapshot. */
   frontDoorAccessCard?: boolean | null;
+  /** Cartão de billing antes do pedido de liberação (ADR-011 §2.8); nunca guarda score nem dado de pagamento. */
+  frontDoorBilling?: FrontDoorBillingSnapshot | null;
   proposalDomain?: ProposalDomain | null;
   conversationStage?: ConversationStage | null;
   routeIntent:

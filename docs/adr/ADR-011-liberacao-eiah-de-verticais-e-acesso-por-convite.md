@@ -108,6 +108,38 @@ assinatura digital ou verificação independente de identidade.
 - Só pode conceder `products.activate` num convite ou papel quem já tem `products.activate` (fecha a brecha do §1).
 - E-mail do convidado mascarado no histórico da conversa.
 
+### 2.8 Conta de billing e primeira mensalidade pelo front door (complemento de 03/10/2026)
+
+**Decisão de Carlos Alberto Merlo — 03/10/2026, America/Sao_Paulo.** Origem: resposta literal do usuário em conversa,
+“sim às 4 recomendações”, às quatro recomendações apresentadas na mesma conversa e reproduzidas abaixo. Registro
+textual, sem assinatura digital ou verificação independente de identidade.
+
+1. A conta de billing **não** é obrigatória para pedir a liberação: a conversa avisa quando não há conta ativa e
+   oferece criá-la antes do pedido; o pedido continua possível sem ela (o score mais baixo já sinaliza ao
+   administrador).
+2. Os planos oferecidos na conversa são os quatro perfis que já existem no código (`solo`, `starter`, `growth`,
+   `scale`, em `packages/core/src/services/tenantInvoiceService.ts`), com os preços atuais. Nenhum preço novo.
+3. O pagamento oferecido na conversa é **simulado** e registrado como tal. Cobrança real (Stripe, PIX ou outro meio)
+   exige credenciais e decisão própria.
+4. Esta decisão é registrada nesta ADR antes do código.
+
+Regras de implementação:
+
+- Quem cria a conta e paga a primeira mensalidade: o Founder e quem tem `products.activate` (as mesmas pessoas que
+  podem pedir a liberação, §2.4). Criação e pagamento exigem clique de confirmação explícito na conversa.
+- A conta é criada com o plano escolhido, status `active` e moeda BRL. Conta existente não é alterada pela conversa
+  (troca de plano fica fora).
+- Pagamento simulado: só quando o meio de pagamento está em modo `simulated`; em modo `full` a conversa recusa,
+  porque não há integração real. O registro no `BillingLedger` é um evento de valor zero (`adjustment`, `amountCents`
+  = 0) com o valor da mensalidade só na descrição e o modo `simulated` explícito, para não somar dinheiro inexistente
+  em relatórios e conciliação. Uma única primeira mensalidade por tenant (idempotente).
+- O pagamento simulado **não** conta como “pagamento confirmado” no score (`vertical-access-score.v1` permanece igual).
+  Só a conta de billing ativa passa a contar, pela regra que já existe.
+- A conversa não mostra score nem sinais de billing de outros tenants; não pede dados de cartão ou documento.
+
+O que este complemento **não** faz: não cria preço novo, não liga cobrança real, não altera o IMOB Cost, o score, o
+ruleset nem `docs/EVIDENCE_INDEX.md`, e não torna a conta de billing obrigatória para a liberação.
+
 ## 3. Implementação autorizada (PRs sequenciais)
 
 | PR | Escopo |
@@ -117,6 +149,7 @@ assinatura digital ou verificação independente de identidade.
 | 2c | Pedido e decisão pelo chat do front door; fila de avisos no app; revogação nos três modos |
 | 2d | Criação de acessos pelo front door (§2.7) |
 | 2e | Canal WhatsApp para avisos e ativação, quando a API estiver disponível |
+| 2f | Conta de billing e primeira mensalidade simulada pela conversa do front door (§2.8) |
 
 Condições em cada PR: testes incluindo regressão fail-closed; `ChatAgentLauncher` apenas renderiza; isolamento
 tenant/workspace e masking de PII preservados; status conforme `IA_EIAH.md` §17.
@@ -124,7 +157,8 @@ tenant/workspace e masking de PII preservados; status conforme `IA_EIAH.md` §17
 ## 4. O que permanece fora
 
 - Aprovação automática por score.
-- Mudança de preço, cobrança, IMOB Cost, ruleset e `docs/EVIDENCE_INDEX.md`.
+- Mudança de preço, cobrança real, IMOB Cost, ruleset e `docs/EVIDENCE_INDEX.md` (a criação de conta de billing e
+  a primeira mensalidade **simulada** pela conversa estão autorizadas só nos termos do §2.8).
 - Envio de e-mail.
 - Uso de IA generativa para decidir o score (pode apenas resumir o caso, em decisão futura).
 

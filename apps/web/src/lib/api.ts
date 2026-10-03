@@ -5240,6 +5240,54 @@ export async function apiCreateFrontDoorAccess(body: { email: string; fullName?:
   return http<{ ok: true; data: FrontDoorAccessCreated }>(`/front-door/accesses`, { method: "POST", body: JSON.stringify(body) });
 }
 
+/** ADR-011 §2.8: conta de billing e primeira mensalidade (simulada) pela conversa do front door. */
+export type FrontDoorBillingPlanCode = "solo" | "starter" | "growth" | "scale";
+
+export type FrontDoorBillingPlan = {
+  code: FrontDoorBillingPlanCode;
+  label: string;
+  monthlyPriceCents: number;
+  includedUsers: number;
+  includedRuns: number;
+  includedWorkspaces: number;
+};
+
+export type FrontDoorBillingAccount = {
+  planCode: FrontDoorBillingPlanCode;
+  planLabel: string;
+  monthlyPriceCents: number;
+  status: string;
+  currency: string;
+  createdAt: string;
+};
+
+export type FrontDoorBillingState = {
+  canManage: boolean;
+  account: FrontDoorBillingAccount | null;
+  accountActive: boolean;
+  firstPayment: { mode: "simulated"; paidAt: string; description: string | null } | null;
+  paymentMode: "simulated" | "full";
+  plans: FrontDoorBillingPlan[];
+};
+
+export async function apiGetFrontDoorBilling() {
+  return http<{ ok: true; data: FrontDoorBillingState }>(`/front-door/billing`);
+}
+
+export async function apiCreateFrontDoorBillingAccount(body: { planCode: FrontDoorBillingPlanCode; confirmed: true }) {
+  return http<{ ok: true; data: { outcome: "created" | "already_exists"; account: FrontDoorBillingAccount } }>(
+    `/front-door/billing/account`,
+    { method: "POST", body: JSON.stringify(body) },
+  );
+}
+
+export async function apiPayFrontDoorFirstMonth(body: { confirmed: true }) {
+  return http<{
+    ok: true;
+    data: { outcome: "paid" | "already_paid"; account: FrontDoorBillingAccount; payment: NonNullable<FrontDoorBillingState["firstPayment"]> };
+  }>(`/front-door/billing/first-payment`, { method: "POST", body: JSON.stringify(body) });
+}
+
 export async function apiGetProfile(window: "7d" | "30d" = "7d") {
   const qs = new URLSearchParams({ window });
   return http<ProfileResponse>(`/profile/me?${qs.toString()}`, { method: "GET" });

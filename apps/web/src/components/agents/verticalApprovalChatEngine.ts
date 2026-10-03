@@ -11,7 +11,8 @@ import {
  * demais a API responde 404 e a conversa não revela nada). Nenhuma decisão sai sem confirmação
  * explícita logo depois da proposta; a observação é pedida quando é obrigatória (recusar e aprovar
  * contra a recomendação do agente). A conversa mostra só dados do pedido e sinais do score.
- * O launcher só renderiza.
+ * Cada pedido aparece com os próprios botões Aprovar/Recusar dentro da conversa (cartão), e a
+ * confirmação também é por botão. O launcher só renderiza o cartão e envia o texto do botão.
  */
 
 export const APPROVAL_QUEUE_REPLY = "Ver aprovações pendentes";
@@ -22,7 +23,15 @@ const MAX_ITEMS = 5;
 
 export type ApprovalChatDecision = "aprovar" | "recusar";
 
-type QueueEntry = { id: string; label: string; noteRequiredToApprove: boolean };
+type QueueEntry = {
+  id: string;
+  label: string;
+  noteRequiredToApprove: boolean;
+  /** Posição na fila mostrada (1, 2, …), score e motivos não atendidos: só o que o cartão exibe. */
+  index?: number;
+  scoreLabel?: string;
+  misses?: string[];
+};
 
 /** Estado congelado no snapshot da mensagem do assistente. */
 export type VerticalApprovalChatSnapshot =
@@ -54,7 +63,7 @@ function isCancel(input: string) {
 
 // Os botões levam o pedido no texto: o launcher esconde respostas já usadas na conversa, e assim
 // uma segunda decisão continua com os próprios botões.
-const choiceReply = (decision: ApprovalChatDecision, index: number, label: string) =>
+export const choiceReply = (decision: ApprovalChatDecision, index: number, label: string) =>
   `${decision === "aprovar" ? "Aprovar" : "Recusar"} pedido ${index}: ${label}`;
 
 export const confirmReplyFor = (decision: ApprovalChatDecision, label: string) =>
@@ -115,31 +124,25 @@ export function describeApprovalQueue(items: VerticalApprovalAdminItem[]): Verti
   if (awaiting.length === 0) {
     return { content: "Não há pedidos de liberação aguardando decisão.", quickReplies: [], approvalChat: { status: "empty" } };
   }
-  const lines = awaiting.map((item, index) => {
-    const score = item.score === null
+  const entries: QueueEntry[] = awaiting.map((item, index) => ({
+    id: item.id,
+    label: itemLabel(item),
+    noteRequiredToApprove: item.recommendation === "nao_recomendado",
+    index: index + 1,
+    scoreLabel: item.score === null
       ? "sem score"
-      : `score ${item.score} (${RECOMMENDATION_LABEL[item.recommendation ?? ""] ?? "sem recomendação"})`;
-    const misses = (item.scoreReasons ?? []).filter((reason) => reason.maxPoints > 0 && !reason.ok).map((reason) => reason.message);
-    // Na conversa, quebra de linha simples vira espaço: cada motivo vai como item de lista.
-    const header = `**Pedido ${index + 1}:** ${itemLabel(item)} — ${score}`;
-    return misses.length ? [header, "", ...misses.map((message) => `- ✗ ${message}`)].join("\n") : header;
-  });
+      : `score ${item.score} (${RECOMMENDATION_LABEL[item.recommendation ?? ""] ?? "sem recomendação"})`,
+    misses: (item.scoreReasons ?? []).filter((reason) => reason.maxPoints > 0 && !reason.ok).map((reason) => reason.message),
+  }));
   return {
     content: [
       `Pedidos aguardando decisão (${awaiting.length}). O score é do agente verificador; a decisão é sua.`,
       "",
-      lines.join("\n\n"),
-      "",
-      "Escolha um pedido. Nada é decidido até você confirmar.",
+      "Use os botões de cada pedido abaixo. Nada é decidido até você confirmar.",
     ].join("\n"),
-    quickReplies: awaiting.flatMap((item, index) => [
-      choiceReply("aprovar", index + 1, itemLabel(item)),
-      choiceReply("recusar", index + 1, itemLabel(item)),
-    ]),
-    approvalChat: {
-      status: "queue",
-      items: awaiting.map((item) => ({ id: item.id, label: itemLabel(item), noteRequiredToApprove: item.recommendation === "nao_recomendado" })),
-    },
+    // Os botões ficam no cartão de cada pedido, dentro da conversa.
+    quickReplies: [],
+    approvalChat: { status: "queue", items: entries },
   };
 }
 
@@ -155,9 +158,9 @@ function describeConfirmProposal(
       `${decision === "aprovar" ? "Aprovar" : "Recusar"} a liberação do ${label}?`,
       ...(note ? ["", `Observação: ${note}`] : []),
       "",
-      `Nada muda até você confirmar. Para seguir, responda "${confirmReply}".`,
+      `Nada muda até você confirmar. Use o botão abaixo ou responda "${confirmReply}".`,
     ].join("\n"),
-    quickReplies: [confirmReply, APPROVAL_CANCEL_REPLY],
+    quickReplies: [],
     approvalChat: { status: "confirm", approvalId, decision, label, note },
   };
 }
@@ -168,7 +171,7 @@ export function describeApprovalChoice(request: Extract<VerticalApprovalChatRequ
       content: request.decision === "recusar"
         ? `Escreva a observação da recusa do ${request.label} (obrigatória).`
         : `O agente não recomenda a liberação do ${request.label}. Para aprovar mesmo assim, escreva a observação (obrigatória).`,
-      quickReplies: [APPROVAL_CANCEL_REPLY],
+      quickReplies: [],
       approvalChat: { status: "note_needed", approvalId: request.approvalId, decision: request.decision, label: request.label },
     };
   }
@@ -196,6 +199,53 @@ export function describeApprovalChatFailure(error: unknown, stage: "list" | "dec
     quickReplies: [APPROVAL_QUEUE_REPLY],
     approvalChat: { status: "failed" },
   };
+}
+
+export type ApprovalCardAction = { label: string; reply: string; tone: "approve" | "refuse" | "neutral" };
+export type ApprovalCardRow = { title: string; detail?: string; misses?: string[]; actions: ApprovalCardAction[] };
+
+/** O que o cartão da conversa mostra para o estado atual (ou nada). Os botões enviam o mesmo texto que o resolvedor entende. */
+export function approvalCardRows(snapshot: VerticalApprovalChatSnapshot | null | undefined): ApprovalCardRow[] | null {
+  if (!snapshot) return null;
+  if (snapshot.status === "queue") {
+    return snapshot.items.map((item, position) => {
+      const index = item.index ?? position + 1;
+      return {
+        title: `Pedido ${index}: ${item.label}`,
+        detail: item.scoreLabel,
+        misses: item.misses ?? [],
+        actions: [
+          { label: "Aprovar", reply: choiceReply("aprovar", index, item.label), tone: "approve" },
+          { label: "Recusar", reply: choiceReply("recusar", index, item.label), tone: "refuse" },
+        ],
+      };
+    });
+  }
+  if (snapshot.status === "confirm") {
+    return [
+      {
+        title: `${snapshot.decision === "aprovar" ? "Aprovar" : "Recusar"} a liberação do ${snapshot.label}`,
+        detail: snapshot.note ? `Observação: ${snapshot.note}` : undefined,
+        actions: [
+          {
+            label: snapshot.decision === "aprovar" ? APPROVAL_CONFIRM_APPROVE_REPLY : APPROVAL_CONFIRM_REFUSE_REPLY,
+            reply: confirmReplyFor(snapshot.decision, snapshot.label),
+            tone: snapshot.decision === "aprovar" ? "approve" : "refuse",
+          },
+          { label: "Cancelar", reply: APPROVAL_CANCEL_REPLY, tone: "neutral" },
+        ],
+      },
+    ];
+  }
+  if (snapshot.status === "note_needed") {
+    return [
+      {
+        title: "Escreva a observação na caixa de texto e envie.",
+        actions: [{ label: "Cancelar", reply: APPROVAL_CANCEL_REPLY, tone: "neutral" }],
+      },
+    ];
+  }
+  return null;
 }
 
 type DecisionWithApprovalChat = {
@@ -245,9 +295,11 @@ export async function enrichLauncherDecisionWithVerticalApprovalChat<D extends D
 }
 
 /** Congela o estado da decisão pela conversa no snapshot da mensagem. */
-export function attachVerticalApprovalChatToSnapshot<S extends { verticalApprovalChat?: VerticalApprovalChatSnapshot | null }>(
-  snapshot: S,
-  decision: DecisionWithApprovalChat | null,
-): S {
-  return decision?.verticalApprovalChat ? { ...snapshot, verticalApprovalChat: decision.verticalApprovalChat } : snapshot;
+export function attachVerticalApprovalChatToSnapshot<
+  S extends { verticalApprovalChat?: VerticalApprovalChatSnapshot | null; quickReplies?: string[] },
+>(snapshot: S, decision: DecisionWithApprovalChat | null): S {
+  if (!decision?.verticalApprovalChat) return snapshot;
+  // Com o cartão de botões na mensagem, as sugestões genéricas da ajuda só atrapalham.
+  const hasCard = approvalCardRows(decision.verticalApprovalChat) !== null;
+  return { ...snapshot, verticalApprovalChat: decision.verticalApprovalChat, ...(hasCard ? { quickReplies: [] } : {}) };
 }

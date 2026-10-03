@@ -1,4 +1,4 @@
-# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b, 2c-1, 2c-2 e 2d)
+# Liberação de verticais pela EIAH — operação (ADR-011, PRs 2b, 2c-1, 2c-2, 2d e 2f)
 
 ## O que muda
 
@@ -83,7 +83,8 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
   oferta "Pedir liberação do IMOB". O pedido só sai com essa confirmação logo depois da oferta (um "sim" solto não
   envia). O preview informa `canRequest`; com pedido em análise, a oferta não aparece.
 - **Administrador EIAH:** "aprovações pendentes" no `/app/chat` lista até 5 pedidos com score e os pontos não
-  atendidos. O fluxo é: escolher "Aprovar/Recusar pedido N"; escrever a observação quando ela é obrigatória; e
+  atendidos, cada um com os botões **Aprovar** e **Recusar** ao lado, dentro da conversa. O clique já envia; a
+  confirmação também é por botão ("Confirmar aprovação/recusa" ou "Cancelar"). O fluxo é: escolher "Aprovar/Recusar pedido N"; escrever a observação quando ela é obrigatória; e
   clicar em "Confirmar aprovação/recusa: …". Nada é decidido antes disso. Para quem não é administrador, a conversa
   responde que não encontrou aprovações.
 - **Canal na auditoria:** `vertical_access_approval_events.channel` registra `marketplace`, `tela` ou `chat`.
@@ -127,6 +128,22 @@ O administrador revoga uma liberação `aprovado` pela tela (`POST /api/admin/ve
   cadastro sem senha, para os clientes antigos.
 - Na página de um convite já usado, substituído ou expirado, "Entrar" faz o login normal, sem tentar aceitar o convite de
   novo.
+
+## Conta de billing e primeira mensalidade pela conversa (PR 2f, ADR-011 §2.8)
+
+- Ao pedir "ativar o IMOB" sem liberação, quem pode pedir (Founder ou `products.activate`) e não tem conta de billing
+  ativa recebe o aviso e um cartão com os planos atuais (`solo`, `starter`, `growth`, `scale`) e o botão para pedir a
+  liberação mesmo assim. A conta **não** é obrigatória.
+- **Escolher** → cartão de confirmação → **Confirmar criação da conta** cria `tenant_billing_account` (status `active`,
+  BRL). Conta existente não é alterada. Auditoria: `guardrail_audit_ledger.event_type = 'billing.account.created'`.
+- Em seguida, **Pagar R$ … (simulado)**: só com o meio `bank` em modo `simulated` (padrão; com
+  `SETTLEMENT_PROVIDER_MODE_BANK=full` a conversa recusa, porque não há integração real). Grava um evento de valor zero
+  no `billing_ledger` (`type = 'adjustment'`, `model = 'front_door.first_payment.simulated'`), uma vez por tenant, e a
+  auditoria `billing.first_payment.simulated`. Nenhuma cobrança real.
+- Score: a conta ativa conta pela regra `conta_billing_ativa` (+25; um tenant novo passa de 55 para 80, "Recomendado").
+  O pagamento simulado **não** conta como pagamento confirmado.
+- Rotas: `GET /api/front-door/billing`, `POST /api/front-door/billing/account` (`{ planCode, confirmed: true }`),
+  `POST /api/front-door/billing/first-payment` (`{ confirmed: true }`).
 
 ## Fora deste PR (ADR-011 §3)
 

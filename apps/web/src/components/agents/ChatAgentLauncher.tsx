@@ -66,6 +66,12 @@ import {
   noticeIdsShownInConversation,
 } from "@/components/agents/verticalAccessNoticeEngine";
 import { FrontDoorAccessPanel } from "@/components/verticalAccess/FrontDoorAccessPanel";
+import { ChatActionRowsCard, VerticalApprovalChatCard } from "@/components/verticalAccess/VerticalApprovalChatCard";
+import {
+  attachFrontDoorBillingToSnapshot,
+  billingCardRows,
+  enrichLauncherDecisionWithFrontDoorBilling,
+} from "@/components/agents/frontDoorBillingEngine";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -632,6 +638,13 @@ export default function ChatAgentLauncher({
     );
   }, [activeAgentId, agents]);
 
+  // Botões de cartão na conversa (ex.: Aprovar/Recusar um pedido) enviam o texto direto, sem passar pelo "Enviar".
+  const [autoSendInput, setAutoSendInput] = useState<string | null>(null);
+  const sendReplyNow = (text: string) => {
+    setInput(text);
+    setAutoSendInput(text);
+  };
+
   useEffect(() => {
     if (!pendingAgentReplayInput) return;
     if (normalizeAgentKey(activeAgentId ?? "") !== "eiah") return;
@@ -1066,7 +1079,7 @@ export default function ChatAgentLauncher({
       content: [maskAccessCreationInput(effectiveInput), attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1093,7 +1106,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    ))));
+    )))));
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;
@@ -1105,7 +1118,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+      const localSnapshot = attachFrontDoorBillingToSnapshot(attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1125,7 +1138,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision);
+      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
@@ -1251,6 +1264,13 @@ export default function ChatAgentLauncher({
       clearAttachmentComposer();
     }
   };
+
+  useEffect(() => {
+    if (!autoSendInput || input !== autoSendInput || isStreaming) return;
+    setAutoSendInput(null);
+    void handleSend();
+    // handleSend lê o input já atualizado; só dispara quando o texto do botão chegou na caixa.
+  }, [autoSendInput, input, isStreaming]);
 
   const handleApprove = async () => {
     if (!runId) return;
@@ -1810,6 +1830,25 @@ export default function ChatAgentLauncher({
 
                                   {messageSnapshot?.verticalHandoff ? (
                                     <ChatVerticalHandoffCard result={messageSnapshot.verticalHandoff} />
+                                  ) : null}
+
+                                  {/* ADR-011 §2.3: fila de liberações com botões por pedido, só na última mensagem. */}
+                                  {messageSnapshot?.verticalApprovalChat && message.id === messages[messages.length - 1]?.id ? (
+                                    <VerticalApprovalChatCard
+                                      snapshot={messageSnapshot.verticalApprovalChat}
+                                      onReply={sendReplyNow}
+                                      disabled={isStreaming}
+                                    />
+                                  ) : null}
+
+                                  {/* ADR-011 §2.8: planos, criação da conta e primeira mensalidade simulada, só na última mensagem. */}
+                                  {messageSnapshot?.frontDoorBilling && message.id === messages[messages.length - 1]?.id ? (
+                                    <ChatActionRowsCard
+                                      rows={billingCardRows(messageSnapshot.frontDoorBilling)}
+                                      onReply={sendReplyNow}
+                                      disabled={isStreaming}
+                                      testId="billing"
+                                    />
                                   ) : null}
 
                                   {/* ADR-011 §2.7: cartão "Criar acesso" só na última mensagem; e-mail e link ficam fora do histórico. */}
