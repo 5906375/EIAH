@@ -7,8 +7,6 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
-import { VerticalAccessNotices } from "../../../components/verticalAccess/VerticalAccessNotices";
-import { FrontDoorAccessPanel } from "../../../components/verticalAccess/FrontDoorAccessPanel";
 import {
   buildChatRouteEntryTelemetry,
   emitChatRouteTelemetry,
@@ -1025,8 +1023,6 @@ const AgentsPage: React.FC = () => {
       <div className="glass-panel p-8">
         <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
           <div className="space-y-2">
-            <VerticalAccessNotices />
-            <FrontDoorAccessPanel />
             <div className="mt-6" id="chat-agent-launcher">
               <ChatAgentLauncher
                 activeAgentId={agentId}

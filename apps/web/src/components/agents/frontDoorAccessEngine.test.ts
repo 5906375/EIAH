@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  attachFrontDoorAccessCardToSnapshot,
   describeAccessCreationHint,
   isAccessCreationRequest,
   maskAccessCreationInput,
@@ -25,7 +26,7 @@ test("histórico guarda o e-mail mascarado só nos pedidos de acesso", () => {
   assert.equal(maskAccessCreationInput("meu e-mail é maria@imob.com.br"), "meu e-mail é maria@imob.com.br", "fora do pedido de acesso não muda");
 });
 
-test("launcher: pedido de acesso vira orientação para o painel, sem run e sem pedir e-mail na conversa", async () => {
+test("launcher: pedido de acesso abre o cartão na conversa, sem run e sem pedir e-mail no texto", async () => {
   const decision = await resolveLauncherTurnDecision({
     input: "criar acesso para maria@imob.com.br",
     trimmedInput: "criar acesso para maria@imob.com.br",
@@ -43,4 +44,7 @@ test("launcher: pedido de acesso vira orientação para o painel, sem run e sem 
   assert.equal(decision?.content, describeAccessCreationHint());
   assert.match(decision?.content ?? "", /72 horas/);
   assert.doesNotMatch(decision?.content ?? "", /maria/);
+  assert.equal(decision?.frontDoorAccessCard, true, "o cartão aparece dentro da conversa");
+  assert.deepEqual(attachFrontDoorAccessCardToSnapshot({ frontDoorAccessCard: null }, decision), { frontDoorAccessCard: true });
+  assert.deepEqual(attachFrontDoorAccessCardToSnapshot({}, null), {});
 });

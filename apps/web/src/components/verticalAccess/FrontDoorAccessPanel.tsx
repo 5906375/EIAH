@@ -9,13 +9,14 @@ import {
 import { FRONT_DOOR_ACCESS_PANEL_ID } from "@/components/agents/frontDoorAccessEngine";
 
 /**
- * ADR-011 §2.7: "Criar acesso" no front door. Aparece só para quem pode (Founder, Gestor, Admin) em
- * workspace com vertical liberada pela EIAH; o servidor valida tudo de novo. O e-mail vai direto à
- * API (nunca pela conversa) e o link aparece uma única vez, aqui, para copiar.
+ * ADR-011 §2.7: cartão "Criar acesso" dentro da conversa do front door. Só funciona para quem pode
+ * (Founder, Gestor, Admin) em workspace com vertical liberada pela EIAH; o servidor valida tudo de
+ * novo. O e-mail vai direto à API (nunca para o histórico) e o link aparece uma única vez, aqui.
  */
 export const FrontDoorAccessPanel: React.FC = () => {
   const [options, setOptions] = React.useState<FrontDoorAccessOptions | null>(null);
-  const [open, setOpen] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+  const [open, setOpen] = React.useState(true);
   const [fullName, setFullName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [roleKey, setRoleKey] = React.useState("");
@@ -32,13 +33,23 @@ export const FrontDoorAccessPanel: React.FC = () => {
         setOptions(response.data);
         setRoleKey(response.data.roles.find((role) => role.key === "corretor")?.key ?? response.data.roles[0]?.key ?? "");
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
     return () => {
       active = false;
     };
   }, []);
 
-  if (!options?.allowed) return null;
+  if (!loaded) return <p className="text-xs text-muted-foreground">Carregando o cartão de acesso...</p>;
+  if (!options?.allowed) {
+    return (
+      <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100" data-access-blocked>
+        {options?.message ?? "Não foi possível abrir o cartão de acesso agora."}
+      </p>
+    );
+  }
 
   const link = created && typeof window !== "undefined" ? `${window.location.origin}/access?invite=${encodeURIComponent(created.token)}` : "";
 
@@ -79,15 +90,9 @@ export const FrontDoorAccessPanel: React.FC = () => {
   };
 
   return (
-    <section id={FRONT_DOOR_ACCESS_PANEL_ID} className="mt-4" aria-label="Criar acesso">
+    <section id={FRONT_DOOR_ACCESS_PANEL_ID} aria-label="Criar acesso">
       {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm text-foreground transition hover:border-accent/40"
-        >
-          Criar acesso
-        </button>
+        <p className="text-xs text-muted-foreground">Cartão fechado. Para criar outro acesso, peça "criar acesso" na conversa.</p>
       ) : (
         <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm">
           <div>

@@ -17,6 +17,11 @@ import {
 } from "@/components/agents/verticalActivationEngine";
 import { describeAccessCreationHint, isAccessCreationRequest } from "@/components/agents/frontDoorAccessEngine";
 import {
+  resolveNoticeAckStep,
+  type VerticalAccessNoticeAckRequest,
+  type VerticalAccessNoticeSnapshot,
+} from "@/components/agents/verticalAccessNoticeEngine";
+import {
   resolveVerticalApprovalChatStep,
   type VerticalApprovalChatRequest,
   type VerticalApprovalChatSnapshot,
@@ -287,6 +292,11 @@ export type LauncherLocalDecision = {
   /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3). */
   verticalApprovalChatRequest?: VerticalApprovalChatRequest;
   verticalApprovalChat?: VerticalApprovalChatSnapshot;
+  /** "Entendi" de um aviso da liberação EIAH na conversa (ADR-011 §2.4). */
+  verticalAccessNoticeAck?: VerticalAccessNoticeAckRequest;
+  verticalAccessNotice?: VerticalAccessNoticeSnapshot;
+  /** Abre o cartão "Criar acesso" na conversa (ADR-011 §2.7). */
+  frontDoorAccessCard?: boolean;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2066,6 +2076,24 @@ export async function resolveLauncherTurnDecision(params: {
   if (agentSwitchDecision) {
     return agentSwitchDecision;
   }
+  // "Entendi" de um aviso da liberação EIAH entregue na conversa (ADR-011 §2.4).
+  const noticeAck = params.isUnifiedEiah
+    ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice)
+    : null;
+  if (noticeAck) {
+    return {
+      kind: "vertical_access_notice_ack",
+      shouldCreateRun: false,
+      content: "Marcando o aviso como lido.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "vertical_access_notice", confidenceFloor: 0.8 },
+      verticalAccessNoticeAck: noticeAck,
+    };
+  }
   // Fila de liberações do administrador EIAH: nada é decidido sem confirmação explícita (ADR-011 §2.3).
   const approvalChatStep = params.isUnifiedEiah
     ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat)
@@ -2083,7 +2111,7 @@ export async function resolveLauncherTurnDecision(params: {
       verticalApprovalChatRequest: approvalChatStep,
     };
   }
-  // Criação de acessos (ADR-011 §2.7): a conversa orienta para o painel; o e-mail não passa por aqui.
+  // Criação de acessos (ADR-011 §2.7): o cartão abre na conversa; o e-mail não passa pelo texto.
   if (params.isUnifiedEiah && isAccessCreationRequest(params.input)) {
     return {
       kind: "front_door_access_hint",
@@ -2095,6 +2123,7 @@ export async function resolveLauncherTurnDecision(params: {
       renderVariant: "simple_help",
       resolvedQuickReplies: [],
       persistIntent: { intent: "front_door_access", confidenceFloor: 0.8 },
+      frontDoorAccessCard: true,
     };
   }
   // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
