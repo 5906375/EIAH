@@ -12,103 +12,114 @@ import { ACCESS_REQUEST_CANCEL_REPLY, ACCESS_REQUEST_CONFIRM_REPLY, type Vertica
 
 /**
  * ADR-011 §2.8: conta de billing e primeira mensalidade pela conversa do front door, antes do pedido de liberação.
- * - Quando o IMOB precisa de liberação e o tenant não tem conta de billing ativa, a conversa avisa e oferece os
- *   planos atuais; o pedido continua possível sem conta (a conta não é obrigatória).
- * - Criar a conta exige escolher o plano e confirmar; pagar exige o clique no botão do valor. O pagamento é
- *   simulado e dito como tal; nenhuma cobrança real.
- * - Depois de cada passo, o pedido de liberação fica a um clique (mesma confirmação do engine de ativação).
- * O launcher só encadeia e renderiza o cartão.
+ * A conversa vai em etapas, uma pergunta por vez:
+ *   1) explica a liberação e pergunta se quer criar a conta de billing (ou pedir sem conta);
+ *   2) mostra os planos atuais; 3) confirma o plano escolhido antes de criar;
+ *   4) pergunta se quer pagar a primeira mensalidade (simulado, sem cobrança real);
+ *   5) pergunta se pode enviar o pedido de liberação (mesma confirmação do engine de ativação).
+ * A conta não é obrigatória. O launcher só encadeia e renderiza os botões.
  */
 
 export type FrontDoorBillingPlanOption = Pick<FrontDoorBillingPlan, "code" | "label" | "monthlyPriceCents" | "includedUsers" | "includedRuns">;
 
 export type FrontDoorBillingSnapshot =
+  | { status: "intro"; plans: FrontDoorBillingPlanOption[] }
   | { status: "offer"; plans: FrontDoorBillingPlanOption[] }
-  | { status: "confirm_account"; plan: FrontDoorBillingPlanOption }
+  | { status: "confirm_account"; plan: FrontDoorBillingPlanOption; plans?: FrontDoorBillingPlanOption[] }
   | { status: "pay_offer"; planLabel: string; monthlyPriceCents: number }
   | { status: "request_offer" };
 
 export type FrontDoorBillingRequest =
-  | { step: "choose"; plan: FrontDoorBillingPlanOption }
+  | { step: "show_plans"; plans: FrontDoorBillingPlanOption[] }
+  | { step: "choose"; plan: FrontDoorBillingPlanOption; plans: FrontDoorBillingPlanOption[] }
   | { step: "create"; plan: FrontDoorBillingPlanOption }
-  | { step: "cancel_account" }
-  | { step: "pay"; planLabel: string; monthlyPriceCents: number };
+  | { step: "pay"; planLabel: string; monthlyPriceCents: number }
+  | { step: "pay_later" };
 
 export const formatBrl = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/\u00a0/g, " ");
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }).replace(/ /g, " ");
 
-export const BILLING_ACCOUNT_CANCEL_REPLY = "Não criar conta agora";
-export const chooseReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Criar conta de billing no plano ${plan.label}`;
-export const createReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Confirmar conta de billing: ${plan.label}`;
+export const START_ACCOUNT_REPLY = "Sim, quero criar a conta de billing";
+export const OTHER_PLANS_REPLY = "Ver outros planos";
+export const PAY_LATER_REPLY = "Pagar depois";
+export const chooseReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Quero o plano ${plan.label}`;
+export const createReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Criar a conta no plano ${plan.label}`;
 export const payReply = (monthlyPriceCents: number) => `Pagar ${formatBrl(monthlyPriceCents)} (simulado)`;
 
 const normalize = (value: string) => value.toLowerCase().replace(/\s+/g, " ").trim();
 
-/** Passo do turno a partir do texto e do cartão pendente; só vale logo depois do cartão (nada de "sim" solto). */
+/** Passo do turno a partir do texto e da pergunta pendente; só vale logo depois dela (nada de "sim" solto). */
 export function resolveFrontDoorBillingStep(
   input: string,
   pending: FrontDoorBillingSnapshot | null | undefined,
 ): FrontDoorBillingRequest | null {
   const text = normalize(input);
+  if (pending?.status === "intro") {
+    return text === normalize(START_ACCOUNT_REPLY) ? { step: "show_plans", plans: pending.plans } : null;
+  }
   if (pending?.status === "offer") {
     const plan = pending.plans.find((option) => normalize(chooseReply(option)) === text);
-    return plan ? { step: "choose", plan } : null;
+    return plan ? { step: "choose", plan, plans: pending.plans } : null;
   }
   if (pending?.status === "confirm_account") {
     if (text === normalize(createReply(pending.plan))) return { step: "create", plan: pending.plan };
-    if (text === normalize(BILLING_ACCOUNT_CANCEL_REPLY)) return { step: "cancel_account" };
+    if (text === normalize(OTHER_PLANS_REPLY) && pending.plans?.length) return { step: "show_plans", plans: pending.plans };
     return null;
   }
-  if (pending?.status === "pay_offer" && text === normalize(payReply(pending.monthlyPriceCents))) {
-    return { step: "pay", planLabel: pending.planLabel, monthlyPriceCents: pending.monthlyPriceCents };
+  if (pending?.status === "pay_offer") {
+    if (text === normalize(payReply(pending.monthlyPriceCents))) {
+      return { step: "pay", planLabel: pending.planLabel, monthlyPriceCents: pending.monthlyPriceCents };
+    }
+    if (text === normalize(PAY_LATER_REPLY)) return { step: "pay_later" };
   }
   return null;
 }
 
-const requestRow = (title: string): ApprovalCardRow => ({
-  title,
-  actions: [
-    { label: ACCESS_REQUEST_CONFIRM_REPLY, reply: ACCESS_REQUEST_CONFIRM_REPLY, tone: "neutral" },
-    { label: ACCESS_REQUEST_CANCEL_REPLY, reply: ACCESS_REQUEST_CANCEL_REPLY, tone: "neutral" },
-  ],
-});
+/** Linha só com botões: a pergunta já está no texto da mensagem. */
+const buttons = (...actions: ApprovalCardRow["actions"]): ApprovalCardRow => ({ actions });
 
-/** Linhas do cartão na conversa; cada botão envia o texto que `resolveFrontDoorBillingStep` entende. */
+const requestButtons = (requestLabel = ACCESS_REQUEST_CONFIRM_REPLY) =>
+  buttons(
+    { label: requestLabel, reply: ACCESS_REQUEST_CONFIRM_REPLY, tone: "approve" },
+    { label: ACCESS_REQUEST_CANCEL_REPLY, reply: ACCESS_REQUEST_CANCEL_REPLY, tone: "neutral" },
+  );
+
+/** Botões de cada etapa; cada um envia o texto que `resolveFrontDoorBillingStep` (ou o engine de ativação) entende. */
 export function billingCardRows(snapshot: FrontDoorBillingSnapshot | null | undefined): ApprovalCardRow[] | null {
   if (!snapshot) return null;
-  if (snapshot.status === "offer") {
+  if (snapshot.status === "intro") {
     return [
-      ...snapshot.plans.map((plan) => ({
-        title: `${plan.label} — ${formatBrl(plan.monthlyPriceCents)}/mês`,
-        detail: `até ${plan.includedUsers} usuários e ${plan.includedRuns.toLocaleString("pt-BR")} execuções`,
-        actions: [{ label: "Escolher", reply: chooseReply(plan), tone: "approve" as const }],
-      })),
-      requestRow("Ou peça a liberação sem conta de billing"),
+      buttons(
+        { label: "Sim, criar a conta", reply: START_ACCOUNT_REPLY, tone: "approve" },
+        { label: "Pedir a liberação sem conta", reply: ACCESS_REQUEST_CONFIRM_REPLY, tone: "neutral" },
+        { label: ACCESS_REQUEST_CANCEL_REPLY, reply: ACCESS_REQUEST_CANCEL_REPLY, tone: "neutral" },
+      ),
     ];
+  }
+  if (snapshot.status === "offer") {
+    return snapshot.plans.map((plan) => ({
+      title: `${plan.label} · ${formatBrl(plan.monthlyPriceCents)} por mês`,
+      detail: `até ${plan.includedUsers} usuários e ${plan.includedRuns.toLocaleString("pt-BR")} execuções`,
+      actions: [{ label: "Escolher", reply: chooseReply(plan), tone: "approve" as const }],
+    }));
   }
   if (snapshot.status === "confirm_account") {
     return [
-      {
-        title: `Conta de billing no plano ${snapshot.plan.label}`,
-        detail: `${formatBrl(snapshot.plan.monthlyPriceCents)}/mês`,
-        actions: [
-          { label: "Confirmar criação da conta", reply: createReply(snapshot.plan), tone: "approve" },
-          { label: "Cancelar", reply: BILLING_ACCOUNT_CANCEL_REPLY, tone: "neutral" },
-        ],
-      },
+      buttons(
+        { label: "Sim, criar a conta", reply: createReply(snapshot.plan), tone: "approve" },
+        ...(snapshot.plans?.length ? [{ label: OTHER_PLANS_REPLY, reply: OTHER_PLANS_REPLY, tone: "neutral" as const }] : []),
+      ),
     ];
   }
   if (snapshot.status === "pay_offer") {
     return [
-      {
-        title: `Primeira mensalidade · ${snapshot.planLabel}`,
-        detail: "pagamento simulado, sem cobrança real",
-        actions: [{ label: payReply(snapshot.monthlyPriceCents), reply: payReply(snapshot.monthlyPriceCents), tone: "approve" }],
-      },
-      requestRow("Ou peça a liberação agora e pague depois"),
+      buttons(
+        { label: `Pagar agora (simulado)`, reply: payReply(snapshot.monthlyPriceCents), tone: "approve" },
+        { label: PAY_LATER_REPLY, reply: PAY_LATER_REPLY, tone: "neutral" },
+      ),
     ];
   }
-  return [requestRow("Pedir a liberação do IMOB à EIAH")];
+  return [requestButtons("Sim, enviar o pedido")];
 }
 
 export type FrontDoorBillingPresentation = {
@@ -116,55 +127,68 @@ export type FrontDoorBillingPresentation = {
   billing: FrontDoorBillingSnapshot | null;
 };
 
-const SIMULATED_NOTE = "O pagamento aqui é simulado: nenhuma cobrança real é feita.";
+const paragraphs = (...lines: string[]) => lines.join("\n\n");
 
-/** Aviso antes do pedido de liberação; `null` quando não há nada a oferecer (o pedido segue como antes). */
+const LIBERATION_INTRO =
+  "Claro! Para usar o IMOB, a EIAH primeiro precisa liberar o acesso deste workspace. É um passo rápido: um administrador da EIAH analisa o pedido e você recebe o aviso aqui mesmo.";
+
+const SIMULATED_NOTE = "Neste ambiente o pagamento é simulado: nenhuma cobrança real é feita.";
+
+const planOptions = (state: FrontDoorBillingState): FrontDoorBillingPlanOption[] =>
+  state.plans.map(({ code, label, monthlyPriceCents, includedUsers, includedRuns }) => ({
+    code,
+    label,
+    monthlyPriceCents,
+    includedUsers,
+    includedRuns,
+  }));
+
+/** Primeira mensagem antes do pedido de liberação; `null` quando não há nada a oferecer (o pedido segue como antes). */
 export function describeBillingBeforeRequest(state: FrontDoorBillingState): FrontDoorBillingPresentation | null {
   if (!state.canManage) return null;
   if (!state.accountActive) {
     return {
-      content: [
-        "**Antes de pedir:** este workspace ainda não tem conta de billing ativa.",
-        "Recomendamos criar a conta antes do pedido: sem ela, o pedido tende a ir para revisão. Escolha um plano abaixo (você confirma antes de criar) ou peça a liberação mesmo assim.",
-      ].join("\n\n"),
-      billing: {
-        status: "offer",
-        plans: state.plans.map(({ code, label, monthlyPriceCents, includedUsers, includedRuns }) => ({
-          code,
-          label,
-          monthlyPriceCents,
-          includedUsers,
-          includedRuns,
-        })),
-      },
+      content: paragraphs(
+        LIBERATION_INTRO,
+        "Antes disso, uma sugestão: este workspace ainda não tem conta de billing. Com a conta criada, o pedido costuma ser analisado com mais facilidade.",
+        "Quer criar a conta agora?",
+      ),
+      billing: { status: "intro", plans: planOptions(state) },
     };
   }
   if (!state.firstPayment && state.account && state.paymentMode === "simulated") {
     return {
-      content: [
-        `A conta de billing está ativa no plano ${state.account.planLabel}, mas a primeira mensalidade ainda não foi paga.`,
-        `Você pode pagar agora ou pedir a liberação e pagar depois. ${SIMULATED_NOTE}`,
-      ].join("\n\n"),
+      content: paragraphs(
+        LIBERATION_INTRO,
+        `Vi que a conta de billing já existe, no plano ${state.account.planLabel}, mas a primeira mensalidade (${formatBrl(state.account.monthlyPriceCents)}) ainda não foi paga.`,
+        `Quer pagar agora? ${SIMULATED_NOTE}`,
+      ),
       billing: { status: "pay_offer", planLabel: state.account.planLabel, monthlyPriceCents: state.account.monthlyPriceCents },
     };
   }
   return null;
 }
 
+const ASK_TO_SEND =
+  "Agora só falta o pedido de liberação. Um administrador da EIAH analisa e você recebe o aviso aqui na conversa. Posso enviar o pedido?";
+
 const errorCode = (error: unknown) =>
   error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined)?.error?.code : undefined;
 
-function describeBillingFailure(error: unknown, action: "criar a conta" | "pagar"): FrontDoorBillingPresentation {
+function describeBillingFailure(error: unknown, action: "criar a conta" | "registrar o pagamento"): FrontDoorBillingPresentation {
   const code = errorCode(error);
   const reason =
     code === "FRONT_DOOR_BILLING_FORBIDDEN"
       ? "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode cuidar do billing."
       : code === "FRONT_DOOR_PAYMENT_NOT_CONNECTED"
-        ? "O pagamento real ainda não está ligado à conversa. Nada foi cobrado."
+        ? "O pagamento real ainda não está ligado à conversa, então nada foi cobrado."
         : code === "FRONT_DOOR_BILLING_ACCOUNT_REQUIRED"
-          ? "Crie a conta de billing antes de pagar."
-          : `Não consegui ${action} agora. Nada foi alterado.`;
-  return { content: `${reason} Você ainda pode pedir a liberação do IMOB.`, billing: { status: "request_offer" } };
+          ? "Para pagar, primeiro é preciso criar a conta de billing."
+          : `Não consegui ${action} agora, e nada foi alterado.`;
+  return {
+    content: paragraphs(reason, "Se quiser, posso enviar o pedido de liberação do IMOB mesmo assim. Posso enviar?"),
+    billing: { status: "request_offer" },
+  };
 }
 
 type DecisionWithBilling = {
@@ -189,30 +213,43 @@ const DEFAULT_API: BillingApi = {
 };
 
 async function runStep(request: FrontDoorBillingRequest, api: BillingApi): Promise<FrontDoorBillingPresentation> {
-  if (request.step === "choose") {
+  if (request.step === "show_plans") {
     return {
-      content: [
-        `Criar a conta de billing no plano **${request.plan.label}** (${formatBrl(request.plan.monthlyPriceCents)}/mês)?`,
-        "Nada é criado até você confirmar.",
-      ].join("\n\n"),
-      billing: { status: "confirm_account", plan: request.plan },
+      content: "Ótimo! Estes são os planos disponíveis. Qual combina mais com a sua imobiliária?",
+      billing: { status: "offer", plans: request.plans },
     };
   }
-  if (request.step === "cancel_account") {
-    return { content: "Tudo bem, nenhuma conta foi criada. Quer pedir a liberação do IMOB mesmo assim?", billing: { status: "request_offer" } };
+  if (request.step === "choose") {
+    const { plan } = request;
+    return {
+      content: paragraphs(
+        `Boa escolha. O plano **${plan.label}** custa ${formatBrl(plan.monthlyPriceCents)} por mês e inclui até ${plan.includedUsers} usuários e ${plan.includedRuns.toLocaleString("pt-BR")} execuções.`,
+        "Posso criar a conta de billing neste plano?",
+      ),
+      billing: { status: "confirm_account", plan, plans: request.plans },
+    };
+  }
+  if (request.step === "pay_later") {
+    return {
+      content: paragraphs("Sem problema, você pode pagar depois.", ASK_TO_SEND),
+      billing: { status: "request_offer" },
+    };
   }
   if (request.step === "create") {
     try {
       const created = (await api.createAccount({ planCode: request.plan.code as FrontDoorBillingPlanCode, confirmed: true })).data;
       const state = (await api.read()).data;
       const head = created.outcome === "created"
-        ? `Conta de billing criada no plano ${created.account.planLabel} (${formatBrl(created.account.monthlyPriceCents)}/mês).`
-        : `Este tenant já tinha conta de billing no plano ${created.account.planLabel}. Nada foi alterado.`;
+        ? `Pronto, a conta de billing foi criada no plano ${created.account.planLabel}.`
+        : `Este workspace já tinha conta de billing, no plano ${created.account.planLabel}, então nada foi alterado.`;
       if (state.firstPayment || state.paymentMode !== "simulated") {
-        return { content: `${head} Agora é só pedir a liberação do IMOB.`, billing: { status: "request_offer" } };
+        return { content: paragraphs(head, ASK_TO_SEND), billing: { status: "request_offer" } };
       }
       return {
-        content: [head, `Quer pagar a primeira mensalidade agora? ${SIMULATED_NOTE}`].join("\n\n"),
+        content: paragraphs(
+          head,
+          `Quer pagar a primeira mensalidade (${formatBrl(created.account.monthlyPriceCents)}) agora? ${SIMULATED_NOTE}`,
+        ),
         billing: { status: "pay_offer", planLabel: created.account.planLabel, monthlyPriceCents: created.account.monthlyPriceCents },
       };
     } catch (error) {
@@ -222,19 +259,23 @@ async function runStep(request: FrontDoorBillingRequest, api: BillingApi): Promi
   try {
     const paid = (await api.pay({ confirmed: true })).data;
     return {
-      content: paid.outcome === "paid"
-        ? `Primeira mensalidade registrada (${formatBrl(paid.account.monthlyPriceCents)}, pagamento simulado, sem cobrança real). Agora é só pedir a liberação do IMOB.`
-        : "A primeira mensalidade já estava registrada. Agora é só pedir a liberação do IMOB.",
+      content: paragraphs(
+        paid.outcome === "paid"
+          ? `Pagamento de ${formatBrl(paid.account.monthlyPriceCents)} registrado (simulado, sem cobrança real). Obrigado!`
+          : "A primeira mensalidade já estava registrada.",
+        ASK_TO_SEND,
+      ),
       billing: { status: "request_offer" },
     };
   } catch (error) {
-    return describeBillingFailure(error, "pagar");
+    return describeBillingFailure(error, "registrar o pagamento");
   }
 }
 
 /**
- * Etapa assíncrona: (1) depois da proposta de pedir a liberação, consulta o billing e acrescenta o aviso e o
- * cartão; (2) executa o passo de billing escolhido no cartão. Em ambos, "Pedir liberação do IMOB" continua valendo.
+ * Etapa assíncrona: (1) quando a conversa ia propor o pedido de liberação, consulta o billing e, se houver o que
+ * oferecer, troca a mensagem pela primeira pergunta da sequência; (2) executa a etapa escolhida.
+ * Em todas as etapas "Pedir liberação do IMOB" continua valendo (engine de ativação).
  */
 export async function enrichLauncherDecisionWithFrontDoorBilling<D extends DecisionWithBilling>(
   decision: D | null,
@@ -266,13 +307,13 @@ export async function enrichLauncherDecisionWithFrontDoorBilling<D extends Decis
   if (!presentation) return decision;
   return {
     ...decision,
-    content: `${decision.content ?? ""}\n\n${presentation.content}`.trim(),
+    content: presentation.content,
     resolvedQuickReplies: [],
     frontDoorBilling: presentation.billing ?? undefined,
   };
 }
 
-/** Congela o cartão no snapshot da mensagem; com cartão, as sugestões genéricas saem. */
+/** Congela a etapa no snapshot da mensagem; com botões, as sugestões genéricas saem. */
 export function attachFrontDoorBillingToSnapshot<S extends { frontDoorBilling?: FrontDoorBillingSnapshot | null; quickReplies?: string[] }>(
   snapshot: S,
   decision: DecisionWithBilling | null,
