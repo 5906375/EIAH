@@ -1,5 +1,5 @@
 import React from "react";
-import { approvalCardRows, type VerticalApprovalChatSnapshot } from "@/components/agents/verticalApprovalChatEngine";
+import { approvalCardRows, type ApprovalCardRow, type VerticalApprovalChatSnapshot } from "@/components/agents/verticalApprovalChatEngine";
 
 /**
  * ADR-011 §2.3: cartão da fila de liberações dentro da conversa do front door. Cada pedido tem os
@@ -12,17 +12,18 @@ const TONE: Record<"approve" | "refuse" | "neutral", string> = {
   neutral: "border-white/15 bg-white/5 text-foreground hover:border-accent/40",
 };
 
-export const VerticalApprovalChatCard: React.FC<{
-  snapshot: VerticalApprovalChatSnapshot;
+/** Linhas de cartão com botões na conversa; o clique envia o texto que o engine entende. Só renderiza. */
+export const ChatActionRowsCard: React.FC<{
+  rows: ApprovalCardRow[] | null;
   onReply: (text: string) => void;
   disabled?: boolean;
-}> = ({ snapshot, onReply, disabled }) => {
-  const rows = approvalCardRows(snapshot);
+  testId?: string;
+}> = ({ rows, onReply, disabled, testId = "approval" }) => {
   if (!rows?.length) return null;
   return (
-    <div className="space-y-2" data-approval-card>
+    <div className="space-y-2" data-chat-card={testId}>
       {rows.map((row) => (
-        // Leitura de cima para baixo: pedido e score, motivos e, por último, os botões de decisão.
+        // Leitura de cima para baixo: título e detalhe, motivos e, por último, os botões.
         <div key={row.title} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
           <p className="font-medium text-foreground">
             {row.title}
@@ -36,7 +37,7 @@ export const VerticalApprovalChatCard: React.FC<{
             </ul>
           ) : null}
           <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-white/10 pt-2">
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {row.actions.map((action) => (
               <button
                 key={action.label}
@@ -55,5 +56,13 @@ export const VerticalApprovalChatCard: React.FC<{
     </div>
   );
 };
+
+export const VerticalApprovalChatCard: React.FC<{
+  snapshot: VerticalApprovalChatSnapshot;
+  onReply: (text: string) => void;
+  disabled?: boolean;
+}> = ({ snapshot, onReply, disabled }) => (
+  <ChatActionRowsCard rows={approvalCardRows(snapshot)} onReply={onReply} disabled={disabled} testId="approval" />
+);
 
 export default VerticalApprovalChatCard;

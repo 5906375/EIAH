@@ -66,7 +66,12 @@ import {
   noticeIdsShownInConversation,
 } from "@/components/agents/verticalAccessNoticeEngine";
 import { FrontDoorAccessPanel } from "@/components/verticalAccess/FrontDoorAccessPanel";
-import { VerticalApprovalChatCard } from "@/components/verticalAccess/VerticalApprovalChatCard";
+import { ChatActionRowsCard, VerticalApprovalChatCard } from "@/components/verticalAccess/VerticalApprovalChatCard";
+import {
+  attachFrontDoorBillingToSnapshot,
+  billingCardRows,
+  enrichLauncherDecisionWithFrontDoorBilling,
+} from "@/components/agents/frontDoorBillingEngine";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -1074,7 +1079,7 @@ export default function ChatAgentLauncher({
       content: [maskAccessCreationInput(effectiveInput), attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1101,7 +1106,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    ))));
+    )))));
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;
@@ -1113,7 +1118,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+      const localSnapshot = attachFrontDoorBillingToSnapshot(attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1133,7 +1138,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision);
+      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
@@ -1833,6 +1838,16 @@ export default function ChatAgentLauncher({
                                       snapshot={messageSnapshot.verticalApprovalChat}
                                       onReply={sendReplyNow}
                                       disabled={isStreaming}
+                                    />
+                                  ) : null}
+
+                                  {/* ADR-011 §2.8: planos, criação da conta e primeira mensalidade simulada, só na última mensagem. */}
+                                  {messageSnapshot?.frontDoorBilling && message.id === messages[messages.length - 1]?.id ? (
+                                    <ChatActionRowsCard
+                                      rows={billingCardRows(messageSnapshot.frontDoorBilling)}
+                                      onReply={sendReplyNow}
+                                      disabled={isStreaming}
+                                      testId="billing"
                                     />
                                   ) : null}
 

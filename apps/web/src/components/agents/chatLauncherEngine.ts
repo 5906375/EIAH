@@ -17,6 +17,11 @@ import {
 } from "@/components/agents/verticalActivationEngine";
 import { describeAccessCreationHint, isAccessCreationRequest } from "@/components/agents/frontDoorAccessEngine";
 import {
+  resolveFrontDoorBillingStep,
+  type FrontDoorBillingRequest,
+  type FrontDoorBillingSnapshot,
+} from "@/components/agents/frontDoorBillingEngine";
+import {
   resolveNoticeAckStep,
   type VerticalAccessNoticeAckRequest,
   type VerticalAccessNoticeSnapshot,
@@ -297,6 +302,9 @@ export type LauncherLocalDecision = {
   verticalAccessNotice?: VerticalAccessNoticeSnapshot;
   /** Abre o cartão "Criar acesso" na conversa (ADR-011 §2.7). */
   frontDoorAccessCard?: boolean;
+  /** Conta de billing e primeira mensalidade simulada antes do pedido de liberação (ADR-011 §2.8). */
+  frontDoorBillingRequest?: FrontDoorBillingRequest;
+  frontDoorBilling?: FrontDoorBillingSnapshot;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2092,6 +2100,24 @@ export async function resolveLauncherTurnDecision(params: {
       resolvedQuickReplies: [],
       persistIntent: { intent: "vertical_access_notice", confidenceFloor: 0.8 },
       verticalAccessNoticeAck: noticeAck,
+    };
+  }
+  // Billing antes do pedido de liberação (ADR-011 §2.8): só os botões do cartão pendente valem.
+  const billingStep = params.isUnifiedEiah
+    ? resolveFrontDoorBillingStep(params.input, params.previousAssistantSnapshot?.frontDoorBilling)
+    : null;
+  if (billingStep) {
+    return {
+      kind: `front_door_billing_${billingStep.step}`,
+      shouldCreateRun: false,
+      content: "Verificando o billing deste workspace.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_billing", confidenceFloor: 0.8 },
+      frontDoorBillingRequest: billingStep,
     };
   }
   // Fila de liberações do administrador EIAH: nada é decidido sem confirmação explícita (ADR-011 §2.3).
