@@ -9,6 +9,7 @@ import {
 } from "../services/workspaceNamingPolicy";
 import { ensureWorkspaceMembershipForUser, PRODUCT_ACTIVATION_PERMISSION } from "../services/workspaceResponsibility";
 import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
+import { ensureLegacyCredentialStore, hashPassword } from "./auth";
 import {
   FRONT_DOOR_AGENTS,
   WORKSPACE_AGENT_PROVISIONING_VERSION,
@@ -22,6 +23,8 @@ const onboardingSchema = z.object({
   orgName: z.string().min(1),
   marketplaceId: z.string().min(1).optional(),
   mode: z.enum(["provision", "register_only"]).optional(),
+  // ADR-011 §2.7: a própria pessoa define a senha no cadastro (guardada só como hash).
+  password: z.string().min(8).max(200).optional(),
 });
 
 class OnboardingError extends Error {
@@ -58,7 +61,10 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
     });
   }
 
-  const { email, name, orgName, marketplaceId, mode } = parsed.data;
+  const { email, name, orgName, marketplaceId, mode, password } = parsed.data;
+  // Hash fora da transação; sem senha a conta segue o fluxo antigo (só a sessão do cadastro).
+  const passwordHash = password ? await hashPassword(password) : null;
+  if (passwordHash) await ensureLegacyCredentialStore();
   const onboardingMode = mode ?? "provision";
   const trustBaseline = 60;
 
@@ -127,6 +133,13 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
           displayName: name,
         },
       });
+
+      if (passwordHash) {
+        await tx.$executeRaw`
+          INSERT INTO legacy_auth_credentials (user_id, email, password_hash)
+          VALUES (${user.id}, ${email.trim().toLowerCase()}, ${passwordHash})
+        `;
+      }
 
       await ensureWorkspaceMembershipForUser({
         prisma: tx as unknown as PrismaClient,

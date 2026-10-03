@@ -221,7 +221,8 @@ export default function AccessPage() {
       if (!response.ok || !response.data) {
         throw new Error(response.error?.message ?? "Falha de autenticação.");
       }
-      if (inviteToken) {
+      // Convite usado, substituído ou expirado não bloqueia o login: entra normalmente, sem aceitar de novo.
+      if (inviteToken && invitePreview?.status === "pending" && !invitePreview.expired) {
         const accepted = await apiAcceptWorkspaceInvitation({
           token: inviteToken,
           loginToken: response.data.token,
@@ -276,12 +277,18 @@ export default function AccessPage() {
         setError("Preencha empresa, nome e e-mail para cadastrar.");
         return;
       }
+      // ADR-011 §2.7: a própria pessoa define a senha; sem ela a conta não teria como entrar de novo.
+      if (passwordForm.password.length < 8) {
+        setError("Crie uma senha com pelo menos 8 caracteres.");
+        return;
+      }
       setStatus("loading");
       void apiOnboarding({
         orgName: signupForm.orgName.trim(),
         name: signupForm.name.trim(),
         email: signupForm.email.trim(),
         mode: "provision",
+        password: passwordForm.password,
       })
         .then(async (response) => {
           if (!response.ok || !response.data) {
@@ -540,21 +547,21 @@ export default function AccessPage() {
                   required
                 />
               </label>
-              {inviteToken ? (
-                <label className="mt-4 block text-sm text-muted-foreground">
-                  Senha
-                  <input
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                    type="password"
-                    placeholder="Mínimo 8 caracteres"
-                    value={passwordForm.password}
-                    onChange={(event) =>
-                      setPasswordForm((prev) => ({ ...prev, password: event.target.value }))
-                    }
-                    required
-                  />
-                </label>
-              ) : null}
+              {/* ADR-011 §2.7: senha própria no cadastro, com ou sem convite. */}
+              <label className="mt-4 block text-sm text-muted-foreground">
+                Senha
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  type="password"
+                  placeholder="Mínimo 8 caracteres"
+                  value={passwordForm.password}
+                  onChange={(event) =>
+                    setPasswordForm((prev) => ({ ...prev, password: event.target.value }))
+                  }
+                  minLength={8}
+                  required
+                />
+              </label>
             </>
           ) : (
             <>

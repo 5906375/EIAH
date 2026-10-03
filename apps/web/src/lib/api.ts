@@ -1260,6 +1260,8 @@ export async function apiOnboarding(body: {
   orgName: string;
   marketplaceId?: string;
   mode?: "provision" | "register_only";
+  /** ADR-011 §2.7: a própria pessoa define a senha no cadastro. */
+  password?: string;
 }): Promise<OnboardingResponse> {
   return http(`/auth/onboarding`, {
     method: "POST",

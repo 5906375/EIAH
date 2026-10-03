@@ -120,12 +120,15 @@ export function describeApprovalQueue(items: VerticalApprovalAdminItem[]): Verti
       ? "sem score"
       : `score ${item.score} (${RECOMMENDATION_LABEL[item.recommendation ?? ""] ?? "sem recomendação"})`;
     const misses = (item.scoreReasons ?? []).filter((reason) => reason.maxPoints > 0 && !reason.ok).map((reason) => reason.message);
-    return [`${index + 1}. ${itemLabel(item)} — ${score}`, ...misses.map((message) => `   ✗ ${message}`)].join("\n");
+    // Na conversa, quebra de linha simples vira espaço: cada motivo vai como item de lista.
+    const header = `**Pedido ${index + 1}:** ${itemLabel(item)} — ${score}`;
+    return misses.length ? [header, "", ...misses.map((message) => `- ✗ ${message}`)].join("\n") : header;
   });
   return {
     content: [
       `Pedidos aguardando decisão (${awaiting.length}). O score é do agente verificador; a decisão é sua.`,
-      ...lines,
+      "",
+      lines.join("\n\n"),
       "",
       "Escolha um pedido. Nada é decidido até você confirmar.",
     ].join("\n"),

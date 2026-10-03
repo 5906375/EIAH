@@ -24,6 +24,13 @@ export const FrontDoorAccessPanel: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [created, setCreated] = React.useState<FrontDoorAccessCreated | null>(null);
   const [copied, setCopied] = React.useState(false);
+  const sectionRef = React.useRef<HTMLElement | null>(null);
+
+  // O cartão carrega depois da mensagem: rola a conversa até ele (e até o link, quando aparece).
+  React.useEffect(() => {
+    if (!loaded) return;
+    sectionRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [loaded, created]);
 
   React.useEffect(() => {
     let active = true;
@@ -90,7 +97,7 @@ export const FrontDoorAccessPanel: React.FC = () => {
   };
 
   return (
-    <section id={FRONT_DOOR_ACCESS_PANEL_ID} aria-label="Criar acesso">
+    <section ref={sectionRef} id={FRONT_DOOR_ACCESS_PANEL_ID} aria-label="Criar acesso">
       {!open ? (
         <p className="text-xs text-muted-foreground">Cartão fechado. Para criar outro acesso, peça "criar acesso" na conversa.</p>
       ) : (

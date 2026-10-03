@@ -85,7 +85,7 @@ function getLegacyCredentials(): LegacyCredential[] {
   }));
 }
 
-async function ensureLegacyCredentialStore() {
+export async function ensureLegacyCredentialStore() {
   if (!legacyStoreInitPromise) {
     legacyStoreInitPromise = prismaGlobal
       .$executeRawUnsafe(`
@@ -143,7 +143,7 @@ async function verifyPassword(password: string, encoded: string): Promise<boolea
   return crypto.timingSafeEqual(derived, expected);
 }
 
-async function hashPassword(password: string): Promise<string> {
+export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.randomBytes(16);
   const derived = (await scryptAsync(password, salt, 64)) as Buffer;
   return `scrypt$${salt.toString("base64")}$${derived.toString("base64")}`;
