@@ -44,15 +44,15 @@ before(async () => {
 
 after(async () => {
   delete process.env.SETTLEMENT_PROVIDER_MODE_BANK;
-  await prismaGlobal.$executeRaw`DELETE FROM billing_ledger WHERE tenant_id = ${tenantId}`;
-  await prismaGlobal.$executeRaw`DELETE FROM tenant_billing_account WHERE tenant_id = ${tenantId}`;
-  await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId } }).catch(() => undefined);
-  await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_memberships WHERE tenant_id = ${tenantId}`.catch(() => undefined);
-  await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_roles WHERE tenant_id = ${tenantId}`.catch(() => undefined);
-  await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
-  await prismaGlobal.user.deleteMany({ where: { tenantId } });
-  await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  // `billing_ledger` e `guardrail_ledger` são append-only: o tenant de teste fica, como nos outros contratos.
+  const ignore = () => undefined;
+  await prismaGlobal.$executeRaw`DELETE FROM tenant_billing_account WHERE tenant_id = ${tenantId}`.catch(ignore);
+  await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_memberships WHERE tenant_id = ${tenantId}`.catch(ignore);
+  await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_roles WHERE tenant_id = ${tenantId}`.catch(ignore);
+  await prismaGlobal.apiToken.deleteMany({ where: { tenantId } }).catch(ignore);
+  await prismaGlobal.user.deleteMany({ where: { tenantId } }).catch(ignore);
+  await prismaGlobal.workspace.deleteMany({ where: { tenantId } }).catch(ignore);
+  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } }).catch(ignore);
   await prismaGlobal.$disconnect();
 });
 
