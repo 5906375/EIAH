@@ -1,4 +1,4 @@
-import { getReasonCodeDefinition } from "../../../../../../packages/core/src/reasons/reasonCatalog.js";
+import { getReasonCodeDefinition } from "@eiah/core/reasons/reasonCatalog";
 
 // Ratified SIMULATION mapping, prepared locally for dedicated activation review.
 export const S1_NEGATIVE_MAPPING_PROPOSALS = [

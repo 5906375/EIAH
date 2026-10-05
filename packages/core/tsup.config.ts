@@ -15,6 +15,8 @@ export default defineConfig({
     "src/security/killSwitch.ts",
     "src/taxonomy/*.ts",
     "src/catalog/*.ts",
+    "src/billing/*.ts",
+    "src/reasons/*.ts",
     "src/utils/*.ts",
   ],
   outDir: "dist",

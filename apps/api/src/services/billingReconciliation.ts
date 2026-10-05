@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@repo/db";
 import { BILLING_RUN_COST_DEBIT_OPERATION_ID, getGovernedOperation } from "@eiah/core/catalog/governedOperationCatalog";
-import { calculateBillingReconciliation, resolveLimit, BLOCKED_ERROR_CODE_TO_CATEGORY, type BillingReconciliationScope, type BillingReconciliationSummary } from "../../../../packages/core/src/billing/reconciliation.js";
-export type { BillingReconciliationSummary } from "../../../../packages/core/src/billing/reconciliation.js";
+import { calculateBillingReconciliation, resolveLimit, BLOCKED_ERROR_CODE_TO_CATEGORY, type BillingReconciliationScope, type BillingReconciliationSummary } from "@eiah/core/billing/reconciliation";
+export type { BillingReconciliationSummary } from "@eiah/core/billing/reconciliation";
 
 function buildCreatedAtRange(from?: Date | null, to?: Date | null) {
   if (!from && !to) return undefined;
