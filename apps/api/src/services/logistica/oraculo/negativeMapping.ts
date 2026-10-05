@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { oraculoGateResultV1Schema, oraculoCredentialEvaluationV1Schema } from "@eiah/contracts";
-import { assertActiveReasonCode } from "../../../../../../packages/core/src/reasons/reasonCatalog.js";
+import { assertActiveReasonCode } from "@eiah/core/reasons/reasonCatalog";
 import { S1_NEGATIVE_MAPPING_PROPOSALS } from "./negativeMappingProposal.js";
 import type { S1Assessment, S1Snapshot } from "./evaluation.js";
 
