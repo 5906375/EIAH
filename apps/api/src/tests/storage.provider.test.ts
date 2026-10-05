@@ -179,7 +179,7 @@ describe("storage provider", () => {
     }
   });
 
-  it("fails closed with explicit NO-GO message when object env is otherwise complete but no real adapter exists", () => {
+  it("creates object provider when s3-compatible env is complete", () => {
     const previous = {
       STORAGE_PROVIDER: process.env.STORAGE_PROVIDER,
       OBJECT_STORAGE_ADAPTER: process.env.OBJECT_STORAGE_ADAPTER,
@@ -201,10 +201,8 @@ describe("storage provider", () => {
     process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY = "test-secret";
     process.env.OBJECT_STORAGE_FORCE_PATH_STYLE = "true";
     try {
-      assert.throws(
-        () => createStorageProviderFromEnv({ localRootDir: tmpDir }),
-        /Multi-instancia permanece NO-GO/,
-      );
+      const provider = createStorageProviderFromEnv({ localRootDir: tmpDir });
+      assert.equal(provider.kind, "object");
     } finally {
       for (const [key, value] of Object.entries(previous)) {
         if (typeof value === "string") process.env[key] = value;
