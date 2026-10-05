@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createS3CompatibleObjectStorageClient } from "./s3CompatibleObjectStorageClient";
 import {
   IMOB_INTAKE_OBSERVABILITY_COUNTER,
   recordImobIntakeObservabilityEvent,
@@ -292,6 +293,8 @@ function validateS3CompatibleObjectStorageEnv() {
   return {
     endpoint,
     region,
+    accessKeyId,
+    secretAccessKey,
     forcePathStyle: normalizeBooleanEnv(process.env.OBJECT_STORAGE_FORCE_PATH_STYLE, true),
   };
 }
@@ -306,8 +309,9 @@ export function createStorageProviderFromEnv(options: CreateStorageProviderFromE
     onceKey: `storage-provider-mode:${configured}`,
   });
   if (configured === "object") {
+    let bucket: string;
     try {
-      validateObjectStorageBucket(process.env.OBJECT_STORAGE_BUCKET);
+      bucket = validateObjectStorageBucket(process.env.OBJECT_STORAGE_BUCKET);
     } catch (error) {
       recordImobIntakeObservabilityEvent({
         event: "object_storage_gate_failed",
@@ -336,8 +340,9 @@ export function createStorageProviderFromEnv(options: CreateStorageProviderFromE
       throw error;
     }
 
+    let s3Config: ReturnType<typeof validateS3CompatibleObjectStorageEnv>;
     try {
-      validateS3CompatibleObjectStorageEnv();
+      s3Config = validateS3CompatibleObjectStorageEnv();
     } catch (error) {
       recordImobIntakeObservabilityEvent({
         event: "object_storage_gate_failed",
@@ -349,20 +354,13 @@ export function createStorageProviderFromEnv(options: CreateStorageProviderFromE
       throw error;
     }
 
-    recordImobIntakeObservabilityEvent({
-      event: "object_storage_gate_failed",
-      payload: {
-        mode: configured,
-        reasonCode: "OBJECT_STORAGE_REAL_ADAPTER_UNAVAILABLE",
-        adapter: "s3-compatible",
-      },
-      level: "error",
-      counterName: IMOB_INTAKE_OBSERVABILITY_COUNTER.OBJECT_STORAGE_GATE_FAILURES,
-      counterLabels: { reasonCode: "OBJECT_STORAGE_REAL_ADAPTER_UNAVAILABLE" },
+    const client = createS3CompatibleObjectStorageClient(s3Config);
+
+    return createObjectStorageProvider({
+      bucket,
+      prefix: process.env.OBJECT_STORAGE_PREFIX,
+      client,
     });
-    throw new Error(
-      "STORAGE_PROVIDER=object configurado, mas esta build ainda nao possui adapter real instalado para OBJECT_STORAGE_ADAPTER=s3-compatible. Multi-instancia permanece NO-GO ate smoke real de bucket.",
-    );
   }
   return createLocalStorageProvider({ rootDir: options.localRootDir });
 }
