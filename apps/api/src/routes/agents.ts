@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { publishRun } from "@eiah/core";
+import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 import { enforceTenant } from "../middlewares/enforceTenant";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, listAgents, resolveAgentId } from "../services/agents";
@@ -291,20 +292,32 @@ function createIntentSignature(params: { tenantId: string; workspaceId: string; 
 async function resolveAllowedActions(req: TenantAwareRequest) {
   const tenantId = req.authContext!.tenantId;
   const workspaceId = req.authContext!.workspaceId;
-  const dbPolicies = await req.prisma!.tenantActionPolicy.findMany({
-    where: {
-      tenantId,
-      OR: [{ workspaceId }, { workspaceId: null }],
-      allowed: true,
-    },
-    select: { actionName: true },
-  });
+  const policyStore = TenantPolicyStore.getInstance();
 
-  return resolveAllowedActionNames({
+  const decisions = await Promise.all(
+    Object.keys(ACTION_CONTRACTS).map(async (actionName) => ({
+      actionName,
+      decision: await policyStore.resolveScopeDecision(
+        tenantId,
+        workspaceId,
+        actionName,
+      ),
+    }))
+  );
+
+  const allowed = new Set(
+    decisions
+      .filter(({ decision }) => decision.allowed)
+      .map(({ actionName }) => actionName),
+  );
+
+  if (allowed.size > 0) {
+    return allowed;
+  }
+
+  throw new PolicyNotFoundError({
     tenantId,
     workspaceId,
-    dbPolicies,
-    catalogActions: Object.keys(ACTION_CONTRACTS),
   });
 }
 

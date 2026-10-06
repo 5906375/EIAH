@@ -97,6 +97,15 @@ before(async () => {
       maxVersion: 1,
     },
   });
+  await prismaGlobal.tenantActionPolicy.create({
+    data: {
+      tenantId,
+      workspaceId,
+      actionName: "ledger.view",
+      allowed: true,
+      maxVersion: 1,
+    },
+  });
 });
 
 after(async () => {
@@ -135,6 +144,51 @@ test("POST /api/agents/discovery falha fechado sem policy explícita", async () 
   assert.equal(res.body?.ok, false);
   assert.equal(res.body?.error?.code, "POLICY_NOT_FOUND");
   assert.equal(res.body?.error?.reasonCode, "POLICY_NOT_FOUND");
+});
+
+test("POST /api/agents/execute respeita deny do workspace sobre allow tenant-wide", async () => {
+  await prismaGlobal.tenantActionPolicy.updateMany({
+    where: { tenantId, workspaceId, actionName },
+    data: { allowed: false },
+  });
+
+  const tenantWide = await prismaGlobal.tenantActionPolicy.create({
+    data: {
+      tenantId,
+      workspaceId: null,
+      actionName,
+      allowed: true,
+      maxVersion: 1,
+    },
+  });
+
+  try {
+    const res = await request
+      .post("/api/agents/execute")
+      .set("Authorization", `Bearer ${apiToken}`)
+      .send({
+        domain: "imob",
+        action: actionName,
+        version: "1.2.0",
+        input: {
+          propertyId: "prop-policy-deny",
+          adjustmentType: "discount",
+          amountCents: 1000,
+          reason: "fail-closed precedence test",
+        },
+      });
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body?.ok, false);
+  } finally {
+    await prismaGlobal.tenantActionPolicy.delete({
+      where: { id: tenantWide.id },
+    });
+    await prismaGlobal.tenantActionPolicy.updateMany({
+      where: { tenantId, workspaceId, actionName },
+      data: { allowed: true },
+    });
+  }
 });
 
 test("POST /api/agents/negotiate negocia versão e contrato", async () => {
