@@ -11,5 +11,5 @@ export default defineConfig({
   bundle: true,
   shims: false,
   dts: false,
-  noExternal: ["@eiah/providers"],
+  noExternal: ["@eiah/providers", "@repo/mcp-runner"],
 });
