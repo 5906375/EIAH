@@ -10,6 +10,7 @@ import {
   appendSignedHash,
 } from "@eiah/core";
 import { getPrismaForTenant } from "@repo/db";
+import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 import { tenantActionResolver } from "../../../api/src/actions/tenantActionRegistry";
 import { pathToFileURL } from "node:url";
 import crypto from "node:crypto";
@@ -98,6 +99,7 @@ type ActionRunnerDeps = {
   consumeActions: typeof consumeActions;
   getPrismaForTenant: typeof getPrismaForTenant;
   tenantActionResolver: typeof tenantActionResolver;
+  resolveScopeDecision: TenantPolicyStore["resolveScopeDecision"];
   executeWithMCP: typeof executeWithMCP;
   mcpEnforcementConfigFromEnv: typeof mcpEnforcementConfigFromEnv;
   resolveMcpToolVersion: typeof resolveMcpToolVersion;
@@ -116,6 +118,12 @@ const defaultDeps: ActionRunnerDeps = {
   consumeActions,
   getPrismaForTenant,
   tenantActionResolver,
+  resolveScopeDecision: (tenantId, workspaceId, scope) =>
+    TenantPolicyStore.getInstance().resolveScopeDecision(
+      tenantId,
+      workspaceId,
+      scope,
+    ),
   executeWithMCP,
   mcpEnforcementConfigFromEnv,
   resolveMcpToolVersion,
@@ -569,14 +577,26 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
 
     jobLogger.info("action.received");
 
-    const allowedActions = deps.tenantActionResolver(tenantId);
-    if (!allowedActions[payload.action]) {
+    const actionCatalog = deps.tenantActionResolver(tenantId);
+    const policyDecision = await deps.resolveScopeDecision(
+      tenantId,
+      workspaceId,
+      payload.action,
+    );
+    if (!policyDecision.allowed) {
       const errorResult = {
         status: "error" as const,
-        error: `Action "${payload.action}" is not allowed for tenant ${tenantId}`,
+        error: `Action "${payload.action}" denied by tenant policy`,
+        reasonCode: policyDecision.reasonCode,
         retryable: false as const,
       };
-      jobLogger.error({ error: errorResult.error }, "action.rejected");
+      jobLogger.error(
+        {
+          error: errorResult.error,
+          reasonCode: policyDecision.reasonCode,
+        },
+        "action.rejected",
+      );
       return errorResult;
     }
 
@@ -754,7 +774,7 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
         "action.mcp.executed"
       );
 
-      const actionDefinition = allowedActions[payload.action];
+      const actionDefinition = actionCatalog[payload.action];
       const criticality = actionDefinition?.criticality ?? "low";
       if ((criticality === "high" || criticality === "critical") && payload.runId) {
         try {
