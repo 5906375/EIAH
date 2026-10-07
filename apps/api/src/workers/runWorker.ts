@@ -1058,6 +1058,7 @@ export type RunWorkerGovernanceDeps = {
   ) => ReturnType<TenantPolicyStore["resolveScopeDecision"]>;
   emitRunEvent: typeof emitRunEvent;
   updateRunStatus: typeof updateRunStatus;
+  persistRunFailureEvidence?: typeof persistRunFailureEvidence;
 };
 
 function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
@@ -1071,6 +1072,7 @@ function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
       TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action),
     emitRunEvent,
     updateRunStatus,
+    persistRunFailureEvidence,
   };
 }
 
@@ -1247,7 +1249,7 @@ export async function processRunPayload(
           `Action "${actionPolicyEvaluation.actionPolicyDecision?.action}" denied by tenant policy`;
         const policyError = Object.assign(new Error(message), { reasonCode });
 
-        await persistRunFailureEvidence(
+        await (deps.persistRunFailureEvidence ?? persistRunFailureEvidence)(
           {
             error: policyError,
             message,
