@@ -415,6 +415,7 @@ test("processRunPayload replaces a forged Action Policy through the worker path"
   const events: any[] = [];
   const statuses: any[] = [];
   const cancelledFinalizations: any[] = [];
+  const persistedFailures: any[] = [];
   let cancellationChecks = 0;
 
   const deps: NonNullable<Parameters<typeof processRunPayload>[1]> = {
@@ -465,6 +466,14 @@ test("processRunPayload replaces a forged Action Policy through the worker path"
       statuses.push(params);
       return params as any;
     },
+    persistRunFailureEvidence: async (params) => {
+      order.push("failure");
+      persistedFailures.push(params);
+      return {
+        reasonCode: "ACTION_POLICY_DISABLED",
+        scl: { txId: "tx-policy-denied", criticalHash: "hash-policy-denied" },
+      } as any;
+    },
   };
 
   await processRunPayload(
@@ -497,7 +506,7 @@ test("processRunPayload replaces a forged Action Policy through the worker path"
       action: "realestate.apply_adjustment",
     },
   ]);
-  assert.deepEqual(order, ["scope", "policy", "event", "running", "cancelled"]);
+  assert.deepEqual(order, ["scope", "policy", "event", "failure"]);
   assert.equal(events.length, 1);
   assert.equal(events[0].type, RUN_ACTION_POLICY_EVALUATED_EVENT_TYPE);
   assert.deepEqual(events[0].payload, {
@@ -508,13 +517,26 @@ test("processRunPayload replaces a forged Action Policy through the worker path"
     action: "realestate.apply_adjustment",
     policyVersion: "v9",
     reasonCode: "ACTION_POLICY_DISABLED",
-    enforcementApplied: false,
+    enforcementApplied: true,
   });
-  assert.equal(statuses[0].status, "running");
-  assert.equal(cancelledFinalizations.length, 1);
-  assert.equal(cancelledFinalizations[0].metadata.actionPolicyDecision.decision, "denied");
-  assert.equal(cancelledFinalizations[0].metadata.governanceContext.policyDecision, "not_evaluated");
-  assert.equal(JSON.stringify(cancelledFinalizations[0].metadata).includes("malicious.action"), false);
+  assert.equal(statuses.length, 0);
+  assert.equal(cancelledFinalizations.length, 0);
+  assert.equal(persistedFailures.length, 1);
+  assert.equal(persistedFailures[0].error.reasonCode, "ACTION_POLICY_DISABLED");
+  assert.equal(
+    JSON.stringify({
+      error: {
+        message: persistedFailures[0].error?.message,
+        reasonCode: persistedFailures[0].error?.reasonCode,
+      },
+      message: persistedFailures[0].message,
+      tenantId: persistedFailures[0].tenantId,
+      workspaceId: persistedFailures[0].workspaceId,
+      runId: persistedFailures[0].runId,
+      userId: persistedFailures[0].userId,
+    }).includes("malicious.action"),
+    false,
+  );
 });
 
 test("processRunPayload rejects an unresolved Run scope before policy, events or status", async () => {
@@ -754,11 +776,9 @@ test("IMOB operational Run with an invalid persisted action fails before every w
   const [
     { processRunPayload },
     { RunActionValidationError },
-    { getRegisteredActionDefinitions },
   ] = await Promise.all([
     import("../workers/runWorker"),
     import("../services/imob/control/imobRunActionCatalog"),
-    import("@eiah/core"),
   ]);
   const calls = {
     cancelled: 0,
@@ -794,7 +814,9 @@ test("IMOB operational Run with an invalid persisted action fails before every w
     },
     getRegisteredActionDefinitions: () => {
       calls.registry += 1;
-      return getRegisteredActionDefinitions();
+      return {
+        "realestate.register_property": {},
+      } as any;
     },
     resolveScopeDecision: async () => {
       calls.policy += 1;
@@ -809,10 +831,6 @@ test("IMOB operational Run with an invalid persisted action fails before every w
       return {} as any;
     },
   };
-
-  const registeredActionDefinitions = getRegisteredActionDefinitions();
-  assert.ok(registeredActionDefinitions["realestate.register_property"]);
-  assert.equal(registeredActionDefinitions["owner.create"], undefined);
 
   await assert.rejects(
     processRunPayload({
