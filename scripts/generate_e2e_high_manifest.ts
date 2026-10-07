@@ -10,7 +10,6 @@
  *   STAGING_API_TOKEN     — Bearer token com permissão de execução em staging
  *   E2E_TENANT_ID         — tenantId do tenant de teste dedicado
  *   E2E_WORKSPACE_ID      — workspaceId do workspace de teste dedicado
- *   E2E_AGENT_ID          — agentId para os runs HIGH (padrão: "imob")
  *
  * Saída: ops/evidence/latest/high-e2e-manifest.json
  */
@@ -28,15 +27,32 @@ const BASE_URL = (process.env.STAGING_API_BASE_URL ?? "").replace(/\/$/, "");
 const TOKEN = process.env.STAGING_API_TOKEN ?? "";
 const TENANT_ID = process.env.E2E_TENANT_ID ?? "";
 const WORKSPACE_ID = process.env.E2E_WORKSPACE_ID ?? "";
-const AGENT_ID = process.env.E2E_AGENT_ID ?? "imob";
 const POLL_INTERVAL_MS = 3_000;
 const POLL_TIMEOUT_MS = 120_000;
 const EVIDENCE_DIR = path.resolve("ops/evidence/latest");
 const OUTPUT_FILE = path.join(EVIDENCE_DIR, "high-e2e-manifest.json");
 
-const SCENARIOS: Array<{ action: string; agentId: string }> = [
-  { action: "realestate.apply_adjustment", agentId: AGENT_ID },
-  { action: "realestate.generate_charge", agentId: AGENT_ID },
+const SCENARIOS = [
+  {
+    action: "realestate.apply_adjustment",
+    version: "1.2.0",
+    input: {
+      propertyId: "e2e-property-adjustment",
+      adjustmentType: "discount",
+      amountCents: 1000,
+      reason: "E2E HIGH staging validation",
+    },
+  },
+  {
+    action: "realestate.register_property",
+    version: "1.0.0",
+    input: {
+      caseId: "e2e-case-register-property",
+      propertyId: "e2e-property-register",
+      address: "E2E Staging Address 100",
+      ownerDocument: "E2E-DOCUMENT-001",
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -93,9 +109,9 @@ async function pollRunCompleted(
   const deadline = Date.now() + POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
     const res = await apiFetch("GET", `/api/runs/${runId}`);
-    const runData = (res.body as Record<string, unknown>)?.data as Record<string, unknown> | undefined;
+    const runData = res.body as Record<string, unknown> | undefined;
     const runStatus = runData?.status as string | undefined;
-    if (runStatus === "completed" || runStatus === "failed" || runStatus === "error") {
+    if (runStatus === "success" || runStatus === "error") {
       return { completedAt: new Date().toISOString(), status: runStatus };
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
@@ -104,30 +120,22 @@ async function pollRunCompleted(
 }
 
 // ---------------------------------------------------------------------------
-// Derive txId from ledger by runId (async — may not exist immediately)
+// Derive canonical txId from persisted Run
 // ---------------------------------------------------------------------------
 
 async function deriveTxIdFromLedger(runId: string): Promise<string | null> {
-  // Poll up to 30s for SCL committed event
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    const res = await apiFetch("GET", `/api/ledger?runId=${runId}`);
-    const events = (res.body as Record<string, unknown>)?.events;
-    if (Array.isArray(events)) {
-      const sclEvent = events.find(
-        (e: unknown) =>
-          typeof e === "object" &&
-          e !== null &&
-          (e as Record<string, unknown>).type === "scl.committed" &&
-          typeof (e as Record<string, unknown>).txId === "string"
-      );
-      if (sclEvent) {
-        return (sclEvent as Record<string, unknown>).txId as string;
-      }
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  return null; // txId not yet available — acceptable for this evidence cycle
+  const res = await apiFetch("GET", `/api/runs/${runId}`);
+  if (res.status !== 200) return null;
+
+  const run = res.body as Record<string, unknown>;
+  const txId =
+    typeof run.txId === "string"
+      ? run.txId
+      : typeof run.sclTxId === "string"
+        ? run.sclTxId
+        : null;
+
+  return txId;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,19 +183,25 @@ function percentile(sorted: number[], p: number): number {
 // Run one scenario
 // ---------------------------------------------------------------------------
 
-async function runScenario(scenario: { action: string; agentId: string }) {
+async function runScenario(scenario: {
+  action: string;
+  version: string;
+  input: Record<string, unknown>;
+}) {
   console.error(`[e2e] Starting scenario: ${scenario.action}`);
   const startedAt = new Date().toISOString();
 
   // 1. Create run
-  const createRes = await apiFetch("POST", "/api/runs", {
-    agentId: scenario.agentId,
+  const createRes = await apiFetch("POST", "/api/agents/execute", {
+    domain: "imob",
     action: scenario.action,
-    tenantId: TENANT_ID,
-    workspaceId: WORKSPACE_ID,
-    metadata: { source: "e2e-high-staging" },
+    version: scenario.version,
+    input: scenario.input,
+    metadata: {
+      source: "e2e-high-staging",
+    },
   });
-  if (createRes.status !== 201 && createRes.status !== 200) {
+  if (createRes.status !== 202) {
     throw new Error(
       `Failed to create run for ${scenario.action}: HTTP ${createRes.status} — ${JSON.stringify(createRes.body)}`
     );
@@ -204,7 +218,7 @@ async function runScenario(scenario: { action: string; agentId: string }) {
   const latencyMs = new Date(completedAt).getTime() - new Date(startedAt).getTime();
   console.error(`[e2e]   completed status=${runStatus} latencyMs=${latencyMs}`);
 
-  // 3. Derive txId from ledger (async — not guaranteed immediately)
+  // 3. Derive canonical txId from persisted Run
   const txId = await deriveTxIdFromLedger(runId);
   console.error(`[e2e]   txId=${txId ?? "not-yet-available"}`);
 
@@ -220,9 +234,10 @@ async function runScenario(scenario: { action: string; agentId: string }) {
   console.error(`[e2e]   bundleHash=${bundleHash ?? "null"}`);
 
   const passed =
-    runStatus === "completed" &&
-    (invariantStatus === "ok" || invariantStatus === "no-tx") &&
-    bundleOk !== false;
+    runStatus === "success" &&
+    Boolean(txId) &&
+    invariantStatus === "ok" &&
+    bundleOk === true;
 
   return {
     scenario: scenario.action,
