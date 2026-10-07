@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Hardening transversal — contrato de acesso, Passo 1 local (2026-10-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Contrato reutilizável de acesso separado de Agent Protocol action | `ops/evidence/latest/vertical-access-step1-local-2026-10-07/README.md` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/results.json` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/boundary.json` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/source-hashes.json` | Execução local sintética: 16 testes novos e 13 de regressão aprovados, typecheck focado e gates de orphan, launcher, links e reason canon existente. Preserva uma tentativa de regressão com flag Node não suportada e as reexecuções corretivas. Comparação byte a byte confirma 11 arquivos operacionais protegidos idênticos a HEAD; resolver referenciado somente por definição/teste. A revogação respeita os modos ADR-011. Não prova DB/adapter real, E2E HTTP, suíte/typecheck globais, CI remoto ou produção; reasonCodes internos ainda exigem reconciliação antes de exposição pública. HIGH, fallback REAL_ESTATE_CORE, rotas, handlers, provisionamento e schema permanecem intocados. |
+
 ## PRE_DUIMP — jornada local do gate workspace-exact em modo shadow (2026-08-29)
 
 | Assunto | Arquivo | O que prova |
