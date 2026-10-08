@@ -1,0 +1,158 @@
+TAP version 13
+{"scenario":"A installation only","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":true,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: A installation only
+ok 1 - A installation only
+  ---
+  duration_ms: 214.275696
+  type: 'test'
+  ...
+{"scenario":"B P5 only realestate.apply_adjustment","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.apply_adjustment"],"sharedMatchedActions":["realestate.apply_adjustment"]}}
+# Subtest: B P5 only realestate.apply_adjustment
+ok 2 - B P5 only realestate.apply_adjustment
+  ---
+  duration_ms: 91.059425
+  type: 'test'
+  ...
+{"scenario":"B P5 only action.realestate.apply_adjustment","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["action.realestate.apply_adjustment"],"sharedMatchedActions":["action.realestate.apply_adjustment"]}}
+# Subtest: B P5 only action.realestate.apply_adjustment
+ok 3 - B P5 only action.realestate.apply_adjustment
+  ---
+  duration_ms: 59.699764
+  type: 'test'
+  ...
+{"scenario":"B P5 only realestate.register_property","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.register_property"],"sharedMatchedActions":["realestate.register_property"]}}
+# Subtest: B P5 only realestate.register_property
+ok 4 - B P5 only realestate.register_property
+  ---
+  duration_ms: 69.135727
+  type: 'test'
+  ...
+{"scenario":"B P5 only realestate.create_contract","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.create_contract"],"sharedMatchedActions":["realestate.create_contract"]}}
+# Subtest: B P5 only realestate.create_contract
+ok 5 - B P5 only realestate.create_contract
+  ---
+  duration_ms: 63.79587
+  type: 'test'
+  ...
+{"scenario":"B P5 only realestate.release_commission","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.release_commission"],"sharedMatchedActions":["realestate.release_commission"]}}
+# Subtest: B P5 only realestate.release_commission
+ok 6 - B P5 only realestate.release_commission
+  ---
+  duration_ms: 50.127097
+  type: 'test'
+  ...
+{"scenario":"C P7 exclusive realestate.configure_property_rules remains denied","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":true,"aligned":false,"sessionMatchedActions":[],"sharedMatchedActions":["realestate.configure_property_rules"]}}
+# Subtest: C P7 exclusive realestate.configure_property_rules remains denied
+ok 7 - C P7 exclusive realestate.configure_property_rules remains denied
+  ---
+  duration_ms: 48.36736
+  type: 'test'
+  ...
+{"scenario":"C P7 exclusive realestate.search_knowledge_base remains denied","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":true,"aligned":false,"sessionMatchedActions":[],"sharedMatchedActions":["realestate.search_knowledge_base"]}}
+# Subtest: C P7 exclusive realestate.search_knowledge_base remains denied
+ok 8 - C P7 exclusive realestate.search_knowledge_base remains denied
+  ---
+  duration_ms: 46.856137
+  type: 'test'
+  ...
+{"scenario":"D marketplace only remains allowed","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":true,"sessionLegacyAllowed":true,"sharedLegacyAllowed":false,"aligned":false,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: D marketplace only remains allowed
+ok 9 - D marketplace only remains allowed
+  ---
+  duration_ms: 58.435666
+  type: 'test'
+  ...
+{"scenario":"E no source remains denied","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: E no source remains denied
+ok 10 - E no source remains denied
+  ---
+  duration_ms: 55.321498
+  type: 'test'
+  ...
+{"scenario":"F mixed sources and duplicates","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":true,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":true,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.apply_adjustment","realestate.register_property"],"sharedMatchedActions":["realestate.apply_adjustment","realestate.register_property","realestate.search_knowledge_base"]}}
+# Subtest: F mixed sources and duplicates
+ok 11 - F mixed sources and duplicates
+  ---
+  duration_ms: 44.780085
+  type: 'test'
+  ...
+{"scenario":"G tenant-wide grant survives workspace denial","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.apply_adjustment"],"sharedMatchedActions":["realestate.apply_adjustment"]}}
+# Subtest: G tenant-wide grant survives workspace denial
+ok 12 - G tenant-wide grant survives workspace denial
+  ---
+  duration_ms: 46.099328
+  type: 'test'
+  ...
+{"scenario":"H false, foreign tenant and foreign workspace excluded","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: H false, foreign tenant and foreign workspace excluded
+ok 13 - H false, foreign tenant and foreign workspace excluded
+  ---
+  duration_ms: 40.102099
+  type: 'test'
+  ...
+{"scenario":"I P5 and exclusive P7","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":true,"sharedPolicyPresent":true,"marketplacePresent":false,"sessionLegacyAllowed":true,"sharedLegacyAllowed":true,"aligned":true,"sessionMatchedActions":["realestate.create_contract"],"sharedMatchedActions":["realestate.configure_property_rules","realestate.create_contract"]}}
+# Subtest: I P5 and exclusive P7
+ok 14 - I P5 and exclusive P7
+  ---
+  duration_ms: 43.838585
+  type: 'test'
+  ...
+{"scenario":"inactive installation remains denied","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: inactive installation remains denied
+ok 15 - inactive installation remains denied
+  ---
+  duration_ms: 46.735264
+  type: 'test'
+  ...
+{"scenario":"installation read failure retains fallback","diagnostic":{"tenantId":"synthetic-tenant","workspaceId":"synthetic-workspace","traceId":"synthetic-response-trace","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":true,"sessionLegacyAllowed":true,"sharedLegacyAllowed":false,"aligned":false,"sessionMatchedActions":[],"sharedMatchedActions":[]}}
+# Subtest: installation read failure retains fallback
+ok 16 - installation read failure retains fallback
+  ---
+  duration_ms: 41.915705
+  type: 'test'
+  ...
+# Subtest: J create logging failure preserves complete HTTP allow
+ok 17 - J create logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 79.403932
+  type: 'test'
+  ...
+# Subtest: J create logging failure preserves complete HTTP deny
+ok 18 - J create logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 79.709101
+  type: 'test'
+  ...
+# Subtest: J emit logging failure preserves complete HTTP allow
+ok 19 - J emit logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 91.811936
+  type: 'test'
+  ...
+# Subtest: J emit logging failure preserves complete HTTP deny
+ok 20 - J emit logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 89.935644
+  type: 'test'
+  ...
+# Subtest: existing response trace optional; no correlation generated
+ok 21 - existing response trace optional; no correlation generated
+  ---
+  duration_ms: 47.427702
+  type: 'test'
+  ...
+# Subtest: K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+ok 22 - K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+  ---
+  duration_ms: 1209.298426
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2623.761517

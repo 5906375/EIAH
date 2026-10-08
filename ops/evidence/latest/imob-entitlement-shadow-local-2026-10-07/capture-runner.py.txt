@@ -1,0 +1,15 @@
+import subprocess,json,sys,datetime,os,fcntl
+from pathlib import Path
+out=Path("ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07")
+name=sys.argv[1];cmd=sys.argv[2:]
+log=name+".log.txt"
+if (out/log).exists(): log=name+"-"+datetime.datetime.now(datetime.timezone.utc).strftime("%H%M%S")+".log.txt"
+r=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+(out/log).write_text(r.stdout)
+p=out/"results.json"
+with (out/".results.lock").open("w") as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ data=json.loads(p.read_text()) if p.exists() else []
+ data.append({"name":name,"command":cmd,"exitCode":r.returncode,"at":datetime.datetime.now(datetime.timezone.utc).isoformat(),"log":log,"baselineSource":os.environ.get("IMOB_SESSION_BASELINE_SOURCE")})
+ p.write_text(json.dumps(data,indent=2)+"\n")
+print(name,"exit",r.returncode);print(r.stdout[-3500:]);sys.exit(r.returncode)

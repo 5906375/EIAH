@@ -1,0 +1,3 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_BUILDER/apps/api
+> tsc -p tsconfig.build.json --noEmit

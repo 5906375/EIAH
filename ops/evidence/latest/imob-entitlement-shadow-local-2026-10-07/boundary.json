@@ -1,0 +1,83 @@
+{
+  "provenance": "SHA256 of workspace files captured before this step, preserving preexisting Step 1 edits",
+  "baselineFiles": 2489,
+  "changedExistingFiles": [
+    "apps/api/src/routes/session.ts",
+    "docs/EVIDENCE_INDEX.md",
+    "package.json",
+    "scripts/unit-tests-manifest.txt"
+  ],
+  "unexpectedChanges": [],
+  "protected": {
+    "apps/api/src/services/products/verticalAccessResolver.ts": {
+      "before": "a697e7350dc2f9e06605bfd6f1fc58d4e0f8ca3dbbae806f44db0acbddcc79cc",
+      "after": "a697e7350dc2f9e06605bfd6f1fc58d4e0f8ca3dbbae806f44db0acbddcc79cc",
+      "unchanged": true
+    },
+    "apps/api/src/types/verticalEntitlementGateContract.ts": {
+      "before": "ebd0ee99caffd5305a8be6a1d0ec80d9abf7d3b831654e400efcaeb9fa4b9e16",
+      "after": "ebd0ee99caffd5305a8be6a1d0ec80d9abf7d3b831654e400efcaeb9fa4b9e16",
+      "unchanged": true
+    },
+    "apps/api/src/services/chat/verticalRegistryComposition.ts": {
+      "before": "68b17e32a159030dd0b55def085a40549f6bcd38de9469b183b11d7387f7932f",
+      "after": "68b17e32a159030dd0b55def085a40549f6bcd38de9469b183b11d7387f7932f",
+      "unchanged": true
+    },
+    "apps/api/src/tests/vertical-access-resolver.test.ts": {
+      "before": "e1546a16fafcfb8e397437e1aabc23b3d94f4cd083d37823ecf7a63a5c5f6528",
+      "after": "e1546a16fafcfb8e397437e1aabc23b3d94f4cd083d37823ecf7a63a5c5f6528",
+      "unchanged": true
+    },
+    "docs/architecture/vertical-access-contract-v1.md": {
+      "before": "54a122cbf549ba6e4caa5d3f9cad26df7d699ec78e40a7c9b988f73973062f82",
+      "after": "54a122cbf549ba6e4caa5d3f9cad26df7d699ec78e40a7c9b988f73973062f82",
+      "unchanged": true
+    },
+    "apps/web/src/components/agents/ChatAgentLauncher.tsx": {
+      "before": "e30d111aa1fb88cdf8acd4fdaacdb6d1acaddfffe643be0cb37c9bad19fbdf5e",
+      "after": "e30d111aa1fb88cdf8acd4fdaacdb6d1acaddfffe643be0cb37c9bad19fbdf5e",
+      "unchanged": true
+    },
+    "apps/api/src/services/imob/imobEntitlements.ts": {
+      "before": "08ba85e000972a86bdcdcfa06370708a1c37b0f74d56e51ccfd3e08496ed239d",
+      "after": "08ba85e000972a86bdcdcfa06370708a1c37b0f74d56e51ccfd3e08496ed239d",
+      "unchanged": true
+    },
+    "apps/api/src/services/imob/imobAccessGate.ts": {
+      "before": "5787737842f953b617263b9177e239a0a5693895ccb8a661b2f06730d08ea597",
+      "after": "5787737842f953b617263b9177e239a0a5693895ccb8a661b2f06730d08ea597",
+      "unchanged": true
+    },
+    "apps/api/src/services/products/productActivation.ts": {
+      "before": "51c2c0bf4eaae5152ad17ccb228c06d9905aedd0343a24d429a2712077d44ccd",
+      "after": "51c2c0bf4eaae5152ad17ccb228c06d9905aedd0343a24d429a2712077d44ccd",
+      "unchanged": true
+    },
+    "apps/api/src/services/products/verticalAccessApproval.ts": {
+      "before": "ff6aff4b9e78fe60eb2ef92e63938f6094d2678017a11f5779700476d2609a30",
+      "after": "ff6aff4b9e78fe60eb2ef92e63938f6094d2678017a11f5779700476d2609a30",
+      "unchanged": true
+    },
+    "packages/core/src/catalog/workspaceActionPolicyProvisioning.ts": {
+      "before": "8553632117d881b946c395154281ab9d7eb90530c9a1dd3cfca5af7bce63f8f7",
+      "after": "8553632117d881b946c395154281ab9d7eb90530c9a1dd3cfca5af7bce63f8f7",
+      "unchanged": true
+    },
+    "packages/db/prisma/schema.prisma": {
+      "before": "3e55c1541bf444afe852ca3afe584d2e9395cecb1781c25821346bf7f20f17e0",
+      "after": "3e55c1541bf444afe852ca3afe584d2e9395cecb1781c25821346bf7f20f17e0",
+      "unchanged": true
+    },
+    "packages/core/src/logging/logger.ts": {
+      "before": "30ec0fece80e1902a7aa5fb572d54a3d3a8c5b9ef145ec8418df7f7607a4a9fe",
+      "after": "30ec0fece80e1902a7aa5fb572d54a3d3a8c5b9ef145ec8418df7f7607a4a9fe",
+      "unchanged": true
+    },
+    "apps/api/src/middlewares/requestLogger.ts": {
+      "before": "a2daa7b39331ccb3560e79e7e7b4e9fdebc1bd2a70a14c122682bd1ab27b27f4",
+      "after": "a2daa7b39331ccb3560e79e7e7b4e9fdebc1bd2a70a14c122682bd1ab27b27f4",
+      "unchanged": true
+    }
+  }
+}

@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Hardening transversal — Passo 2C.2 entitlement shadow IMOB local (2026-10-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Observabilidade privada dos três sinais sem migrar enforcement | `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/README.md` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/results.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/diagnostics.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/boundary.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/source-hashes.json` | Execução local Express/Supertest com dependências controladas: 22 testes HTTP, incluindo status/body completos contra baseline pré-edição; 44 regressões funcionais aprovadas; typecheck API/teste e gates locais. Diagnóstico compara I, I OR P7 e I OR P5 OR M; P7 exclusivo continua 403 e marketplace exclusivo continua permitido. Logging best-effort antes do gate com correlação existente, fora do HTTP; P5/P7 privados, Step 1 preservado byte a byte. Falhas intermediárias, limites e provenance registrados. Não prova DB real, ingestão do transport, CI remoto, staging/produção, migração, remoção de fallback, HIGH, convergência P5/P7 ou fonte canônica nova. |
+
 ## Hardening transversal — contrato de acesso, Passo 1 local (2026-10-07)
 
 | Assunto | Arquivo | O que prova |

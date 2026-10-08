@@ -1,0 +1,105 @@
+diff --git a/apps/api/src/routes/session.ts b/apps/api/src/routes/session.ts
+index 81fddc1..acdf38c 100644
+--- a/apps/api/src/routes/session.ts
++++ b/apps/api/src/routes/session.ts
+@@ -4,6 +4,7 @@ import crypto from "node:crypto";
+ import process from "node:process";
+ import { z } from "zod";
+ import { prismaGlobal } from "@repo/db";
++import { createLogger } from "@eiah/core/logging/logger";
+ import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
+ import { findApiToken } from "../auth/apiTokenRepository";
+ import { buildFrictionEvent, mapResolverDecisionToFrictionKind } from "../types/frictionEventContract";
+@@ -24,6 +25,19 @@ import { asyncHandler } from "../middlewares/asyncHandler";
+
+ const sessionRouter = Router();
+ const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
++// Private legacy sets for observation only; not a platform entitlement catalog.
++const SESSION_IMOB_POLICY_ACTIONS = [
++  "realestate.apply_adjustment",
++  "action.realestate.apply_adjustment",
++  "realestate.register_property",
++  "realestate.create_contract",
++  "realestate.release_commission",
++];
++const SHARED_IMOB_POLICY_ACTIONS = [
++  ...SESSION_IMOB_POLICY_ACTIONS,
++  "realestate.configure_property_rules",
++  "realestate.search_knowledge_base",
++];
+ const switchWorkspaceSchema = z.object({
+   workspaceId: z.string().min(1),
+ });
+@@ -128,18 +142,11 @@ async function resolveExperienceSnapshot(
+         tenantId: tokenRecord.tenantId,
+         OR: [{ workspaceId: tokenRecord.workspaceId }, { workspaceId: null }],
+         actionName: {
+-          in: [
+-            "realestate.apply_adjustment",
+-            "action.realestate.apply_adjustment",
+-            "realestate.register_property",
+-            "realestate.create_contract",
+-            "realestate.release_commission",
+-          ],
++          in: SHARED_IMOB_POLICY_ACTIONS,
+         },
+         allowed: true,
+       },
+-      select: { id: true },
+-      take: 1,
++      select: { actionName: true },
+     }),
+     prismaGlobal.marketplaceItem.findMany({
+       where: {
+@@ -161,7 +168,14 @@ async function resolveExperienceSnapshot(
+
+   const installationStatus = resolveImobInstallationStatus(productInstallations);
+   const hasImobInstallation = installationStatus === "active";
+-  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0 || realEstateItems.length > 0;
++  const sharedMatchedActions = [...new Set(realEstatePolicies.map((policy) => policy.actionName))].sort();
++  const sessionMatchedActions = sharedMatchedActions.filter((action) => SESSION_IMOB_POLICY_ACTIONS.includes(action));
++  const sessionPolicyPresent = sessionMatchedActions.length > 0;
++  const sharedPolicyPresent = sharedMatchedActions.length > 0;
++  const marketplacePresent = realEstateItems.length > 0;
++  // Enforcement remains I || P5 || M. P7 influences only the private diagnostic.
++  const realEstateCore = hasImobInstallation || sessionPolicyPresent || marketplacePresent;
++  const sharedLegacyAllowed = hasImobInstallation || sharedPolicyPresent;
+   const entitlements = {
+     REAL_ESTATE_CORE: realEstateCore,
+     EXPORTS_ADDON: true,
+@@ -182,6 +196,17 @@ async function resolveExperienceSnapshot(
+   });
+
+   return {
++    entitlementShadow: {
++      installationActive: hasImobInstallation,
++      sessionPolicyPresent,
++      sharedPolicyPresent,
++      marketplacePresent,
++      sessionLegacyAllowed: realEstateCore,
++      sharedLegacyAllowed,
++      aligned: realEstateCore === sharedLegacyAllowed,
++      sessionMatchedActions,
++      sharedMatchedActions,
++    },
+     installationStatus,
+     entitlements,
+     activeDomain,
+@@ -283,6 +308,17 @@ sessionRouter.get("/session/context", asyncHandler(async (req: Request, res: Res
+     }),
+   ]);
+
++  try {
++    const traceId = res.getHeader("x-trace-id");
++    createLogger({
++      tenantId: tokenRecord.tenantId,
++      workspaceId: tokenRecord.workspaceId,
++      ...(typeof traceId === "string" ? { traceId } : {}),
++    }).info({ event: "imob.entitlement_shadow", ...snapshot.entitlementShadow }, "imob.entitlement_shadow");
++  } catch {
++    // Shadow logging is best-effort and must never affect the HTTP decision.
++  }
++
+   if (requestedDomain === "imob" && !snapshot.entitlements.REAL_ESTATE_CORE) {
+     return sendImobAccessDenied(res, {
+       req,

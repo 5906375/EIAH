@@ -1,0 +1,10 @@
+
+> eiah-builder@ check:chat-launcher-render-only /home/jusall/projects/EIAH_BUILDER
+> node --import tsx scripts/checkChatLauncherRenderOnly.ts
+
+{
+  "ok": true,
+  "check": "check:chat-launcher-render-only",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": []
+}
