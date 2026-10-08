@@ -1,0 +1,7 @@
+{
+  "apps/api/src/routes/session.ts": "0f270570b6ee1c5060467469e330e01c148162b5e185c5453aea0fe751736022",
+  "apps/api/src/tests/session-entitlement-shadow.contract.test.ts": "7b993cc8e25fc77822a8a6854ef5b57fed7aeca6e0fd20672152b64971685bdd",
+  "package.json": "ec4acb6d88be0d0cc27ed9e498b290721ded3009571ca674f076bf153933638c",
+  "scripts/unit-tests-manifest.txt": "e7ed371e933dbc13d0264c9e3cfc6e40be2bcd09d53fd18768c96ac499a2ff7e",
+  "docs/EVIDENCE_INDEX.md": "06b672bf0eceb330f9c35da8af1b225e39955e3e4546a80602634f16779e7505"
+}

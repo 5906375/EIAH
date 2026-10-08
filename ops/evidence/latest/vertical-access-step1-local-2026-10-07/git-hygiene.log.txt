@@ -1,0 +1,769 @@
+
+> eiah-builder@ check:tracked-ignored-files /home/jusall/projects/EIAH_BUILDER
+> node --import tsx scripts/checkTrackedIgnoredFiles.ts
+
+{
+  "ok": true,
+  "check": "check:tracked-ignored-files",
+  "summary": {
+    "generated_safe_to_untrack": 8,
+    "evidence_keep": 33,
+    "contract_keep": 0,
+    "source_keep": 61,
+    "unknown_review": 23,
+    "legacyPending": true,
+    "newViolations": 0
+  },
+  "findings": [
+    {
+      "path": "apps/api/uploads/31e26590-7825-47e8-aebc-6ab459479b01.pdf",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/33c3edbe-df4e-4d5e-8a61-0ed24191c2c6.txt",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/606bee44-1628-47d1-9c26-2cf838f4513d.pdf",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/61428e08-a13d-42cc-8d3e-32d3ca535ad6.png",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/64ee6870-c177-4b95-88be-4ae97de75adc.pdf",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/69abf67b-9404-4b0f-8660-6db5bf5f0609.png",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/8a3a5869-787f-480d-b6ca-5029686cb85d.txt",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "apps/api/uploads/ef02749e-f7b2-413a-8cb1-63510c26b9d3.txt",
+      "classification": "generated_safe_to_untrack",
+      "reason": "path is under uploads/ and matches generated upload artifact policy",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Agentic_1.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/agentic_2.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/comparação_1_e_2.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/construir agentes de IA sem usar código.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/custo_RAG_Hibrido.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/fluxo_x_onboarding_interativo_html.html",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/formS_Wasapp.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/gpt-realtime_prompt.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Guia Interativo.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/guia_interativo_html_billing_quotas_footer.html",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Imagens/1.png",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Imagens/EIAH_0.mp4",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Imagens/EIAH_1.mp4",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Imagens/grok-video-cc8242b3-86dd-4868-856c-ba6c87279002-2.mp4",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Imagens/j_360.mp4",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/onboarding_web2_web3_docs.html",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/prompt resiliente .odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/Prompt_otimizador.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/prompts...odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/RAG_Tradicional_vs_Visual.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/roteiro_1.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "Backups/SISTEMA EIAH.odt",
+      "classification": "unknown_review",
+      "reason": "backup/manual asset tracked under ignored Backups/; requires explicit repository hygiene decision",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-001-domain-runtime-stack.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-002-database-self-managed-postgres.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-003-work-registry-hierarchy.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-004-required-check-blocking-semantics.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-005-p2-interop-declarative-evidence-treatment.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-006-structural-circularity-detection.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-007-temporary-required-gate-relocation-p1-p2.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-008-sole-administrator-review-model.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-009-reconciliacao-pendencias-adr-001-a-008.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-010-unificacao-chat-front-door-verticais.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/adr/ADR-011-liberacao-eiah-de-verticais-e-acesso-por-convite.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/chat-vertical-handoff-v2-shadow.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/chat-vertical-handoff-v2.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/db-contract-lifecycle-decisions-v1.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/db-contract-lifecycle-v1.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/EIAH_MULTICHANNEL_IMPLEMENTATION_PLAN_v1.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/architecture/pre-duimp-human-authority-binding-rfc-v1.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/EIAH_OVERVIEW.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/governance/ai-code-of-conduct.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/governance/ai-usage-policy.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/eiah-imob-chat-onboarding-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-crm-continuity-hardening-phase-1-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-dedupe-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-document-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-follow-up-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-market-scan-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-orchestrator-mission-e2e-p0-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-proposal-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/plans/imob-visit-agent-e2e-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/pr-checklists/diagnostic-hotfixes.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/product/imob-one-pager.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-1-navigation-semantics.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-2-handoff-contract-v1.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-3-vertical-context-badge.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-4-imob-cockpit-deep-link.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-5-hitl-gate-rendering-standard.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-6-receipt-bundle-rendering-standard.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-7-imob-pilot-integration-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-chat-8-contract-to-implementation-gap-matrix.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-impl-0-minimal-physical-contracts-ci-validation.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-impl-1-read-only-handoff-snapshot-producer.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-impl-2-universal-chat-render-surface-read-only.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/arch-impl-3-read-only-gate-proof-adapters.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-chat-agentic-ops-library-integration.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-0-shadow-readiness-checklist.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-1-shadow-dry-run-evidence-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-2-dry-run-fixture-pack-evidence-template.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-3-shadow-dry-run-harness-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-4-non-operational-dry-run-harness-spec.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-5-non-operational-harness-skeleton.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6a-static-harness-contract-check.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6b-static-check-implementation-design.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6c-static-check-non-executable-pseudocode.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6d-static-check-implementation-plan.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6g-package-script-ci-gate-evaluation.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6h-package-script-registration.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6i-ci-gate-wiring.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-6j-ci-gate-post-merge-evidence-stabilization-review.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/imob-pilot-7a-frontdoor-imob-fixture-preview-decision-gate.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "docs/proposals/universal-chat-front-door-vertical-operating-model.md",
+      "classification": "source_keep",
+      "reason": "path is under docs/**; current .gitignore is broad and this is tracked source documentation",
+      "legacyAllowed": true
+    },
+    {
+      "path": "MODELOS_COGNIÇÃO.odt",
+      "classification": "unknown_review",
+      "reason": "ignored root artifact requires explicit review before untracking",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-orphan-step-7-excerpt.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-p3-settlement-step-excerpt.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30710850816-step-excerpt.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30713272468-step-excerpt.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/pr-01/ci-orphan-tests-job.30710850816.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/pr-01/ci-p3-settlement-job.30710850816.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/pr-01/ci-p3-settlement-steps.30710850816.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/ci/pr-01/ci-run-summary.30710850816.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/diff-check.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/evidence-index-unit.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/evidence-index.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/final-diff-check.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/final-tests.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/m1-source-contracts-local-2026-09-28/typecheck.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/pre-duimp-front-door-ui-e2e-2026-08-28-000003/playwright-sanitized.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/latest/pre-duimp-workspace-gate-ui-e2e-2026-08-29-000005/playwright-sanitized.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/docs-link-integrity.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/docs-link-integrity.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/evidence-index.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/evidence-index.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/gate-waiver-check.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/gate-waiver-test.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/grounding-test.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/grounding-test.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/orphan-gate.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/orphan-gate.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/orphan-tests-unit.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/p3-settlement-check.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/p3-settlement-check.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/reason-code-canon.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/reason-code-canon.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/settlement-contract-drift.outside-sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    },
+    {
+      "path": "ops/evidence/local/pr-01/settlement-contract-drift.sandbox.log",
+      "classification": "evidence_keep",
+      "reason": "path is under ops/evidence/** and must be preserved",
+      "legacyAllowed": true
+    }
+  ]
+}

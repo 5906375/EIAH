@@ -1,0 +1,106 @@
+TAP version 13
+# Subtest: installed product and valid workspace permission allow capability, never action authorization
+ok 1 - installed product and valid workspace permission allow capability, never action authorization
+  ---
+  duration_ms: 9.453391
+  type: 'test'
+  ...
+# Subtest: missing product denies even read capability
+ok 2 - missing product denies even read capability
+  ---
+  duration_ms: 2.589239
+  type: 'test'
+  ...
+# Subtest: absent, denied or unrelated workspace permission fails closed
+ok 3 - absent, denied or unrelated workspace permission fails closed
+  ---
+  duration_ms: 1.21769
+  type: 'test'
+  ...
+# Subtest: unknown vertical denies
+ok 4 - unknown vertical denies
+  ---
+  duration_ms: 0.272365
+  type: 'test'
+  ...
+# Subtest: revocation total block denies read and write
+ok 5 - revocation total block denies read and write
+  ---
+  duration_ms: 0.442565
+  type: 'test'
+  ...
+# Subtest: ADR-011 read-only revocation denies writes and preserves read; no-new-activation preserves current use
+ok 6 - ADR-011 read-only revocation denies writes and preserves read; no-new-activation preserves current use
+  ---
+  duration_ms: 0.632084
+  type: 'test'
+  ...
+# Subtest: required stage rejects missing, incompatible or denied decision and accepts matching permission
+ok 7 - required stage rejects missing, incompatible or denied decision and accepts matching permission
+  ---
+  duration_ms: 0.758224
+  type: 'test'
+  ...
+# Subtest: isolated TenantActionPolicy cannot become product entitlement
+ok 8 - isolated TenantActionPolicy cannot become product entitlement
+  ---
+  duration_ms: 0.488926
+  type: 'test'
+  ...
+# Subtest: tenant/workspace/product/facts mismatches deny
+ok 9 - tenant/workspace/product/facts mismatches deny
+  ---
+  duration_ms: 0.719795
+  type: 'test'
+  ...
+# Subtest: inactive, suspended, unknown installation status deny
+ok 10 - inactive, suspended, unknown installation status deny
+  ---
+  duration_ms: 1.255092
+  type: 'test'
+  ...
+# Subtest: unknown capability, unsupported mode and critical action fail closed
+ok 11 - unknown capability, unsupported mode and critical action fail closed
+  ---
+  duration_ms: 2.246072
+  type: 'test'
+  ...
+# Subtest: missing or malformed facts/contracts/request and duplicate descriptors fail closed without throwing
+ok 12 - missing or malformed facts/contracts/request and duplicate descriptors fail closed without throwing
+  ---
+  duration_ms: 2.209743
+  type: 'test'
+  ...
+# Subtest: explicit installation exemption has no product entitlement and still needs scoped permission/usage
+ok 13 - explicit installation exemption has no product entitlement and still needs scoped permission/usage
+  ---
+  duration_ms: 0.365908
+  type: 'test'
+  ...
+# Subtest: contract supports future vertical/product IDs only through explicit descriptors (synthetic fixtures)
+ok 14 - contract supports future vertical/product IDs only through explicit descriptors (synthetic fixtures)
+  ---
+  duration_ms: 0.736987
+  type: 'test'
+  ...
+# Subtest: resolution is deterministic and does not mutate inputs
+ok 15 - resolution is deterministic and does not mutate inputs
+  ---
+  duration_ms: 0.38331
+  type: 'test'
+  ...
+# Subtest: legacy registry still accepts its existing policy-derived entitlement fact
+ok 16 - legacy registry still accepts its existing policy-derived entitlement fact
+  ---
+  duration_ms: 1.287599
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 41.998062

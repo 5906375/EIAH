@@ -4,6 +4,18 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Hardening transversal — Passo 2C.2 entitlement shadow IMOB local (2026-10-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Observabilidade privada dos três sinais sem migrar enforcement | `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/README.md` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/results.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/diagnostics.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/boundary.json` + `ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/source-hashes.json` | Execução local Express/Supertest com dependências controladas: 22 testes HTTP, incluindo status/body completos contra baseline pré-edição; 44 regressões funcionais aprovadas; typecheck API/teste e gates locais. Diagnóstico compara I, I OR P7 e I OR P5 OR M; P7 exclusivo continua 403 e marketplace exclusivo continua permitido. Logging best-effort antes do gate com correlação existente, fora do HTTP; P5/P7 privados, Step 1 preservado byte a byte. Falhas intermediárias, limites e provenance registrados. Não prova DB real, ingestão do transport, CI remoto, staging/produção, migração, remoção de fallback, HIGH, convergência P5/P7 ou fonte canônica nova. |
+
+## Hardening transversal — contrato de acesso, Passo 1 local (2026-10-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Contrato reutilizável de acesso separado de Agent Protocol action | `ops/evidence/latest/vertical-access-step1-local-2026-10-07/README.md` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/results.json` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/boundary.json` + `ops/evidence/latest/vertical-access-step1-local-2026-10-07/source-hashes.json` | Execução local sintética: 16 testes novos e 13 de regressão aprovados, typecheck focado e gates de orphan, launcher, links e reason canon existente. Preserva uma tentativa de regressão com flag Node não suportada e as reexecuções corretivas. Comparação byte a byte confirma 11 arquivos operacionais protegidos idênticos a HEAD; resolver referenciado somente por definição/teste. A revogação respeita os modos ADR-011. Não prova DB/adapter real, E2E HTTP, suíte/typecheck globais, CI remoto ou produção; reasonCodes internos ainda exigem reconciliação antes de exposição pública. HIGH, fallback REAL_ESTATE_CORE, rotas, handlers, provisionamento e schema permanecem intocados. |
+
 ## PRE_DUIMP — jornada local do gate workspace-exact em modo shadow (2026-08-29)
 
 | Assunto | Arquivo | O que prova |

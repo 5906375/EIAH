@@ -1,0 +1,65 @@
+{
+  "head": "0a0869249cefaecaeaf3abe171a088aa5857e611",
+  "protectedFiles": [
+    {
+      "path": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+      "unchangedFromHead": true,
+      "sha256": "e30d111aa1fb88cdf8acd4fdaacdb6d1acaddfffe643be0cb37c9bad19fbdf5e"
+    },
+    {
+      "path": "apps/api/src/routes/imob.ts",
+      "unchangedFromHead": true,
+      "sha256": "c1e11ca4f703b50edf6993bb334146c1327b7607edf5fc439cdc91b4310bdcc3"
+    },
+    {
+      "path": "apps/api/src/routes/imobCrmRouter.ts",
+      "unchangedFromHead": true,
+      "sha256": "99b11aea64fdd41b4cceced0356daf2daf6da5c2c263ad0affb8b18862ca1f83"
+    },
+    {
+      "path": "apps/api/src/services/imob/imobEntitlements.ts",
+      "unchangedFromHead": true,
+      "sha256": "08ba85e000972a86bdcdcfa06370708a1c37b0f74d56e51ccfd3e08496ed239d"
+    },
+    {
+      "path": "apps/api/src/services/imob/imobAccessGate.ts",
+      "unchangedFromHead": true,
+      "sha256": "5787737842f953b617263b9177e239a0a5693895ccb8a661b2f06730d08ea597"
+    },
+    {
+      "path": "apps/api/src/services/products/productActivation.ts",
+      "unchangedFromHead": true,
+      "sha256": "51c2c0bf4eaae5152ad17ccb228c06d9905aedd0343a24d429a2712077d44ccd"
+    },
+    {
+      "path": "apps/api/src/services/products/verticalAccessApproval.ts",
+      "unchangedFromHead": true,
+      "sha256": "ff6aff4b9e78fe60eb2ef92e63938f6094d2678017a11f5779700476d2609a30"
+    },
+    {
+      "path": "apps/api/src/services/chat/workspaceVerticalRegistry.ts",
+      "unchangedFromHead": true,
+      "sha256": "6623da3f100c697eaed8b39300c318a4c3707ce6ecadc06d52e4e31a913fc6e4"
+    },
+    {
+      "path": "packages/db/prisma/schema.prisma",
+      "unchangedFromHead": true,
+      "sha256": "3e55c1541bf444afe852ca3afe584d2e9395cecb1781c25821346bf7f20f17e0"
+    },
+    {
+      "path": "apps/api/src/actions/realestateActions.ts",
+      "unchangedFromHead": true,
+      "sha256": "1e454043b39c065802225a509efc2aa5fdf966da656984b1fb48cf247b487d85"
+    },
+    {
+      "path": "ops/verticals/imob/vertical.manifest.v1.json",
+      "unchangedFromHead": true,
+      "sha256": "2c02644ee560cc1b51eb40352db77f5669d40c9d84285d8011066a64463768b5"
+    }
+  ],
+  "resolverReferences": [
+    "apps/api/src/tests/vertical-access-resolver.test.ts:3:import { resolveVerticalAccess } from \"../services/products/verticalAccessResolver\";",
+    "apps/api/src/tests/vertical-access-resolver.test.ts:18:  resolveVerticalAccess(contracts, input, state);",
+    "apps/api/src/services/products/verticalAccessResolver.ts:33:export function resolveVerticalAccess("
+  ]
+}

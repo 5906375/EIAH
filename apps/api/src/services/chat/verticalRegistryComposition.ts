@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { VerticalAccessContractV1 } from "../../types/verticalEntitlementGateContract";
 import {
   evaluateChatVerticalHandoffV2,
   projectChatVerticalHandoffV2ForSurface,
@@ -26,6 +27,28 @@ export const IMOB_FRONT_DOOR_CAPABILITIES: Array<{ id: string; allowedModes: Ver
   { id: "knowledge.search", allowedModes: ["read_only"] },
   { id: "inventory.preview", allowedModes: ["read_only"] },
 ];
+
+/** Passo 1: reusable access descriptor only. Existing composition/handoff is
+ * unchanged; no runtime consumer uses the new resolver yet.
+ */
+export const IMOB_VERTICAL_ACCESS_CONTRACT_V1: VerticalAccessContractV1 = {
+  version: "vertical.access.v1",
+  verticalId: "imob",
+  productId: "IMOB",
+  installationRequired: true,
+  entitlementKey: "IMOB_ACTIVE_INSTALLATION",
+  workspacePermission: IMOB_CHAT_PERMISSION,
+  // Front-door capability selection has no case stage. Case-scoped callers
+  // must declare required and supply the existing stage permission decision.
+  stagePolicy: "not_required",
+  revocationPolicy: "resolved_usage",
+  capabilities: IMOB_FRONT_DOOR_CAPABILITIES.map((capability) => ({
+    id: capability.id,
+    allowedModes: capability.allowedModes.filter(
+      (mode): mode is "read_only" | "requires_write" => mode === "read_only" || mode === "requires_write",
+    ),
+  })),
+};
 
 export type VerticalRegistryFacts = {
   scope: { tenantId: string; workspaceId: string };

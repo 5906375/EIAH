@@ -1,0 +1,330 @@
+[
+  {
+    "scenario": "A installation only",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": true,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  },
+  {
+    "scenario": "B P5 only realestate.apply_adjustment",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.apply_adjustment"
+      ],
+      "sharedMatchedActions": [
+        "realestate.apply_adjustment"
+      ]
+    }
+  },
+  {
+    "scenario": "B P5 only action.realestate.apply_adjustment",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "action.realestate.apply_adjustment"
+      ],
+      "sharedMatchedActions": [
+        "action.realestate.apply_adjustment"
+      ]
+    }
+  },
+  {
+    "scenario": "B P5 only realestate.register_property",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.register_property"
+      ],
+      "sharedMatchedActions": [
+        "realestate.register_property"
+      ]
+    }
+  },
+  {
+    "scenario": "B P5 only realestate.create_contract",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.create_contract"
+      ],
+      "sharedMatchedActions": [
+        "realestate.create_contract"
+      ]
+    }
+  },
+  {
+    "scenario": "B P5 only realestate.release_commission",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.release_commission"
+      ],
+      "sharedMatchedActions": [
+        "realestate.release_commission"
+      ]
+    }
+  },
+  {
+    "scenario": "C P7 exclusive realestate.configure_property_rules remains denied",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": false,
+      "sharedLegacyAllowed": true,
+      "aligned": false,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": [
+        "realestate.configure_property_rules"
+      ]
+    }
+  },
+  {
+    "scenario": "C P7 exclusive realestate.search_knowledge_base remains denied",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": false,
+      "sharedLegacyAllowed": true,
+      "aligned": false,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": [
+        "realestate.search_knowledge_base"
+      ]
+    }
+  },
+  {
+    "scenario": "D marketplace only remains allowed",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": true,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": false,
+      "aligned": false,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  },
+  {
+    "scenario": "E no source remains denied",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": false,
+      "sharedLegacyAllowed": false,
+      "aligned": true,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  },
+  {
+    "scenario": "F mixed sources and duplicates",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": true,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": true,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.apply_adjustment",
+        "realestate.register_property"
+      ],
+      "sharedMatchedActions": [
+        "realestate.apply_adjustment",
+        "realestate.register_property",
+        "realestate.search_knowledge_base"
+      ]
+    }
+  },
+  {
+    "scenario": "G tenant-wide grant survives workspace denial",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.apply_adjustment"
+      ],
+      "sharedMatchedActions": [
+        "realestate.apply_adjustment"
+      ]
+    }
+  },
+  {
+    "scenario": "H false, foreign tenant and foreign workspace excluded",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": false,
+      "sharedLegacyAllowed": false,
+      "aligned": true,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  },
+  {
+    "scenario": "I P5 and exclusive P7",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": true,
+      "sharedPolicyPresent": true,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": true,
+      "aligned": true,
+      "sessionMatchedActions": [
+        "realestate.create_contract"
+      ],
+      "sharedMatchedActions": [
+        "realestate.configure_property_rules",
+        "realestate.create_contract"
+      ]
+    }
+  },
+  {
+    "scenario": "inactive installation remains denied",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": false,
+      "sessionLegacyAllowed": false,
+      "sharedLegacyAllowed": false,
+      "aligned": true,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  },
+  {
+    "scenario": "installation read failure retains fallback",
+    "diagnostic": {
+      "tenantId": "synthetic-tenant",
+      "workspaceId": "synthetic-workspace",
+      "traceId": "synthetic-response-trace",
+      "event": "imob.entitlement_shadow",
+      "installationActive": false,
+      "sessionPolicyPresent": false,
+      "sharedPolicyPresent": false,
+      "marketplacePresent": true,
+      "sessionLegacyAllowed": true,
+      "sharedLegacyAllowed": false,
+      "aligned": false,
+      "sessionMatchedActions": [],
+      "sharedMatchedActions": []
+    }
+  }
+]

@@ -1,0 +1,13 @@
+ M .gitignore
+ M apps/api/src/routes/session.ts
+ M apps/api/src/services/chat/verticalRegistryComposition.ts
+ M apps/api/src/types/verticalEntitlementGateContract.ts
+ M docs/EVIDENCE_INDEX.md
+ M package.json
+ M scripts/unit-tests-manifest.txt
+?? apps/api/src/services/products/verticalAccessResolver.ts
+?? apps/api/src/tests/session-entitlement-shadow.contract.test.ts
+?? apps/api/src/tests/vertical-access-resolver.test.ts
+?? docs/architecture/vertical-access-contract-v1.md
+?? ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/
+?? ops/evidence/latest/vertical-access-step1-local-2026-10-07/

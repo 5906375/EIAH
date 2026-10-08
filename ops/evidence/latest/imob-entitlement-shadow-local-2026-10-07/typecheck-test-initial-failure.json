@@ -1,0 +1,6 @@
+{
+  "provenance": "Structured summary from actual exec output; original log subsequently overwritten by successful rerun",
+  "exitCode": 2,
+  "error": "TS2339: Property traceId does not exist on type Request",
+  "fix": "typed intersection on the synthetic request only"
+}

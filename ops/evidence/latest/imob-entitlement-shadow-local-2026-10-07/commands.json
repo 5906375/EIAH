@@ -1,0 +1,305 @@
+[
+  {
+    "name": "shadow",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/session-entitlement-shadow.contract.test.ts"
+    ],
+    "exitCode": 1,
+    "at": "2026-10-07T16:34:06.213455+00:00",
+    "log": "shadow.log.txt",
+    "baselineSource": "/tmp/imob-session-before.ts"
+  },
+  {
+    "name": "typecheck-api",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/api",
+      "typecheck"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:34:19.301882+00:00",
+    "log": "typecheck-api.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "shadow-authorized",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/session-entitlement-shadow.contract.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:34:58.727542+00:00",
+    "log": "shadow-authorized.log.txt",
+    "baselineSource": "/tmp/imob-session-before.ts"
+  },
+  {
+    "name": "regression-vertical-entitlement-gate.contract",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/vertical-entitlement-gate.contract.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:35:05.009089+00:00",
+    "log": "regression-vertical-entitlement-gate.contract.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "regression-billing.vertical-entitlement.contract",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/billing.vertical-entitlement.contract.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:35:05.022505+00:00",
+    "log": "regression-billing.vertical-entitlement.contract.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "regression-experience-front-door-landing",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/experience-front-door-landing.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:35:05.029169+00:00",
+    "log": "regression-experience-front-door-landing.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "regression-chat-vertical-registry",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/chat-vertical-registry.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:35:05.042193+00:00",
+    "log": "regression-chat-vertical-registry.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "regression-vertical-access-resolver",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/vertical-access-resolver.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:35:05.050551+00:00",
+    "log": "regression-vertical-access-resolver.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "typecheck-test",
+    "command": [
+      "pnpm",
+      "exec",
+      "tsc",
+      "--noEmit",
+      "--strict",
+      "--skipLibCheck",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "Bundler",
+      "--esModuleInterop",
+      "apps/api/src/tests/session-entitlement-shadow.contract.test.ts"
+    ],
+    "exitCode": 2,
+    "at": "2026-10-07T16:35:32.567414+00:00",
+    "log": "typecheck-test-initial-failure.json",
+    "baselineSource": null
+  },
+  {
+    "name": "knowledge",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/imob.knowledge.search.service.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:00.422471+00:00",
+    "log": "knowledge.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "launcher",
+    "command": [
+      "pnpm",
+      "check:chat-launcher-render-only"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:00.909147+00:00",
+    "log": "launcher.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "docs",
+    "command": [
+      "pnpm",
+      "check:docs-link-integrity"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:00.917521+00:00",
+    "log": "docs.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "reason-canon",
+    "command": [
+      "pnpm",
+      "check:reason-code-canon"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:00.941717+00:00",
+    "log": "reason-canon.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "revocation",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/vertical-access-revocation.test.ts"
+    ],
+    "exitCode": 1,
+    "at": "2026-10-07T16:36:01.132716+00:00",
+    "log": "revocation.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "typecheck-test",
+    "command": [
+      "pnpm",
+      "exec",
+      "tsc",
+      "--noEmit",
+      "--strict",
+      "--skipLibCheck",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "Bundler",
+      "--esModuleInterop",
+      "apps/api/src/tests/session-entitlement-shadow.contract.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:01.701749+00:00",
+    "log": "typecheck-test.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "orphan",
+    "command": [
+      "pnpm",
+      "check:orphan-tests"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:02.419441+00:00",
+    "log": "orphan.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "revocation-inert-init",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/vertical-access-revocation.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:36:28.356404+00:00",
+    "log": "revocation-inert-init.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "shadow-final",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/session-entitlement-shadow.contract.test.ts"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:37:43.780625+00:00",
+    "log": "shadow-final.log.txt",
+    "baselineSource": "ops/evidence/latest/imob-entitlement-shadow-local-2026-10-07/baseline-session.ts.txt"
+  },
+  {
+    "name": "diff",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:38:49.061706+00:00",
+    "log": "diff.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "evidence-index",
+    "command": [
+      "pnpm",
+      "check:evidence-index"
+    ],
+    "exitCode": 1,
+    "at": "2026-10-07T16:39:14.372494+00:00",
+    "log": "evidence-index.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "evidence-index-authorized",
+    "command": [
+      "pnpm",
+      "check:evidence-index"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:39:27.882365+00:00",
+    "log": "evidence-index-authorized.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "final-diff",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:39:43.078467+00:00",
+    "log": "final-diff.log.txt",
+    "baselineSource": null
+  },
+  {
+    "name": "git-hygiene",
+    "command": [
+      "pnpm",
+      "check:tracked-ignored-files"
+    ],
+    "exitCode": 0,
+    "at": "2026-10-07T16:39:43.554231+00:00",
+    "log": "git-hygiene.log.txt",
+    "baselineSource": null
+  }
+]
