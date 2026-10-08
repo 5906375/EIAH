@@ -197,3 +197,7 @@ scripts/sloBaselineCollect.test.ts
 apps/api/src/services/billingReconciliation.test.ts
 apps/api/src/tests/vertical-access-resolver.test.ts
 apps/api/src/tests/session-entitlement-shadow.contract.test.ts
+apps/web/src/state/sessionContextSync.test.ts
+apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx
+apps/web/src/components/agents/verticalActivationEngine.test.ts
+apps/web/src/pages/app/marketplace/imob.test.ts

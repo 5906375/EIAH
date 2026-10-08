@@ -6,6 +6,7 @@ import {
   type ChatVerticalActivationConfirmResult,
   type ChatVerticalActivationPreview,
 } from "@/lib/api";
+import { syncSessionContext } from "@/state/sessionContextSync";
 
 /**
  * Engine do front door para ativar uma vertical pela conversa (ADR-010,
@@ -231,6 +232,7 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
     preview: typeof apiPreviewChatVerticalActivation;
     confirm: typeof apiConfirmChatVerticalActivation;
     requestAccess?: typeof apiRequestVerticalAccess;
+    syncSession?: (domain: "imob") => Promise<unknown>;
   } = { preview: apiPreviewChatVerticalActivation, confirm: apiConfirmChatVerticalActivation, requestAccess: apiRequestVerticalAccess },
 ): Promise<D | null> {
   const request = decision?.verticalActivationRequest;
@@ -256,6 +258,14 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
           );
     } catch (error) {
       presentation = describeActivationFailure(error);
+    }
+  }
+  if (presentation.activation.status === "activated" || presentation.activation.status === "already_active") {
+    try {
+      await (api.syncSession ?? syncSessionContext)(presentation.activation.verticalId);
+    } catch {
+      // A ativação já foi resolvida pelo servidor; falha de reidratação não a desfaz.
+      presentation.content = "O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.";
     }
   }
   return {

@@ -3,7 +3,9 @@ import {
   apiQueryEiahHelp,
   type Agent,
   type EiahHelpQueryHit,
+  type ImobThreadConversationState,
 } from "@/lib/api";
+import { resolveProposalTurnContinuation } from "@/pages/app/imob/proposalForm";
 import {
   fetchImobRuntimeShadowState,
   type ImobRuntimeShadowEngineRequest,
@@ -262,6 +264,8 @@ export type SpecialistDecision = {
 export type LauncherLocalDecision = {
   kind: string;
   shouldCreateRun: boolean;
+  /** O adapter da vertical já apresentou o turno; não duplicar resposta nem criar run. */
+  turnConsumed?: boolean;
   content?: string;
   resolvedQuickReplies?: string[];
   journeyContext?: {
@@ -291,6 +295,7 @@ export type LauncherLocalDecision = {
   verticalHandoffRequest?: VerticalHandoffRequest;
   verticalHandoff?: ChatVerticalHandoffResult;
   verticalHandoffForwardInput?: string;
+  verticalHandoffSessionSync?: "synced" | "failed";
   /** Ativação de vertical pela conversa: proposta, confirmação explícita ou cancelamento (ADR-010, etapa F). */
   verticalActivationRequest?: VerticalActivationRequest;
   verticalActivation?: VerticalActivationSnapshot;
@@ -2076,7 +2081,34 @@ export async function resolveLauncherTurnDecision(params: {
   previousAssistantMessage?: string | null;
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
   accessContext?: LauncherAccessContext | null;
+  imobOperationalContinuation?: {
+    threadState?: ImobThreadConversationState | null;
+    available: boolean;
+    consume: (action: "continue" | "cancel" | "release", input: string) => Promise<void>;
+  };
 }): Promise<LauncherLocalDecision | null> {
+  // O contrato operacional do IMOB precede a classificação isolada do Front Door.
+  // Intenções explícitas usam os mesmos catálogos de help; fallback não encerra coleta.
+  const continuation = params.imobOperationalContinuation;
+  if (continuation?.threadState?.operational) {
+    const help = resolveHelpDictionarySnapshot({ input: params.trimmedInput, routeIntent: params.routeIntent,
+      accessContext: params.accessContext, includeFallback: false });
+    const explicitTopicChange = !resolveConversationVerticalContext(params.trimmedInput) && (
+      hasExactEiahTutorIntentMatch(params.trimmedInput, true)
+      || Boolean(help && help.responseType === "resolved" && help.intent.scopeHint !== "vertical")
+      || isLegalRoutingQuestion(params.trimmedInput)
+      || isImobOperationalRequest(params.trimmedInput)
+    );
+    const action = resolveProposalTurnContinuation({ input: params.trimmedInput, threadState: continuation.threadState,
+      activeDomain: params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange });
+    if (action) {
+      await continuation.consume(action, params.trimmedInput);
+      if (action !== "release") return {
+        kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+        launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow",
+      };
+    }
+  }
   const agentSwitchDecision = resolveAgentSwitchDecision({
     input: params.input,
     previousAssistantSnapshot: params.previousAssistantSnapshot,

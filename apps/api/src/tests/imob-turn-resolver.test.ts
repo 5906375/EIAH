@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
+import type { ImobProposalDraft } from "../services/imob/imobConversationContract";
 
 test("IMOB turn resolver returns consult mode for broad rental discovery", () => {
   const result = resolveImobTurn({
@@ -1662,9 +1663,124 @@ test("IMOB turn resolver builds explicit proposal.create operational state", () 
   assert.equal(result.executionRequest?.operation, "proposal.create");
   assert.equal(result.conversationState.operational?.flow, "proposal.create");
   assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(result.executionRequest?.input.propertyId, "property-4455");
   assert.equal(result.conversationState.operational?.proposalDraft?.offerAmount, 750000);
   assert.ok(result.conversationState.operational?.pendingFields.includes("buyerPhone"));
   assert.match(result.presentation.text, /proposta agora/i);
+});
+
+function resolveProposalFromDraft(draft: Partial<ImobProposalDraft>) {
+  const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };
+  const initial = resolveImobTurn({ message: "Gerar proposta", access });
+  const threadState = structuredClone(initial.conversationState);
+  Object.assign(threadState.operational!.proposalDraft!, {
+    propertyId: "4455",
+    offerAmount: 2000000,
+    buyerName: "carlos teste",
+    buyerPhone: "47999999999",
+    ...draft,
+  });
+  return resolveImobTurn({ message: "continuar proposta", threadState, access });
+}
+
+test("proposal.create keeps an empty collecting execution request partial without inventing a property", () => {
+  const turn = resolveImobTurn({
+    message: "Gerar proposta",
+    access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, null);
+  assert.ok(turn.conversationState.operational?.pendingFields.includes("propertyId"));
+  assert.equal(turn.executionRequest?.operation, "proposal.create");
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  assert.equal(turn.executionRequest?.input.buyerPhone, null);
+  assert.equal(turn.executionRequest?.input.offerAmount, null);
+  assert.doesNotMatch(turn.executionRequest?.prompt ?? "", /property-|\bnull\b/);
+});
+
+test("proposal.create ready request uses the collected property, amount and buyer from the draft", () => {
+  const turn = resolveProposalFromDraft({});
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, []);
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 2000000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.equal(turn.executionRequest?.input.clientRef, "carlos teste");
+  assert.match(turn.executionRequest?.prompt ?? "", /para 4455\./);
+});
+
+test("proposal.create preserves an alphanumeric property reference exactly in the request", () => {
+  const turn = resolveProposalFromDraft({ propertyId: "APT-4455-A" });
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, "APT-4455-A");
+  assert.equal(turn.executionRequest?.input.propertyId, "APT-4455-A");
+});
+
+test("proposal.create rebuilds the request from the updated property instead of retaining a stale reference", () => {
+  const first = resolveProposalFromDraft({ propertyId: "4455" });
+  const threadState = structuredClone(first.conversationState);
+  threadState.operational!.proposalDraft!.propertyId = "98765";
+  const updated = resolveImobTurn({
+    message: "continuar proposta",
+    threadState,
+    access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(first.executionRequest?.input.propertyId, "4455");
+  assert.equal(updated.conversationState.operational?.status, "ready_for_review");
+  assert.equal(updated.conversationState.operational?.proposalDraft?.propertyId, "98765");
+  assert.equal(updated.executionRequest?.input.propertyId, "98765");
+  assert.match(updated.executionRequest?.prompt ?? "", /para 98765\./);
+});
+
+test("proposal.create leaves a missing property null even when all other required fields are filled", () => {
+  const turn = resolveProposalFromDraft({ propertyId: null });
+
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, ["propertyId"]);
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, null);
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  assert.equal(turn.executionRequest?.input.offerAmount, 2000000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.doesNotMatch(turn.executionRequest?.prompt ?? "", /property-|\bnull\b/);
+});
+
+test("proposal.create does not interchange the collected property and offer amount", () => {
+  const turn = resolveProposalFromDraft({ propertyId: "4455", offerAmount: 100000 });
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 100000);
+});
+
+test("proposal.create collecting tem precedência para sim e campos isolados, preservando draft canônico", () => {
+  const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };
+  let turn = resolveImobTurn({ message: "Gerar proposta", access });
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.equal(turn.presentation.form?.entity, "proposta");
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  for (const input of ["sim", "Carlos", "47999999999", "4455", "100000"]) {
+    turn = resolveImobTurn({ message: input, threadState: turn.conversationState, access });
+    assert.equal(turn.conversationState.operational?.flow, "proposal.create", input);
+    assert.equal(turn.executionRequest?.operation, "proposal.create", input);
+    assert.equal(turn.executionRequest?.input.propertyId, turn.conversationState.operational?.proposalDraft?.propertyId, input);
+    if (input === "sim") assert.equal(turn.conversationState.operational?.proposalDraft?.buyerName, null);
+  }
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, []);
+  const draft = turn.conversationState.operational?.proposalDraft;
+  assert.equal(draft?.buyerName, "Carlos");
+  assert.equal(draft?.buyerPhone, "47999999999");
+  assert.equal(draft?.propertyId, "4455");
+  assert.equal(draft?.offerAmount, 100000);
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 100000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.equal(turn.executionRequest?.input.clientRef, "Carlos");
 });
 
 test("IMOB turn resolver captures counteroffer and approval status inside proposal.create flow", () => {

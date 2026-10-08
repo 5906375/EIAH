@@ -38,6 +38,8 @@ import {
   canonicalizeImobCityName,
 } from "./imobGeoCanonicalizer";
 import { validateImobInput } from "./validation/imobValidationEngine";
+import { isImobPendingActionConfirmationMessage } from "./crm/imobPendingActionRuntime";
+import { parseImobIntent } from "./imobIntentCatalog";
 
 export function normalizeImobText(value: string) {
   return value
@@ -501,10 +503,20 @@ function inferContractType(raw: string): ImobProposalDraft["contractType"] {
   return null;
 }
 
-function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
+function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string, collecting = false): ImobProposalDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
   const normalized = normalizeImobText(message);
   const extractedAmount = extractOfferAmount(message);
+  // Resposta isolada só preenche um campo ausente durante coleta. "sim" mantém
+  // o draft; confirmação nunca vira nome nem autorização de execução.
+  const bare = message.trim();
+  const barePhone = extractPhone(bare);
+  const bareNumber = collecting && !barePhone && /^\d+$/.test(bare) ? bare : null;
+  const catalogIntent = collecting ? parseImobIntent(bare) : null;
+  const bareName = collecting && !previous?.buyerName && !isImobPendingActionConfirmationMessage(bare)
+    && !catalogIntent?.entity && !catalogIntent?.action
+    && /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s']{2,}$/.test(bare) && bare.split(/\s+/).length <= 4
+    ? validateImobInput({ rawInput: bare, scope: "generic" }).normalized.name ?? null : null;
   const negotiationStatus = normalized.includes("contraproposta") || normalized.includes("contra proposta")
     ? "counteroffer_required"
     : normalized.includes("aguardando resposta")
@@ -549,11 +561,11 @@ function buildProposalDraft(previous: ImobProposalDraft | undefined, message: st
     : previous?.approvalRequired ?? false;
 
   return {
-    buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? null,
+    buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? bareName,
     buyerEmail: extractEmail(message) ?? previous?.buyerEmail ?? null,
     buyerPhone: extractPhone(message) ?? previous?.buyerPhone ?? null,
-    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
-    offerAmount: extractedAmount ?? previous?.offerAmount ?? null,
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? bareNumber,
+    offerAmount: extractedAmount ?? previous?.offerAmount ?? (bareNumber && previous?.propertyId && Number(bareNumber) > 0 && Number.isSafeInteger(Number(bareNumber)) ? Number(bareNumber) : null),
     counterofferAmount: negotiationStatus === "counteroffer_required"
       ? extractedAmount ?? previous?.counterofferAmount ?? null
       : previous?.counterofferAmount ?? null,
@@ -1843,7 +1855,8 @@ export function createNextImobOperationalState(
     };
   }
   if (intent === "proposal") {
-    const draft = buildProposalDraft(previous?.flow === "proposal.create" ? previous.proposalDraft : undefined, message);
+    const draft = buildProposalDraft(previous?.flow === "proposal.create" ? previous.proposalDraft : undefined, message,
+      previous?.flow === "proposal.create" && previous.status === "collecting" && previous.pendingFields.length > 0);
     const pendingFields = buildProposalPendingFields(draft);
     return {
       flow: "proposal.create",

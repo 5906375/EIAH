@@ -22,6 +22,7 @@ import {
   loadPreDuimpSessionContext,
 } from "./features/logistica/preDuimp";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
+import { beginSessionContextRequest } from "./state/sessionContextSync";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 import { isImobInstalled } from "./lib/entitlements";
 
@@ -175,6 +176,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!session.token) return;
     let active = true;
+    const contextRequest = beginSessionContextRequest();
     const targetDomain =
       location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
         ? "imob"
@@ -185,6 +187,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     void loadPreDuimpSessionContext((signal) => apiGetSessionContext(targetDomain, signal))
       .then(({ context: ctx, access, error }) => {
         if (!active) return;
+        if (!contextRequest.isCurrent()) return;
         if (!ctx?.ok || !ctx.data) {
           updateSession({ preDuimpAccess: access });
           if (
@@ -229,11 +232,12 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           },
           accessGate: null,
         });
-      });
+      }).finally(() => contextRequest.finish());
     return () => {
       active = false;
+      contextRequest.finish();
     };
-  }, [session.token, session.activeDomain, location.pathname, location.search]);
+  }, [session.token, session.tenantId, session.workspaceId, session.activeDomain, location.pathname, location.search]);
 
   if (!session.token) {
     const next = `${location.pathname}${location.search}`;

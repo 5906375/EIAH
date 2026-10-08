@@ -1,3 +1,4 @@
+import { beginSessionContextRequest } from "@/state/sessionContextSync";
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatBRL } from "@/lib/formatters";
@@ -96,6 +97,7 @@ const MarketplaceIndexPage: React.FC = () => {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    const contextRequest = beginSessionContextRequest();
     try {
       const [installs, context, billing, agents] = await Promise.all([
         apiListMarketplaceInstallations(),
@@ -107,7 +109,7 @@ const MarketplaceIndexPage: React.FC = () => {
       setBillingSummary(billing?.data ?? null);
       setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
-      if (context?.ok && context.data) {
+      if (contextRequest.isCurrent() && context?.ok && context.data) {
         updateSession({
           activeDomain: context.data.activeDomain,
           availableDomains: context.data.availableDomains,
@@ -126,6 +128,7 @@ const MarketplaceIndexPage: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar marketplace");
     } finally {
+      contextRequest.finish();
       setLoading(false);
     }
   }, [session.workspaceId]);

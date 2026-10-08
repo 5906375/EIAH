@@ -8,6 +8,9 @@ import {
   isImobOperationalRequest,
 } from "./verticalHandoffEngine";
 import { resolveLauncherTurnDecision } from "./chatLauncherEngine";
+import { isImobSurfaceAvailable } from "@/lib/entitlements";
+import { syncSessionContext } from "@/state/sessionContextSync";
+import { getSession, updateSession } from "@/state/sessionStore";
 
 const allowed: ChatVerticalHandoffResult = {
   ok: true,
@@ -58,7 +61,7 @@ test("engine: no EIAH unificado o pedido operacional vira decisão de handoff pa
 
 test("enriquecimento: resultado do servidor vira texto, próximos passos e contexto IMOB no snapshot", async () => {
   const base = { content: "…", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
-  const ok = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed);
+  const ok = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => undefined);
   assert.match(ok?.content ?? "", /^Sigo com o IMOB nesta conversa/);
   assert.equal(ok?.verticalHandoff, allowed);
   const snapshot = attachVerticalHandoffToSnapshot({ verticalContext: null as "IMOB" | "LEGAL" | null }, ok);
@@ -81,7 +84,7 @@ test("cada bloqueio explica sem prometer capacidade; motivo desconhecido cai no 
   assert.deepEqual(unknown.handoff, { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" });
 });
 
-test("barra do IMOB: só com handoff permitido ou ativação confirmada, pela última decisão de vertical", async () => {
+test("histórico IMOB: handoff permitido ou ativação confirmada, pela última decisão de vertical", async () => {
   const { isImobActiveInConversation } = await import("./verticalHandoffEngine");
   assert.equal(isImobActiveInConversation([]), false);
   assert.equal(isImobActiveInConversation([{ verticalHandoff: allowed }]), true);
@@ -93,6 +96,84 @@ test("barra do IMOB: só com handoff permitido ou ativação confirmada, pela ú
 
 test("o pedido original só segue para o IMOB quando o handoff foi permitido", async () => {
   const base = { content: "…", verticalHandoffForwardInput: "quero cadastrar um imóvel", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
-  assert.equal((await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed))?.verticalHandoffForwardInput, "quero cadastrar um imóvel");
+  assert.equal((await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => undefined))?.verticalHandoffForwardInput, "quero cadastrar um imóvel");
   assert.equal((await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => ({ ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" })))?.verticalHandoffForwardInput, undefined);
+});
+
+test("handoff permitido sincroniza domínio no engine; bloqueio ou outra vertical não sincronizam IMOB", async () => {
+  const base = { verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  const calls: string[] = [];
+  updateSession({ activeDomain: "core", availableDomains: ["core", "imob"], entitlements: { IMOB_INSTALLED: true }, accessGate: null,
+    verticals: [{ verticalId: "IMOB", label: "IMOB", activeDomain: "imob", installedProduct: "IMOB", enabled: true,
+      rolloutStage: "operationalized", frontDoorSurface: "imob_chat", operationalHubSurface: "imob_dashboard",
+      governanceHubSurface: "marketplace", investigationSurfaces: ["runs"], contextSpecRef: "vertical-context-imob.md" }] });
+  const sync = async (domain: "imob") => { calls.push(domain); updateSession({ activeDomain: domain }); };
+  assert.equal(isImobSurfaceAvailable(getSession()), false);
+  const result = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, sync);
+  assert.deepEqual(calls, ["imob"]);
+  assert.equal(isImobSurfaceAvailable(getSession()), true);
+  assert.equal(attachVerticalHandoffToSnapshot({ verticalContext: null as "IMOB" | "LEGAL" | null }, result).verticalContext, "IMOB");
+  await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => ({ ok: false, reasonCode: "VERTICAL_SCOPE_DENIED" }), sync);
+  await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => ({ ...allowed, handoff: { ...allowed.handoff, vertical: { ...allowed.handoff.vertical, id: "legal" } } }), sync);
+  assert.deepEqual(calls, ["imob"]);
+});
+
+test("falha de sincronização preserva handoff autorizado e não fabrica sessão disponível", async () => {
+  updateSession({ activeDomain: "core" });
+  const before = getSession();
+  const base = { verticalHandoffForwardInput: "cadastrar imóvel", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  const result = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => { throw new Error("context unavailable"); });
+  assert.equal(result?.verticalHandoff, allowed);
+  assert.equal(result?.verticalHandoffForwardInput, undefined);
+  assert.equal(result?.verticalHandoffSessionSync, "failed");
+  assert.match(result?.content ?? "", /acesso ao IMOB foi confirmado/);
+  assert.match(result?.content ?? "", /Atualize a página/);
+  assert.equal(getSession(), before);
+  assert.equal(isImobSurfaceAvailable(getSession()), false);
+});
+
+
+test("handoff confirmado + workspace alterado durante sync não encaminha automaticamente", async () => {
+  updateSession({ token: "synthetic-token", tenantId: "tenant-test", workspaceId: "workspace-test", activeDomain: "core" });
+  const base = { verticalHandoffForwardInput: "gerar proposta", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  const result = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => {
+    updateSession({ workspaceId: "workspace-other" });
+    throw new Error("A sessão mudou durante a atualização do contexto.");
+  });
+  assert.equal(result?.verticalHandoff, allowed);
+  assert.equal(result?.verticalHandoffForwardInput, undefined);
+  assert.equal(result?.verticalHandoffSessionSync, "failed");
+});
+
+test("handoff confirmado + sync superado não fabrica sucesso nem auto-forward", async () => {
+  updateSession({ token: "synthetic-token", tenantId: "tenant-test", workspaceId: "workspace-test" });
+  const base = { verticalHandoffForwardInput: "gerar proposta", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  const result = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => {
+    const context = { tenantId: "tenant-test", workspaceId: "workspace-test", userId: null, activeDomain: "imob" as const,
+      availableDomains: ["core", "imob"] as Array<"core" | "imob">, entitlements: { REAL_ESTATE_CORE: true, IMOB_INSTALLED: true, EXPORTS_ADDON: false, BILLING_INSIGHTS_ADDON: false },
+      roles: [], branding: { brandName: "Test", logoUrl: null, primaryColor: "#123456", workspaceLabel: "Test" } };
+    await syncSessionContext("imob", async () => {
+      await syncSessionContext("core", async () => ({ ok: true, data: { ...context, activeDomain: "core" } }));
+      return { ok: true, data: context };
+    });
+  });
+  assert.equal(result?.verticalHandoff, allowed);
+  assert.equal(result?.verticalHandoffForwardInput, undefined);
+  assert.equal(result?.verticalHandoffSessionSync, "failed");
+  const synced = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => allowed, async () => undefined);
+  assert.equal(synced?.verticalHandoffSessionSync, "synced");
+  assert.equal(synced?.verticalHandoffForwardInput, base.verticalHandoffForwardInput);
+});
+
+
+test("mudança de workspace durante avaliação não usa sync bem-sucedido de outro escopo para forward", async () => {
+  updateSession({ tenantId: "tenant-test", workspaceId: "workspace-test" });
+  const base = { verticalHandoffForwardInput: "gerar proposta", verticalHandoffRequest: { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" as const } };
+  const result = await enrichLauncherDecisionWithVerticalHandoff(base, undefined, async () => {
+    updateSession({ workspaceId: "workspace-other" });
+    return allowed;
+  }, async () => undefined);
+  assert.equal(result?.verticalHandoff, allowed);
+  assert.equal(result?.verticalHandoffForwardInput, undefined);
+  assert.equal(result?.verticalHandoffSessionSync, "failed");
 });

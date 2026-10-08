@@ -333,6 +333,14 @@ function resolveImobTurnDecision(params: {
     return { stage: "explicit_route_change" as const, intent: params.baseIntent };
   }
 
+  // O contrato proposal.create consome respostas curtas enquanto faltam campos.
+  // Jornadas explícitas continuam passando pelos critérios existentes acima.
+  if (collecting && active?.flow === "proposal.create" && active.pendingFields.length > 0
+    && !params.hasExplicitCatalogTarget && params.baseIntent === "adjustment"
+    && !isOperationalFlowGuidanceRequest(params.message)) {
+    return { stage: "explicit_continuity" as const, intent: "proposal" as const };
+  }
+
   if (isOperationalFlowGuidanceRequest(params.message)) {
     return { stage: "front_door_generic" as const, intent: params.baseIntent };
   }
@@ -3407,12 +3415,14 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "proposal": {
-      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
+      const propertyId = operationalState?.flow === "proposal.create"
+        ? (operationalState.proposalDraft?.propertyId ?? null)
+        : null;
       return {
         intent,
         operation: "proposal.create",
         action: "realestate.create_contract",
-        prompt: `Preparar proposta operacional para ${propertyId}.`,
+        prompt: `Preparar proposta operacional${propertyId ? ` para ${propertyId}` : ""}.`,
         input: {
           propertyId,
           ownerRef: "owner-pending",
