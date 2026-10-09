@@ -1,4 +1,6 @@
 import { apiRequestChatVerticalHandoff, type ChatVerticalHandoffResult } from "@/lib/api";
+import { syncSessionContext } from "@/state/sessionContextSync";
+import { getSession } from "@/state/sessionStore";
 import { ACTIVATION_REQUEST_REPLY, type VerticalActivationSnapshot } from "./verticalActivationEngine";
 
 /**
@@ -147,6 +149,7 @@ type DecisionWithHandoff = {
   verticalActivation?: VerticalActivationSnapshot;
   /** Pedido original a seguir para a vertical depois do handoff permitido (ex.: abre o formulário pedido). */
   verticalHandoffForwardInput?: string;
+  verticalHandoffSessionSync?: "synced" | "failed";
 };
 
 /** Etapa assíncrona do engine: avalia o handoff no servidor e resolve texto e próximos passos. */
@@ -154,17 +157,34 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
   decision: D | null,
   refs?: { conversationId?: string | null; threadId?: string | null },
   request: (req: VerticalHandoffRequest, r?: typeof refs) => Promise<ChatVerticalHandoffResult> = requestVerticalHandoff,
-): Promise<D | null> {
+  syncSession: (domain: "imob") => Promise<unknown> = syncSessionContext,
+): Promise<(D & DecisionWithHandoff) | null> {
   if (!decision?.verticalHandoffRequest) return decision;
+  const initialSession = getSession();
   const result = await request(decision.verticalHandoffRequest, refs);
   const presentation = describeVerticalHandoffResult(result);
+  let sessionSync: DecisionWithHandoff["verticalHandoffSessionSync"];
+  if (result.ok && result.handoff.vertical.id === "imob") {
+    try {
+      await syncSession("imob");
+      const currentSession = getSession();
+      if (currentSession.token !== initialSession.token || currentSession.tenantId !== initialSession.tenantId
+          || currentSession.workspaceId !== initialSession.workspaceId) throw new Error("Handoff fora da sessão atual.");
+      sessionSync = "synced";
+    } catch {
+      sessionSync = "failed";
+      // Não fabrica disponibilidade nem desfaz a decisão de handoff do servidor.
+      presentation.content = "O acesso ao IMOB foi confirmado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.";
+    }
+  }
   return {
     ...decision,
     content: presentation.content,
     resolvedQuickReplies: presentation.quickReplies,
     verticalHandoff: presentation.handoff,
-    // Só segue para a vertical quando o servidor permitiu o handoff.
-    verticalHandoffForwardInput: result.ok ? decision.verticalHandoffForwardInput : undefined,
+    ...(sessionSync ? { verticalHandoffSessionSync: sessionSync } : {}),
+    // Confirmação do handoff não substitui a validação do contexto para encaminhar.
+    verticalHandoffForwardInput: result.ok && sessionSync !== "failed" ? decision.verticalHandoffForwardInput : undefined,
   };
 }
 
@@ -192,8 +212,8 @@ export function attachVerticalHandoffToSnapshot<S extends {
 
 /**
  * A conversa está no IMOB quando a última decisão de vertical registrada foi
- * um handoff permitido ou uma ativação confirmada. Controla a barra do IMOB
- * no front door (etapa D).
+ * um handoff permitido ou uma ativação confirmada. Reconstrói apenas o
+ * histórico de transições; a superfície atual é derivada da sessão.
  */
 export function isImobActiveInConversation(
   snapshots: Array<{ verticalHandoff?: ChatVerticalHandoffResult | null; verticalActivation?: VerticalActivationSnapshot | null } | null | undefined>,

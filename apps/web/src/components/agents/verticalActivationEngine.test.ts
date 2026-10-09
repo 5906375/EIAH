@@ -12,6 +12,7 @@ import {
 } from "./verticalActivationEngine";
 import { resolveLauncherTurnDecision } from "./chatLauncherEngine";
 import { attachVerticalHandoffToSnapshot, describeVerticalHandoffResult } from "./verticalHandoffEngine";
+import { getSession, updateSession } from "@/state/sessionStore";
 
 const proposed = { status: "proposed" as const, verticalId: "imob" as const, registryVersion: "vr1-a" };
 
@@ -53,6 +54,7 @@ test("engine: pedido de ativação vira proposta; confirmação usa a versão do
 test("proposta lista os efeitos e pede a frase de confirmação; confirmação ativa e põe a conversa no IMOB", async () => {
   const calls: string[] = [];
   const api = {
+    syncSession: async () => { calls.push("sync:imob"); },
     preview: async () => {
       calls.push("preview");
       return { ok: true as const, data: { status: "available" as const, verticalId: "imob", product: "IMOB", registryVersion: "vr1-b", effects: ["instala o IMOB"] } };
@@ -72,13 +74,13 @@ test("proposta lista os efeitos e pede a frase de confirmação; confirmação a
     { verticalActivationRequest: { step: "confirm", verticalId: "imob", registryVersion: "vr1-b" } },
     api as never,
   );
-  assert.deepEqual(calls, ["preview", "confirm:vr1-b:true"]);
+  assert.deepEqual(calls, ["preview", "confirm:vr1-b:true", "sync:imob"]);
   assert.match(confirmed?.content ?? "", /^IMOB ativado neste workspace/);
   assert.equal(attachVerticalHandoffToSnapshot({ verticalContext: null as "IMOB" | "LEGAL" | null }, confirmed).verticalContext, "IMOB");
 
   const cancelled = await enrichLauncherDecisionWithVerticalActivation({ verticalActivationRequest: { step: "cancel", verticalId: "imob" } }, api as never);
   assert.equal(cancelled?.content, "Ativação cancelada. Nada foi alterado.");
-  assert.equal(calls.length, 2, "cancelar não chama o servidor");
+  assert.equal(calls.length, 3, "cancelar não chama o servidor nem sincroniza");
 });
 
 test("proposta vencida ou erro: nada é ativado e a conversa explica", async () => {
@@ -92,6 +94,105 @@ test("proposta vencida ou erro: nada é ativado e a conversa explica", async () 
   assert.match(stale?.content ?? "", /nada foi ativado/);
   assert.equal(stale?.verticalActivation?.status, "failed");
 });
+
+for (const step of ["preview", "confirm"] as const) {
+  test(`already_active no ${step} aguarda sincronização IMOB antes de devolver o resultado`, async () => {
+    const calls: string[] = [];
+    let finishSync!: () => void;
+    const syncPending = new Promise<void>((resolve) => { finishSync = resolve; });
+    const pending = enrichLauncherDecisionWithVerticalActivation(
+      { verticalActivationRequest: step === "preview"
+        ? { step, verticalId: "imob" }
+        : { step, verticalId: "imob", registryVersion: "vr1-a" } },
+      {
+        preview: async () => ({ ok: true, data: { status: "already_active", verticalId: "imob", registryVersion: "vr1-a" } }),
+        confirm: async () => ({ ok: true, data: { status: "already_active", verticalId: "imob", registryVersion: "vr1-a", releasedRoutes: [] } }),
+        syncSession: async (domain) => { calls.push(domain); await syncPending; },
+      },
+    );
+    let settled = false;
+    void pending.then(() => { settled = true; });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(calls, ["imob"]);
+    assert.equal(settled, false);
+    finishSync();
+    assert.equal((await pending)?.verticalActivation?.status, "already_active");
+  });
+}
+
+test("failed, cancelled, proposta e pedido de acesso não sincronizam sessão", async () => {
+  const calls: string[] = [];
+  const api = {
+    preview: async () => { throw new Error("synthetic failure"); },
+    confirm: async () => { throw new Error("synthetic failure"); },
+    syncSession: async (domain: "imob") => { calls.push(domain); },
+  };
+  for (const step of ["preview", "confirm", "cancel", "cancel_access_request"] as const) {
+    const result = await enrichLauncherDecisionWithVerticalActivation(
+      { verticalActivationRequest: step === "confirm"
+        ? { step, verticalId: "imob", registryVersion: "vr1-a" }
+        : { step, verticalId: "imob" } }, api,
+    );
+    assert.ok(["failed", "cancelled"].includes(result!.verticalActivation!.status));
+  }
+  await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "preview", verticalId: "imob" } },
+    { ...api, preview: async () => ({ ok: true, data: { status: "available", verticalId: "imob", product: "IMOB", registryVersion: "vr1-a", effects: [] } }) },
+  );
+  await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "request_access", verticalId: "imob" } },
+    { ...api, requestAccess: async () => ({ ok: true, data: { outcome: "requested", vertical: "IMOB", status: "aguardando_humano", usage: "full", revocationMode: null, requestedAt: null, decidedAt: null } }) },
+  );
+  assert.deepEqual(calls, []);
+});
+
+for (const status of ["activated", "already_active"] as const) test(`falha de sync preserva ${status} e orienta atualizar a página sem reativar`, async () => {
+  const result = await enrichLauncherDecisionWithVerticalActivation(
+    { verticalActivationRequest: { step: "confirm", verticalId: "imob", registryVersion: "vr1-a" } },
+    {
+      preview: async () => { throw new Error("unexpected preview"); },
+      confirm: async () => ({ ok: true, data: { status, verticalId: "imob", registryVersion: "vr1-b", releasedRoutes: [] } }),
+      syncSession: async () => { throw new Error("synthetic sync failure"); },
+    },
+  );
+  assert.equal(result?.verticalActivation?.status, status);
+  assert.equal(result?.content, "O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.");
+  assert.doesNotMatch(result?.content ?? "", /ativar.*novamente|Nada foi alterado/);
+  assert.deepEqual(result?.resolvedQuickReplies, []);
+});
+
+for (const status of ["activated", "already_active"] as const) {
+  test(`${status}: integração do engine com helper padrão reidrata a sessão antes do próximo turno`, async (t) => {
+    const before = getSession();
+    t.after(() => updateSession({ ...before, token: before.token, activeDomain: before.activeDomain }));
+    updateSession({ token: "synthetic-token", activeDomain: "core", installedProducts: [] });
+    const requests: string[] = [];
+    t.mock.method(globalThis, "fetch", async (url: string | URL | Request) => {
+      requests.push(String(url));
+      assert.match(String(url), /\/session\/context\?domain=imob$/);
+      return new Response(JSON.stringify({ ok: true, data: {
+        tenantId: before.tenantId, workspaceId: before.workspaceId, activeDomain: "imob",
+        availableDomains: ["core", "imob"], roles: ["admin"],
+        entitlements: { REAL_ESTATE_CORE: true, IMOB_INSTALLED: true },
+        productInstallations: [{ product: "IMOB", status: "active" }],
+        verticals: [], branding: { brandName: "Test", logoUrl: null, primaryColor: "#123456", workspaceLabel: "Test" },
+      } }), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const result = await enrichLauncherDecisionWithVerticalActivation(
+      { verticalActivationRequest: { step: "confirm", verticalId: "imob", registryVersion: "vr1-a" } },
+      {
+        preview: async () => { throw new Error("unexpected preview"); },
+        confirm: async () => ({ ok: true, data: { status, verticalId: "imob", registryVersion: "vr1-b", releasedRoutes: [] } }),
+      },
+    );
+    assert.equal(result?.verticalActivation?.status, status);
+    assert.equal(requests.length, 1);
+    assert.equal(getSession().activeDomain, "imob");
+    assert.deepEqual(getSession().installedProducts, ["IMOB"]);
+    assert.equal(getSession().entitlements?.IMOB_INSTALLED, true);
+    assert.equal(getSession().accessGate, null);
+  });
+}
 
 test("handoff bloqueado por IMOB inativo oferece ativar pela conversa", () => {
   assert.deepEqual(describeVerticalHandoffResult({ ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" }).quickReplies, ["Ativar o IMOB neste workspace", "Ver opções no Marketplace"]);

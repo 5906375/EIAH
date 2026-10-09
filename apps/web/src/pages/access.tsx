@@ -1,3 +1,4 @@
+import { beginSessionContextRequest } from "@/state/sessionContextSync";
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -163,8 +164,11 @@ export default function AccessPage() {
       token: payload.token,
     });
     await apiCreateSession().catch(() => undefined);
+    const contextRequest = beginSessionContextRequest();
     const context = await apiGetSessionContext().catch(() => null);
-    if (context?.ok && context.data) {
+    const currentContext = contextRequest.isCurrent();
+    contextRequest.finish();
+    if (currentContext && context?.ok && context.data) {
       updateSession({
         activeDomain: context.data.activeDomain,
         availableDomains: context.data.availableDomains,

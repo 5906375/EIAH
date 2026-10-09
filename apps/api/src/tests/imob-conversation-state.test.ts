@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createEmptyImobSlots } from "../services/imob/imobConversationContract";
 
 import {
   createNextImobOperationalState,
@@ -10,6 +11,46 @@ import {
   extractMarketScanPropertyTypes,
   normalizeMarketScanGoalCandidates,
 } from "../services/imob/imobConversationState";
+
+for (const [propertyId, offerAmount] of [
+  ["4455", 100000], ["98765", 450000], ["imovel-AB12", 450000],
+  ["4455", 100000.75], ["4455", null], [null, 100000], [null, null],
+] as const) {
+  test(`proposal.create preserva draft estruturado: imóvel=${propertyId}, valor=${offerAmount}`, () => {
+    const previous = {
+      flow: "proposal.create" as const, status: "collecting" as const, pendingFields: [],
+      proposalDraft: {
+        propertyId, offerAmount, buyerName: "Maria", buyerPhone: "47999998888", buyerEmail: null,
+        contractType: "sale" as const, counterofferAmount: null, negotiationStatus: null,
+        approvalRequired: false, approvalStatus: null,
+      },
+    };
+    const next = createNextImobOperationalState(previous, "proposal", "continuar proposta", createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.propertyId, propertyId);
+    assert.equal(next?.proposalDraft?.offerAmount, offerAmount);
+  });
+}
+
+test("proposal.create mantém interpretação textual legada para pedidos livres", () => {
+  const next = createNextImobOperationalState(null, "proposal", "Gerar proposta para lead Maria no imóvel 4455 com oferta de 100000", createEmptyImobSlots());
+  assert.equal(next?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(next?.proposalDraft?.offerAmount, 100000);
+});
+
+test("resposta curta só preenche campos ausentes durante coleta e não interpreta comando ou confirmação como nome", () => {
+  const collecting = createNextImobOperationalState(null, "proposal", "Gerar proposta", createEmptyImobSlots())!;
+  for (const input of ["sim", "ok", "confirmar", "continuar proposta", "Gerar proposta"]) {
+    const next = createNextImobOperationalState(collecting, "proposal", input, createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.buyerName, null, input);
+  }
+  const ready = { ...collecting, status: "ready_for_review" as const, pendingFields: [] };
+  for (const input of ["Carlos", "4455", "100000"]) {
+    const next = createNextImobOperationalState(ready, "proposal", input, createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.buyerName, null);
+    assert.equal(next?.proposalDraft?.propertyId, null);
+    assert.equal(next?.proposalDraft?.offerAmount, null);
+  }
+});
 
 test("IMOB conversation state extracts structured market scan property types and bedrooms", () => {
   const message = "Quero buscar kitnet, apto 1 quarto, apto 2 quartos e casa para locação em Itajaí e Camboriú";

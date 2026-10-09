@@ -53,7 +53,6 @@ import { emitChatRouteTelemetry } from "@/components/agents/chatRouteTelemetry";
 import {
   attachVerticalHandoffToSnapshot,
   enrichLauncherDecisionWithVerticalHandoff,
-  isImobActiveInConversation,
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
@@ -83,6 +82,8 @@ import { useImobFrontDoorForms } from "@/features/imob/structured/useImobFrontDo
 import type { StructuredMessage } from "@/features/imob/structured/types";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
+import { isImobSurfaceAvailable } from "@/lib/entitlements";
+import { conversationDomainLabel } from "./conversationDomainLabel";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -327,6 +328,7 @@ function maskIdentity(value: string, fallbackPrefix: string) {
 
 export default function ChatAgentLauncher({
   activeAgentId,
+  historyScope = "agent",
   onAgentChangeRequest,
   onLedgerChange,
   onRunIdChange,
@@ -338,6 +340,7 @@ export default function ChatAgentLauncher({
   launcherContext,
 }: {
   activeAgentId?: string;
+  historyScope?: "agent" | "conversation";
   onAgentChangeRequest?: (agentId: string) => void;
   onLedgerChange?: (ledger: LedgerEvent[]) => void;
   onRunIdChange?: (runId: string | null) => void;
@@ -369,8 +372,6 @@ export default function ChatAgentLauncher({
   const [activeAgent, setActiveAgent] = useState(agents[0]);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({ messages, setMessages });
-  const isImobConversation = isImobActiveInConversation(messages.map((message) => message.presentationSnapshot));
   const [ledger, setLedger] = useState<LedgerEvent[]>(baseLedger());
   const [isStreaming, setIsStreaming] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
@@ -439,6 +440,7 @@ export default function ChatAgentLauncher({
     []
   );
   const session = useSession();
+  const showImobSurface = isImobSurfaceAvailable(session);
   const effectiveWorkspaceId = workspaceId ?? session.workspaceId;
   const workspaceDisplayLabel = session.branding?.workspaceLabel?.trim() || effectiveWorkspaceId || "workspace atual";
   const { executeAgent } = useAgentExecution();
@@ -446,13 +448,24 @@ export default function ChatAgentLauncher({
   const threadKey = useMemo(() => {
     const tenant = session.tenantId ?? "tenant";
     const workspace = effectiveWorkspaceId ?? "workspace";
-    const agent = activeAgentId ?? FALLBACK_AGENT.id;
+    const agent = historyScope === "conversation" ? FALLBACK_AGENT.id : activeAgentId ?? FALLBACK_AGENT.id;
     const topic =
       typeof launcherContext?.topic === "string" && launcherContext.topic.trim().length > 0
         ? launcherContext.topic.trim().toLowerCase()
         : "default";
     return `eiah:chat:${tenant}:${workspace}:${agent}:${topic}`;
-  }, [session.tenantId, effectiveWorkspaceId, activeAgentId, launcherContext?.topic]);
+  }, [session.tenantId, effectiveWorkspaceId, activeAgentId, launcherContext?.topic, historyScope]);
+  const conversationGenerationRef = useRef(0);
+  const skipHistoryPersistRef = useRef(false);
+  const conversationKeyRef = useRef(threadKey);
+  if (conversationKeyRef.current !== threadKey) {
+    conversationKeyRef.current = threadKey;
+    conversationGenerationRef.current += 1;
+  }
+  useEffect(() => () => { conversationGenerationRef.current += 1; }, []);
+  const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({
+    messages, setMessages, getConversationGeneration: () => conversationGenerationRef.current,
+  });
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&
     normalizeAgentKey(activeAgent?.id ?? FALLBACK_AGENT.id) === "eiah";
@@ -500,6 +513,7 @@ export default function ChatAgentLauncher({
   useEffect(() => {
     if (typeof window === "undefined") return;
     stopStreaming();
+    skipHistoryPersistRef.current = true;
     const raw = window.sessionStorage.getItem(threadKey);
     if (!raw) {
       setMessages([]);
@@ -521,6 +535,8 @@ export default function ChatAgentLauncher({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // A primeira renderização da nova chave ainda contém mensagens da chave anterior.
+    if (skipHistoryPersistRef.current) { skipHistoryPersistRef.current = false; return; }
     const payload: ThreadSnapshot = { messages, runId };
     window.sessionStorage.setItem(threadKey, JSON.stringify(payload));
   }, [threadKey, messages, runId]);
@@ -1095,6 +1111,11 @@ export default function ChatAgentLauncher({
         previousUserMessage: lastUserMessage,
         previousAssistantMessage: lastAssistantMessage,
         previousAssistantSnapshot: lastAssistantSnapshot,
+        imobOperationalContinuation: {
+          threadState: imobFrontDoor.getConversationState(),
+          available: showImobSurface,
+          consume: imobFrontDoor.consumeOperationalTurn,
+        },
         accessContext: {
           tenantId: session.tenantId,
           workspaceId: effectiveWorkspaceId,
@@ -1107,6 +1128,10 @@ export default function ChatAgentLauncher({
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
     )))));
+    if (turnDecision?.turnConsumed) {
+      clearAttachmentComposer();
+      return;
+    }
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;
@@ -1345,6 +1370,7 @@ export default function ChatAgentLauncher({
   };
 
   const handleNewConversation = () => {
+    conversationGenerationRef.current += 1;
     stopStreaming();
     setMessages([]);
     setRunId(null);
@@ -1721,7 +1747,7 @@ export default function ChatAgentLauncher({
           <div className="glass-subtle flex-1 p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-muted-foreground">
-                  Conversa ativa • {activeAgentTitle}
+                  Conversa ativa · {conversationDomainLabel(session.activeDomain)}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {copyToast ? (
@@ -2040,7 +2066,7 @@ export default function ChatAgentLauncher({
                   ) : null}
                 </div>
               ) : null}
-              {isImobConversation ? (
+              {showImobSurface ? (
                 <div className="w-full">
                   <ImobActionMenuBar menus={IMOB_ACTION_MENUS} onSelect={imobFrontDoor.structuredForms.handleActionMenuSelect} />
                 </div>

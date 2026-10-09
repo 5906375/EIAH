@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { updateSession, useSession } from "@/state/sessionStore";
+import { syncSessionContext, beginSessionContextRequest } from "@/state/sessionContextSync";
 import { VerticalAccessNotices } from "@/components/verticalAccess/VerticalAccessNotices";
 
 function hasActiveImobInstall(items: Array<{ product: string; status: string }>) {
@@ -71,6 +72,7 @@ const ImobMarketplacePage: React.FC = () => {
   const refreshStatus = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    const contextRequest = beginSessionContextRequest();
     try {
       const [installations, context, billing, agents, accessResponse] = await Promise.all([
         apiListMarketplaceInstallations(),
@@ -91,7 +93,7 @@ const ImobMarketplacePage: React.FC = () => {
       );
       setActivatedAt(last?.activatedAt ?? null);
 
-      if (context?.ok && context.data) {
+      if (contextRequest.isCurrent() && context?.ok && context.data) {
         updateSession({
           activeDomain: context.data.activeDomain,
           availableDomains: context.data.availableDomains,
@@ -110,6 +112,7 @@ const ImobMarketplacePage: React.FC = () => {
       const message = err instanceof Error ? err.message : "Falha ao consultar status do IMOB";
       setError(message);
     } finally {
+      contextRequest.finish();
       setLoading(false);
     }
   }, [session.workspaceId]);
@@ -128,21 +131,11 @@ const ImobMarketplacePage: React.FC = () => {
       setActivatedAt(response.installation.activatedAt ?? null);
       setNotice("IMOB ativado com sucesso para este workspace.");
 
-      const imobContext = await apiGetSessionContext("imob");
-      if (imobContext.ok && imobContext.data) {
-        updateSession({
-          activeDomain: imobContext.data.activeDomain,
-          availableDomains: imobContext.data.availableDomains,
-          entitlements: imobContext.data.entitlements,
-          installedProducts: (imobContext.data.productInstallations ?? []).map((entry) => entry.product),
-          roles: imobContext.data.roles,
-          branding: {
-            brandName: imobContext.data.branding.brandName,
-            logoUrl: imobContext.data.branding.logoUrl,
-            primaryColor: imobContext.data.branding.primaryColor,
-            workspaceLabel: imobContext.data.branding.workspaceLabel,
-          },
-        });
+      try {
+        await syncSessionContext("imob");
+      } catch {
+        setNotice("O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.");
+        return;
       }
 
       // ADR-010: depois de ativar, a conversa segue no front door com o IMOB ativo.
@@ -308,7 +301,14 @@ const ImobMarketplacePage: React.FC = () => {
             </button>
           </div>
 
-          {notice ? <p className="mt-4 text-sm text-emerald-300">{notice}</p> : null}
+          {notice ? (
+            <div className="mt-4 space-y-2 text-sm text-emerald-300">
+              <p>{notice}</p>
+              {isInstalled && !accessBlocked ? (
+                <Link to="/app/chat" className="text-accent underline underline-offset-4">Continuar conversa</Link>
+              ) : null}
+            </div>
+          ) : null}
           {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
         </article>
 

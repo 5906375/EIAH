@@ -50,6 +50,7 @@ import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { ImobFormCard } from "@/features/imob/structured/ImobFormCard";
 import { createImobStructuredForms } from "@/features/imob/structured/createImobStructuredForms";
 import { useImobFormState } from "@/features/imob/structured/useImobFormState";
+import { buildProposalFormContinuation, isConversationalProposalForm } from "./proposalForm";
 import {
   IMOB_ACTION_MENUS,
   listImobActionMenuPrompts,
@@ -1260,6 +1261,9 @@ function printMessageCard(message: ChatMessage) {
 }
 
 export function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
+  // Propostas transportam os campos em threadState.operational.proposalDraft.
+  // Este builder textual fica restrito aos demais formulários legados.
+  if (isConversationalProposalForm(form)) return "";
   const normalized: Record<string, string> = {};
   for (const field of form.fields) {
     normalized[field.name] = normalizeImobFormValue(values[field.name] ?? String(field.value ?? ""));
@@ -1314,14 +1318,6 @@ export function buildPresentationFormSubmission(form: ImobPresentationForm, valu
       normalized.desiredCity ? `cidade de interesse do lead ${normalized.desiredCity}` : null,
       normalized.budgetMax ? `faixa de orçamento do lead ${normalized.budgetMax}` : null,
     ],
-    proposta: [
-      normalized.propertyId ? `imóvel da proposta ${normalized.propertyId}` : null,
-      normalized.buyerName ? `nome do comprador ${normalized.buyerName}` : null,
-      normalized.buyerPhone ? `telefone do comprador ${normalized.buyerPhone}` : null,
-      normalized.buyerEmail ? `e-mail do comprador ${normalized.buyerEmail}` : null,
-      normalized.offerAmount ? `valor da proposta ${normalized.offerAmount}` : null,
-      normalized.contractType ? `tipo de proposta ${normalized.contractType}` : null,
-    ],
     anuncio: [
       normalized.propertyId ? `imóvel ${normalized.propertyId}` : null,
       normalized.listingTitle ? `título ${normalized.listingTitle}` : null,
@@ -1374,15 +1370,6 @@ export function buildPresentationFormSubmission(form: ImobPresentationForm, valu
     return [
       form.subjectId ? `atualizar imóvel ${form.subjectId}` : "atualizar imóvel",
       ...(linesByEntity[form.entity] ?? []),
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  if (compositeKey === "proposta:create") {
-    return [
-      "continuar proposta",
-      ...(linesByEntity.proposta ?? []),
     ]
       .filter(Boolean)
       .join("\n");
@@ -3470,14 +3457,19 @@ const ImobChatPage: React.FC = () => {
     [appendMessage, persistInterviewState, persistMessage]
   );
 
-  const sendMessageText = async (rawText: string, options?: { displayText?: string; suppressUserEcho?: boolean }) => {
+  const sendMessageText = async (rawText: string, options?: {
+    displayText?: string;
+    suppressUserEcho?: boolean;
+    thread?: { id: string; label: string };
+    threadState?: ImobThreadConversationState;
+  }) => {
     const text = rawText.trim();
     const displayText = options?.displayText?.trim() || text;
     const shouldEchoUserMessage = shouldEchoImobUserMessage(options);
     if (!text) return;
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
-    const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
-    const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
+    const currentThreadId = options?.thread?.id ?? selectedThread?.threadId ?? activeThread?.id ?? null;
+    const currentThreadLabel = options?.thread?.label ?? selectedThread?.label ?? activeThread?.label ?? null;
     const userMessageId = shouldEchoUserMessage ? makeId("user") : null;
     if (shouldEchoUserMessage && userMessageId) {
       appendMessage({
@@ -3509,7 +3501,7 @@ const ImobChatPage: React.FC = () => {
         threadId: currentThreadId,
         caseId: resolvedCaseId,
         recipeId: requestedRecipeId,
-        threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
+        threadState: options?.threadState ?? (currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null),
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
@@ -3571,7 +3563,9 @@ const ImobChatPage: React.FC = () => {
         || caseIdByThreadRef.current[currentThreadId] === turn.caseContext.caseId
       ),
     );
-    const operationThread = selectedThread
+    const operationThread = options?.thread
+      ? { id: options.thread.id, label: turn.threadLabel || options.thread.label }
+      : selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
       : caseContextThreadId
         ? {
@@ -4530,6 +4524,23 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (Object.keys(nextErrors).length > 0) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: nextErrors }));
+      return;
+    }
+
+    if (isConversationalProposalForm(form)) {
+      const thread = message.thread;
+      const built = buildProposalFormContinuation(form, currentValues, thread ? conversationStateByThreadRef.current[thread.id] : null);
+      if (!built.ok || !thread) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.ok ? { _form: "Reabra a proposta para continuar." } : built.errors }));
+        return;
+      }
+      await sendMessageText(built.request.message, {
+        displayText: buildPresentationFormDisplayText(form, actionId),
+        suppressUserEcho: true,
+        thread,
+        threadState: built.request.threadState,
+      });
+      updateMessageById(message.id, { form: undefined, card: null as any });
       return;
     }
 

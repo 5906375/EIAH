@@ -7,6 +7,7 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
+import FrontDoorSessionHeader from "../../../components/agents/FrontDoorSessionHeader";
 import {
   buildChatRouteEntryTelemetry,
   emitChatRouteTelemetry,
@@ -850,7 +851,7 @@ function CompactAttributeList({
 
 const AgentsPage: React.FC = () => {
   const location = useLocation();
-  const { workspaceId } = useSession();
+  const { workspaceId, activeDomain } = useSession();
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
@@ -1025,16 +1026,19 @@ const AgentsPage: React.FC = () => {
           <div className="space-y-2">
             <div className="mt-6" id="chat-agent-launcher">
               <ChatAgentLauncher
+                historyScope="conversation"
                 activeAgentId={agentId}
                 onAgentChangeRequest={setAgentId}
                 onPlaybookClick={agentId ? handlePlaybookClick : undefined}
                 headerControls={
-                  <AgentSelect
-                    value={agentId}
-                    onChange={setAgentId}
-                    showPlaybook={false}
-                    inline
-                  />
+                  <FrontDoorSessionHeader activeDomain={activeDomain}>
+                    <AgentSelect
+                      value={agentId}
+                      onChange={setAgentId}
+                      showPlaybook={false}
+                      inline
+                    />
+                  </FrontDoorSessionHeader>
                 }
                 workspaceId={workspaceId}
                 launcherContext={{

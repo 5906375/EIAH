@@ -1,3 +1,5 @@
+import type { AppSessionState } from "@/state/sessionStore";
+
 type EntitlementSession = {
   entitlements?: { IMOB_INSTALLED?: boolean } | null;
   installedProducts?: string[] | null;
@@ -13,4 +15,16 @@ export function isImobInstalled(session: EntitlementSession): boolean {
     session.entitlements?.IMOB_INSTALLED === true ||
     session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true
   );
+}
+
+/** Visibilidade no Front Door a partir da sessão resolvida; não autoriza ações. */
+export function isImobSurfaceAvailable(
+  session: Pick<AppSessionState, "activeDomain" | "availableDomains" | "entitlements" | "verticals" | "accessGate">,
+): boolean {
+  // Produtos persistidos e REAL_ESTATE_CORE legado não provam instalação ativa.
+  return session.activeDomain === "imob"
+    && session.entitlements?.IMOB_INSTALLED === true
+    && session.availableDomains?.includes("imob") === true
+    && session.verticals?.find((vertical) => vertical.verticalId === "IMOB")?.enabled === true
+    && !session.accessGate;
 }
