@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
-<link rel="canonical" href="https://www.eiah.ia.br/ia-na-pratica-juridica/">
-<title>IA na Prática Jurídica · EIAH</title>
+<title>IA na Prática Jurídica</title>
 <meta name="description" content="Guia, enquetes de autodiagnóstico, comparativo de soluções e calculadora de ROI para o uso de IA generativa na prática jurídica, com supervisão humana.">
-<link rel="icon" href="../eiah-symbol.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,7 +14,7 @@
   /*
    * IA na Prática Jurídica — Guia, Enquetes, Comparativo e Calculadora de ROI.
    * Página estática: nada é enviado a servidor; respostas e cálculos ficam no navegador de quem usa.
-   * Paleta da landing EIAH.
+   * Página neutra, sem marca: não direciona a nenhum fornecedor.
    */
   :root {
     --fundo: #020617;
@@ -121,7 +119,6 @@
   table.comp thead th { background: var(--fundo-2); color: var(--forte); font-size: 13px; }
   table.comp thead th small { display: block; font-weight: 400; color: var(--suave); }
   table.comp tbody th { color: var(--forte); font-weight: 600; width: 190px; background: rgba(11, 22, 40, .6); }
-  table.comp td.destaque, table.comp th.destaque { background: rgba(16, 185, 129, .08); }
   .sim { color: var(--verde-claro); font-weight: 600; }
   .parcial { color: var(--ambar); font-weight: 600; }
   .nao { color: var(--rosa); font-weight: 600; }
@@ -145,8 +142,6 @@
   /* Fontes / rodapé */
   .fontes { columns: 2; column-gap: 32px; font-size: 14px; color: var(--suave); padding-left: 18px; }
   .fontes li { break-inside: avoid; margin-bottom: 8px; }
-  .cta { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; background: linear-gradient(135deg, rgba(56, 189, 248, .18), rgba(16, 185, 129, .14)); border: 1px solid rgba(56, 189, 248, .35); border-radius: var(--raio); padding: 24px; }
-  .cta p { margin: 0; color: var(--forte); font-weight: 600; font-size: 18px; max-width: 640px; }
   footer { padding: 28px 0 40px; font-size: 13px; color: var(--suave); border-top: 1px solid var(--linha); }
   footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
 
@@ -176,7 +171,7 @@
 
 <header class="topo">
   <div class="wrap">
-    <a class="marca" href="#inicio"><img src="../eiah-symbol.svg" alt="" width="28" height="28">EIAH</a>
+    <a class="marca" href="#inicio">IA na Prática Jurídica</a>
     <nav aria-label="Seções">
       <a href="#guia">Guia</a>
       <a href="#enquetes">Enquetes</a>
@@ -192,7 +187,7 @@
 <!-- ============ CAPA ============ -->
 <section class="capa" id="inicio">
   <div class="wrap">
-    <span class="etiqueta">EIAH · Material de apoio</span>
+    <span class="etiqueta">Material de apoio</span>
     <h1>IA na Prática Jurídica</h1>
     <p class="sub">Guia, Enquetes, Comparativo e Calculadora de ROI</p>
     <p class="lead">Como usar IA generativa em escritórios e departamentos jurídicos com ganho real de produtividade — sem abrir mão da supervisão humana, do sigilo e da responsabilidade profissional.</p>
@@ -338,19 +333,19 @@
             <th scope="col">IA generativa genérica<small>ex.: ChatGPT, Claude, Gemini</small></th>
             <th scope="col">IA jurídica de pesquisa<small>ex.: Jus IA, Lexter</small></th>
             <th scope="col">Automação de documentos / CLM<small>ex.: Looplex, NetLex</small></th>
-            <th scope="col" class="destaque">Fluxo governado de minutas<small>ex.: EIAH</small></th>
+            <th scope="col">Fluxo governado de minutas<small>revisão e aprovação controladas</small></th>
           </tr>
         </thead>
         <tbody>
-          <tr><th scope="row">Melhor para</th><td>Rascunhos, resumos e ideias, de forma livre</td><td>Pesquisa de jurisprudência e peças com base jurídica</td><td>Documentos padronizados em grande volume e gestão de contratos</td><td class="destaque">Minutas com revisão humana obrigatória e prova de aprovação</td></tr>
-          <tr><th scope="row">Redige texto jurídico</th><td><span class="sim">Sim</span></td><td><span class="sim">Sim</span></td><td><span class="parcial">Por modelos</span></td><td class="destaque"><span class="sim">Sim, a partir dos modelos do escritório</span></td></tr>
-          <tr><th scope="row">Base de jurisprudência própria</th><td><span class="nao">Não</span></td><td><span class="sim">Sim</span> — principal diferencial</td><td><span class="nao">Não</span></td><td class="destaque"><span class="nao">Não</span> — combina com uma ferramenta de pesquisa</td></tr>
-          <tr><th scope="row">Revisão humana obrigatória</th><td><span class="nao">Depende de quem usa</span></td><td><span class="nao">Depende de quem usa</span></td><td><span class="parcial">Fluxos de aprovação configuráveis</span></td><td class="destaque"><span class="sim">Sim — sem revisão, não há versão aprovada</span></td></tr>
-          <tr><th scope="row">Aprovação presa à versão exata</th><td><span class="nao">Não</span></td><td><span class="nao">Não</span></td><td><span class="parcial">Varia</span></td><td class="destaque"><span class="sim">Sim — mudou o texto, aprova de novo</span></td></tr>
-          <tr><th scope="row">Registro de quem aprovou</th><td><span class="nao">Não</span></td><td><span class="parcial">Parcial</span></td><td><span class="sim">Sim</span></td><td class="destaque"><span class="sim">Sim</span></td></tr>
-          <tr><th scope="row">Implantação</th><td>Imediata</td><td>Imediata</td><td>Projeto de implantação</td><td class="destaque">Personalização com diagnóstico jurídico</td></tr>
-          <tr><th scope="row">Faixa de custo de referência*</th><td>~US$ 20–25 por usuário/mês</td><td>~R$ 100–200 por usuário/mês</td><td>Sob proposta; referências a partir de ~R$ 3 mil/mês</td><td class="destaque">Personalização + mensalidade por plano</td></tr>
-          <tr><th scope="row">Principal limitação</th><td>Responsabilidade e prova da revisão ficam inteiras com o usuário</td><td>Foco em pesquisa; não controla o fluxo de aprovação</td><td>Custo e esforço maiores; pensado para grande volume</td><td class="destaque">Não substitui a pesquisa jurídica; exige definir regras e modelos</td></tr>
+          <tr><th scope="row">Melhor para</th><td>Rascunhos, resumos e ideias, de forma livre</td><td>Pesquisa de jurisprudência e peças com base jurídica</td><td>Documentos padronizados em grande volume e gestão de contratos</td><td>Minutas com revisão humana obrigatória e prova de aprovação</td></tr>
+          <tr><th scope="row">Redige texto jurídico</th><td><span class="sim">Sim</span></td><td><span class="sim">Sim</span></td><td><span class="parcial">Por modelos</span></td><td><span class="sim">Sim, a partir dos modelos do escritório</span></td></tr>
+          <tr><th scope="row">Base de jurisprudência própria</th><td><span class="nao">Não</span></td><td><span class="sim">Sim</span> — principal diferencial</td><td><span class="nao">Não</span></td><td><span class="nao">Não</span> — combina com uma ferramenta de pesquisa</td></tr>
+          <tr><th scope="row">Revisão humana obrigatória</th><td><span class="nao">Depende de quem usa</span></td><td><span class="nao">Depende de quem usa</span></td><td><span class="parcial">Fluxos de aprovação configuráveis</span></td><td><span class="sim">Sim — sem revisão, não há versão aprovada</span></td></tr>
+          <tr><th scope="row">Aprovação presa à versão exata</th><td><span class="nao">Não</span></td><td><span class="nao">Não</span></td><td><span class="parcial">Varia</span></td><td><span class="sim">Sim — mudou o texto, aprova de novo</span></td></tr>
+          <tr><th scope="row">Registro de quem aprovou</th><td><span class="nao">Não</span></td><td><span class="parcial">Parcial</span></td><td><span class="sim">Sim</span></td><td><span class="sim">Sim</span></td></tr>
+          <tr><th scope="row">Implantação</th><td>Imediata</td><td>Imediata</td><td>Projeto de implantação</td><td>Personalização com diagnóstico jurídico</td></tr>
+          <tr><th scope="row">Faixa de custo de referência*</th><td>~US$ 20–25 por usuário/mês</td><td>~R$ 100–200 por usuário/mês</td><td>Sob proposta; referências a partir de ~R$ 3 mil/mês</td><td>Personalização + mensalidade por plano</td></tr>
+          <tr><th scope="row">Principal limitação</th><td>Responsabilidade e prova da revisão ficam inteiras com o usuário</td><td>Foco em pesquisa; não controla o fluxo de aprovação</td><td>Custo e esforço maiores; pensado para grande volume</td><td>Não substitui a pesquisa jurídica; exige definir regras e modelos</td></tr>
         </tbody>
       </table>
     </div>
@@ -410,10 +405,6 @@
       <li>Referências de automação de documentos: <a href="https://www.b2bstack.com.br/compare/looplex-vs-astrea" rel="noopener noreferrer" target="_blank">B2B Stack</a> e <a href="https://www.baguete.com.br/noticias/dasa-automatiza-gestao-juridica-com-netlex" rel="noopener noreferrer" target="_blank">Baguete</a>.</li>
     </ol>
     <p class="nota" style="margin-top:14px">Conteúdo informativo, que não constitui consultoria jurídica. Esta página não usa cookies nem ferramentas de análise e não envia respostas a servidores. Última revisão: outubro de 2026.</p>
-    <div class="cta">
-      <p>Quer usar IA com revisão humana garantida e prova de quem aprovou cada versão?</p>
-      <a class="botao" href="mailto:contato@eiah.ia.br?subject=IA%20na%20Pr%C3%A1tica%20Jur%C3%ADdica%20%E2%80%94%20quero%20conversar">Falar com a EIAH</a>
-    </div>
   </div>
 </section>
 
@@ -421,8 +412,8 @@
 
 <footer>
   <div class="wrap">
-    <span>EIAH · IA na Prática Jurídica · outubro de 2026</span>
-    <span><a href="https://www.eiah.ia.br/">eiah.ia.br</a></span>
+    <span>IA na Prática Jurídica · Guia, Enquetes, Comparativo e Calculadora de ROI</span>
+    <span>Outubro de 2026</span>
   </div>
 </footer>
 
@@ -482,7 +473,7 @@ var num = function (id) { var v = parseFloat(document.getElementById(id).value);
     acoes.forEach(function (a) { var li = document.createElement('li'); li.textContent = a; ul.appendChild(li); });
     document.getElementById('minutas').value = vol;
     calcular();
-    texto = 'Autodiagnóstico IA na Prática Jurídica (EIAH)\n' + nivel + ' — ' + pct + '%\n' + desc + '\n\nPróximas ações:\n- ' + acoes.join('\n- ');
+    texto = 'Autodiagnóstico — IA na Prática Jurídica\n' + nivel + ' — ' + pct + '%\n' + desc + '\n\nPróximas ações:\n- ' + acoes.join('\n- ');
     resultado.classList.add('on');
     resultado.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
@@ -518,7 +509,7 @@ function calcular() {
     ? 'Com estes números o custo supera o tempo devolvido. Revise o volume, a redução esperada ou a solução escolhida.'
     : 'Cerca de ' + Math.round(horasDevolvidas) + ' horas por mês voltam para análise, atendimento e estratégia — já descontada a revisão humana.';
   document.getElementById('oLeitura').textContent = leitura;
-  resumoRoi = 'Calculadora de ROI — IA na Prática Jurídica (EIAH)\n' +
+  resumoRoi = 'Calculadora de ROI — IA na Prática Jurídica\n' +
     'Minutas/mês: ' + minutas + ' · horas por minuta: ' + horas + ' · redução: ' + reducao + '% · revisão extra: ' + revisao + ' h\n' +
     'Valor da hora: ' + brl(hora) + ' · custo mensal: ' + brl(mensal) + ' · investimento inicial: ' + brl(impl) + ' · horizonte: ' + meses + ' meses\n' +
     'Horas devolvidas/mês: ' + Math.round(horasDevolvidas) + ' · ganho líquido/mês: ' + brl(liquido) + ' · retorno: ' + payback + ' · ROI: ' + Math.round(roi) + '%';
