@@ -59,7 +59,6 @@ type ShellNavItem = {
   hiddenForRoles?: Array<
     "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator"
   >;
-  requiresImob?: boolean;
   requiresPreDuimp?: boolean;
 };
 
@@ -68,7 +67,6 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/chat", label: "Chat" },
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
-  { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
   { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
@@ -91,7 +89,6 @@ function Layout({
 }) {
   const session = useSession();
   const location = useLocation();
-  const imobInstalled = isImobInstalled(session);
   const brandName = session.branding?.brandName?.trim() || "EIAH";
   const logoUrl = session.branding?.logoUrl?.trim() || "";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
@@ -107,7 +104,6 @@ function Layout({
     session.preDuimpAccess,
   );
   const visibleNavItems = getPreDuimpNavigationItems(preDuimpAllowed).filter((item) => {
-    if (item.requiresImob && !imobInstalled) return false;
     if (item.hiddenForRoles?.includes(roleProfile ?? "workspace_member")) return false;
     return true;
   });
