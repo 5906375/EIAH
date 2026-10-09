@@ -186,7 +186,7 @@ export type Agent = {
   name: string;
   description?: string;
   pricing?: { perRunCents?: number; perMBcents?: number };
-  profile?: { model: string; systemPrompt: string; tools?: unknown };
+  profile?: { model: string };
   knowledgePolicy?: {
     deterministicSources: Array<{
       sourceId: string;

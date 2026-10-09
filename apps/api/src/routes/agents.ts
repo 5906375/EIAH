@@ -18,6 +18,7 @@ import {
   PolicyNotFoundError,
   resolveAllowedActionNames,
 } from "./agentsPolicy";
+import { toPublicAgentListing, toPublicAgentProfile } from "./agentsPublicView";
 
 export const agentsRouter = Router();
 agentsRouter.use(enforceTenant);
@@ -707,7 +708,7 @@ agentsRouter.get("/agents", async (_req, res) => {
   }
 
   const items = await listAgents(req.authContext.tenantId, req.authContext.workspaceId, req.prisma);
-  return res.json({ items });
+  return res.json({ items: items.map(toPublicAgentListing) });
 });
 
 agentsRouter.get("/agents/:name", async (req, res) => {
@@ -732,5 +733,5 @@ agentsRouter.get("/agents/:name", async (req, res) => {
     return res.status(404).json({ ok: false, error: { code: "AGENT_NOT_FOUND", message: `Agent ${input} was not found` } });
   }
 
-  return res.json({ item: profile, resolvedAgentId: resolved });
+  return res.json({ item: toPublicAgentProfile(profile), resolvedAgentId: resolved });
 });
