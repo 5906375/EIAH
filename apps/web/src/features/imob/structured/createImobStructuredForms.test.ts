@@ -1190,7 +1190,7 @@ test("FDC-03A-R1 actual history invalidation effect handles hydration after moun
   assert.equal(messages, stable, "no state update loop");
 });
 
-for (const target of ["LEGAL", "COMEX", "HEALTH", "financeiro"]) {
+for (const target of ["IMOB", "LEGAL", "COMEX", "HEALTH", "financeiro"]) {
   for (const command of ["Quero mudar para", "Trocar para", "Ir para"]) {
     test(`FDC-03A-R3 ${command} ${target} releases review into governed handoff without running`, async () => {
       const { harness, ready, helperCalls } = reviewIntegrationHarness();

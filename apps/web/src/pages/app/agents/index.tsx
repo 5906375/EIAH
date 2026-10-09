@@ -877,7 +877,8 @@ const AgentsPage: React.FC = () => {
   }, [location.search]);
   const launcherDomainHint = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get("domain")?.trim().toLowerCase() ?? null;
+    // `vertical` is a navigation intent for the engine; legacy `domain` remains compatible.
+    return (params.get("vertical") ?? params.get("domain"))?.trim().toLowerCase() ?? null;
   }, [location.search]);
   const showImobFixturePreview = useMemo(
     () => shouldRenderImobPilot2FixturePreview(location.search),

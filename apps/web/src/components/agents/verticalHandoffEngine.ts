@@ -186,10 +186,13 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
   refs?: { conversationId?: string | null; threadId?: string | null },
   request: (req: VerticalHandoffRequest, r?: typeof refs) => Promise<ChatVerticalHandoffResult> = requestVerticalHandoff,
   syncSession: (domain: "imob") => Promise<unknown> = syncSessionContext,
+  isCurrent: () => boolean = () => true,
 ): Promise<(D & DecisionWithHandoff) | null> {
+  if (!isCurrent()) return null;
   if (!decision?.verticalHandoffRequest) return decision;
   const initialSession = getSession();
   const result = await request(decision.verticalHandoffRequest, refs);
+  if (!isCurrent()) return null;
   const presentation = describeVerticalHandoffResult(result, decision.verticalHandoffRequest.verticalId);
   let sessionSync: DecisionWithHandoff["verticalHandoffSessionSync"];
   if (result.ok && result.handoff.vertical.id === "imob") {
@@ -205,6 +208,7 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
       presentation.content = "O acesso ao IMOB foi confirmado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.";
     }
   }
+  if (!isCurrent()) return null;
   return {
     ...decision,
     content: presentation.content,

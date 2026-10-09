@@ -45,7 +45,7 @@ const VERTICALS: Array<{
     title: "IMOB Network",
     summary: "Chat Operacional + Dashboard + processos auditáveis para imobiliária.",
     status: "ready",
-    routes: ["/app/imob/chat", "/app/imob/dashboard"],
+    routes: ["/app/chat?vertical=imob", "/app/imob/dashboard"],
   },
   {
     product: "LEGAL",
@@ -424,7 +424,7 @@ const MarketplaceIndexPage: React.FC = () => {
                   <>
                     <button
                       type="button"
-                      onClick={() => navigate("/app/imob/chat?domain=imob")}
+                      onClick={() => navigate("/app/chat?vertical=imob")}
                       className="rounded-full border border-accent/60 bg-accent/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:border-accent hover:bg-accent/30"
                     >
                       Abrir chat

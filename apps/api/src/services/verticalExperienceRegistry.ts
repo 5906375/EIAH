@@ -17,7 +17,7 @@ export function resolveVerticalExperienceRegistry(params: {
       installedProduct: "IMOB",
       rolloutStage: hasImob ? "operationalized" : "context_only",
       enabled: hasImob,
-      frontDoorSurface: hasImob ? "imob_chat" : null,
+      frontDoorSurface: hasImob ? "chat" : null,
       operationalHubSurface: hasImob ? "imob_dashboard" : null,
       governanceHubSurface: hasImob ? "marketplace" : null,
       investigationSurfaces: hasImob ? ["imob_dashboard", "billing"] : [],

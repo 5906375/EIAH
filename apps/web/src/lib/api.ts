@@ -754,6 +754,7 @@ export type SessionContextResponse = {
       rolloutStage: "context_only" | "installed_surface" | "operationalized";
       enabled: boolean;
       frontDoorSurface:
+        | "chat"
         | "runs"
         | "billing"
         | "economy"

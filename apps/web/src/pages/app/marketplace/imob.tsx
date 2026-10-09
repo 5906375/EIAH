@@ -250,7 +250,7 @@ const ImobMarketplacePage: React.FC = () => {
             ) : isInstalled ? (
               <button
                 type="button"
-                onClick={() => navigate("/app/imob/chat?domain=imob")}
+                onClick={() => navigate("/app/chat?vertical=imob")}
                 className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30"
               >
                 Abrir IMOB
@@ -338,8 +338,8 @@ const ImobMarketplacePage: React.FC = () => {
           <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
             <li>
-              <Link to="/app/imob/chat?domain=imob" className="text-accent underline underline-offset-4 hover:text-accent/80">
-                Chat Operacional
+              <Link to="/app/chat?vertical=imob" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Atendimento IMOB no EIAH
               </Link>
             </li>
             <li>
