@@ -10,6 +10,8 @@ import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { IMOB_ACTION_MENUS } from "@/features/imob/imobActionMenus";
+import { createLauncherPresentationSnapshot, resolveLauncherNavigationDecision } from "./chatLauncherEngine";
+import { attachVerticalHandoffToSnapshot, enrichLauncherDecisionWithVerticalHandoff } from "./verticalHandoffEngine";
 
 // Renderiza o bloco real do launcher isoladamente, sem inicializar hooks/rede.
 const launcherSource = ts.createSourceFile(
@@ -85,6 +87,57 @@ assert.ok(newConversationInitializer);
 const transpileReturn = (expression: ts.Expression) => ts.transpileModule(`return (${expression.getText(launcherSource)});`, {
   compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+
+let navigationEffect: ts.Expression | undefined;
+function findNavigationEffect(node: ts.Node) {
+  if (ts.isCallExpression(node) && node.expression.getText(launcherSource) === "useEffect"
+      && node.arguments[0]?.getText(launcherSource).includes("resolveLauncherNavigationDecision")) navigationEffect = node.arguments[0];
+  ts.forEachChild(node, findNavigationEffect);
+}
+findNavigationEffect(launcherSource);
+assert.ok(navigationEffect, "transport de navegação executa o engine, sem enviar turno fictício");
+
+for (const change of ["none", "conversation", "user", "workspace", "agent", "new_turn"] as const) {
+  test(`entrada Marketplace renderiza somente resposta atual: ${change}`, async () => {
+    updateSession({ token: "synthetic-navigation", tenantId: "tenant-test", workspaceId: "workspace-test", userId: "user-test", activeDomain: "core" });
+    const conversationGenerationRef = { current: 0 };
+    const navigationRequestGenerationRef = { current: 0 };
+    const messages: Array<{ role: string; content: string }> = [];
+    let timer: (() => void) | undefined;
+    let finish: ((value: any) => void) | undefined;
+    let syncs = 0;
+    const dependencies = {
+      window: { setTimeout: (callback: () => void) => { timer = callback; return 1; }, clearTimeout: () => undefined },
+      conversationGenerationRef, navigationRequestGenerationRef, getSession,
+      launcherContext: { domainHint: "imob" }, isUnifiedEiahMode: true,
+      imobFrontDoor: { getConversationState: () => null, consumeOperationalTurn: async () => undefined },
+      resolveLauncherNavigationDecision,
+      enrichLauncherDecisionWithVerticalHandoff: (decision: any, refs: any, _request: any, _sync: any, current: () => boolean) =>
+        enrichLauncherDecisionWithVerticalHandoff(decision, refs, () => new Promise((resolve) => { finish = resolve; }),
+          async () => { syncs += 1; }, current),
+      selectedCatalogAgent: null, createLauncherPresentationSnapshot, attachVerticalHandoffToSnapshot,
+      proposalMode: false, attachmentIntake: { enabled: false }, pushMessage: (message: any) => messages.push(message),
+    };
+    const effect = new Function(...Object.keys(dependencies), transpileReturn(navigationEffect!))(...Object.values(dependencies));
+    const cleanup = effect();
+    timer!();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(finish);
+    if (change === "conversation") conversationGenerationRef.current += 1;
+    if (change === "user") updateSession({ userId: "user-other" });
+    if (change === "workspace") updateSession({ workspaceId: "workspace-other" });
+    if (change === "agent") cleanup();
+    if (change === "new_turn") navigationRequestGenerationRef.current += 1;
+    finish!({ ok: true, handoff: { version: "chat.vertical_handoff.v2", handoffId: "navigation-test",
+      vertical: { id: "imob", label: "IMOB", registryVersion: "test" }, capability: { id: "knowledge.search", mode: "read_only" },
+      outcome: "allowed", reasonCode: "VERTICAL_HANDOFF_ALLOWED", presentation: { source: "operational", variant: "chat_card" } } });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(syncs, change === "none" ? 1 : 0);
+    assert.equal(messages.length, change === "none" ? 1 : 0);
+    assert.ok(messages.every((message) => message.role === "assistant"));
+    cleanup();
+  });
+}
 const resolveSurface = new Function("session", "isImobSurfaceAvailable", "messages", "activeAgentId", transpileReturn(surfaceInitializer));
 const renderSurface = new Function("React", "showImobSurface", "ImobActionMenuBar", "IMOB_ACTION_MENUS", "imobFrontDoor", transpileReturn(surfaceConditional));
 const availableSession: AppSessionState = {

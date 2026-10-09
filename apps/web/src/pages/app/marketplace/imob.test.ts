@@ -101,3 +101,54 @@ test("ativação e sync bem-sucedidos: preservam navegação automática para o 
   assert.equal(h.state.error, null);
   assert.equal(h.state.activating, false);
 });
+
+test("botões principais do Marketplace abrem Front Door com intenção IMOB, sem ativação", () => {
+  for (const file of ["./index.tsx", "./imob.tsx"]) {
+    const page = ts.createSourceFile(file, readFileSync(new URL(file, import.meta.url), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    let buttons = 0;
+    const navigations: string[] = [];
+    function inspect(node: ts.Node) {
+      if (ts.isJsxElement(node) && node.openingElement.tagName.getText(page) === "button"
+          && /Abrir chat|Abrir IMOB/.test(node.children.map((child) => child.getText(page)).join(" "))) {
+        const attribute = node.openingElement.attributes.properties.find((item) => ts.isJsxAttribute(item) && item.name.getText(page) === "onClick") as ts.JsxAttribute;
+        assert.ok(attribute && ts.isJsxExpression(attribute.initializer!) && attribute.initializer.expression);
+        const code = ts.transpileModule(`return (${attribute.initializer.expression!.getText(page)});`, {
+          compilerOptions: { target: ts.ScriptTarget.ES2022 },
+        }).outputText;
+        const click = new Function("navigate", code)((path: string) => navigations.push(path));
+        click(); buttons += 1;
+      }
+      ts.forEachChild(node, inspect);
+    }
+    inspect(page);
+    assert.equal(buttons, 1, file);
+    assert.deepEqual(navigations, ["/app/chat?vertical=imob"], file);
+    const target = new URL(navigations[0], "https://synthetic.invalid");
+    assert.equal(target.searchParams.get("domain"), null, "a intenção não ativa o bootstrap legado de domínio");
+    assert.equal(target.searchParams.get("vertical"), "imob");
+  }
+});
+
+test("Front Door transporta a intenção de vertical e mantém domain legado compatível", () => {
+  const page = ts.createSourceFile("agents/index.tsx", readFileSync(new URL("../agents/index.tsx", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let initializer: ts.Expression | undefined;
+  function find(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(page) === "launcherDomainHint") initializer = node.initializer;
+    ts.forEachChild(node, find);
+  }
+  find(page);
+  assert.ok(initializer);
+  const code = ts.transpileModule(`return (${initializer.getText(page)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const read = (search: string) => new Function("useMemo", "location", code)((factory: () => unknown) => factory(), { search });
+  assert.equal(read("?vertical=imob"), "imob");
+  assert.equal(read("?domain=imob"), "imob");
+  assert.equal(read("?vertical=imob&domain=core"), "imob");
+  assert.equal(read(""), null);
+});
+
+test("links com autoprompt permanecem auxiliares; dashboard e rotas especializadas são preservados", () => {
+  const page = readFileSync(new URL("./imob.tsx", import.meta.url), "utf8");
+  assert.ok(page.includes('/app/imob/chat?domain=imob&autoprompt=${encodeURIComponent(item.autoprompt)}'));
+  for (const path of ["/app/imob/properties", "/app/imob/processes", "/app/imob/partners"]) assert.ok(page.includes(path));
+  assert.ok(readFileSync(new URL("./index.tsx", import.meta.url), "utf8").includes('navigate("/app/imob/dashboard?section=processos&cc=open#command-center")'));
+});

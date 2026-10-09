@@ -39,6 +39,7 @@ import {
   resolveLauncherRunSummarySnapshot,
   resolveAttachmentIntake,
   resolveLauncherTurnDecision,
+  resolveLauncherNavigationDecision,
   enrichLauncherDecisionWithImobRuntimeShadow,
   toMarkdownFromStructuredResponse,
   buildRenderableAssistantMarkdown,
@@ -81,7 +82,7 @@ import { ImobFrontDoorPart } from "@/features/imob/structured/ImobFrontDoorPart"
 import { useImobFrontDoorForms } from "@/features/imob/structured/useImobFrontDoorForms";
 import type { StructuredMessage } from "@/features/imob/structured/types";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
-import { useSession } from "@/state/sessionStore";
+import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { conversationDomainLabel } from "./conversationDomainLabel";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -456,6 +457,7 @@ export default function ChatAgentLauncher({
     return `eiah:chat:${tenant}:${workspace}:${agent}:${topic}`;
   }, [session.tenantId, effectiveWorkspaceId, activeAgentId, launcherContext?.topic, historyScope]);
   const conversationGenerationRef = useRef(0);
+  const navigationRequestGenerationRef = useRef(0);
   const skipHistoryPersistRef = useRef(false);
   const conversationKeyRef = useRef(threadKey);
   if (conversationKeyRef.current !== threadKey) {
@@ -1095,6 +1097,7 @@ export default function ChatAgentLauncher({
       // ADR-011 §2.7: num pedido de acesso, o histórico guarda o e-mail mascarado.
       content: [maskAccessCreationInput(effectiveInput), attachmentSummary].filter(Boolean).join("\n"),
     });
+    navigationRequestGenerationRef.current += 1;
     const localIntentResult = conversation.analyze(effectiveInput);
     const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
@@ -1580,6 +1583,44 @@ export default function ChatAgentLauncher({
       }),
     });
   }, [activeEiahMode, attachmentIntake, isUnifiedEiahMode, proposalMode, selectedCatalogAgent, threadKey, usedQuickReplyKeys]);
+
+  // Route hints are transported to the engine. Only its backend-evaluated result is rendered;
+  // no user message is fabricated and no activation/operational request is submitted here.
+  useEffect(() => {
+    let active = true;
+    const generation = conversationGenerationRef.current;
+    const requestGeneration = ++navigationRequestGenerationRef.current;
+    const initialSession = getSession();
+    const isCurrent = () => {
+      const current = getSession();
+      return active && generation === conversationGenerationRef.current
+        && requestGeneration === navigationRequestGenerationRef.current
+        && current.token === initialSession.token && current.userId === initialSession.userId
+        && current.tenantId === initialSession.tenantId && current.workspaceId === initialSession.workspaceId;
+    };
+    // History hydration runs first; the entry stays in the existing conversation key.
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        if (!isCurrent()) return;
+        const decision = await resolveLauncherNavigationDecision({
+          domainHint: launcherContext?.domainHint,
+          isUnifiedEiah: isUnifiedEiahMode,
+          continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
+        });
+        const resolved = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
+        if (!isCurrent() || !resolved?.content) return;
+        const snapshot = attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+          selectedAgent: selectedCatalogAgent, routeIntent: resolved.presentationRouteIntent,
+          eiahMode: resolved.eiahMode, renderVariant: resolved.renderVariant,
+          resolvedQuickReplies: resolved.resolvedQuickReplies,
+          isHelpCenterMode: isUnifiedEiahMode, proposalMode, attachmentIntake,
+        }), resolved);
+        pushMessage({ id: `assistant-vertical-entry-${Date.now()}`, role: "assistant", content: resolved.content,
+          status: "done", presentationSnapshot: snapshot });
+      })();
+    }, 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [threadKey, launcherContext?.domainHint, isUnifiedEiahMode, activeAgentId, session.token, session.userId]);
 
   // ADR-011 §2.4: avisos da liberação EIAH chegam como mensagem na conversa, uma vez por conversa.
   useEffect(() => {

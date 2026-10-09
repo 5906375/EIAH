@@ -2067,6 +2067,25 @@ export async function resolveLauncherProposalDecision(params: {
   }
 }
 
+/** Navigation is an entry intent, never entitlement or a fabricated user turn (ADR-010). */
+export async function resolveLauncherNavigationDecision(params: {
+  domainHint?: string | null;
+  isUnifiedEiah: boolean;
+  continuation?: {
+    threadState?: ImobThreadConversationState | null;
+    consume: (action: "continue" | "cancel" | "release", input: string) => Promise<void>;
+  };
+}): Promise<LauncherLocalDecision | null> {
+  if (!params.isUnifiedEiah || params.domainHint?.trim().toLowerCase() !== "imob") return null;
+  if (params.continuation?.threadState?.operational) await params.continuation.consume("release", "");
+  return {
+    kind: "vertical_handoff", shouldCreateRun: false,
+    content: "Verificando o atendimento IMOB neste workspace.",
+    launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "handoff",
+    verticalHandoffRequest: { verticalId: "imob", mode: "read_only" },
+  };
+}
+
 export async function resolveLauncherTurnDecision(params: {
   input: string;
   trimmedInput: string;
@@ -2099,7 +2118,7 @@ export async function resolveLauncherTurnDecision(params: {
   const noticeAck = params.isUnifiedEiah
     ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice) : null;
   const continuation = params.imobOperationalContinuation;
-  const explicitVerticalTransfer = hasPendingProposalReview(continuation?.threadState)
+  const explicitVerticalTransfer = params.isUnifiedEiah || hasPendingProposalReview(continuation?.threadState)
     ? resolveExplicitVerticalHandoffRequest(params.input) : null;
   if (continuation?.threadState?.operational) {
     const help = resolveHelpDictionarySnapshot({ input: params.trimmedInput, routeIntent: params.routeIntent,

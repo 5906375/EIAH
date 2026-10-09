@@ -64,18 +64,18 @@ function resolveImobLanding(input: ResolverInput) {
   if (!imobInstalled) return null;
 
   return {
-    landingSurface: "imob_chat",
-    landingPath: "/app/imob/chat",
+    landingSurface: "chat",
+    landingPath: "/app/chat",
     primaryNavigation: [
-      buildResolvedNavigationItem({ surfaceId: "imob_chat", path: "/app/imob/chat", label: "IMOB" }),
+      buildResolvedNavigationItem({ surfaceId: "chat", path: "/app/chat", label: "Chat" }),
       buildResolvedNavigationItem({ surfaceId: "imob_dashboard", path: "/app/imob/dashboard", label: "Dashboard IMOB" }),
       buildResolvedNavigationItem({ surfaceId: "runs", path: "/app/runs", label: "Runs" }),
     ],
     recommendedActions: [
       buildRecommendedAction({
         actionId: "continue_imob_chat",
-        surfaceId: "imob_chat",
-        path: "/app/imob/chat",
+        surfaceId: "chat",
+        path: "/app/chat?vertical=imob",
         label: "Abrir atendimento IMOB",
         priority: "primary",
       }),

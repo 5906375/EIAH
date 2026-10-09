@@ -24,7 +24,7 @@ const cases: Array<{ name: string; input: Parameters<typeof resolvePlatformExper
   {
     name: "IMOB instalado",
     input: { ...base, roles: ["admin"], activeDomain: "imob", availableDomains: ["core", "imob"], productInstallations: [{ product: "IMOB", status: "active" }] },
-    previous: "/app/imob/chat",
+    previous: "/app/chat?vertical=imob",
   },
   { name: "IMOB sem instalação", input: { ...base, roles: ["admin"], activeDomain: "imob" }, previous: "/app/runs" },
 ];
@@ -44,3 +44,12 @@ for (const { name, input, previous } of cases) {
     );
   });
 }
+
+test("experiência IMOB mantém hub operacional e não recomenda chat concorrente", () => {
+  const experience = resolvePlatformExperience(cases.find((entry) => entry.name === "IMOB instalado")!.input);
+  assert.ok(experience.primaryNavigation.some((item) => item.path === "/app/imob/dashboard"));
+  assert.ok(experience.recommendedActions.some((item) => item.actionId === "continue_imob_chat"
+    && item.surfaceId === "chat" && item.path === "/app/chat?vertical=imob"));
+  assert.equal(experience.primaryNavigation.some((item) => item.path === "/app/imob/chat"), false);
+  assert.equal(experience.recommendedActions.some((item) => item.path === "/app/imob/chat"), false);
+});

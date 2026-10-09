@@ -9,7 +9,9 @@ import {
   requestVerticalHandoff,
   resolveExplicitVerticalHandoffRequest,
 } from "./verticalHandoffEngine";
-import { resolveLauncherTurnDecision } from "./chatLauncherEngine";
+import { resolveEiahJourneyContract, resolveLauncherNavigationDecision, resolveLauncherTurnDecision } from "./chatLauncherEngine";
+import { eiahProfile } from "../../../../../packages/core/src/actions/agents/eiahAction";
+import { composeVerticalRegistry, projectVerticalRegistryForSurface, buildAndEvaluateVerticalHandoff } from "../../../../api/src/services/chat/verticalRegistryComposition";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { syncSessionContext } from "@/state/sessionContextSync";
 import { getSession, updateSession } from "@/state/sessionStore";
@@ -26,6 +28,19 @@ const allowed: ChatVerticalHandoffResult = {
     reasonCode: "VERTICAL_HANDOFF_ALLOWED",
   },
 };
+
+test("jornada IMOB usa o alias compatível do Front Door e mantém o hub auxiliar", () => {
+  const journey = resolveEiahJourneyContract({
+    agentProfile: { id: "EIAH", name: "EIAH", journeyContract: eiahProfile.journeyContract ?? undefined },
+    accessContext: { roleProfile: "workspace_admin", activeDomain: "imob", installedProducts: ["IMOB"] },
+  });
+  assert.ok(journey);
+  assert.equal(journey.frontDoorSurface, "agents");
+  assert.equal(journey.frontDoorLabel, "Chat EIAH");
+  assert.ok(journey.prioritySurfaces.includes("imob_dashboard"));
+  assert.equal(journey.prioritySurfaces.includes("imob_chat"), false);
+  assert.match(journey.beginnerExplanation, /nesta conversa/);
+});
 
 test("pedido operacional de IMOB é reconhecido; perguntas sobre o produto não", () => {
   for (const text of [
@@ -221,4 +236,93 @@ test("FDC-03A-R3 transfer grammar does not promote a domain word, a correction o
   for (const input of ["LEGAL", "venda", "O valor de venda precisa ser 90000", "Quero corrigir o imóvel", "Quero mudar para billing", "Ir para marketplace"]) {
     assert.equal(resolveExplicitVerticalHandoffRequest(input), null, input);
   }
+});
+
+async function frontDoorTurn(input: string) {
+  return resolveLauncherTurnDecision({ input, trimmedInput: input, routeIntent: "imob", proposalMode: false,
+    isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: false, confidence: 1 });
+}
+
+test("transferência explícita fora da revisão usa o mesmo handoff, sem criar execução", async () => {
+  for (const input of ["Quero mudar para o IMOB", "Trocar para IMOB", "Quero mudar para LEGAL", "Ir para COMEX"]) {
+    const decision = await frontDoorTurn(input);
+    assert.equal(decision?.kind, "vertical_handoff", input);
+    assert.deepEqual(decision?.verticalHandoffRequest, resolveExplicitVerticalHandoffRequest(input));
+    assert.equal(decision?.shouldCreateRun, false);
+    assert.equal(decision?.verticalActivationRequest, undefined);
+  }
+  for (const input of ["O que é o IMOB?", "IMOB", "Como funciona o billing?", "Quero ativar o IMOB"]) {
+    const decision = await frontDoorTurn(input);
+    assert.equal(decision?.verticalHandoffRequest, undefined, input);
+    assert.equal(decision?.shouldCreateRun, false, input);
+  }
+  const operational = await frontDoorTurn("quero cadastrar um imóvel");
+  assert.deepEqual(operational?.verticalHandoffRequest, { verticalId: "imob", capabilityId: "crm.forms", mode: "requires_write" });
+});
+
+test("entrada de navegação é somente intenção de leitura; não ativa nem simula autorização", async () => {
+  const decision = await resolveLauncherNavigationDecision({ domainHint: "imob", isUnifiedEiah: true });
+  assert.deepEqual(decision?.verticalHandoffRequest, { verticalId: "imob", mode: "read_only" });
+  assert.equal(decision?.shouldCreateRun, false);
+  assert.equal(decision?.verticalHandoff, undefined);
+  assert.equal(decision?.verticalActivationRequest, undefined);
+  for (const domainHint of [null, "core", "unknown", "imob&mode=execute"]) {
+    assert.equal(await resolveLauncherNavigationDecision({ domainHint, isUnifiedEiah: true }), null);
+  }
+  assert.equal(await resolveLauncherNavigationDecision({ domainHint: "imob", isUnifiedEiah: false }), null);
+});
+
+for (const scenario of ["allowed", "not_installed", "agents_missing", "permission_denied", "revoked", "different_workspace"]) {
+  test(`Marketplace → engine → registry → handoff governado: ${scenario}`, async (t) => {
+    updateSession({ token: "synthetic-token", userId: "user-test", tenantId: "tenant-test", workspaceId: "workspace-test", activeDomain: "core" });
+    const originalFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = originalFetch; });
+    const calls: Array<{ path: string; method: string; workspace: string | null }> = [];
+    const composed = composeVerticalRegistry({ scope: { tenantId: "tenant-test", workspaceId: scenario === "different_workspace" ? "workspace-other" : "workspace-test" },
+      imob: { installationStatus: scenario === "not_installed" ? "missing" : "active", entitled: true,
+        agentsReady: scenario !== "agents_missing", userCanUse: !["permission_denied", "different_workspace"].includes(scenario),
+        usage: scenario === "revoked" ? "blocked" : "full" } });
+    if (scenario === "different_workspace") updateSession({ workspaceId: "workspace-other" });
+    globalThis.fetch = (async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, method: init?.method ?? "GET", workspace: new Headers(init?.headers).get("x-eiah-workspace") });
+      if (path.endsWith("/vertical-registry")) return new Response(JSON.stringify({ ok: true, data: projectVerticalRegistryForSurface(composed.registry) }));
+      assert.ok(path.endsWith("/vertical-handoff"), "não chama ativação, run, aprovação ou domínio operacional");
+      const request = JSON.parse(String(init?.body));
+      assert.equal(request.mode, "read_only");
+      return new Response(JSON.stringify({ ok: true, data: buildAndEvaluateVerticalHandoff(composed, request, "test-handoff") }));
+    }) as typeof fetch;
+    let syncs = 0;
+    const decision = await resolveLauncherNavigationDecision({ domainHint: "imob", isUnifiedEiah: true });
+    const resolved = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, async () => {
+      syncs += 1; updateSession({ activeDomain: "imob" });
+    });
+    assert.equal(resolved?.verticalHandoff?.ok, scenario === "allowed");
+    assert.equal(syncs, scenario === "allowed" ? 1 : 0);
+    assert.equal(getSession().activeDomain, scenario === "allowed" ? "imob" : "core");
+    assert.equal(resolved?.shouldCreateRun, false);
+    assert.ok(calls.every((call) => call.workspace === (scenario === "different_workspace" ? "workspace-other" : "workspace-test")));
+  });
+}
+
+for (const outcome of ["allowed", "denied"]) {
+  test(`entrada superada durante handoff ${outcome} é descartada antes de sincronizar`, async () => {
+    let current = true;
+    let syncs = 0;
+    const decision = await resolveLauncherNavigationDecision({ domainHint: "imob", isUnifiedEiah: true });
+    const result = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, async () => {
+      current = false;
+      return outcome === "allowed" ? allowed : { ok: false, reasonCode: "VERTICAL_SCOPE_DENIED" };
+    }, async () => { syncs += 1; }, () => current);
+    assert.equal(result, null);
+    assert.equal(syncs, 0);
+  });
+}
+
+test("entrada superada durante sync não apresenta resposta nem encaminha input", async () => {
+  let current = true;
+  const decision = await resolveLauncherNavigationDecision({ domainHint: "imob", isUnifiedEiah: true });
+  const result = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, async () => allowed,
+    async () => { current = false; }, () => current);
+  assert.equal(result, null);
 });
