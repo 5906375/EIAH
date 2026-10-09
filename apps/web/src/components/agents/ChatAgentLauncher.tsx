@@ -465,6 +465,7 @@ export default function ChatAgentLauncher({
   useEffect(() => () => { conversationGenerationRef.current += 1; }, []);
   const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({
     messages, setMessages, getConversationGeneration: () => conversationGenerationRef.current,
+    getConversationScopeKey: () => activeAgentId ?? FALLBACK_AGENT.id,
   });
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&

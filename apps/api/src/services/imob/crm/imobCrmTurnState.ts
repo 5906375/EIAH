@@ -1,3 +1,5 @@
+import { parseProposalContinuity } from "./imobProposalReviewContinuity";
+
 function asObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -45,7 +47,11 @@ export function parseImobCrmThreadState(body: Record<string, unknown>) {
           bathrooms: Number.isFinite(Number(threadSlotsRaw?.bathrooms)) ? Number(threadSlotsRaw?.bathrooms) : null,
           propertyType: asString(threadSlotsRaw?.propertyType),
         },
-        operational: threadOperationalRaw ? (threadOperationalRaw as any) : null,
+        operational: threadOperationalRaw ? {
+          ...threadOperationalRaw,
+          ...(Object.hasOwn(threadOperationalRaw, "continuity")
+            ? { continuity: parseProposalContinuity(threadOperationalRaw) } : {}),
+        } as any : null,
       }
     : null;
 }

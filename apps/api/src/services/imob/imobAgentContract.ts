@@ -11,6 +11,35 @@ import { listImobBackingSpecialists } from "./imobSpecialistBridge";
 const IMOB_AGENT_CONTRACT_ID = "imob.case_concierge.v1" as const;
 const IMOB_AGENT_CONTRACT_VERSION = 1 as const;
 
+export const IMOB_PROPOSAL_REVIEW_POLICY = Object.freeze({
+  statePath: "conversationState.operational.continuity",
+  version: "v1",
+  owner: "IMOB",
+  affirmation: "acknowledge_data_only",
+  negative: "ask_correction_details",
+  correction: "acknowledge_request_without_applying",
+  cancellation: "close_conversational_question_only",
+  ambiguousPendingAction: "clarify_without_authorizing",
+  ambiguousIntent: "clarify_ownership_without_consuming_question",
+  continueReviewInput: "continuar revisão da proposta",
+  changeTopicInput: "mudar de assunto",
+  ambiguityPrompt: 'Sua mensagem se refere à revisão da proposta ou você quer mudar de assunto? Responda "Continuar revisão da proposta" ou "Mudar de assunto". O rascunho e a pergunta foram preservados; nenhuma ação foi executada.',
+  affirmativeInputs: ["sim", "sim estao corretos"],
+  negativeInputs: ["nao", "nao estao corretos"],
+  cancelInputs: ["cancelar", "cancelar proposta", "cancelar a proposta", "nao quero continuar"],
+  capability: "explicit_v1_context_reference",
+  replay: "consultive_only_no_durable_single_use_guarantee",
+  restoration: "invalidate_active_question",
+  restoredPresentation: "retain_review_identification_without_reference_or_draft",
+  referenceLoss: "revalidate_conversation_never_confirm_pending_action",
+  topicChange: "explicit_intent_or_governed_vertical_transfer",
+  correctionOwnership: "proposal_domain_until_explicit_transfer",
+  lateReply: "discard_when_presented_question_is_replaced",
+  languageCoverage: "minimum_contextual_protocol_not_universal_natural_language",
+  transportFailure: "retain_context_for_safe_retry",
+  createsExecution: false,
+} as const);
+
 export const IMOB_CONTRACT_INTAKE_RUNTIME_POLICY: ImobContractIntakeRuntimePolicy = Object.freeze({
   actionId: "imob.contract.intake",
   operationalState: "kill_switch_controlled",
@@ -92,6 +121,7 @@ export function buildImobAgentContractV1() {
       ...capabilities,
     },
     runtimePolicies: {
+      proposalReview: IMOB_PROPOSAL_REVIEW_POLICY,
       contractIntake: { ...IMOB_CONTRACT_INTAKE_RUNTIME_POLICY },
     },
   };

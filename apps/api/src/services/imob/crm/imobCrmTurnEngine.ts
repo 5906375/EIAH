@@ -1,5 +1,6 @@
+import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
 import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
-import { matchImobConversationalIntents } from "../imobIntentCatalog";
+import { matchImobConversationalIntents, parseImobIntent } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
 import { InternalCrmMarketScanProvider } from "../marketScan/InternalCrmMarketScanProvider";
 import { TenantInventoryImportProvider } from "../marketScan/TenantInventoryImportProvider";
@@ -79,6 +80,9 @@ export type ImobCrmTurnEngineHelpers = {
 
 export type ImobCrmTurnEngineParams = {
   prisma: unknown;
+  /** Scoped case facts supplied by the authenticated route, never by the request body. */
+  reviewCase?: ImobCrmCaseContext | null;
+  reviewDraftRef?: string | null;
   authContext: {
     tenantId: string;
     workspaceId: string;
@@ -1674,6 +1678,22 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   const recipeMissionContext = asObject(params.body.recipeMissionContext) as ImobMissionContext | null;
   const threadLabel = asString(params.body.threadLabel);
   const parsedThreadState = parseImobCrmThreadState(params.body);
+  const hasContinuity = Object.hasOwn(asObject(asObject(params.body.threadState)?.operational) ?? {}, "continuity");
+  const shortReply = isImobPendingActionConfirmationMessage(message ?? "")
+    || /^(sim|não|nao|ok|confirmo|confirmar|pode executar|pode seguir|seguir)[.!?]*$/i.test(message ?? "");
+  // Only a complete independent catalog request can leave an answered descriptor.
+  // This is routing, not authority: the ordinary domain/action gates still apply.
+  const answeredReview = asObject(asObject(parsedThreadState?.operational)?.continuity)?.pending === null;
+  const nextIntent = answeredReview && !shortReply ? parseImobIntent(message ?? "") : null;
+  const independentTurn = Boolean(nextIntent?.entity && nextIntent.action
+    && ["create", "get", "list", "view", "history"].includes(nextIntent.action));
+  const guardedReply = Object.hasOwn(params.body, "continuityReplyRef")
+    && !(independentTurn && params.body.continuityReplyRef === null);
+  if (guardedReply || (hasContinuity && (shortReply || asObject(asObject(asObject(params.body.threadState)?.operational)?.continuity)?.pending))) {
+    return { ...resolveProposalReviewReply({ message: message ?? "", replyRef: params.body.continuityReplyRef, contextRef: params.body.continuityContextRef,
+      threadState: parsedThreadState, caseId: requestedCaseId, threadId: requestedThreadId,
+      reviewCase: params.reviewCase ?? null, reviewDraftRef: params.reviewDraftRef ?? null, canonicalPendingAction, ...params.authContext }), entitlements: params.entitlements };
+  }
 
   const processSingleOperationalTurn = async (turn: {
     message: string;
@@ -2114,12 +2134,12 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     entitlements: params.entitlements,
   };
 
-  return applyImobCrmCopyStateToResolution(attachImobCasePlanToResolution({
+  return attachProposalReviewQuestion(applyImobCrmCopyStateToResolution(attachImobCasePlanToResolution({
     data: canonicalSingleData,
     tenantId: params.authContext.tenantId,
     workspaceId: params.authContext.workspaceId,
     caseId: requestedCaseId,
     message: message ?? "",
     recipeMissionContext,
-  }));
+  })), params.authContext, params.body.continuityContextRef);
 }

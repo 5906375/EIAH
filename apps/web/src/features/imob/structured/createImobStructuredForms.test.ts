@@ -6,8 +6,9 @@ import { IMOB_ACTION_MENUS, type ImobActionMenuItem } from "@/features/imob/imob
 import { createImobStructuredForms } from "./createImobStructuredForms";
 import type { ImobFormState } from "./useImobFormState";
 import type { ImobStructuredFormsHost, StructuredMessage } from "./types";
-import { createImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD } from "./useImobFrontDoorForms";
+import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD } from "./useImobFrontDoorForms";
 import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";
+import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobProposalReviewContinuity";
 import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
 import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
 import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";
@@ -130,7 +131,8 @@ function proposalTurn() {
   return { ...resolveImobTurn({ message: "Quero gerar uma proposta comercial para um cliente.", access }), caseContext } as unknown as ImobResolveTurnResponse;
 }
 
-function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false) {
+function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,
+  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"> = {}) {
   const { state, raw, getValues, getErrors } = fakeState();
   if (prepareForms) {
     // Executa o callback real do hook, com setters em memória, sem copiar a regra de prefill.
@@ -152,7 +154,7 @@ function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok
   const calls: Parameters<typeof apiResolveImobTurn>[0][] = [];
   const echoed: string[] = [];
   const adapter = createImobFrontDoorForms({
-    imobForms: state, getMessages: () => messages,
+    imobForms: state, getMessages: () => messages, ...transport,
     getConversationGeneration: () => conversationGenerationRef.current,
     appendStructured: (message) => { messages.push(raw.prepareIncomingMessage(message)); },
     patchStructured: (id, update) => { messages = messages.map((message) => message.id === id ? update(message) : message); },
@@ -866,3 +868,418 @@ test("resposta IMOB não escreve após troca de workspace, mesmo antes de render
     assert.deepEqual(harness.messages(), []);
   } finally { updateSession(initial); }
 });
+
+
+// FDC-03A deterministic integration: Front Door → CRM engine → domain presentation, with no database/provider.
+function reviewIntegrationHarness() {
+  const helperCalls: string[] = [];
+  const helpers: any = {
+    asString: (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : null,
+    hydrateThreadStateWithPersistedLead: async ({ threadState }: any) => { helperCalls.push("hydrate"); return threadState; },
+    resolveImobOperationalUpdate: async () => { helperCalls.push("update"); return null; },
+    resolveImobOperationalConsult: async () => { helperCalls.push("consult"); return null; },
+    applyCanonicalJourneyToResolvedData: (data: any) => data,
+    applyExistingRegistrationResolution: async ({ resolved }: any) => { helperCalls.push("registration"); return resolved; },
+    injectResolvedPendingSuggestion: (data: any) => data,
+    upsertImobCaseFromResolvedTurn: async ({ resolved }: any) => { helperCalls.push("upsert"); return {
+      caseId: "case-proposal", threadId: "thread-server", flow: "proposal.create", stage: resolved.conversationState.operational.status,
+      status: resolved.conversationState.operational.status, blockers: ["Aprovação necessária"], pendingItems: ["Revisão humana"] }; },
+    normalizeImobRouteText: (value: string) => value.toLowerCase(), formatImobCaseFlowLabel: (value: string) => value,
+  };
+  let reviewCase: any = null;
+  let reviewDraftRef: string | null = null;
+  const harness = frontDoorHarness(async (request) => {
+    const result = await resolveImobCrmTurnEngine({ prisma: {}, authContext: { tenantId: access.tenantId, workspaceId: access.workspaceId, userId: "user-test" },
+      body: { ...request }, reviewCase, reviewDraftRef, helpers, workspaceResponsibleLabel: "Corretor", entitlements: access.entitlements }) as any;
+    reviewCase = result.caseContext;
+    if (result.mode === "execute") reviewDraftRef = proposalDraftRef(result.conversationState.operational.proposalDraft);
+    return { ok: true, data: result as ImobResolveTurnResponse };
+  });
+  async function ready() {
+    await harness.forwardToImob("Gerar proposta");
+    const message = harness.messages().at(-1)!;
+    harness.fill(message);
+    await harness.structuredForms.handleStructuredFormAction(message, "submit");
+    assert.equal(harness.getConversationState()?.operational?.status, "ready_for_review");
+    assert.ok(harness.getConversationState()?.operational?.continuity?.pending?.ref);
+  }
+  return { harness, ready, helperCalls };
+}
+
+for (const input of ["Não", "Sim", "Talvez"]) {
+  test(`FDC-03A Front Door: coleta → revisão → ${input} mantém ownership IMOB e não cria run`, async () => {
+    const { harness, ready, helperCalls } = reviewIntegrationHarness();
+    await ready();
+    const previous = structuredClone(harness.getConversationState());
+    const mutationsBefore = [...helperCalls];
+    const decision = await sendFrontDoorTurn(harness, input);
+    assert.equal(decision?.kind, "imob_operational_continuation");
+    assert.equal(decision?.shouldCreateRun, false);
+    assert.equal(decision?.turnConsumed, true);
+    assert.equal(harness.calls.at(-1)?.continuityReplyRef, previous!.operational!.continuity!.pending!.ref);
+    assert.equal(harness.calls.at(-1)?.message, input, "frontend não interpreta respostas da revisão");
+    assert.deepEqual(helperCalls, mutationsBefore, "resposta de revisão não percorre helpers ou writes");
+    assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, previous?.operational?.proposalDraft);
+    assert.deepEqual(harness.messages().at(-1)?.caseContext?.blockers, ["Aprovação necessária"]);
+    assert.equal(harness.messages().at(-1)?.thread?.id, "thread-server");
+    const rendered = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: harness.messages().at(-1)!, frontDoor: harness as never, isLast: true }));
+    assert.doesNotMatch(rendered, /use a barra do IMOB|Tutor/);
+    if (input === "Não") {
+      assert.match(harness.messages().at(-1)!.text, /Qual dado ou condição/);
+      assert.equal(harness.getConversationState()?.operational?.continuity?.phase, "clarification");
+      await sendFrontDoorTurn(harness, "O valor precisa ser corrigido");
+      assert.deepEqual(helperCalls, mutationsBefore);
+      assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, previous?.operational?.proposalDraft);
+    }
+    if (input === "Sim") {
+      assert.equal(harness.getConversationState()?.operational?.continuity?.pending, null);
+      const before = harness.calls.length;
+      await sendFrontDoorTurn(harness, "Sim");
+      assert.equal(harness.calls.length, before, "pergunta respondida não captura um novo sim");
+    }
+  });
+}
+
+for (const scenario of ["unknown_version", "expired", "answered", "other_thread", "other_case", "other_assistant", "conversation", "workspace", "user", "agent", "vertical", "unavailable"]) {
+  test(`FDC-03A revisão não captura resposta após ${scenario}`, async (t) => {
+    const { harness, ready } = reviewIntegrationHarness();
+    const savedSession = { ...getSession() };
+    t.after(() => updateSession(savedSession));
+    await ready();
+    const messages = harness.messages();
+    const context = messages.at(-1)!;
+    const pending = context.conversationState!.operational!.continuity!.pending!;
+    let options: Parameters<typeof sendFrontDoorTurn>[2] = {};
+    if (scenario === "unknown_version") (context.conversationState!.operational!.continuity as any).version = "v8";
+    if (scenario === "expired") pending.expiresAt = "2000-01-01T00:00:00Z";
+    if (scenario === "answered") context.conversationState!.operational!.continuity!.pending = null;
+    if (scenario === "other_thread") pending.threadId = "other-thread";
+    if (scenario === "other_case") pending.caseId = "other-case";
+    if (scenario === "other_assistant") harness.setMessages([...messages, { id: "billing-reply", role: "assistant", text: "Sobre cobrança: deseja ver a fatura?" }]);
+    if (scenario === "conversation") harness.conversationGenerationRef.current += 1;
+    if (scenario === "workspace") updateSession({ workspaceId: "another-workspace" });
+    if (scenario === "user") updateSession({ userId: "another-user" });
+    if (scenario === "vertical") { updateSession({ activeDomain: "core" }); options = { activeDomain: "core" }; }
+    if (scenario === "agent") {
+      // Agent switch changes transport identity without needing to alter the conversational draft.
+      let agent = "EIAH";
+      const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: harness.messages,
+      getContinuityContextRef: () => harness.messages().find((m) => m.conversationState?.operational?.continuity?.pending)?.conversationState?.operational?.continuity?.pending?.contextRef ?? "v1:no-question",
+        getConversationGeneration: () => 0, getConversationScopeKey: () => agent,
+        appendStructured: () => assert.fail("should not append"), patchStructured: () => undefined, echoUser: () => undefined });
+      assert.ok(adapter.getConversationState()?.operational?.continuity?.pending);
+      agent = "J_360";
+      assert.equal(adapter.getConversationState()?.operational?.continuity, null);
+      return;
+    }
+    if (scenario === "unavailable") options = { available: false };
+    const before = harness.calls.length;
+    const decision = await sendFrontDoorTurn(harness, "Sim", options);
+    assert.notEqual(decision?.kind, "imob_operational_continuation");
+    assert.equal(harness.calls.length, before);
+    assert.equal(context.conversationState?.operational?.proposalDraft?.offerAmount, 100000);
+  });
+}
+
+for (const input of ["Como vejo minha fatura?", "Preciso de ajuda do Jurídico", "Preciso de ajuda jurídica", "Quero ativar o IMOB", "Quero sair do IMOB"]) {
+  test(`FDC-03A pergunta explícita posterior (${input}) suspende revisão e preserva draft`, async () => {
+    const { harness, ready } = reviewIntegrationHarness();
+    await ready();
+    const draft = structuredClone(harness.getConversationState()?.operational?.proposalDraft);
+    const count = harness.calls.length;
+    await sendFrontDoorTurn(harness, input);
+    assert.equal(harness.calls.length, count);
+    assert.equal(harness.getConversationState()?.operational?.continuity, null);
+    assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, draft);
+    await sendFrontDoorTurn(harness, "Sim");
+    assert.equal(harness.calls.length, count);
+  });
+}
+
+test("FDC-03A falha HTTP de revisão mantém pergunta e draft para retry, sem run", async () => {
+  const { harness, ready } = reviewIntegrationHarness();
+  await ready();
+  const context = structuredClone(harness.getConversationState());
+  let fail = true;
+  const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: harness.messages,
+      getContinuityContextRef: () => harness.messages().find((m) => m.conversationState?.operational?.continuity?.pending)?.conversationState?.operational?.continuity?.pending?.contextRef ?? "v1:no-question",
+    getConversationGeneration: () => 0, appendStructured: (message) => harness.setMessages([...harness.messages(), message]),
+    patchStructured: () => undefined, echoUser: () => undefined,
+    resolveTurn: async (request) => { if (fail) throw new Error("HTTP 503");
+      assert.equal(request.continuityReplyRef, context!.operational!.continuity!.pending!.ref);
+      return { ok: true, data: { ...proposalTurn(), mode: "consult", conversationState: context!, presentation: { text: "retry aceito" } } }; },
+  });
+  await adapter.consumeOperationalTurn("continue", "Sim");
+  assert.match(harness.messages().at(-1)!.text, /contexto foi preservado/);
+  assert.deepEqual(adapter.getConversationState(), context);
+  fail = false;
+  await adapter.consumeOperationalTurn("continue", "Sim");
+  assert.equal(harness.messages().at(-1)!.text, "retry aceito");
+});
+
+for (const change of ["conversation", "workspace", "agent", "vertical", "question_replaced"]) {
+  test(`FDC-03A resposta atrasada após ${change} não altera conversa`, async (t) => {
+    const savedSession = { ...getSession() };
+    t.after(() => updateSession(savedSession));
+    updateSession({ activeDomain: "imob" });
+    const { harness, ready } = reviewIntegrationHarness();
+    await ready();
+    let finish!: (value: { ok: true; data: ImobResolveTurnResponse }) => void;
+    const response = new Promise<{ ok: true; data: ImobResolveTurnResponse }>((resolve) => { finish = resolve; });
+    let agent = "EIAH";
+    const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: harness.messages,
+      getContinuityContextRef: () => harness.messages().find((m) => m.conversationState?.operational?.continuity?.pending)?.conversationState?.operational?.continuity?.pending?.contextRef ?? "v1:no-question",
+      getConversationGeneration: () => harness.conversationGenerationRef.current, getConversationScopeKey: () => agent,
+      appendStructured: (message) => harness.setMessages([...harness.messages(), message]), patchStructured: () => undefined,
+      echoUser: () => undefined, resolveTurn: async () => response });
+    const pending = adapter.consumeOperationalTurn("continue", "Sim");
+    if (change === "conversation") harness.conversationGenerationRef.current += 1;
+    if (change === "workspace") updateSession({ workspaceId: "other-workspace" });
+    if (change === "agent") agent = "J_360";
+    if (change === "vertical") updateSession({ activeDomain: "core" });
+    if (change === "question_replaced") harness.setMessages([...harness.messages(), { id: "new-question", role: "assistant", text: "Ver sua fatura?" }]);
+    const snapshot = structuredClone(harness.messages());
+    finish({ ok: true, data: { ...proposalTurn(), presentation: { text: "late answer" } } });
+    await pending;
+    assert.deepEqual(harness.messages(), snapshot);
+  });
+}
+
+test("FDC-03A requisições fora de ordem no bootstrap só apresentam a resposta mais recente", async () => {
+  const completions: Array<(value: { ok: true; data: ImobResolveTurnResponse }) => void> = [];
+  const harness = frontDoorHarness(async () => new Promise((resolve) => completions.push(resolve)));
+  const first = harness.forwardToImob("Gerar proposta");
+  const second = harness.forwardToImob("Gerar proposta de locação");
+  completions[1]({ ok: true, data: { ...proposalTurn(), presentation: { text: "latest" } } });
+  await second;
+  completions[0]({ ok: true, data: { ...proposalTurn(), presentation: { text: "outdated" } } });
+  await first;
+  assert.deepEqual(harness.messages().map((message) => message.text), ["latest"]);
+});
+
+
+test("FDC-03A duas respostas simultâneas à mesma pergunta enviam uma vez e preservam a primeira resposta", async () => {
+  const { harness, ready } = reviewIntegrationHarness();
+  await ready();
+  let finish!: () => void;
+  const response = new Promise<void>((resolve) => { finish = resolve; });
+  let calls = 0;
+  const before = harness.messages().length;
+  const context = harness.getConversationState()!;
+  const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: harness.messages,
+      getContinuityContextRef: () => harness.messages().find((m) => m.conversationState?.operational?.continuity?.pending)?.conversationState?.operational?.continuity?.pending?.contextRef ?? "v1:no-question",
+    getConversationGeneration: () => 0, appendStructured: (message) => harness.setMessages([...harness.messages(), message]),
+    patchStructured: () => undefined, echoUser: () => undefined,
+    resolveTurn: async () => { calls += 1; await response; return { ok: true, data: {
+      ...proposalTurn(), mode: "consult", conversationState: { ...context, operational: {
+        ...context.operational!, continuity: { ...context.operational!.continuity!, pending: null } } },
+      presentation: { text: "Dados confirmados sem execução." }, caseContext: harness.messages().at(-1)!.caseContext,
+    } }; },
+  });
+  const first = adapter.consumeOperationalTurn("continue", "Sim");
+  await adapter.consumeOperationalTurn("continue", "Não");
+  assert.equal(calls, 1);
+  assert.equal(harness.messages().length, before);
+  finish();
+  await first;
+  assert.equal(harness.messages().length, before + 1);
+  assert.equal(harness.messages().at(-1)!.text, "Dados confirmados sem execução.");
+  assert.equal(adapter.getConversationState()?.operational?.continuity?.pending, null);
+});
+
+for (const scenario of ["remount", "restored_history", "another_conversation", "replaced_origin", "another_user"]) {
+  test(`FDC-03A-R1 restored descriptor cannot capture a reply in ${scenario}`, async (t) => {
+    const saved = { ...getSession() };
+    t.after(() => updateSession(saved));
+    const { harness, ready } = reviewIntegrationHarness();
+    await ready();
+    const original = structuredClone(harness.messages());
+    if (scenario === "another_user") updateSession({ userId: "other-user" });
+    const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: () => JSON.parse(JSON.stringify(original)),
+      getConversationGeneration: () => scenario === "another_conversation" ? 99 : 0,
+      getConversationScopeKey: () => "EIAH",
+      ...(scenario === "replaced_origin" ? { getContinuityContextRef: () => "v1:replacement" } : {}),
+      appendStructured: () => assert.fail("stale review cannot append"), patchStructured: () => undefined,
+      echoUser: () => undefined, resolveTurn: async () => { assert.fail("stale review cannot send"); },
+    });
+    assert.equal(adapter.getConversationState()?.operational?.continuity, null);
+    assert.deepEqual(adapter.getConversationState()?.operational?.proposalDraft, harness.getConversationState()?.operational?.proposalDraft);
+    await adapter.consumeOperationalTurn("continue", "Sim");
+    // A remount invalidates even after the history hydration effect restores its old bytes.
+    assert.ok(original.at(-1)?.conversationState?.operational?.continuity?.pending);
+  });
+}
+
+test("FDC-03A-R1 Front Door presents draft summary → No → concrete details, without writes", async () => {
+  const { harness, ready, helperCalls } = reviewIntegrationHarness();
+  await ready();
+  const question = harness.messages().at(-1)!;
+  const rendered = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: question, frontDoor: harness as never, isLast: true }));
+  assert.match(rendered, /100\.000,00/);
+  assert.doesNotMatch(rendered, /Maria|47999998888/);
+  const before = [...helperCalls];
+  await sendFrontDoorTurn(harness, "Não");
+  const clarification = structuredClone(harness.getConversationState()?.operational?.continuity);
+  await sendFrontDoorTurn(harness, "O valor precisa ser 90000");
+  assert.deepEqual(harness.getConversationState()?.operational?.continuity, clarification);
+  assert.equal(harness.getConversationState()?.operational?.proposalDraft?.offerAmount, 100000);
+  assert.match(harness.messages().at(-1)!.text, /Nenhum dado foi alterado.*Gerar proposta/);
+  assert.match(harness.messages().at(-1)!.text, /Continuar revisão da proposta.*Mudar de assunto/);
+  assert.deepEqual(helperCalls, before);
+});
+
+test("FDC-03A-R1 Front Door cancellation preserves domain and approval", async () => {
+  const { harness, ready, helperCalls } = reviewIntegrationHarness();
+  await ready();
+  const draft = structuredClone(harness.getConversationState()?.operational?.proposalDraft);
+  const before = [...helperCalls];
+  const decision = await sendFrontDoorTurn(harness, "Cancelar proposta");
+  assert.equal(decision?.shouldCreateRun, false);
+  assert.equal(harness.getConversationState()?.operational?.continuity?.pending, null);
+  assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, draft);
+  assert.deepEqual(helperCalls, before);
+  assert.match(harness.messages().at(-1)!.text, /nenhuma ação, negócio ou registro foi cancelado/);
+});
+
+test("FDC-03A-R1 real hook mounted with restored history invalidates old review before any effect", async () => {
+  const { harness, ready } = reviewIntegrationHarness();
+  await ready();
+  const restored = JSON.parse(JSON.stringify(harness.messages())).map((message: StructuredMessage) => ({
+    id: message.id, role: message.role, content: message.text, imobStructured: message,
+  }));
+  let state: ReturnType<typeof harness.getConversationState>;
+  function RestoredConversation() {
+    const adapter = useImobFrontDoorForms({ messages: restored, setMessages: () => undefined,
+      getConversationGeneration: () => 0, getConversationScopeKey: () => "EIAH" });
+    state = adapter.getConversationState();
+    return null;
+  }
+  renderToStaticMarkup(React.createElement(RestoredConversation));
+  assert.equal(state!.operational?.continuity, null);
+  assert.deepEqual(state!.operational?.proposalDraft, harness.getConversationState()?.operational?.proposalDraft);
+  assert.ok(restored.at(-1).imobStructured.conversationState.operational.continuity.pending);
+});
+
+test("FDC-03A-R1 actual history invalidation effect handles hydration after mount, preserves draft and is stable", async () => {
+  const { harness, ready } = reviewIntegrationHarness();
+  await ready();
+  let messages = harness.messages().map((m) => ({ id: m.id, role: m.role, content: m.text, imobStructured: structuredClone(m) }));
+  const draft = structuredClone(messages.at(-1)!.imobStructured.conversationState?.operational?.proposalDraft);
+  const file = ts.createSourceFile("useImobFrontDoorForms.ts", readFileSync(new URL("./useImobFrontDoorForms.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
+  let callback: ts.Expression | undefined;
+  function visit(node: ts.Node) {
+    if (ts.isCallExpression(node) && node.expression.getText(file) === "React.useEffect"
+      && node.arguments[0].getText(file).includes("History hydration")) callback = node.arguments[0];
+    ts.forEachChild(node, visit);
+  }
+  visit(file);
+  assert.ok(callback);
+  const env = { previousScope: { current: "scope" }, questionScope: "scope", requestSequenceRef: { current: 0 },
+    reviewOriginRef: { current: { ref: "v1:new-mount" } }, setMessages: (update: (value: typeof messages) => typeof messages) => { messages = update(messages); } };
+  const run = new Function("env", `with (env) { ${ts.transpileModule(`return (${callback.getText(file)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText} }`)(env);
+  const restored = structuredClone(messages);
+  messages = [];
+  run();
+  messages = restored; // The parent history effect runs later and restores old snapshots.
+  run();
+  assert.equal(messages.at(-1)!.imobStructured.conversationState?.operational?.continuity, null);
+  assert.match(messages.at(-1)!.content, /contexto anterior.*Reabra Gerar proposta/);
+  assert.deepEqual(messages.at(-1)!.imobStructured.conversationState?.operational?.proposalDraft, draft);
+  const stable = messages;
+  run();
+  assert.equal(messages, stable, "no state update loop");
+});
+
+for (const target of ["LEGAL", "COMEX", "HEALTH", "financeiro"]) {
+  for (const command of ["Quero mudar para", "Trocar para", "Ir para"]) {
+    test(`FDC-03A-R3 ${command} ${target} releases review into governed handoff without running`, async () => {
+      const { harness, ready, helperCalls } = reviewIntegrationHarness();
+      await ready();
+      const draft = structuredClone(harness.getConversationState()?.operational?.proposalDraft);
+      const calls = harness.calls.length;
+      const before = [...helperCalls];
+      const decision = await sendFrontDoorTurn(harness, `${command} ${target}`);
+      assert.equal(decision?.kind, "vertical_handoff");
+      assert.equal(decision?.verticalHandoffRequest?.verticalId, target.toLowerCase());
+      assert.equal(decision?.shouldCreateRun, false);
+      assert.equal(harness.calls.length, calls);
+      assert.equal(harness.getConversationState()?.operational?.continuity, null);
+      assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, draft);
+      assert.deepEqual(helperCalls, before);
+    });
+  }
+}
+
+for (const input of ["O valor de venda precisa ser 90000", "Quero corrigir o valor de venda", "O contrato precisa de outro valor", "A cláusula de pagamento precisa ser corrigida", "O imóvel informado está errado"]) {
+  test(`FDC-03A-R3 clarification stays with proposal domain: ${input}`, async () => {
+    const { harness, ready, helperCalls } = reviewIntegrationHarness();
+    await ready();
+    await sendFrontDoorTurn(harness, "Não");
+    const before = [...helperCalls];
+    const decision = await sendFrontDoorTurn(harness, input);
+    assert.equal(decision?.kind, "imob_operational_continuation");
+    assert.equal(decision?.shouldCreateRun, false);
+    assert.match(harness.messages().at(-1)!.text, /Nenhum dado foi alterado.*Gerar proposta/);
+    assert.equal(harness.getConversationState()?.operational?.proposalDraft?.offerAmount, 100000);
+    assert.deepEqual(helperCalls, before);
+  });
+}
+
+for (const input of ["Quero mudar para a vertical LEGAL", "Mude para COMEX", "Quero revisar o prazo de pagamento da proposta", "Preciso avaliar o reajuste do valor da proposta", "Vamos revisar a cláusula de pagamento desta proposta", "Gostaria de tratar outra coisa"]) {
+  test(`FDC mínimo: dúvida de ownership (${input}) pede escolha sem transferir nem descartar contexto`, async () => {
+    const { harness, ready, helperCalls } = reviewIntegrationHarness();
+    await ready();
+    await sendFrontDoorTurn(harness, "Não");
+    const state = structuredClone(harness.getConversationState());
+    const helpers = [...helperCalls];
+    const decision = await sendFrontDoorTurn(harness, input);
+    assert.equal(decision?.shouldCreateRun, false);
+    assert.equal(decision?.verticalHandoffRequest, undefined);
+    assert.equal(decision?.kind, "imob_operational_continuation");
+    assert.deepEqual(harness.getConversationState()?.operational, state?.operational);
+    assert.deepEqual(helperCalls, helpers);
+    assert.match(harness.messages().at(-1)!.text, /Continuar revisão da proposta.*Mudar de assunto/);
+    assert.deepEqual(harness.messages().at(-1)!.caseContext?.blockers, ["Aprovação necessária"]);
+    await sendFrontDoorTurn(harness, "Mudar de assunto");
+    assert.equal(harness.getConversationState()?.operational?.continuity?.pending, null);
+    assert.deepEqual(harness.getConversationState()?.operational?.proposalDraft, state?.operational?.proposalDraft);
+    const calls = harness.calls.length;
+    await sendFrontDoorTurn(harness, "Como vejo minha fatura?");
+    assert.equal(harness.calls.length, calls, "a nova pergunta não é capturada pela revisão pausada");
+  });
+}
+
+for (const transport of ["reply", "direct_turn"]) {
+for (const outcome of ["success", "transport_failure"]) {
+  for (const replacement of ["changed_ref", "invalidated_ref"]) {
+    test(`FDC mínimo: Front Door rejeita ${transport} ${outcome} após ${replacement} no mesmo ID`, async () => {
+      const { harness, ready } = reviewIntegrationHarness();
+      await ready();
+      const question = harness.messages().at(-1)!;
+      const state = structuredClone(harness.getConversationState()!);
+      let finish!: (value: { ok: true; data: ImobResolveTurnResponse }) => void;
+      let fail!: (error: Error) => void;
+      const response = new Promise<{ ok: true; data: ImobResolveTurnResponse }>((resolve, reject) => { finish = resolve; fail = reject; });
+      const adapter = createImobFrontDoorForms({ imobForms: harness.imobForms, getMessages: harness.messages,
+        getContinuityContextRef: () => state.operational!.continuity!.pending!.contextRef,
+        getConversationGeneration: () => 0,
+        appendStructured: (message) => harness.setMessages([...harness.messages(), message]),
+        patchStructured: () => assert.fail("stale reply cannot patch"), echoUser: () => undefined,
+        resolveTurn: async () => response });
+      const request = transport === "reply" ? adapter.consumeOperationalTurn("continue", "Não") : adapter.forwardToImob("Gerar proposta");
+      harness.setMessages(harness.messages().map((message) => message.id === question.id ? {
+        ...message, conversationState: { ...state, operational: { ...state.operational!,
+          continuity: { ...state.operational!.continuity!, pending: replacement === "changed_ref"
+            ? { ...state.operational!.continuity!.pending!, ref: "replacement-question" } : null } } },
+      } : message));
+      const snapshot = structuredClone(harness.messages());
+      if (outcome === "success") finish({ ok: true, data: { ...proposalTurn(), mode: "consult",
+        action: "crm.proposal.review", conversationState: state, presentation: { text: "obsolete reply" } } });
+      else fail(new Error("transport unavailable"));
+      await request;
+      assert.deepEqual(harness.messages(), snapshot);
+      assert.equal(harness.imobForms.formSubmittingRef.current.has(question.id), false);
+    });
+  }
+}
+}
