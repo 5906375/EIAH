@@ -209,6 +209,15 @@ export function createImobFrontDoorForms(params: {
     // A confirmação fica na conversa do front door (sessão do launcher); o cadastro já está gravado no IMOB.
     persistMessage: () => undefined,
     sendText: (text, options) => forwardToImob(text, options),
+    onFormClosed: (message) => {
+      const context = latestContext();
+      if (!context?.conversationState || context.thread?.id !== message.thread?.id) return;
+      // Mesmo ciclo do chat dedicado: cadastro concluído não continua em coleta no próximo turno.
+      patchStructured(context.id, (current) => ({
+        ...current,
+        conversationState: current.conversationState ? { ...current.conversationState, operational: null } : undefined,
+      }));
+    },
   };
   const structuredForms = createImobStructuredForms(imobForms, host);
   return {

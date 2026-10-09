@@ -9,6 +9,7 @@ import type { ImobStructuredFormsHost, StructuredMessage } from "./types";
 import { createImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD } from "./useImobFrontDoorForms";
 import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";
 import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
+import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
 import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -129,15 +130,31 @@ function proposalTurn() {
   return { ...resolveImobTurn({ message: "Quero gerar uma proposta comercial para um cliente.", access }), caseContext } as unknown as ImobResolveTurnResponse;
 }
 
-function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }) {
+function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false) {
   const { state, raw, getValues, getErrors } = fakeState();
+  if (prepareForms) {
+    // Executa o callback real do hook, com setters em memória, sem copiar a regra de prefill.
+    const source = ts.createSourceFile("useImobFormState.ts", readFileSync(new URL("./useImobFormState.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
+    let callback: ts.Expression | undefined;
+    function visit(node: ts.Node) {
+      if (ts.isVariableDeclaration(node) && node.name.getText(source) === "prepareIncomingMessage") {
+        callback = (node.initializer as ts.CallExpression).arguments[0];
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(source);
+    assert.ok(callback);
+    raw.prepareIncomingMessage = new Function("pendingFormPrefillRef", "setFormValuesByMessageId", "withInlineDocumentFields",
+      ts.transpileModule(`return (${callback.getText(source)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText,
+    )(raw.pendingFormPrefillRef, raw.setFormValuesByMessageId, withInlineDocumentFields);
+  }
   let messages: StructuredMessage[] = [];
   const calls: Parameters<typeof apiResolveImobTurn>[0][] = [];
   const echoed: string[] = [];
   const adapter = createImobFrontDoorForms({
     imobForms: state, getMessages: () => messages,
     getConversationGeneration: () => conversationGenerationRef.current,
-    appendStructured: (message) => { messages.push(message); },
+    appendStructured: (message) => { messages.push(raw.prepareIncomingMessage(message)); },
     patchStructured: (id, update) => { messages = messages.map((message) => message.id === id ? update(message) : message); },
     echoUser: (text) => echoed.push(text),
     resolveTurn: async (request) => { calls.push(JSON.parse(JSON.stringify(request))); return resolve(request); },
@@ -150,6 +167,119 @@ function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok
   return { ...adapter, imobForms: state, messages: () => messages, calls, echoed, fill, getValues, getErrors, raw,
     setMessages: (next: StructuredMessage[]) => { messages = next; }, conversationGenerationRef };
 }
+
+test("paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run", async (t) => {
+  const harness = frontDoorHarness(async (request) => ({ ok: true, data: {
+    ...resolveImobTurn({ ...request, threadState: request.threadState as never, access }),
+  } as unknown as ImobResolveTurnResponse }), { current: 0 }, true);
+  let owner: Record<string, unknown> = {};
+  let property: Record<string, unknown> = {};
+  let rental: Record<string, unknown> = {};
+  const requests: Array<{ path: string; method: string; body: Record<string, unknown> }> = [];
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(String(input));
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    requests.push({ path, method, body });
+    let data: unknown;
+    if (path === "/imob/owners" && method === "GET") data = { items: [] };
+    else if (path === "/imob/owners" && method === "POST") data = owner = { ...body, id: "owner-parity" };
+    else if (path === "/imob/properties" && method === "GET") data = { items: [] };
+    else if (path === "/imob/properties" && method === "POST") data = property = { ...body, id: "property-parity", owner };
+    else if (path === "/imob/rentals" && method === "POST") {
+      rental = body;
+      data = { propertyId: body.propertyId, caseId: "lease-parity", propertyLabel: "Kit Paridade", tenantName: body.tenantName, pendingItems: [], tenantDocumentMasked: null };
+    } else if (path === "/imob/contracts/rental/prefill" && method === "GET") {
+      assert.equal(url.searchParams.get("propertyId"), property.id);
+      data = {
+        propertyId: property.id, leaseCaseId: "lease-parity", landlordName: owner.name, landlordDocument: owner.document,
+        tenantName: rental.tenantName, tenantDocument: rental.tenantDocument, propertyAddress: property.address,
+        purpose: "residencial", registryNumber: null, startDate: rental.startDate, durationMonths: 12,
+        rentCents: rental.rentCents, dueDay: rental.dueDay, adjustmentIndex: null, adjustmentMonth: null,
+        guaranteeType: null, guaranteeAmountCents: null, guarantorName: null, iptu: null, condominio: null,
+        condominioAmountCents: null, forumCity: property.city, gaps: [],
+      };
+    } else throw new Error(`requisição indevida: ${method} ${path}`);
+    return new Response(JSON.stringify({ ok: true, data }), { status: method === "POST" ? 201 : 200 });
+  });
+  const fill = (message: StructuredMessage, values: Record<string, string>) => harness.raw.setFormValuesByMessageId(
+    (previous: Record<string, Record<string, string>>) => ({ ...previous, [message.id]: { ...previous[message.id], ...values } }),
+  );
+  const nextForm = () => harness.messages().at(-1)!;
+  const follow = async (id: string) => {
+    const reply = nextForm().quickReplies?.find((item) => item.id === id);
+    assert.ok(reply?.onSelect, id);
+    reply.onSelect();
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  };
+
+  await harness.forwardToImob("cadastrar proprietário");
+  const ownerForm = nextForm();
+  assert.equal(ownerForm.form?.submitTarget, "imob.owners.create");
+  fill(ownerForm, { ownerName: "Dona Paridade" });
+  await harness.structuredForms.handleStructuredFormAction(ownerForm, "submit");
+  assert.match(nextForm().text, /Proprietário cadastrado: Dona Paridade/);
+  assert.equal(harness.messages().find((message) => message.id === ownerForm.id)?.form, undefined);
+
+  await follow("next-property");
+  const propertyForm = nextForm();
+  assert.equal(propertyForm.form?.submitTarget, "imob.properties.create");
+  assert.equal(harness.getValues()[propertyForm.id].ownerId, owner.id);
+  fill(propertyForm, { propertyType: "kitnet", goal: "locacao", unitLabel: "Kit Paridade", city: "Cidade Paridade", address: "Rua Paridade, 10" });
+  await harness.structuredForms.handleStructuredFormAction(propertyForm, "submit");
+  assert.match(nextForm().text, /Imóvel cadastrado: Kit Paridade/);
+  assert.equal(property.ownerId, owner.id);
+
+  await follow("next-rental-contract");
+  const leaseForm = nextForm();
+  assert.equal(leaseForm.form?.submitTarget, "imob.rentals.create", "depois do imóvel, deve abrir locação, não repetir captação");
+  assert.equal(harness.calls.at(-1)?.threadState?.operational, null);
+  assert.equal(harness.getValues()[leaseForm.id].propertyId, property.id);
+  fill(leaseForm, { tenantName: "Inquilino Paridade", startDate: "01/04/2025", endDate: "31/03/2026", rent: "900,00", dueDay: "10" });
+  await harness.structuredForms.handleStructuredFormAction(leaseForm, "submit");
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const contract = nextForm();
+  assert.equal(contract.form?.submitTarget, "imob.contracts.rental");
+  assert.equal(contract.thread?.id, leaseForm.thread?.id);
+  assert.equal(harness.getConversationState()?.operational, null);
+  assert.equal(harness.messages().find((message) => message.id === leaseForm.id)?.form, undefined);
+  assert.deepEqual(Object.fromEntries(["propertyId", "landlordName", "tenantName", "propertyAddress", "startDate", "rentValue", "dueDay"].map((key) => [key, harness.getValues()[contract.id][key]])), {
+    propertyId: "property-parity", landlordName: "Dona Paridade", tenantName: "Inquilino Paridade", propertyAddress: "Rua Paridade, 10", startDate: "01/04/2025", rentValue: "900,00", dueDay: "10",
+  });
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: contract, frontDoor: harness, isLast: true }));
+  assert.match(html, /Gerar minuta/);
+  assert.match(html, /value="Dona Paridade"/);
+  assert.match(html, /value="Inquilino Paridade"/);
+  assert.equal(harness.calls.length, 3, "contrato aberto pelo handler compartilhado sem novo resolve-turn");
+  assert.deepEqual(requests.filter((request) => request.method === "POST").map((request) => request.path), ["/imob/owners", "/imob/properties", "/imob/rentals"]);
+  assert.equal(requests.filter((request) => request.path === "/imob/contracts/rental/prefill").length, 1);
+  assert.equal(requests.filter((request) => request.path === "/runs").length, 0);
+});
+
+test("falha ao salvar cadastro mantém coleta, form e valores no Front Door", async (t) => {
+  const harness = frontDoorHarness(async (request) => ({ ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse }));
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ error: { code: "UNAVAILABLE" } }), { status: 503 }));
+  await harness.forwardToImob("cadastrar proprietário");
+  const message = harness.messages()[0];
+  harness.fill(message, { ownerName: "Dona Paridade" });
+  await harness.structuredForms.handleStructuredFormAction(message, "submit");
+  assert.deepEqual(harness.getConversationState(), message.conversationState);
+  assert.ok(harness.messages()[0].form);
+  assert.equal(harness.getValues()[message.id].ownerName, "Dona Paridade");
+  assert.match(harness.getErrors()[message.id]._form, /Não foi possível salvar/);
+});
+
+test("encerrar cadastro antigo não limpa estado de outra thread no Front Door", async () => {
+  const harness = frontDoorHarness(async (request) => ({ ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse }));
+  await harness.forwardToImob("cadastrar proprietário");
+  const old = harness.messages()[0];
+  const other: StructuredMessage = { ...old, id: "other-thread-context", thread: { id: "other-thread", label: "Outra conversa" }, conversationState: proposalTurn().conversationState };
+  harness.setMessages([old, other]);
+  await harness.structuredForms.handleStructuredFormAction(old, "cancel");
+  assert.equal(harness.messages()[0].form, undefined);
+  assert.deepEqual(harness.getConversationState(), other.conversationState);
+});
 
 test("regressão: Gerar proposta → sim oferece o segundo turno ao IMOB antes de help/preview/self-service", async () => {
   const harness = frontDoorHarness(async (request) => ({ ok: true, data: {
