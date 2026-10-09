@@ -5,7 +5,7 @@ import {
   type EiahHelpQueryHit,
   type ImobThreadConversationState,
 } from "@/lib/api";
-import { resolveProposalTurnContinuation } from "@/pages/app/imob/proposalForm";
+import { hasPendingProposalReview, resolveProposalTurnContinuation } from "@/pages/app/imob/proposalForm";
 import {
   fetchImobRuntimeShadowState,
   type ImobRuntimeShadowEngineRequest,
@@ -36,6 +36,7 @@ import {
 import {
   IMOB_CRM_HANDOFF_REQUEST,
   isImobOperationalRequest,
+  resolveExplicitVerticalHandoffRequest,
   type VerticalHandoffRequest,
 } from "@/components/agents/verticalHandoffEngine";
 import type { RoleProfile } from "@/lib/roles";
@@ -2089,18 +2090,34 @@ export async function resolveLauncherTurnDecision(params: {
 }): Promise<LauncherLocalDecision | null> {
   // O contrato operacional do IMOB precede a classificação isolada do Front Door.
   // Intenções explícitas usam os mesmos catálogos de help; fallback não encerra coleta.
+  const activationStep = params.isUnifiedEiah
+    ? resolveVerticalActivationStep(params.input, params.previousAssistantSnapshot?.verticalActivation) : null;
+  const billingStep = params.isUnifiedEiah
+    ? resolveFrontDoorBillingStep(params.input, params.previousAssistantSnapshot?.frontDoorBilling) : null;
+  const approvalChatStep = params.isUnifiedEiah
+    ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat) : null;
+  const noticeAck = params.isUnifiedEiah
+    ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice) : null;
   const continuation = params.imobOperationalContinuation;
+  const explicitVerticalTransfer = hasPendingProposalReview(continuation?.threadState)
+    ? resolveExplicitVerticalHandoffRequest(params.input) : null;
   if (continuation?.threadState?.operational) {
     const help = resolveHelpDictionarySnapshot({ input: params.trimmedInput, routeIntent: params.routeIntent,
       accessContext: params.accessContext, includeFallback: false });
-    const explicitTopicChange = !resolveConversationVerticalContext(params.trimmedInput) && (
+    const verticalContext = resolveConversationVerticalContext(params.trimmedInput);
+    const reviewing = hasPendingProposalReview(continuation.threadState);
+    const explicitTopicChange = explicitVerticalTransfer || (reviewing ? (activationStep || billingStep || approvalChatStep || noticeAck
+      || isAccessCreationRequest(params.input) || resolveAgentSwitchDecision(params)
+      || isLegalRoutingQuestion(params.trimmedInput, true)
+      || hasExactEiahTutorIntentMatch(params.trimmedInput, true)
+      || Boolean(help && help.responseType === "resolved" && help.intent.scopeHint !== "vertical")) : !verticalContext && (
       hasExactEiahTutorIntentMatch(params.trimmedInput, true)
       || Boolean(help && help.responseType === "resolved" && help.intent.scopeHint !== "vertical")
       || isLegalRoutingQuestion(params.trimmedInput)
       || isImobOperationalRequest(params.trimmedInput)
-    );
+    ));
     const action = resolveProposalTurnContinuation({ input: params.trimmedInput, threadState: continuation.threadState,
-      activeDomain: params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange });
+      activeDomain: params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange: Boolean(explicitTopicChange) });
     if (action) {
       await continuation.consume(action, params.trimmedInput);
       if (action !== "release") return {
@@ -2109,6 +2126,13 @@ export async function resolveLauncherTurnDecision(params: {
       };
     }
   }
+  if (explicitVerticalTransfer) return {
+    kind: "vertical_handoff", shouldCreateRun: false,
+    content: "Verificando a transferência de contexto neste workspace.",
+    launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "handoff",
+    verticalHandoffRequest: explicitVerticalTransfer,
+    persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+  };
   const agentSwitchDecision = resolveAgentSwitchDecision({
     input: params.input,
     previousAssistantSnapshot: params.previousAssistantSnapshot,
@@ -2117,9 +2141,6 @@ export async function resolveLauncherTurnDecision(params: {
     return agentSwitchDecision;
   }
   // "Entendi" de um aviso da liberação EIAH entregue na conversa (ADR-011 §2.4).
-  const noticeAck = params.isUnifiedEiah
-    ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice)
-    : null;
   if (noticeAck) {
     return {
       kind: "vertical_access_notice_ack",
@@ -2135,9 +2156,6 @@ export async function resolveLauncherTurnDecision(params: {
     };
   }
   // Billing antes do pedido de liberação (ADR-011 §2.8): só os botões do cartão pendente valem.
-  const billingStep = params.isUnifiedEiah
-    ? resolveFrontDoorBillingStep(params.input, params.previousAssistantSnapshot?.frontDoorBilling)
-    : null;
   if (billingStep) {
     return {
       kind: `front_door_billing_${billingStep.step}`,
@@ -2153,9 +2171,6 @@ export async function resolveLauncherTurnDecision(params: {
     };
   }
   // Fila de liberações do administrador EIAH: nada é decidido sem confirmação explícita (ADR-011 §2.3).
-  const approvalChatStep = params.isUnifiedEiah
-    ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat)
-    : null;
   if (approvalChatStep) {
     return {
       kind: `vertical_approval_chat_${approvalChatStep.step}`,
@@ -2185,9 +2200,6 @@ export async function resolveLauncherTurnDecision(params: {
     };
   }
   // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
-  const activationStep = params.isUnifiedEiah
-    ? resolveVerticalActivationStep(params.input, params.previousAssistantSnapshot?.verticalActivation)
-    : null;
   if (activationStep) {
     return {
       kind: `vertical_activation_${activationStep.step}`,

@@ -1,3 +1,4 @@
+import { parseProposalContinuity } from "./crm/imobProposalReviewContinuity";
 import {
   createEmptyImobSlots,
   type ImobLeadBudgetFlexibility,
@@ -385,7 +386,9 @@ export function createNextImobThreadState(previous: ImobThreadConversationState 
     mode: previous?.mode ?? "consult",
     pendingSlot: explicitPendingSlot ?? (fulfilledPendingSlot ? "none" : previous?.pendingSlot ?? "none"),
     resultOffset: continuesSearch ? (previous?.resultOffset ?? 0) + 2 : 0,
-    operational: previous?.operational ?? null,
+    operational: previous?.operational && Object.hasOwn(previous.operational, "continuity")
+      ? { ...previous.operational, continuity: parseProposalContinuity(previous.operational) }
+      : previous?.operational ?? null,
   } satisfies ImobThreadConversationState;
 }
 
@@ -1863,6 +1866,10 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       proposalDraft: draft,
+      ...(previous && Object.hasOwn(previous, "continuity") ? { continuity: parseProposalContinuity({
+        ...previous, status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+        pendingFields, proposalDraft: draft,
+      }) } : {}),
     };
   }
   return previous ?? null;

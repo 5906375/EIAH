@@ -1,7 +1,8 @@
-import { apiRequestChatVerticalHandoff, type ChatVerticalHandoffResult } from "@/lib/api";
+import { apiGetChatVerticalRegistry, apiRequestChatVerticalHandoff, type ChatVerticalHandoffResult } from "@/lib/api";
 import { syncSessionContext } from "@/state/sessionContextSync";
 import { getSession } from "@/state/sessionStore";
 import { ACTIVATION_REQUEST_REPLY, type VerticalActivationSnapshot } from "./verticalActivationEngine";
+import { getPublicProductTaxonomyEntryByAnyName } from "@eiah/core/taxonomy/publicProductTaxonomy";
 
 /**
  * Engine do front door (`/app/chat`) para handoff a uma vertical na mesma
@@ -19,12 +20,22 @@ export const IMOB_CRM_HANDOFF_REQUEST = {
 
 export type VerticalHandoffRequest = {
   verticalId: string;
-  capabilityId: string;
+  /** Explicit transfers discover a read-only capability from the existing server registry. */
+  capabilityId?: string;
   mode: "read_only" | "requires_write" | "critical_action";
 };
 
 const normalize = (value: string) =>
   value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim();
+
+/** EIAH transfer intent: a complete command and named target, never an isolated domain word. */
+export function resolveExplicitVerticalHandoffRequest(input: string): VerticalHandoffRequest | null {
+  const match = /^(?:(?:quero|preciso|vamos) )?(?:mudar|trocar|ir|seguir|voltar) para (?:a |o |vertical )?([a-z][a-z0-9_-]{1,39})[.!]?$/.exec(normalize(input));
+  if (!match || match[1] === "core") return null;
+  const namedProduct = getPublicProductTaxonomyEntryByAnyName(match[1]);
+  if (namedProduct && namedProduct.taxonomyClass !== "vertical") return null;
+  return { verticalId: match[1], mode: "read_only" };
+}
 
 const IMOB_OPERATIONAL_ACTION =
   /\b(cadastr\w*|registr\w*|inclu\w*|adicion\w*|edit\w*|corrig\w*|atualiz\w*|arquiv\w*|encerr\w*|anex\w*|ger\w*|fazer|faca|criar|crie|lancar|lance)\b/;
@@ -68,7 +79,7 @@ export type VerticalHandoffPresentation = {
 };
 
 /** Texto e próximos passos por resultado da avaliação (permitido ou cada motivo de bloqueio). */
-export function describeVerticalHandoffResult(result: ChatVerticalHandoffResult): VerticalHandoffPresentation {
+export function describeVerticalHandoffResult(result: ChatVerticalHandoffResult, verticalId = "imob"): VerticalHandoffPresentation {
   if (result.ok) {
     const label = result.handoff.vertical.label ?? result.handoff.vertical.id.toUpperCase();
     return {
@@ -80,6 +91,10 @@ export function describeVerticalHandoffResult(result: ChatVerticalHandoffResult)
       handoff: result,
     };
   }
+  if (verticalId !== "imob") return {
+    content: `Não consegui confirmar uma capacidade de conversa disponível em ${verticalId.toUpperCase()} neste workspace. A revisão IMOB foi pausada e nenhuma ação foi executada.`,
+    quickReplies: [], handoff: result,
+  };
   switch (result.reasonCode) {
     case "VERTICAL_NOT_REGISTERED":
       return {
@@ -121,8 +136,19 @@ export async function requestVerticalHandoff(
   refs?: { conversationId?: string | null; threadId?: string | null },
 ): Promise<ChatVerticalHandoffResult> {
   try {
+    let capabilityId = request.capabilityId;
+    if (!capabilityId) {
+      const registry = (await apiGetChatVerticalRegistry())?.data;
+      if (registry?.version !== "vertical.registry.v1") return { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" };
+      const vertical = registry.verticals.find((entry) => entry.id === request.verticalId);
+      if (!vertical) return { ok: false, reasonCode: "VERTICAL_NOT_REGISTERED" };
+      if (vertical.status !== "enabled") return { ok: false, reasonCode: "VERTICAL_DISABLED" };
+      capabilityId = vertical.capabilities.find((entry) => entry.allowedModes.includes("read_only"))?.id;
+      if (!capabilityId) return { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" };
+    }
     const response = await apiRequestChatVerticalHandoff({
       ...request,
+      capabilityId,
       ...(refs?.conversationId || refs?.threadId
         ? {
             refs: {
@@ -133,7 +159,9 @@ export async function requestVerticalHandoff(
         : {}),
     });
     const data = response?.data;
-    if (data && data.ok === true && data.handoff?.version === "chat.vertical_handoff.v2" && data.handoff.outcome === "allowed") return data;
+    if (data && data.ok === true && data.handoff?.version === "chat.vertical_handoff.v2" && data.handoff.outcome === "allowed"
+      && data.handoff.vertical.id === request.verticalId && data.handoff.capability.id === capabilityId
+      && data.handoff.capability.mode === request.mode) return data;
     if (data && data.ok === false && typeof data.reasonCode === "string") return data;
     return { ok: false, reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED" };
   } catch {
@@ -162,7 +190,7 @@ export async function enrichLauncherDecisionWithVerticalHandoff<D extends Decisi
   if (!decision?.verticalHandoffRequest) return decision;
   const initialSession = getSession();
   const result = await request(decision.verticalHandoffRequest, refs);
-  const presentation = describeVerticalHandoffResult(result);
+  const presentation = describeVerticalHandoffResult(result, decision.verticalHandoffRequest.verticalId);
   let sessionSync: DecisionWithHandoff["verticalHandoffSessionSync"];
   if (result.ok && result.handoff.vertical.id === "imob") {
     try {

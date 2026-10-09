@@ -1,3 +1,4 @@
+import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
@@ -1624,16 +1625,27 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     return;
   }
 
+  // Only the new conversational carrier reads the latest event; persistence and gates remain unchanged.
+  const observesReview = Object.hasOwn(body, "continuityReplyRef")
+    || Object.hasOwn(asObject(asObject(body.threadState)?.operational) ?? {}, "continuity");
+  const reviewEventSelection = observesReview ? {
+    events: {
+      where: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+      take: 1,
+      select: { payload: true },
+    },
+  } : {};
   const existingScopedCase = requestedCaseId
     ? await prisma.imobCase.findFirst({
         where: { id: requestedCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
-        select: { id: true, stage: true, threadId: true, metadata: true },
+        select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
       })
     : requestedThreadId
       ? await prisma.imobCase.findFirst({
           where: { threadId: requestedThreadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
           orderBy: { updatedAt: "desc" },
-          select: { id: true, stage: true, threadId: true, metadata: true },
+          select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
         })
       : null;
   if (
@@ -1819,9 +1831,19 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const engineBody = recipeMissionContext
     ? { ...engineBodyBase, recipeId: requestedRecipeId, recipeMissionContext }
     : engineBodyBase;
+  const reviewEvent = asObject(existingScopedCase?.events?.[0]?.payload);
+  const reviewDraft = reviewEvent?.flow === "proposal.create" && reviewEvent.operationalStatus === "ready_for_review"
+    ? asObject(reviewEvent.proposalDraft) : null;
   const data = await resolveImobCrmTurnEngine({
     prisma,
     authContext,
+    reviewDraftRef: reviewDraft ? proposalDraftRef(reviewDraft) : null,
+    reviewCase: existingScopedCase ? { caseId: existingScopedCase.id, threadId: existingScopedCase.threadId,
+      flow: existingScopedCase.flow, stage: existingScopedCase.stage, status: existingScopedCase.status,
+      ownerResponsible: existingScopedCase.ownerResponsible, nextStep: existingScopedCase.nextStep,
+      blockers: existingScopedCase.blockers, pendingItems: Array.isArray(existingScopedCase.pendingItems)
+        ? existingScopedCase.pendingItems.filter((item): item is string => typeof item === "string") : [],
+    } : null,
     body: engineBody,
     workspaceResponsibleLabel: workspaceAccess.responsibleLabel,
     entitlements,

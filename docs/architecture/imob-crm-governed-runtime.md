@@ -420,6 +420,32 @@ Objetivo:
 
 ## Leitura executiva
 
+### FDC-03A — contrato mínimo de revisão de propostas
+
+A revisão usa `conversationState.operational.continuity` v1, vinculada ao draft,
+case/thread, escopo autenticado e referência da interação. O IMOB interpreta a
+resposta; o Front Door coordena e apresenta; a autorização continua no backend.
+“Sim” reconhece somente os dados e “Não” solicita esclarecimento. Nenhuma dessas
+respostas confirma `pendingAction`, altera approval/HITL, cria run ou executa action.
+
+Texto livre cuja intenção não esteja resolvida conserva a pergunta, draft e
+blockers. O domínio solicita a escolha explícita entre “Continuar revisão da
+proposta” e “Mudar de assunto”. Continuar renova a pergunta de revisão; mudar de
+assunto pausa somente a pergunta conversacional, sem cancelar action ou anunciar
+outro destino como disponível. Transfers reconhecidos usam o handoff e a avaliação
+de acesso existentes. O vocabulário jurídico de uma correção não encerra a revisão.
+
+Os dois consumidores invalidam perguntas restauradas e descartam resultados de
+requisições quando identidade, escopo ou referência da pergunta deixam de coincidir.
+Falhas de transporte preservam a referência para retry consultivo seguro. Uma
+apresentação independente de action mantém seu protocolo próprio de confirmação.
+
+Maturidade parcial de linguagem natural: este incremento não interpreta todas as
+paráfrases de handoff nem aplica correções operacionais. Também não implementa
+consumo único durável, máquina transversal completa ou novas verticais, nem corrige
+as pendências históricas de missão/workflow. Replay integral no mesmo escopo pode
+ser aceito consultivamente; a referência não é credencial de autorização.
+
 Em uma frase:
 
 O `IMOB_CRM` está fechando o ciclo para operar como runtime governado de caso que lê, decide, evidencia, controla rollout e expõe o estado operacional pronto para a UI renderizar.

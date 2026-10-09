@@ -6,6 +6,8 @@ import {
   describeVerticalHandoffResult,
   enrichLauncherDecisionWithVerticalHandoff,
   isImobOperationalRequest,
+  requestVerticalHandoff,
+  resolveExplicitVerticalHandoffRequest,
 } from "./verticalHandoffEngine";
 import { resolveLauncherTurnDecision } from "./chatLauncherEngine";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
@@ -176,4 +178,47 @@ test("mudança de workspace durante avaliação não usa sync bem-sucedido de ou
   assert.equal(result?.verticalHandoff, allowed);
   assert.equal(result?.verticalHandoffForwardInput, undefined);
   assert.equal(result?.verticalHandoffSessionSync, "failed");
+});
+
+for (const scenario of ["allowed", "unknown", "disabled", "no_read_capability", "registry_failure", "mismatched_handoff"]) {
+  test(`FDC-03A-R3 explicit transfer uses existing registry and backend preflight: ${scenario}`, async (t) => {
+    const previous = globalThis.fetch;
+    t.after(() => { globalThis.fetch = previous; });
+    const calls: Array<{ path: string; body: any }> = [];
+    globalThis.fetch = (async (url, init) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (path.endsWith("/vertical-registry")) {
+        if (scenario === "registry_failure") throw new Error("registry unavailable");
+        return new Response(JSON.stringify({ ok: true, data: { version: "vertical.registry.v1", registryVersion: "r1",
+          verticals: scenario === "unknown" ? [] : [{ id: "future", label: "Future", rolloutStage: "context_only",
+            status: scenario === "disabled" ? "disabled" : "enabled", capabilities: [
+              { id: "write.operation", allowedModes: ["requires_write"] },
+              ...(scenario === "no_read_capability" ? [] : [{ id: "context.read", allowedModes: ["read_only"] }]),
+            ] }] } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, data: { ok: true, handoff: {
+        ...allowed.handoff, vertical: { id: scenario === "mismatched_handoff" ? "other" : "future", registryVersion: "r1" },
+        capability: { id: "context.read", mode: "read_only" } } } }), { status: 200 });
+    }) as typeof fetch;
+    const request = resolveExplicitVerticalHandoffRequest("Quero mudar para future");
+    assert.ok(request);
+    const result = await requestVerticalHandoff(request, { threadId: "thread-test" });
+    assert.equal(result.ok, scenario === "allowed");
+    const posted = calls.find((call) => call.path.endsWith("/vertical-handoff"));
+    if (["allowed", "mismatched_handoff"].includes(scenario)) {
+      assert.deepEqual(posted?.body, { verticalId: "future", capabilityId: "context.read", mode: "read_only", refs: { threadId: "thread-test" } });
+    } else assert.equal(posted, undefined);
+    if (!result.ok) {
+      const presentation = describeVerticalHandoffResult(result, "future");
+      assert.deepEqual(presentation.quickReplies, []);
+      assert.doesNotMatch(presentation.content, /ativar|confirmado/i);
+    }
+  });
+}
+
+test("FDC-03A-R3 transfer grammar does not promote a domain word, a correction or an operational surface", () => {
+  for (const input of ["LEGAL", "venda", "O valor de venda precisa ser 90000", "Quero corrigir o imóvel", "Quero mudar para billing", "Ir para marketplace"]) {
+    assert.equal(resolveExplicitVerticalHandoffRequest(input), null, input);
+  }
 });

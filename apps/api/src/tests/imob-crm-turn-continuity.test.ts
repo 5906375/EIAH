@@ -505,3 +505,71 @@ test("IMOB_CRM continuity promotes ready case into documents.collect on explicit
   assert.equal((hydrated as any).operational?.flow, "documents.collect");
   assert.equal((hydrated as any).operational?.status, "ready_for_review");
 });
+
+
+import { buildProposalReviewQuestion } from "../services/imob/crm/imobProposalReviewContinuity";
+import { parseImobCrmThreadState } from "../services/imob/crm/imobCrmTurnState";
+import { createNextImobOperationalState, createNextImobThreadState } from "../services/imob/imobConversationState";
+import { createEmptyImobSlots } from "../services/imob/imobConversationContract";
+
+function reviewState() {
+  const operational: any = { flow: "proposal.create", status: "ready_for_review", pendingFields: [],
+    proposalDraft: { buyerName: "Maria", buyerPhone: "47999998888", buyerEmail: null,
+      propertyId: "property-1", offerAmount: 100000, contractType: "sale", counterofferAmount: 0,
+      negotiationStatus: "accepted", approvalRequired: true, approvalStatus: "pending" } };
+  operational.continuity = buildProposalReviewQuestion({ operational, caseId: "case-1", threadId: "thread-1", contextRef: "v1:interaction-test",
+    tenantId: "tenant-1", workspaceId: "workspace-1" });
+  return { mode: "execute", pendingSlot: "none", resultOffset: 0, slots: createEmptyImobSlots(), operational } as any;
+}
+
+for (const phase of ["review", "clarification"] as const) {
+  test(`FDC-03A round-trip JSON → parsing → hidratação → evolução preserva ${phase}`, async () => {
+    const input = reviewState();
+    input.operational.continuity = buildProposalReviewQuestion({ operational: input.operational, caseId: "case-1", threadId: "thread-1", contextRef: "v1:interaction-test",
+      tenantId: "tenant-1", workspaceId: "workspace-1", phase });
+    const parsed = parseImobCrmThreadState({ threadState: JSON.parse(JSON.stringify(input)) })!;
+    const hydrated = await hydrateThreadStateWithPersistedLead({
+      prisma: { imobCase: { findFirst: async () => ({ leadId: "lead-1" }) },
+        imobLead: { findFirst: async () => ({ name: "Maria", phone: "47999998888" }) } },
+      tenantId: "tenant-1", workspaceId: "workspace-1", caseId: "case-1", threadLabel: "Proposta",
+      message: "continuar proposta", threadState: parsed, helpers: createHelpers(),
+    }) as any;
+    assert.deepEqual(hydrated.operational.continuity, input.operational.continuity);
+    const evolved = createNextImobOperationalState(hydrated.operational, "proposal", "continuar proposta", createEmptyImobSlots());
+    assert.deepEqual(evolved!.continuity, input.operational.continuity);
+    assert.deepEqual(evolved!.proposalDraft, input.operational.proposalDraft);
+    assert.deepEqual(createNextImobThreadState(hydrated, "continuar proposta").operational?.continuity, input.operational.continuity);
+  });
+}
+
+for (const scenario of ["unknown_version", "expired", "changed_draft", "new_flow", "answered"] as const) {
+  test(`FDC-03A parsing/hidratação invalidam ${scenario} explicitamente, preservando draft`, async () => {
+    const input = reviewState();
+    const draft = structuredClone(input.operational.proposalDraft);
+    if (scenario === "unknown_version") input.operational.continuity.version = "v2";
+    if (scenario === "expired") input.operational.continuity.pending.expiresAt = "2000-01-01T00:00:00.000Z";
+    if (scenario === "changed_draft") input.operational.proposalDraft.offerAmount = 99999;
+    if (scenario === "new_flow") input.operational.flow = "documents.collect";
+    if (scenario === "answered") input.operational.continuity.pending = null;
+    const parsed = parseImobCrmThreadState({ threadState: input })!;
+    const hydrated = await hydrateThreadStateWithPersistedLead({ prisma: {}, tenantId: "tenant-1", workspaceId: "workspace-1",
+      message: "sim", threadState: input, helpers: { ...createHelpers(), detectOperationalHydrationFlow: () => null } }) as any;
+    if (scenario === "answered") {
+      assert.equal(parsed.operational.continuity.pending, null);
+      assert.equal(hydrated.operational.continuity.pending, null);
+    } else {
+      assert.equal(parsed.operational.continuity, null);
+      assert.equal(hydrated.operational.continuity, null);
+    }
+    assert.deepEqual(hydrated.operational.proposalDraft, scenario === "changed_draft" ? { ...draft, offerAmount: 99999 } : draft);
+  });
+}
+
+test("FDC-03A evolução troca draft/flow e invalida a pergunta anterior", () => {
+  const input = reviewState();
+  const revised = createNextImobOperationalState(input.operational, "proposal", "valor da oferta 90000", createEmptyImobSlots());
+  assert.equal(revised!.proposalDraft!.offerAmount, 90000);
+  assert.equal(revised!.continuity, null);
+  const other = createNextImobOperationalState(input.operational, "documents", "coletar documentos", createEmptyImobSlots());
+  assert.equal(other?.continuity, undefined);
+});

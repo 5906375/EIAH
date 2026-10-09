@@ -50,12 +50,12 @@ import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { ImobFormCard } from "@/features/imob/structured/ImobFormCard";
 import { createImobStructuredForms } from "@/features/imob/structured/createImobStructuredForms";
 import { useImobFormState } from "@/features/imob/structured/useImobFormState";
-import { buildProposalFormContinuation, isConversationalProposalForm } from "./proposalForm";
+import { buildProposalTextContinuation, hasPendingProposalReview, hasProposalReviewCarrier, buildProposalFormContinuation, isConversationalProposalForm } from "./proposalForm";
 import {
   IMOB_ACTION_MENUS,
   listImobActionMenuPrompts,
 } from "@/features/imob/imobActionMenus";
-import { useSession } from "@/state/sessionStore";
+import { getSession, useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
   searchImobInventory,
@@ -194,6 +194,8 @@ type ChatMessage = {
   assistantDedupeKey?: string | null;
   hiddenFromTimeline?: boolean;
   presentationMetadata?: ImobPresentationMetadata;
+  /** Existing domain descriptor, carried by the live presentation only. */
+  conversationState?: ImobThreadConversationState;
   blocks?: ImobPresentationBlock[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
@@ -1961,7 +1963,7 @@ export function normalizeStoredSlotCollection(
 export function buildPersistedImobChatMessageMetadata(
   message: Pick<
     ChatMessage,
-    "card" | "proof" | "caseContext" | "presentationMetadata" | "blocks" | "widget" | "form" | "slotCollection" | "hiddenFromTimeline"
+    "card" | "proof" | "caseContext" | "presentationMetadata" | "blocks" | "widget" | "form" | "slotCollection" | "hiddenFromTimeline" | "conversationState"
   >,
   extraMetadata?: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -1976,6 +1978,10 @@ export function buildPersistedImobChatMessageMetadata(
     slotCollection: message.slotCollection ?? null,
     hiddenFromTimeline: message.hiddenFromTimeline === true ? true : undefined,
     ...(extraMetadata ?? {}),
+    // Existing metadata holds identification only; history never stores an active question credential or draft.
+    ...(hasProposalReviewCarrier(message.conversationState) ? { operationalContinuity: {
+      version: "v1", phase: message.conversationState?.operational?.continuity?.phase ?? "review", pending: null,
+    } } : {}),
   };
 }
 
@@ -1983,6 +1989,9 @@ export function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
   const metadata = (message.metadata && typeof message.metadata === "object"
     ? message.metadata
     : null) as Record<string, unknown> | null;
+  // Old review replies and unknown stored extensions fail closed as well. A marker is not authority.
+  const restoredReview = message.role === "assistant" && (message.action === "crm.proposal.review"
+    || Boolean(metadata && Object.prototype.hasOwnProperty.call(metadata, "operationalContinuity")));
   const cardCandidate = metadata?.card;
   const card =
     cardCandidate && typeof cardCandidate === "object" && !Array.isArray(cardCandidate)
@@ -2047,7 +2056,15 @@ export function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
   return {
     id: message.id,
     role: message.role,
-    text: message.content,
+    text: restoredReview
+      ? "Esta revisão pertence ao histórico. Reabra Gerar proposta para revisar os dados; nenhuma ação foi autorizada."
+      : message.content,
+    ...(restoredReview ? { conversationState: {
+      mode: "consult" as const, pendingSlot: "none" as const, resultOffset: 0,
+      slots: { goal: null, city: null, region: null, neighborhood: null,
+        budgetMax: null, bedrooms: null, bathrooms: null, propertyType: null },
+      operational: { flow: "proposal.create" as const, status: "ready_for_review" as const, pendingFields: [], continuity: null },
+    } } : {}),
     assistantDedupeKey: persistedAssistantDedupeKey ?? derivedAssistantDedupeKey,
     hiddenFromTimeline,
     presentationMetadata,
@@ -2186,6 +2203,17 @@ const ImobChatPage: React.FC = () => {
   const caseIdByThreadRef = React.useRef<Record<string, string>>({});
   const caseContextByThreadRef = React.useRef<Record<string, ImobCaseContext>>({});
   const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
+  const latestAssistantMessageRef = React.useRef<ChatMessage | null>(null);
+  latestAssistantMessageRef.current = [...messages].reverse().find((message) => message.role === "assistant") ?? null;
+  // Live correlation only. History remounts and scope changes cannot revive a review question.
+  const reviewScope = `${session.tenantId}:${session.workspaceId}:${session.userId}:${session.token}:${session.activeDomain}:${activeVerticalId}`;
+  const reviewOriginRef = React.useRef({ scope: reviewScope, conversationId, selectedThreadId, ref: `v1:${makeId("review")}`, sequence: 0 });
+  const origin = reviewOriginRef.current;
+  if (origin.scope !== reviewScope || (origin.conversationId !== conversationId && origin.conversationId !== null)
+    || origin.selectedThreadId !== selectedThreadId) {
+    reviewOriginRef.current = { scope: reviewScope, conversationId, selectedThreadId, ref: `v1:${makeId("review")}`, sequence: origin.sequence + 1 };
+  } else origin.conversationId = conversationId;
+
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const directedConfirmingRef = React.useRef(false);
@@ -2251,6 +2279,7 @@ const ImobChatPage: React.FC = () => {
   const appendMessage = React.useCallback((incoming: ChatMessage) => {
     // Anexos no próprio formulário e valores pendentes para este destino (módulo de formulários do IMOB).
     const message = prepareIncomingMessage(incoming);
+    if (message.role === "assistant") latestAssistantMessageRef.current = message;
     setMessages((prev) => [
       // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
       // Quando o usuário segue para outro pedido, o formulário estruturado aberto também fecha.
@@ -2584,6 +2613,8 @@ const ImobChatPage: React.FC = () => {
   }, [requestedConversationId, requestedStartNew, requestedThreadId]);
 
   const loadConversation = React.useCallback(async (nextConversationId: string) => {
+    reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+    reviewOriginRef.current.sequence += 1;
     setHistoryLoading(true);
     setConversationId(nextConversationId);
     setMessages([]);
@@ -2626,6 +2657,8 @@ const ImobChatPage: React.FC = () => {
   }, [loadConversationMessages, refreshThreads, trackUxEvent]);
 
   const handleNewConversation = async () => {
+    reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+    reviewOriginRef.current.sequence += 1;
     if (pendingExecution) {
       clearPendingExecution("new_conversation");
     }
@@ -3470,6 +3503,12 @@ const ImobChatPage: React.FC = () => {
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const currentThreadId = options?.thread?.id ?? selectedThread?.threadId ?? activeThread?.id ?? null;
     const currentThreadLabel = options?.thread?.label ?? selectedThread?.label ?? activeThread?.label ?? null;
+    const latestAssistant = latestAssistantMessageRef.current;
+    const currentThreadState = options?.threadState ?? (currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null)
+      ?? (hasProposalReviewCarrier(latestAssistant?.conversationState) ? latestAssistant?.conversationState : null);
+    const reviewPending = currentThreadState?.operational?.continuity?.pending;
+    const associatedReview = hasProposalReviewCarrier(currentThreadState) || hasProposalReviewCarrier(latestAssistant?.conversationState);
+    const latestQuestionRef = latestAssistant?.conversationState?.operational?.continuity?.pending?.ref;
     const userMessageId = shouldEchoUserMessage ? makeId("user") : null;
     if (shouldEchoUserMessage && userMessageId) {
       appendMessage({
@@ -3489,6 +3528,17 @@ const ImobChatPage: React.FC = () => {
     setInput("");
     setState("typing");
     const startedAt = Date.now();
+    const initialSession = getSession();
+    const requestContextRef = reviewOriginRef.current.ref;
+    const requestSequence = ++reviewOriginRef.current.sequence;
+    const isCurrentTurn = () => {
+      const current = getSession();
+      return requestContextRef === reviewOriginRef.current.ref && requestSequence === reviewOriginRef.current.sequence
+        && (!associatedReview || (latestAssistantMessageRef.current?.id === latestAssistant?.id
+          && latestAssistantMessageRef.current?.conversationState?.operational?.continuity?.pending?.ref === latestQuestionRef))
+        && current.tenantId === initialSession.tenantId && current.workspaceId === initialSession.workspaceId
+        && current.userId === initialSession.userId && current.token === initialSession.token && current.activeDomain === initialSession.activeDomain;
+    };
     let turn: ImobResolveTurnResponse;
     let resolvedCaseId: string | null = null;
     try {
@@ -3496,15 +3546,16 @@ const ImobChatPage: React.FC = () => {
         ? caseIdByThreadRef.current[currentThreadId] ?? requestedCaseId ?? null
         : requestedCaseId ?? null;
       turn = await resolveImobTurn({
-        message: text,
+        ...buildProposalTextContinuation(text, currentThreadState, requestContextRef),
+        ...(associatedReview ? { continuityReplyRef: reviewPending && latestQuestionRef === reviewPending.ref ? reviewPending.ref : null } : {}),
         threadLabel: currentThreadLabel,
         threadId: currentThreadId,
         caseId: resolvedCaseId,
         recipeId: requestedRecipeId,
-        threadState: options?.threadState ?? (currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null),
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
+      if (!isCurrentTurn()) return;
       emitChatRouteTelemetry({
         event: "error_observed",
         surfaceRoute: "/app/imob/chat",
@@ -3520,7 +3571,10 @@ const ImobChatPage: React.FC = () => {
       appendMessage({
         id: makeId("assistant"),
         role: "assistant",
-        text: presentationError.text,
+        text: associatedReview
+          ? "Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta."
+          : presentationError.text,
+        ...(associatedReview ? { conversationState: currentThreadState ?? undefined, caseContext: latestAssistant?.caseContext } : {}),
         thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
         card: {
           ...presentationError.card,
@@ -3530,6 +3584,7 @@ const ImobChatPage: React.FC = () => {
       setState("blocked");
       return;
     }
+    if (!isCurrentTurn()) return;
     const resolvedProof = turn.presentation.proof;
     emitChatRouteTelemetry({
       event: "turn_observed",
@@ -3551,6 +3606,7 @@ const ImobChatPage: React.FC = () => {
       verticalSwitchObserved: false,
       failClosedObserved: turn.mode === "blocked",
     });
+    const isProposalReviewTurn = turn.action === "crm.proposal.review" || hasPendingProposalReview(turn.conversationState);
     const resolvedIntent = turn.executionRequest?.intent ?? null;
     const caseContextThreadId = typeof turn.caseContext?.threadId === "string" && turn.caseContext.threadId.trim().length > 0
       ? turn.caseContext.threadId.trim()
@@ -3599,11 +3655,13 @@ const ImobChatPage: React.FC = () => {
         const created = await apiCreateImobChatConversation({
           title: getConversationTitleFromMessage(displayText, conversations),
         });
+        if (!isCurrentTurn()) return;
         activeConversationId = created.conversation.conversationId;
         setConversationId(activeConversationId);
         setConversations((prev) => [created.conversation, ...prev]);
         sessionRunByThreadRef.current = {};
       } catch (error) {
+        if (!isCurrentTurn()) return;
         const presentationError = buildImobFrontdoorStatePresentation({
           kind: resolveImobFrontdoorErrorStateKind(error),
           error,
@@ -3647,7 +3705,7 @@ const ImobChatPage: React.FC = () => {
         contractInterviewState.status === "review" ||
         contractInterviewState.status === "generating");
     const shouldContinueContractInterview =
-      interviewIsActive &&
+      !isProposalReviewTurn && interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
     let userMessagePersisted: Promise<unknown> = Promise.resolve();
@@ -3670,7 +3728,7 @@ const ImobChatPage: React.FC = () => {
         }
       );
     }
-    if (shouldContinueContractInterview || resolvedIntent === "contract") {
+    if (!isProposalReviewTurn && (shouldContinueContractInterview || resolvedIntent === "contract")) {
       const threadForInterview = {
         id: operationThread.id,
         label: "Contrato",
@@ -3825,12 +3883,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
-    if (turn.mode === "consult") {
+    if (turn.mode === "consult" || isProposalReviewTurn) {
       const proof = resolveTurnPresentationProof(turn.presentation);
       const consultReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: turn.presentation.text,
+        conversationState: turn.conversationState,
         presentationMetadata: turn.presentation.metadata,
         blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
@@ -5081,6 +5140,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       if (pendingExecution && pendingExecution.thread.id !== thread.threadId) {
                         clearPendingExecution("thread_switched", { nextThreadId: thread.threadId });
                       }
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
                       setSelectedThreadId(thread.threadId);
                       setActiveThread({ id: thread.threadId, label: thread.label });
                       trackUxEvent("thread_selected", { threadId: thread.threadId, source: "shared_panel" });
@@ -5089,6 +5150,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       if (pendingExecution) {
                         clearPendingExecution("thread_filter_cleared");
                       }
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
                       setSelectedThreadId(null);
                       setActiveThread(null);
                       trackUxEvent("thread_filter_cleared");
@@ -5184,7 +5247,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <VerticalSelectorBar
                     verticals={VERTICAL_SELECTOR_ITEMS}
                     activeVerticalId={activeVerticalId}
-                    onSelect={setActiveVerticalId}
+                    onSelect={(verticalId) => {
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
+                      setActiveVerticalId(verticalId);
+                    }}
                   />
                   {isBrandedWorkspaceLabel ? (
                     <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground shadow-lg shadow-black/20">

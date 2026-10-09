@@ -2039,10 +2039,29 @@ export type ImobProposalDraftState = {
   contractType: "rent" | "sale" | "management" | null;
 };
 
+/** Conversational question only: never an approval or an execution credential. */
+export type ImobProposalContinuityV1 = {
+  version: "v1";
+  phase: "review" | "clarification";
+  pending: {
+    ref: string;
+    subject: "proposalDraft";
+    purpose: "review_data" | "identify_correction";
+    expectedResponse: "affirmation_or_correction" | "correction_details";
+    caseId: string;
+    threadId: string;
+    draftRef: string;
+    /** Correlation to the live interaction; never an authorization credential. */
+    contextRef: string;
+    expiresAt: string | null;
+  } | null;
+};
+
 export type ImobOperationalState = {
   flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
+  continuity?: ImobProposalContinuityV1 | null;
   leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
   nextAction?: "ask_missing_lead_field" | "link_lead_to_property" | "advance_commercial_step" | "consult_case" | null;
   dedupeSelection?: {
@@ -3394,6 +3413,9 @@ export async function apiResolveImobTurn(body: {
   recipeId?: string | null;
   threadState?: ImobThreadConversationState | null;
   actionId?: string | null;
+  continuityReplyRef?: string | null;
+  /** Explicit support for conversational continuity v1, scoped to this live interaction. */
+  continuityContextRef?: string | null;
 }) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
     method: "POST",

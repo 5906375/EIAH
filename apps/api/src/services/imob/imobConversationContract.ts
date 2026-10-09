@@ -559,12 +559,31 @@ export type ImobMissionContext = {
   lockedUntilExplicitChange: boolean;
 };
 
+/** Conversational question only: never an approval or an execution credential. */
+export type ImobProposalContinuityV1 = {
+  version: "v1";
+  phase: "review" | "clarification";
+  pending: {
+    ref: string;
+    subject: "proposalDraft";
+    purpose: "review_data" | "identify_correction";
+    expectedResponse: "affirmation_or_correction" | "correction_details";
+    caseId: string;
+    threadId: string;
+    draftRef: string;
+    /** Correlation to the live interaction; never an authorization credential. */
+    contextRef: string;
+    expiresAt: string | null;
+  } | null;
+};
+
 export type ImobOperationalState = {
   flow: ImobOperationalFlow;
   status: "collecting" | "ready_for_review";
   outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
   pendingAction?: ImobPendingAction | null;
+  continuity?: ImobProposalContinuityV1 | null;
   leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
   nextAction?:
     | "ask_missing_lead_field"

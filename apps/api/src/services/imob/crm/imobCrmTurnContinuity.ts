@@ -1,3 +1,4 @@
+import { parseProposalContinuity } from "./imobProposalReviewContinuity";
 import type { ImobCrmTurnResolution } from "./imobCrmAgentContract";
 import type { ThreadStateLike } from "./imobCrmOperationalResolverShared";
 import {
@@ -155,6 +156,11 @@ export async function hydrateThreadStateWithPersistedLead(params: {
   helpers: ContinuityHelpers;
 }) {
   const currentOperational = params.helpers.asObject(params.helpers.asObject(params.threadState)?.operational);
+  if (currentOperational && Object.hasOwn(currentOperational, "continuity")) {
+    params = { ...params, threadState: { ...params.threadState, operational: {
+      ...currentOperational, continuity: parseProposalContinuity(currentOperational),
+    } } };
+  }
   const currentStatus = params.helpers.asString(currentOperational?.status);
   const currentPendingFields = params.helpers.asStringList(currentOperational?.pendingFields);
   const hasBlockingActiveFlow = currentStatus === "collecting" && currentPendingFields.length > 0;
@@ -284,6 +290,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
             : null,
       },
     };
+    if (Object.hasOwn(nextOperational, "continuity")) {
+      nextStateObject.operational = { ...params.helpers.asObject(nextStateObject.operational),
+        continuity: parseProposalContinuity(nextStateObject.operational) };
+    }
     return nextStateObject;
   }
 
@@ -318,6 +328,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
     nextStateObject.operational = normalizeLeadQualifyOperationalState(nextStateObject.operational as Record<string, unknown>, {
       propertyId: scopedCasePropertyId,
     });
+    if (Object.hasOwn(nextOperational, "continuity")) {
+      nextStateObject.operational = { ...params.helpers.asObject(nextStateObject.operational),
+        continuity: parseProposalContinuity(nextStateObject.operational) };
+    }
     return nextStateObject;
   }
 
@@ -331,6 +345,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
         : [],
       documentDraft: params.helpers.asObject(nextOperational.documentDraft) ?? {},
     };
+    if (Object.hasOwn(nextOperational, "continuity")) {
+      nextStateObject.operational = { ...params.helpers.asObject(nextStateObject.operational),
+        continuity: parseProposalContinuity(nextStateObject.operational) };
+    }
     return nextStateObject;
   }
 
@@ -416,6 +434,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
     ...(propertyCandidates.length > 0 ? { propertyCandidates } : {}),
     followUpDraft,
   };
+  if (Object.hasOwn(nextOperational, "continuity")) {
+    nextStateObject.operational = { ...params.helpers.asObject(nextStateObject.operational),
+      continuity: parseProposalContinuity(nextStateObject.operational) };
+  }
   return nextStateObject;
 }
 

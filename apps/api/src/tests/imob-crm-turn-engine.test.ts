@@ -2099,3 +2099,430 @@ test("Lifecycle: 'confirmo' com pendingAction cancelled no client state e canoni
   assert.equal(resolved.mode, "blocked");
   assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
 });
+
+
+// FDC-03A: these paths must remain purely conversational, even when an action awaits confirmation.
+function reviewEngineParams(message = "Sim"): any {
+  const params: any = createEngineParams();
+  params.authContext.userId = "review-user";
+  const operational = {
+    flow: "proposal.create", status: "ready_for_review", pendingFields: [],
+    proposalDraft: { propertyId: "property-1", offerAmount: 100000, buyerName: "Maria", buyerPhone: "47999998888",
+      buyerEmail: null, contractType: "sale", counterofferAmount: 0, negotiationStatus: "accepted",
+      approvalRequired: true, approvalStatus: "pending" },
+  };
+  const continuity = buildProposalReviewQuestion({ operational: operational as never, caseId: "case-proposal",
+    threadId: "thread-proposal", contextRef: "v1:interaction-test", ...params.authContext });
+  params.reviewDraftRef = proposalDraftRef(operational.proposalDraft);
+  params.reviewCase = { caseId: "case-proposal", threadId: "thread-proposal", flow: "proposal.create",
+    stage: "ready_for_review", status: "ready_for_review", blockers: ["Aprovação necessária"], pendingItems: ["Revisão humana"] };
+  params.body = { message, caseId: "case-proposal", threadId: "thread-proposal",
+    continuityContextRef: continuity.pending!.contextRef, continuityReplyRef: continuity.pending!.ref,
+    threadState: { mode: "execute", pendingSlot: "none", resultOffset: 0, slots: {}, operational: { ...operational, continuity } } };
+  // Any invocation of the mutation pipeline, hydration, consult queries or Prisma fails the test.
+  params.helpers = { asString: params.helpers.asString, ...Object.fromEntries(Object.keys(params.helpers)
+    .filter((key) => key !== "asString").map((key) => [key, () => { assert.fail(`Review invoked ${key}`); }])) };
+  params.prisma = new Proxy({}, { get: (_target, name) => { assert.fail(`Review accessed Prisma ${String(name)}`); } });
+  return params;
+}
+
+import { attachProposalReviewQuestion, buildProposalReviewQuestion, proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
+import { parseImobCrmThreadState } from "../services/imob/crm/imobCrmTurnState";
+import { buildImobAgentContractV1 } from "../services/imob/imobAgentContract";
+
+for (const answer of ["Sim", "Não", "Talvez", "confirmo", "pode executar"]) {
+  test(`FDC-03A revisão ${answer}: sem provider, consultas, writes, run ou executionRequest`, async () => {
+    const params = reviewEngineParams(answer);
+    const draft = structuredClone(params.body.threadState.operational.proposalDraft);
+    const blockers = structuredClone(params.reviewCase);
+    const resolved = await resolveImobCrmTurnEngine(params) as any;
+    assert.equal(resolved.mode, "consult");
+    assert.equal(resolved.executionRequest, undefined);
+    assert.equal(resolved.runId, undefined);
+    assert.deepEqual(resolved.conversationState.operational.proposalDraft, draft);
+    assert.deepEqual(resolved.caseContext, blockers);
+    assert.equal(resolved.conversationState.operational.proposalDraft.approvalStatus, "pending");
+    if (answer === "Não") {
+      assert.match(resolved.presentation.text, /Qual dado ou condição/);
+      assert.equal(resolved.conversationState.operational.continuity.phase, "clarification");
+      assert.notEqual(resolved.conversationState.operational.continuity.pending.ref, params.body.continuityReplyRef);
+    } else if (answer === "Sim") {
+      assert.match(resolved.presentation.text, /confirmou os dados/);
+      assert.equal(resolved.conversationState.operational.continuity.pending, null);
+    } else {
+      assert.equal(resolved.conversationState.operational.continuity.pending.ref, params.body.continuityReplyRef);
+      assert.match(resolved.presentation.text, /apenas sobre os dados/);
+    }
+  });
+}
+
+for (const answer of ["Sim", "confirmo", "pode executar", "Não"]) {
+  test(`FDC-03A colisão revisão/action: ${answer} nunca confirma action`, async () => {
+    const params = reviewEngineParams(answer);
+    const pendingAction = makePendingAction({ actionId: "proposal.create", sourceActionId: "proposal.create",
+      entityType: "proposal", journey: "proposal_negotiation", caseId: params.body.caseId, threadId: params.body.threadId });
+    params.body.canonicalPendingAction = pendingAction;
+    params.body.threadState.operational.pendingAction = pendingAction;
+    const resolved = await resolveImobCrmTurnEngine(params) as any;
+    assert.equal(resolved.mode, "consult");
+    assert.equal(resolved.executionRequest, undefined);
+    assert.match(resolved.presentation.text, /ação explícita/);
+    assert.deepEqual(resolved.conversationState.operational.pendingAction, pendingAction);
+  });
+}
+
+for (const scenario of ["unknown_version", "purpose", "reference", "expired", "malformed_expiry", "answered", "draft_changed",
+  "flow", "case", "thread", "no_scoped_case", "canonical_flow", "canonical_stage", "canonical_status", "canonical_draft_changed", "canonical_draft_missing", "workspace", "tenant", "absent_question"]) {
+  test(`FDC-03A pergunta inválida (${scenario}) não cai na confirmação de action nem mutação`, async () => {
+    const params = reviewEngineParams();
+    const continuity = params.body.threadState.operational.continuity;
+    switch (scenario) {
+      case "unknown_version": continuity.version = "v9"; break;
+      case "purpose": continuity.pending.purpose = "authorize"; break;
+      case "reference": params.body.continuityReplyRef = "replaced-question"; break;
+      case "expired": continuity.pending.expiresAt = "2000-01-01T00:00:00.000Z"; break;
+      case "malformed_expiry": continuity.pending.expiresAt = "not-a-date"; break;
+      case "answered": continuity.pending = null; break;
+      case "draft_changed": params.body.threadState.operational.proposalDraft.offerAmount = 90000; break;
+      case "flow": params.body.threadState.operational.flow = "owner.create"; break;
+      case "case": params.body.caseId = "other-case"; break;
+      case "thread": params.body.threadId = "other-thread"; break;
+      case "no_scoped_case": params.reviewCase = null; params.body.reviewCase = { caseId: params.body.caseId }; break;
+      case "canonical_flow": params.reviewCase.flow = "contract.prepare"; break;
+      case "canonical_stage": params.reviewCase.stage = "collecting"; break;
+      case "canonical_status": params.reviewCase.status = "cancelled"; break;
+      case "canonical_draft_changed": params.reviewDraftRef = proposalDraftRef({ ...params.body.threadState.operational.proposalDraft, offerAmount: 90000 }); break;
+      case "canonical_draft_missing": params.reviewDraftRef = null; break;
+      case "workspace": params.authContext.workspaceId = "other-workspace"; break;
+      case "tenant": params.authContext.tenantId = "other-tenant"; break;
+      case "absent_question": delete params.body.threadState.operational.continuity; break;
+    }
+    params.body.canonicalPendingAction = makePendingAction();
+    const resolved = await resolveImobCrmTurnEngine(params) as any;
+    assert.equal(resolved.mode, "consult");
+    assert.equal(resolved.executionRequest, undefined);
+    assert.equal(resolved.conversationState.operational.continuity, null);
+    assert.match(resolved.presentation.text, /Não há uma pergunta/);
+  });
+}
+
+test("FDC-03A tombstone sem replyRef impede que confirmação curta seja reinterpretada como autorização", async () => {
+  const params = reviewEngineParams();
+  params.body.threadState.operational.continuity = null;
+  delete params.body.continuityReplyRef;
+  params.body.canonicalPendingAction = makePendingAction();
+  const resolved = await resolveImobCrmTurnEngine(params) as any;
+  assert.equal(resolved.mode, "consult");
+  assert.equal(resolved.executionRequest, undefined);
+});
+
+test("FDC-03A negativa seguida de detalhes só esclarece, mantendo draft e bloqueios", async () => {
+  const params = reviewEngineParams("Não");
+  const first = await resolveImobCrmTurnEngine(params) as any;
+  params.body.threadState = first.conversationState;
+  params.body.continuityReplyRef = first.conversationState.operational.continuity.pending.ref;
+  params.body.message = "O valor precisa ser 90000";
+  const second = await resolveImobCrmTurnEngine(params) as any;
+  assert.equal(second.mode, "consult");
+  assert.deepEqual(second.conversationState.operational.proposalDraft, first.conversationState.operational.proposalDraft);
+  assert.deepEqual(second.caseContext.blockers, ["Aprovação necessária"]);
+  assert.equal(second.executionRequest, undefined);
+});
+
+test("FDC-03A extensão é opcional e contrato do agente não concede execução", () => {
+  const params = reviewEngineParams();
+  delete params.body.threadState.operational.continuity;
+  const parsed = parseImobCrmThreadState(params.body);
+  assert.equal(Object.hasOwn(parsed!.operational, "continuity"), false);
+  assert.equal(buildImobAgentContractV1().runtimePolicies.proposalReview.createsExecution, false);
+});
+
+test("FDC-03A emissão adiciona pergunta a uma proposta pronta sem alterar contrato de execução existente", () => {
+  const params = reviewEngineParams();
+  delete params.body.threadState.operational.continuity;
+  const executionRequest = { operation: "proposal.create", action: "realestate.create_contract", input: { propertyId: "property-1" } };
+  const data = { mode: "execute", conversationState: params.body.threadState, caseContext: params.reviewCase,
+    presentation: { text: "Proposta pronta", metadata: { canonicalSnapshot: { authoritative: true } } }, executionRequest };
+  const result = attachProposalReviewQuestion(data, params.authContext, params.body.continuityContextRef);
+  assert.equal(result.executionRequest, executionRequest);
+  assert.match(result.presentation.text, /dados apresentados.*corretos/);
+  assert.equal(result.presentation.metadata, data.presentation.metadata);
+  assert.ok(result.conversationState.operational.continuity.pending.ref);
+  assert.equal(attachProposalReviewQuestion({ ...data, mode: "blocked" }, params.authContext, params.body.continuityContextRef).conversationState.operational.continuity, undefined);
+});
+
+test("FDC-03A contexto autenticado ausente invalida a pergunta sem alterar gates de entitlement", async () => {
+  const params = reviewEngineParams();
+  params.authContext.workspaceId = "";
+  const resolved = await resolveImobCrmTurnEngine(params) as any;
+  assert.equal(resolved.mode, "consult");
+  assert.match(resolved.presentation.text, /Não há uma pergunta/);
+  assert.equal(resolved.executionRequest, undefined);
+});
+
+
+import { readFileSync } from "node:fs";
+import ts from "typescript";
+import { parseImobPendingAction } from "../services/imob/crm/imobPendingActionRuntime";
+import { recordImobResolveTurnSemanticTelemetry } from "../services/imob/imobTelemetry";
+
+// Exercise the actual route callback with authenticated fixtures and the real engine.
+// This does not claim to exercise Express middleware or a real database.
+function reviewRouteCallback() {
+  const source = ts.createSourceFile("imob.ts", readFileSync(new URL("../routes/imob.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
+  let callback: ts.Expression | undefined;
+  function visit(node: ts.Node) {
+    if (ts.isCallExpression(node) && node.expression.getText(source) === "imobRouter.post"
+      && node.arguments[0]?.getText(source) === '\"/chat/resolve-turn\"') callback = node.arguments[1];
+    ts.forEachChild(node, visit);
+  }
+  visit(source);
+  assert.ok(callback);
+  const compiled = ts.transpileModule(`return (${callback.getText(source)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return new Function("environment", `with (environment) { ${compiled} }`);
+}
+
+for (const scenario of ["allow_yes", "allow_no", "stale_draft", "missing_event", "cross_workspace", "permission_deny", "stage_deny"]) {
+  test(`FDC-03A route callback + real engine: ${scenario}, leitura escopada e zero mutações`, async () => {
+    const params = reviewEngineParams(scenario === "allow_no" ? "Não" : "Sim");
+    const queries: any[] = [];
+    const scopedCase = { id: params.body.caseId, threadId: params.body.threadId, flow: "proposal.create",
+      status: "ready_for_review", stage: "ready_for_review", metadata: {}, ownerResponsible: "Corretor", nextStep: "Revisão humana",
+      blockers: ["Aprovação necessária"], pendingItems: ["Revisão humana"], events: [{ payload: {
+        flow: "proposal.create", operationalStatus: "ready_for_review", proposalDraft: params.body.threadState.operational.proposalDraft } }] };
+    if (scenario === "stale_draft") scopedCase.events[0].payload.proposalDraft = { ...scopedCase.events[0].payload.proposalDraft, offerAmount: 99000 };
+    if (scenario === "missing_event") scopedCase.events = [];
+    const prisma = { imobCase: { findFirst: async (query: any) => {
+      queries.push(query);
+      assert.deepEqual(query.where, { id: params.body.caseId, tenantId: params.authContext.tenantId, workspaceId: params.authContext.workspaceId });
+      assert.deepEqual(query.select.events.where, { tenantId: params.authContext.tenantId, workspaceId: params.authContext.workspaceId });
+      assert.equal(query.select.events.take, 1);
+      return scenario === "cross_workspace" ? null : scopedCase;
+    } } };
+    const object = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+    let engineCalls = 0;
+    let payload: any = null;
+    let status = 200;
+    const res: any = { json: (body: any) => { payload = body; return res; }, status: (code: number) => { status = code; return res; } };
+    const environment = {
+      ...params.helpers, asObject: object, asString: params.helpers.asString, parseImobPendingAction, proposalDraftRef,
+      readImobWorkspaceAccessProfile: async () => ({ permissions: ["imob.chat.use", "imob.stage.*"], responsibleLabel: "Corretor" }),
+      ensureImobWorkspacePermission: () => { if (scenario === "permission_deny") { res.status(403).json({ ok: false }); return false; } return true; },
+      ensureImobStagePermission: () => { if (scenario === "stage_deny") { res.status(403).json({ ok: false }); return false; } return true; },
+      resolveImobEntitlements: async () => params.entitlements,
+      resolveImobTenantRecipeForWorkspace: async () => null,
+      resolveImobRecipeMissionContext: () => null,
+      imobCrmBusinessRead: { applyCanonicalJourneyToResolvedData: params.helpers.applyCanonicalJourneyToResolvedData },
+      resolveImobCrmTurnEngine: async (input: any) => { engineCalls++; return resolveImobCrmTurnEngine(input); },
+      recordImobResolveTurnSemanticTelemetry,
+      IMOB_CHAT_AGENT_ID: "IMOB_CRM",
+    };
+    await reviewRouteCallback()(environment)({ authContext: params.authContext, prisma,
+      body: { ...params.body, reviewCase: params.reviewCase, reviewDraftRef: params.reviewDraftRef } }, res);
+    if (scenario.endsWith("deny")) {
+      assert.equal(status, 403);
+      assert.equal(engineCalls, 0);
+      assert.equal(queries.length, scenario === "permission_deny" ? 0 : 1);
+    } else {
+      assert.equal(status, 200);
+      assert.equal(queries.length, 1);
+      assert.equal(engineCalls, 1);
+      assert.equal(payload.ok, true);
+      assert.equal(payload.data.mode, "consult");
+      assert.equal(payload.data.executionRequest, undefined);
+      assert.equal(payload.data.runId, undefined);
+      if (scenario === "allow_yes") assert.equal(payload.data.conversationState.operational.continuity.pending, null);
+      else if (scenario === "allow_no") assert.equal(payload.data.conversationState.operational.continuity.phase, "clarification");
+      else assert.match(payload.data.presentation.text, /Não há uma pergunta/);
+    }
+  });
+}
+
+
+test("FDC-03A aliases normalizados do decoder legado não escapam do tombstone conversacional", async () => {
+  const params = reviewEngineParams("confírmo");
+  params.body.threadState.operational.continuity = null;
+  delete params.body.continuityReplyRef;
+  params.body.canonicalPendingAction = makePendingAction();
+  const result = await resolveImobCrmTurnEngine(params) as any;
+  assert.equal(result.mode, "consult");
+  assert.equal(result.executionRequest, undefined);
+});
+
+for (const status of ["cancelled", "expired", "confirmed"]) {
+  test(`FDC-03A pendingAction histórica ${status} permanece preservada e não impede revisão de dados`, async () => {
+    const params = reviewEngineParams();
+    params.body.threadState.operational.pendingAction = makePendingAction({ status });
+    const result = await resolveImobCrmTurnEngine(params) as any;
+    assert.equal(result.conversationState.operational.continuity.pending, null);
+    assert.deepEqual(result.conversationState.operational.pendingAction, params.body.threadState.operational.pendingAction);
+    assert.equal(result.executionRequest, undefined);
+  });
+}
+
+for (const scenario of ["other_user", "missing_user", "other_interaction", "missing_capability", "invalid_capability", "descriptor_origin_changed"]) {
+  test(`FDC-03A-R1 correlation rejects ${scenario} without helpers or operational effects`, async () => {
+    const params = reviewEngineParams("O valor precisa ser 90000");
+    if (scenario === "other_user") params.authContext.userId = "another-user";
+    if (scenario === "missing_user") delete params.authContext.userId;
+    if (scenario === "other_interaction") params.body.continuityContextRef = "v1:another-conversation-agent";
+    if (scenario === "missing_capability") delete params.body.continuityContextRef;
+    if (scenario === "invalid_capability") params.body.continuityContextRef = "v2:interaction";
+    if (scenario === "descriptor_origin_changed") params.body.threadState.operational.continuity.pending.contextRef = "v1:replacement";
+    const draft = structuredClone(params.body.threadState.operational.proposalDraft);
+    const result = await resolveImobCrmTurnEngine(params) as any;
+    assert.match(result.presentation.text, /Não há uma pergunta/);
+    assert.equal(result.conversationState.operational.continuity, null);
+    assert.deepEqual(result.conversationState.operational.proposalDraft, draft);
+    assert.deepEqual(result.caseContext.blockers, ["Aprovação necessária"]);
+    assert.equal(result.executionRequest, undefined);
+    assert.equal(result.runId, undefined);
+  });
+}
+
+test("FDC-03A-R1 legacy or unsupported consumers are never given a review question", () => {
+  const params = reviewEngineParams();
+  delete params.body.threadState.operational.continuity;
+  const data = { mode: "execute", conversationState: params.body.threadState, caseContext: params.reviewCase,
+    presentation: { text: "legado" }, executionRequest: { input: {} } };
+  for (const ref of [undefined, null, "", "v2:foo", "v1:", 1, {}]) {
+    assert.equal(attachProposalReviewQuestion(data, params.authContext, ref), data);
+  }
+  assert.equal(attachProposalReviewQuestion(data, { ...params.authContext, userId: null }, "v1:live"), data);
+  const capable: any = attachProposalReviewQuestion(data, params.authContext, "v1:live");
+  assert.equal(capable.conversationState.operational.continuity.pending.contextRef, "v1:live");
+  assert.equal(capable.executionRequest, data.executionRequest);
+});
+
+test("FDC-03A-R1 review summary describes draft amount and type without exposing identity/contact/internal IDs", () => {
+  const params = reviewEngineParams();
+  delete params.body.threadState.operational.continuity;
+  const data = { mode: "execute", conversationState: params.body.threadState, caseContext: params.reviewCase, presentation: { text: "old" } };
+  const result: any = attachProposalReviewQuestion(data, params.authContext, "v1:live");
+  assert.match(result.presentation.card.lines.join("\n"), /Valor proposto: R\$\s100\.000,00/);
+  assert.match(result.presentation.card.lines.join("\n"), /Tipo: venda/);
+  assert.doesNotMatch(JSON.stringify(result.presentation), /Maria|47999998888|property-1|Posso preparar/);
+  params.body.threadState.operational.proposalDraft.offerAmount = 90000;
+  params.body.threadState.operational.proposalDraft.contractType = "rent";
+  const changed: any = attachProposalReviewQuestion(data, params.authContext, "v1:live");
+  assert.match(changed.presentation.card.lines.join("\n"), /90\.000,00/);
+  assert.match(changed.presentation.card.lines.join("\n"), /Tipo: locação/);
+  assert.notEqual(changed.conversationState.operational.continuity.pending.draftRef, result.conversationState.operational.continuity.pending.draftRef);
+});
+
+test("FDC-03A No → free-text details preserves clarification without presuming ownership or editing", async () => {
+  const params = reviewEngineParams("Não");
+  const original = structuredClone(params.body.threadState.operational.proposalDraft);
+  const first: any = await resolveImobCrmTurnEngine(params);
+  params.body.threadState = first.conversationState;
+  params.body.continuityReplyRef = first.conversationState.operational.continuity.pending.ref;
+  params.body.message = "O valor precisa ser 90000";
+  const second: any = await resolveImobCrmTurnEngine(params);
+  assert.deepEqual(second.conversationState.operational.continuity.pending, first.conversationState.operational.continuity.pending);
+  assert.match(second.presentation.text, /Nenhum dado foi alterado.*Gerar proposta/);
+  assert.match(second.presentation.text, /Continuar revisão da proposta.*Mudar de assunto/);
+  assert.deepEqual(second.conversationState.operational.proposalDraft, original);
+  assert.equal(second.executionRequest, undefined);
+});
+
+for (const phase of ["review", "clarification"] as const) {
+  test(`FDC-03A-R1 cancellation in ${phase} closes only the conversation question`, async () => {
+    const params = reviewEngineParams("Cancelar proposta");
+    const op = params.body.threadState.operational;
+    op.pendingAction = makePendingAction();
+    op.continuity = buildProposalReviewQuestion({ operational: op, ...params.authContext,
+      caseId: params.body.caseId, threadId: params.body.threadId, contextRef: params.body.continuityContextRef, phase });
+    params.body.continuityReplyRef = op.continuity.pending.ref;
+    const original = structuredClone(op);
+    const result: any = await resolveImobCrmTurnEngine(params);
+    assert.equal(result.conversationState.operational.continuity.pending, null);
+    assert.deepEqual(result.conversationState.operational.pendingAction, original.pendingAction);
+    assert.deepEqual(result.conversationState.operational.proposalDraft, original.proposalDraft);
+    assert.deepEqual(result.caseContext, params.reviewCase);
+    assert.match(result.presentation.text, /nenhuma ação, negócio ou registro foi cancelado/);
+    assert.equal(result.executionRequest, undefined);
+  });
+}
+
+test("FDC-03A-R1 full replay within unchanged live scope is consultive, not durable single-use", async () => {
+  const params = reviewEngineParams();
+  const body = structuredClone(params.body);
+  const first: any = await resolveImobCrmTurnEngine(params);
+  params.body = structuredClone(body);
+  const replay: any = await resolveImobCrmTurnEngine(params);
+  for (const result of [first, replay]) {
+    assert.equal(result.mode, "consult");
+    assert.equal(result.conversationState.operational.continuity.pending, null);
+    assert.equal(result.conversationState.operational.proposalDraft.approvalStatus, "pending");
+    assert.equal(result.executionRequest, undefined);
+    assert.equal(result.runId, undefined);
+  }
+  params.body = structuredClone(body);
+  params.authContext.userId = "other-user";
+  assert.match((await resolveImobCrmTurnEngine(params) as any).presentation.text, /Não há uma pergunta/);
+});
+
+for (const phase of ["review", "clarification"] as const) {
+  for (const message of ["Gostaria de tratar outra coisa", "Mude para COMEX", "Quero mudar para a vertical LEGAL", "Quero revisar o prazo de pagamento da proposta"]) {
+    test(`FDC mínimo: intenção não resolvida em ${phase} (${message}) preserva pergunta, draft e autoridade`, async () => {
+      const params = reviewEngineParams(message);
+      const op = params.body.threadState.operational;
+      op.continuity = buildProposalReviewQuestion({ operational: op, ...params.authContext,
+        caseId: params.body.caseId, threadId: params.body.threadId, contextRef: params.body.continuityContextRef, phase });
+      params.body.continuityReplyRef = op.continuity.pending.ref;
+      const before = structuredClone(params.body.threadState);
+      const result: any = await resolveImobCrmTurnEngine(params);
+      assert.equal(result.mode, "consult");
+      assert.match(result.presentation.text, /Continuar revisão da proposta.*Mudar de assunto/);
+      assert.deepEqual(result.conversationState.operational, before.operational);
+      assert.deepEqual(result.caseContext, params.reviewCase);
+      assert.equal(result.executionRequest, undefined);
+      assert.equal(result.runId, undefined);
+    });
+  }
+}
+
+for (const choice of ["Continuar revisão da proposta", "Mudar de assunto"]) {
+  test(`FDC mínimo: escolha contextual ${choice} preserva pendingAction e approval`, async () => {
+    const params = reviewEngineParams(choice);
+    params.body.canonicalPendingAction = makePendingAction();
+    params.body.threadState.operational.pendingAction = params.body.canonicalPendingAction;
+    const before = structuredClone(params.body.threadState.operational);
+    const result: any = await resolveImobCrmTurnEngine(params);
+    assert.equal(result.mode, "consult");
+    assert.deepEqual(result.conversationState.operational.proposalDraft, before.proposalDraft);
+    assert.deepEqual(result.conversationState.operational.pendingAction, before.pendingAction);
+    assert.deepEqual(result.caseContext, params.reviewCase);
+    assert.equal(result.executionRequest, undefined);
+    assert.equal(result.runId, undefined);
+    if (choice === "Mudar de assunto") {
+      assert.equal(result.conversationState.operational.continuity.pending, null);
+      assert.match(result.presentation.text, /disponibilidade.*verificada/);
+    } else {
+      assert.notEqual(result.conversationState.operational.continuity.pending.ref, before.continuity.pending.ref);
+      params.body.threadState = result.conversationState;
+      params.body.continuityReplyRef = result.conversationState.operational.continuity.pending.ref;
+      params.body.message = "Sim";
+      const collision: any = await resolveImobCrmTurnEngine(params);
+      assert.equal(collision.mode, "consult");
+      assert.deepEqual(collision.conversationState.operational.pendingAction, before.pendingAction);
+      assert.equal(collision.executionRequest, undefined);
+    }
+  });
+}
+
+test("FDC mínimo: descritor respondido não promove confirmação longa ou intenção desconhecida a operação", async () => {
+  for (const message of ["Sim estão corretos", "pode executar", "Quero confirmar a proposta", "Gostaria de tratar outra coisa"]) {
+    const params = reviewEngineParams(message);
+    params.body.threadState.operational.continuity.pending = null;
+    params.body.continuityReplyRef = null;
+    params.body.canonicalPendingAction = makePendingAction();
+    const draft = structuredClone(params.body.threadState.operational.proposalDraft);
+    const result: any = await resolveImobCrmTurnEngine(params);
+    assert.equal(result.mode, "consult");
+    assert.equal(result.executionRequest, undefined);
+    assert.equal(result.runId, undefined);
+    assert.deepEqual(result.conversationState.operational.proposalDraft, draft);
+    assert.equal(result.conversationState.operational.proposalDraft.approvalStatus, "pending");
+  }
+});
