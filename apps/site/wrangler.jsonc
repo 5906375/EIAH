@@ -4,6 +4,10 @@
   "name": "eiah-site",
   "compatibility_date": "2026-09-02",
 
+  // O Worker só roda quando nenhum arquivo de public/ corresponde ao endereço.
+  // Hoje ele atende apenas /api/votacao/ (votação ao vivo de /ia-na-pratica-juridica/).
+  "main": "./src/worker.js",
+
   "workers_dev": true,
   "preview_urls": true,
 
@@ -20,8 +24,26 @@
 
   "assets": {
     "directory": "./public",
+    "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "none",
     "run_worker_first": false
-  }
+  },
+
+  // Salas da votação ao vivo: uma instância por sala, armazenamento SQLite, dados apagados em 24 h.
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SALAS",
+        "class_name": "SalaVotacao"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SalaVotacao"]
+    }
+  ]
 }

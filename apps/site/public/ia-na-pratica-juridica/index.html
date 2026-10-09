@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<title>IA na Prática Jurídica</title>
+<meta name="description" content="Roteiro de palestra, votação ao vivo, simulador de risco, comparativo, calculadora de ROI, guia e autodiagnóstico sobre IA generativa na prática jurídica.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- ============ CABEÇALHO ============ -->
+<header class="app">
+  <div class="wrap">
+    <div class="linha1">
+      <a class="logo" href="#roteiro" aria-label="IA na Prática Jurídica — início">
+        <span class="icone" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M12 4.5l-7 2.5M12 4.5l7 2.5"/><path d="M5 7l-3 6a3 3 0 0 0 6 0L5 7zM19 7l-3 6a3 3 0 0 0 6 0l-3-6z"/></svg></span>
+        <span><span class="t">IA na Prática Jurídica</span><span class="s">Guia, Enquetes, Comparativo e Calculadora de ROI</span></span>
+      </a>
+      <div class="cronometro" role="group" aria-label="Cronômetro da palestra">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fbbf24" aria-hidden="true"><path d="M9 2h6v2H9zM12 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm1 8.6V10h-2v5.4l3.6 2.1 1-1.7z"/></svg>
+        <span class="tempo" id="tempo" aria-live="off">00:00</span>
+        <button class="icone-btn" type="button" id="cronoPlay" aria-label="Iniciar cronômetro"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="icone-btn" type="button" id="cronoZerar" aria-label="Zerar cronômetro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/></svg></button>
+      </div>
+      <button class="icone-btn" type="button" id="telaCheia" aria-label="Tela cheia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
+    <nav class="abas" role="tablist" aria-label="Partes">
+      <a class="aba" role="tab" href="#roteiro" data-aba="roteiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Roteiro &amp; Palestra</a>
+      <a class="aba" role="tab" href="#votacao" data-aba="votacao"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>Votação ao Vivo</a>
+      <a class="aba" role="tab" href="#simulador" data-aba="simulador"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>Simulador de IA &amp; Risco</a>
+      <a class="aba" role="tab" href="#comparativo" data-aba="comparativo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="7" height="14" rx="2"/><rect x="14" y="5" width="7" height="14" rx="2"/></svg>Comparativo</a>
+      <a class="aba" role="tab" href="#roi" data-aba="roi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h2M14 12h2M8 16h2M14 16h2"/></svg>Calculadora de ROI</a>
+      <a class="aba" role="tab" href="#guia" data-aba="guia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2zM8 7h6"/></svg>Guia</a>
+      <a class="aba" role="tab" href="#diagnostico" data-aba="diagnostico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/></svg>Autodiagnóstico</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="status">
+    <span class="pill" id="statusPill">Slide 1 de 4</span>
+    <span class="titulo" id="statusTitulo">Bloco 1: Abertura e Termômetro do Grupo</span>
+    <span class="pontos" id="statusPontos"></span>
+  </div>
+</div>
+
+<main class="wrap">
+
+<!-- ============ ROTEIRO & PALESTRA ============ -->
+<section class="painel" id="roteiro" data-painel="roteiro">
+  <article class="cartao-grande slide" data-slide="0" data-titulo="Bloco 1: Abertura e Termômetro do Grupo">
+    <span class="etiqueta">Apresentação para advogados · Bloco I</span><span class="duracao">⏱ 10 min</span>
+    <h1>Abertura &amp; Mapeamento de Maturidade</h1>
+    <p class="sub">Transição da ansiedade tecnológica para o uso estratégico e responsável da inteligência artificial generativa na advocacia.</p>
+    <div class="grade-2">
+      <div class="cartao"><div class="rotulo">Objetivo da conversa</div><h3>Sair com critério, não com medo</h3><p class="nota" style="font-size:15px">Entender o que a IA faz bem, onde erra, quais regras já existem e como medir se vale a pena — com exemplos do dia a dia do escritório.</p></div>
+      <div class="cartao"><div class="rotulo">Termômetro do grupo</div><h3>Onde estamos hoje?</h3><p class="nota" style="font-size:15px">Votação rápida pelo celular: frequência de uso, maiores preocupações e se há política de IA no escritório.</p><a class="botao" href="#votacao">Abrir a votação ao vivo</a></div>
+    </div>
+    <details class="fala"><summary>Fala sugerida</summary>
+      <p>“A pergunta não é mais se a IA vai entrar no escritório — ela já entrou, muitas vezes pela porta dos fundos, no celular de cada um. A pergunta é como usar com segurança e com resultado. Antes de começar, quero saber onde vocês estão.”</p>
+      <p>Abra a votação, mostre o código na tela e dê um minuto para cada pergunta. Comente os resultados sem expor ninguém.</p>
+    </details>
+  </article>
+
+  <article class="cartao-grande slide" data-slide="1" data-titulo="Bloco 2: O que a IA faz — e onde erra" hidden>
+    <span class="etiqueta">Apresentação para advogados · Bloco II</span><span class="duracao">⏱ 15 min</span>
+    <h1>O que a IA faz bem — e onde ela erra</h1>
+    <p class="sub">A IA acelera o rascunho. A responsabilidade continua inteira com quem assina.</p>
+    <div class="grade-2">
+      <div class="cartao bom"><div class="rotulo">Onde ajuda</div><ul class="lista"><li>Primeiro rascunho de minutas e cláusulas.</li><li>Resumo de documentos longos.</li><li>Comparação de versões.</li><li>Padronização de linguagem.</li></ul></div>
+      <div class="cartao risco"><div class="rotulo">Onde erra</div><ul class="lista"><li>Citações, súmulas e artigos inventados.</li><li>Informação desatualizada.</li><li>Prazos e cálculos sem conferência.</li><li>Dados sigilosos em ferramenta inadequada.</li></ul></div>
+    </div>
+    <div class="alerta"><strong>Casos reais de 2025:</strong> o TJSC advertiu advogado por habeas corpus com citações fictícias geradas por IA e comunicou a OAB/SC; o TRT-MG manteve multa por litigância de má-fé após citação de súmula inexistente.</div>
+    <div class="botoes"><a class="botao" href="#simulador">Testar no simulador de risco</a></div>
+    <details class="fala"><summary>Fala sugerida</summary>
+      <p>“O problema não é a IA errar — pessoas também erram. O problema é o erro da IA parecer certo. Texto fluente não é texto verificado.”</p>
+      <p>Use o simulador ao vivo: peça ao grupo um cenário comum (por exemplo, minuta com dados do cliente em ferramenta gratuita, sem revisão) e mostre como o risco cai quando se muda a ferramenta e a revisão.</p>
+    </details>
+  </article>
+
+  <article class="cartao-grande slide" data-slide="2" data-titulo="Bloco 3: Regras do jogo e governança" hidden>
+    <span class="etiqueta">Apresentação para advogados · Bloco III</span><span class="duracao">⏱ 15 min</span>
+    <h1>Regras do jogo e governança</h1>
+    <p class="sub">A Recomendação nº 001/2024 do Conselho Federal da OAB já orienta o uso de IA na advocacia.</p>
+    <div class="grade-2">
+      <div class="cartao regra"><div class="n">1</div><div><h3>Supervisão humana</h3><p>O julgamento profissional não é delegado à IA.</p></div></div>
+      <div class="cartao regra"><div class="n">2</div><div><h3>Verificação rigorosa</h3><p>Conferir o que a IA produziu — dever de veracidade (art. 77 do CPC).</p></div></div>
+      <div class="cartao regra"><div class="n">3</div><div><h3>Sigilo e fornecedor</h3><p>Diligência na escolha da ferramenta; LGPD.</p></div></div>
+      <div class="cartao regra"><div class="n">4</div><div><h3>Transparência</h3><p>Informar o cliente por escrito sobre o uso de IA.</p></div></div>
+    </div>
+    <div class="botoes"><a class="botao" href="#guia">Ver o checklist de uso seguro</a></div>
+    <details class="fala"><summary>Fala sugerida</summary>
+      <p>“Governança aqui não é burocracia: é poder responder a duas perguntas — quem revisou isto? e qual versão foi aprovada? Se o escritório não consegue responder, o risco é de quem assina.”</p>
+    </details>
+  </article>
+
+  <article class="cartao-grande slide" data-slide="3" data-titulo="Bloco 4: Custo, retorno e próximos passos" hidden>
+    <span class="etiqueta">Apresentação para advogados · Bloco IV</span><span class="duracao">⏱ 10 min</span>
+    <h1>Custo, retorno e próximos passos</h1>
+    <p class="sub">Escolher o tipo certo de solução e medir o tempo que volta para o trabalho jurídico.</p>
+    <div class="grade-3">
+      <div class="cartao"><div class="rotulo">Passo 1</div><h3>Política simples</h3><p class="nota" style="font-size:15px">Quais ferramentas, para quais tarefas e com quais dados.</p></div>
+      <div class="cartao"><div class="rotulo">Passo 2</div><h3>Revisão obrigatória</h3><p class="nota" style="font-size:15px">Nada sai sem a aprovação de quem responde — com registro.</p></div>
+      <div class="cartao"><div class="rotulo">Passo 3</div><h3>Medir</h3><p class="nota" style="font-size:15px">Horas devolvidas por mês e prazo de retorno do investimento.</p></div>
+    </div>
+    <div class="botoes"><a class="botao" href="#comparativo">Abrir o comparativo</a><a class="botao sec" href="#roi">Calcular o ROI</a></div>
+    <details class="fala"><summary>Fala sugerida</summary>
+      <p>“Não existe a melhor ferramenta; existe a combinação certa para o seu volume e o seu risco. Para quem trabalha sozinho, uma IA genérica bem usada pode bastar. Para equipes, o que importa é provar quem revisou.”</p>
+      <p>Feche com a calculadora usando os números de um participante e convide o grupo a fazer o autodiagnóstico.</p>
+    </details>
+  </article>
+
+  <div class="nav-slides">
+    <button class="botao sec" type="button" id="slideAnterior">← Anterior</button>
+    <button class="botao" type="button" id="slideProximo">Próximo →</button>
+  </div>
+</section>
+
+<!-- ============ VOTAÇÃO AO VIVO ============ -->
+<section class="painel" id="votacao" data-painel="votacao" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Votação ao vivo</span>
+    <h2>Termômetro do grupo</h2>
+
+    <!-- Apresentador -->
+    <div id="vApresentador">
+      <p class="intro">Crie uma sala, mostre o código ou o QR code na tela e a plateia vota pelo celular. Votos anônimos; a sala e os votos são apagados automaticamente em 24 horas.</p>
+      <div id="vSemSala">
+        <div class="botoes"><button class="botao" type="button" id="vCriar">Criar sala de votação</button></div>
+        <p class="nota" id="vErroCriar" role="alert"></p>
+      </div>
+      <div id="vComSala" hidden>
+        <div class="sala-info">
+          <div>
+            <div class="rotulo">Código da sala</div>
+            <div class="codigo-sala" id="vCodigo">—</div>
+            <p class="link-sala" style="margin-top:12px">Acesse: <span id="vLink"></span></p>
+            <div class="botoes"><button class="botao sec" type="button" id="vCopiarLink">Copiar link</button><button class="botao sec" type="button" id="vNovaSala">Nova sala</button></div>
+          </div>
+          <div class="qr" id="vQr" aria-label="QR code do link da votação"></div>
+        </div>
+        <div class="grade-2" style="align-items:start">
+          <div>
+            <h3>Perguntas</h3>
+            <div class="perguntas-lista" id="vListaPerguntas"></div>
+            <div class="botoes">
+              <button class="botao sec" type="button" id="vAbrirFechar">Encerrar votação</button>
+              <button class="botao sec" type="button" id="vZerar">Zerar votos desta pergunta</button>
+            </div>
+          </div>
+          <div>
+            <h3 id="vTituloResultado">Resultado</h3>
+            <div class="barras" id="vBarras"></div>
+            <p class="total-votos" id="vTotal"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Participante (?sala=CÓDIGO) -->
+    <div id="vParticipante" hidden>
+      <p class="intro">Sala <strong id="pCodigo"></strong> · votação anônima.</p>
+      <h3 id="pPergunta" style="font-size:22px">Carregando…</h3>
+      <div class="escolhas" id="pEscolhas"></div>
+      <div class="aviso-vivo" id="pAviso" hidden></div>
+    </div>
+
+    <p class="aviso-vivo" id="vOffline" hidden>A votação ao vivo funciona quando a página está publicada no site. Nesta prévia, use o levantamento de mãos ou as perguntas do autodiagnóstico.</p>
+  </div>
+</section>
+
+<!-- ============ SIMULADOR DE IA & RISCO ============ -->
+<section class="painel" id="simulador" data-painel="simulador" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Simulador</span>
+    <h2>Quanto risco tem este uso de IA?</h2>
+    <p class="intro">Monte um cenário e veja o nível de risco, o porquê e como reduzir. Simulação educativa: não substitui análise jurídica do caso concreto.</p>
+    <div class="sim-grade">
+      <form class="sim-campos" id="sim" onsubmit="return false">
+        <fieldset><legend>Tarefa</legend><div class="chips">
+          <label><input type="radio" name="tarefa" value="0" checked> Pesquisa e ideias gerais</label>
+          <label><input type="radio" name="tarefa" value="1"> Resumo de documento</label>
+          <label><input type="radio" name="tarefa" value="2"> Minuta de contrato</label>
+          <label><input type="radio" name="tarefa" value="3"> Peça processual</label>
+        </div></fieldset>
+        <fieldset><legend>Dados usados</legend><div class="chips">
+          <label><input type="radio" name="dados" value="0" checked> Nenhum dado de cliente</label>
+          <label><input type="radio" name="dados" value="1"> Dados anonimizados</label>
+          <label><input type="radio" name="dados" value="3"> Dados pessoais de clientes</label>
+          <label><input type="radio" name="dados" value="5"> Dados sensíveis ou sob segredo</label>
+        </div></fieldset>
+        <fieldset><legend>Ferramenta</legend><div class="chips">
+          <label><input type="radio" name="ferramenta" value="4" checked> Gratuita / conta pessoal</label>
+          <label><input type="radio" name="ferramenta" value="3"> Assinatura individual paga</label>
+          <label><input type="radio" name="ferramenta" value="1"> Plano corporativo com contrato</label>
+          <label><input type="radio" name="ferramenta" value="0"> Fluxo com revisão e registro</label>
+        </div></fieldset>
+        <fieldset><legend>Revisão antes de usar</legend><div class="chips">
+          <label><input type="radio" name="revisao" value="5" checked> Nenhuma</label>
+          <label><input type="radio" name="revisao" value="3"> Por quem gerou</label>
+          <label><input type="radio" name="revisao" value="1"> Por revisor com autoridade</label>
+          <label><input type="radio" name="revisao" value="0"> Revisor + citações conferidas na fonte</label>
+        </div></fieldset>
+        <fieldset><legend>Cliente informado sobre o uso de IA</legend><div class="chips">
+          <label><input type="radio" name="cliente" value="2" checked> Não</label>
+          <label><input type="radio" name="cliente" value="0"> Sim, por escrito</label>
+        </div></fieldset>
+      </form>
+      <div class="medidor" aria-live="polite">
+        <div class="rotulo">Nível de risco</div>
+        <div class="nivel-risco" id="simNivel">—</div>
+        <div class="escala" aria-hidden="true"><i id="simPonteiro"></i></div>
+        <h3>Por quê</h3>
+        <ul class="lista fatores" id="simFatores"></ul>
+        <h3 style="margin-top:14px">Como reduzir</h3>
+        <ul class="lista fatores" id="simAcoes"></ul>
+      </div>
+    </div>
+    <div class="grade-2">
+      <div class="cartao"><div class="rotulo">Grátis × pago: o que muda</div><p style="font-size:15px">Planos gratuitos e individuais costumam permitir que as conversas sejam usadas para melhorar os modelos, salvo se essa opção for desativada. Planos corporativos normalmente excluem esse uso por contrato e oferecem controle de acesso. <strong>Confira sempre os termos atuais do fornecedor.</strong></p></div>
+      <div class="cartao"><div class="rotulo">Regra de bolso</div><p style="font-size:15px">Quanto mais sensível o dado e mais formal o documento, mais forte precisa ser a ferramenta e mais rigorosa a revisão. Peça processual com dado sigiloso nunca deve sair sem revisão de quem assina.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COMPARATIVO ============ -->
+<section class="painel" id="comparativo" data-painel="comparativo" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Comparativo</span>
+    <h2>Quatro tipos de solução — e para que serve cada um.</h2>
+    <p class="intro">Elas não competem entre si: a maioria das equipes combina duas ou mais. O que muda é onde cada uma entrega valor e onde deixa o risco com você.</p>
+    <div class="rolagem" tabindex="0" role="region" aria-label="Tabela comparativa (role para o lado no celular)">
+      <table class="comp">
+        <thead>
+          <tr>
+            <th scope="col"><span class="sr">Critério</span></th>
+            <th scope="col">IA generativa genérica<small>ex.: ChatGPT, Claude, Gemini</small></th>
+            <th scope="col">IA jurídica de pesquisa<small>ex.: Jus IA, Lexter</small></th>
+            <th scope="col">Automação de documentos / CLM<small>ex.: Looplex, NetLex</small></th>
+            <th scope="col">Fluxo governado de minutas<small>revisão e aprovação controladas</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Melhor para</th><td>Rascunhos, resumos e ideias, de forma livre</td><td>Pesquisa de jurisprudência e peças com base jurídica</td><td>Documentos padronizados em grande volume e gestão de contratos</td><td>Minutas com revisão humana obrigatória e prova de aprovação</td></tr>
+          <tr><th scope="row">Redige texto jurídico</th><td><span class="sim">Sim</span></td><td><span class="sim">Sim</span></td><td><span class="parcial">Por modelos</span></td><td><span class="sim">Sim, a partir dos modelos do escritório</span></td></tr>
+          <tr><th scope="row">Base de jurisprudência própria</th><td><span class="nao">Não</span></td><td><span class="sim">Sim</span> — principal diferencial</td><td><span class="nao">Não</span></td><td><span class="nao">Não</span> — combina com uma ferramenta de pesquisa</td></tr>
+          <tr><th scope="row">Revisão humana obrigatória</th><td><span class="nao">Depende de quem usa</span></td><td><span class="nao">Depende de quem usa</span></td><td><span class="parcial">Fluxos de aprovação configuráveis</span></td><td><span class="sim">Sim — sem revisão, não há versão aprovada</span></td></tr>
+          <tr><th scope="row">Aprovação presa à versão exata</th><td><span class="nao">Não</span></td><td><span class="nao">Não</span></td><td><span class="parcial">Varia</span></td><td><span class="sim">Sim — mudou o texto, aprova de novo</span></td></tr>
+          <tr><th scope="row">Registro de quem aprovou</th><td><span class="nao">Não</span></td><td><span class="parcial">Parcial</span></td><td><span class="sim">Sim</span></td><td><span class="sim">Sim</span></td></tr>
+          <tr><th scope="row">Implantação</th><td>Imediata</td><td>Imediata</td><td>Projeto de implantação</td><td>Personalização com diagnóstico jurídico</td></tr>
+          <tr><th scope="row">Faixa de custo de referência*</th><td>~US$ 20–25 por usuário/mês</td><td>~R$ 100–200 por usuário/mês</td><td>Sob proposta; referências a partir de ~R$ 3 mil/mês</td><td>Personalização + mensalidade</td></tr>
+          <tr><th scope="row">Principal limitação</th><td>Responsabilidade e prova da revisão ficam inteiras com o usuário</td><td>Foco em pesquisa; não controla o fluxo de aprovação</td><td>Custo e esforço maiores; pensado para grande volume</td><td>Não substitui a pesquisa jurídica; exige definir regras e modelos</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="nota" style="margin-top:12px">* Estimativas de fontes públicas (comparadores, notícias e contratações públicas) consultadas em outubro de 2026. Valores mudam com frequência; confirme com cada fornecedor. Marcas citadas apenas como exemplos de categoria.</p>
+    <div class="grade-3">
+      <div class="cartao"><h3>Advogado individual, baixo volume</h3><p class="nota" style="font-size:15px">IA generativa genérica ou jurídica costuma bastar, com revisão pessoal disciplinada.</p></div>
+      <div class="cartao"><h3>Equipe com juniores e sócios</h3><p class="nota" style="font-size:15px">Pesquisa com IA jurídica + fluxo governado para que nada saia sem a aprovação de quem responde.</p></div>
+      <div class="cartao"><h3>Departamento jurídico / área regulada</h3><p class="nota" style="font-size:15px">Fluxo governado com registro de aprovação; CLM se o volume de contratos for muito alto.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CALCULADORA DE ROI ============ -->
+<section class="painel" id="roi" data-painel="roi" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Calculadora de ROI</span>
+    <h2>Quanto vale o tempo que a IA devolve?</h2>
+    <p class="intro">Ajuste os números da sua realidade. A conta já desconta o tempo de revisão humana — que continua obrigatório. Os valores iniciais são apenas exemplos.</p>
+    <div class="calc">
+      <form class="campos" id="calc" onsubmit="return false">
+        <div class="campo"><label for="minutas">Minutas por mês</label><input id="minutas" type="number" min="0" step="1" value="40"><small>Contratos, peças e pareceres produzidos pela equipe.</small></div>
+        <div class="campo"><label for="horas">Horas por minuta hoje</label><input id="horas" type="number" min="0" step="0.25" value="3"><small>Tempo médio de redação, sem contar a revisão final.</small></div>
+        <div class="campo"><label for="reducao">Redução do tempo de redação com IA: <span class="valor-range" id="reducaoTxt">40%</span></label><input id="reducao" type="range" min="0" max="80" step="5" value="40"><small>Seja conservador: entre 20% e 50% é um intervalo prudente para começar.</small></div>
+        <div class="campo"><label for="revisao">Horas de revisão extra por minuta</label><input id="revisao" type="number" min="0" step="0.25" value="0.5"><small>Conferência de citações e cláusulas geradas com IA.</small></div>
+        <div class="campo"><label for="hora">Valor da hora da equipe (R$)</label><input id="hora" type="number" min="0" step="10" value="150"><small>Custo interno ou valor de referência da hora.</small></div>
+        <div class="campo"><label for="mensal">Custo mensal da solução (R$)</label><input id="mensal" type="number" min="0" step="10" value="1490"><small>Assinaturas ou mensalidade da plataforma.</small></div>
+        <div class="campo"><label for="implantacao">Investimento inicial (R$)</label><input id="implantacao" type="number" min="0" step="100" value="7500"><small>Implantação, personalização e treinamento.</small></div>
+        <div class="campo"><label for="meses">Horizonte da análise (meses)</label><input id="meses" type="number" min="1" max="60" step="1" value="12"><small>Período para o cálculo do retorno.</small></div>
+      </form>
+      <div class="saidas" aria-live="polite">
+        <h3>Resultado estimado</h3>
+        <div class="saida"><span>Horas devolvidas por mês</span><b id="oHoras">—</b></div>
+        <div class="saida"><span>Valor do tempo devolvido por mês</span><b id="oValor">—</b></div>
+        <div class="saida"><span>Ganho líquido por mês</span><b id="oLiquido">—</b></div>
+        <div class="saida"><span>Prazo de retorno</span><b id="oPayback">—</b></div>
+        <div class="saida grande" id="linhaRoi"><span>ROI no período</span><b id="oRoi">—</b></div>
+        <p class="nota" id="oLeitura" style="margin-top:10px"></p>
+        <div class="botoes"><button class="botao sec" type="button" id="copiarRoi">Copiar resultado</button></div>
+        <p class="nota" id="statusRoi"></p>
+      </div>
+    </div>
+    <p class="nota" style="margin-top:16px">Estimativa simplificada para apoiar decisões; não é promessa de resultado. Horas devolvidas = minutas × horas × redução − minutas × revisão extra. ROI = (ganho líquido no período − investimento inicial) ÷ (investimento inicial + custo da solução no período).</p>
+  </div>
+</section>
+
+<!-- ============ GUIA ============ -->
+<section class="painel" id="guia" data-painel="guia" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Guia</span>
+    <h2>A IA escreve. Quem responde é o advogado.</h2>
+    <p class="intro">A IA generativa já redige, resume e compara textos jurídicos em segundos. O ganho é real — e o risco também. O ponto de equilíbrio: usar a IA para acelerar o rascunho e manter a decisão, a verificação e a assinatura com uma pessoa.</p>
+    <div class="grade-2">
+      <div class="cartao bom">
+        <div class="rotulo">Onde a IA ajuda</div>
+        <ul class="lista">
+          <li>Primeiro rascunho de minutas e cláusulas a partir de modelos do escritório.</li>
+          <li>Resumo de contratos, petições e documentos longos.</li>
+          <li>Comparação de versões e destaque de cláusulas sensíveis.</li>
+          <li>Padronização de linguagem e checagem de itens obrigatórios.</li>
+          <li>Organização de informações do atendimento antes da análise.</li>
+        </ul>
+      </div>
+      <div class="cartao risco">
+        <div class="rotulo">Onde a IA erra</div>
+        <ul class="lista">
+          <li><strong>Citações inventadas</strong>: jurisprudência, súmulas e artigos que não existem.</li>
+          <li>Informação desatualizada ou fora do contexto brasileiro.</li>
+          <li>Cálculos, prazos e datas sem conferência.</li>
+          <li>Texto convincente, porém juridicamente frágil.</li>
+          <li>Exposição de dados sigilosos quando colados em ferramentas inadequadas.</li>
+        </ul>
+      </div>
+    </div>
+    <h3 style="margin-top:36px">As regras do jogo</h3>
+    <p class="intro">A Recomendação nº 001/2024 do Conselho Federal da OAB orienta o uso de IA na advocacia. Ela não é lei, mas já é usada como referência para avaliar condutas.</p>
+    <div class="grade-2">
+      <div class="cartao regra"><div class="n">1</div><div><h3>Supervisão humana</h3><p>O julgamento profissional não pode ser delegado à IA. Todo resultado passa por revisão de quem responde por ele.</p></div></div>
+      <div class="cartao regra"><div class="n">2</div><div><h3>Verificação rigorosa</h3><p>Peças produzidas com IA devem ter as informações conferidas — em linha com o dever de veracidade do art. 77 do CPC.</p></div></div>
+      <div class="cartao regra"><div class="n">3</div><div><h3>Sigilo e escolha do fornecedor</h3><p>Dados de clientes exigem cuidado com o sigilo profissional e diligência na escolha da ferramenta. Some-se a isso a LGPD.</p></div></div>
+      <div class="cartao regra"><div class="n">4</div><div><h3>Transparência com o cliente</h3><p>Informar por escrito o uso de IA: finalidade, benefícios, limitações, riscos e a possibilidade de revisão humana.</p></div></div>
+    </div>
+    <div class="alerta"><strong>Não é teoria.</strong> Em 2025, o TJSC advertiu um advogado por habeas corpus com citações fictícias geradas por IA e comunicou a OAB/SC; o TRT-MG manteve multa por litigância de má-fé após a citação de uma súmula inexistente. O uso de IA não transfere nem atenua a responsabilidade de quem assina.</div>
+    <h3 style="margin-top:36px">Checklist de uso seguro</h3>
+    <p class="intro">Marque o que o seu escritório ou departamento já pratica. Nada é enviado: fica só nesta página.</p>
+    <ul class="checklist" id="checklist">
+      <li><label><input type="checkbox"> Há uma política escrita sobre quais ferramentas de IA podem ser usadas e para quê.</label></li>
+      <li><label><input type="checkbox"> Dados sigilosos de clientes não são colados em ferramentas sem contrato e garantias adequadas.</label></li>
+      <li><label><input type="checkbox"> Toda minuta gerada com IA é revisada por quem tem autoridade antes de sair.</label></li>
+      <li><label><input type="checkbox"> Citações, artigos e jurisprudência são conferidos na fonte oficial.</label></li>
+      <li><label><input type="checkbox"> Fica registrado quem revisou e aprovou cada versão.</label></li>
+      <li><label><input type="checkbox"> O cliente é informado por escrito sobre o uso de IA.</label></li>
+      <li><label><input type="checkbox"> As minutas partem de modelos e cláusulas aprovados pelo escritório.</label></li>
+      <li><label><input type="checkbox"> A equipe recebeu orientação sobre limites e riscos da IA.</label></li>
+    </ul>
+    <div class="barra" aria-hidden="true"><i id="barraChecklist"></i></div>
+    <div class="progresso"><span id="textoChecklist">0 de 8 práticas</span><span id="nivelChecklist">Comece pelas três primeiras</span></div>
+  </div>
+</section>
+
+<!-- ============ AUTODIAGNÓSTICO ============ -->
+<section class="painel" id="diagnostico" data-painel="diagnostico" hidden>
+  <div class="cartao-grande">
+    <span class="etiqueta">Autodiagnóstico</span>
+    <h2>Onde você está no uso de IA?</h2>
+    <p class="intro">Seis perguntas rápidas. Ao final, você recebe um nível de maturidade e as próximas ações recomendadas. As respostas ficam somente no seu navegador.</p>
+    <form id="enquete" novalidate>
+      <div class="pergunta"><fieldset><legend>1. Como a sua equipe usa IA hoje?</legend><div class="opcoes">
+        <label><input type="radio" name="q1" value="0"> Não usa ou não sabemos</label>
+        <label><input type="radio" name="q1" value="1"> Cada pessoa usa a ferramenta que quer, por conta própria</label>
+        <label><input type="radio" name="q1" value="2"> Usamos ferramentas definidas pelo escritório</label>
+        <label><input type="radio" name="q1" value="3"> Usamos em um fluxo definido, com etapas e responsáveis</label>
+      </div></fieldset></div>
+      <div class="pergunta"><fieldset><legend>2. Quem revisa o que a IA produz antes de sair?</legend><div class="opcoes">
+        <label><input type="radio" name="q2" value="0"> Ninguém em especial</label>
+        <label><input type="radio" name="q2" value="1"> Quem gerou o texto</label>
+        <label><input type="radio" name="q2" value="2"> Um revisor, quando dá tempo</label>
+        <label><input type="radio" name="q2" value="3"> Sempre alguém com autoridade, antes de enviar</label>
+      </div></fieldset></div>
+      <div class="pergunta"><fieldset><legend>3. Se o cliente perguntar quem aprovou uma minuta, vocês conseguem provar?</legend><div class="opcoes">
+        <label><input type="radio" name="q3" value="0"> Não</label>
+        <label><input type="radio" name="q3" value="1"> Com esforço, procurando em e-mails e conversas</label>
+        <label><input type="radio" name="q3" value="3"> Sim, com registro de quem, quando e qual versão</label>
+      </div></fieldset></div>
+      <div class="pergunta"><fieldset><legend>4. Onde ficam os dados dos clientes usados com IA?</legend><div class="opcoes">
+        <label><input type="radio" name="q4" value="0"> Não sabemos</label>
+        <label><input type="radio" name="q4" value="1"> Em ferramentas gratuitas ou pessoais</label>
+        <label><input type="radio" name="q4" value="2"> Em ferramentas corporativas com contrato</label>
+        <label><input type="radio" name="q4" value="3"> Em ferramenta contratada, com política de dados e controle de acesso</label>
+      </div></fieldset></div>
+      <div class="pergunta"><fieldset><legend>5. Os clientes são informados sobre o uso de IA?</legend><div class="opcoes">
+        <label><input type="radio" name="q5" value="0"> Não</label>
+        <label><input type="radio" name="q5" value="1"> Só se perguntarem</label>
+        <label><input type="radio" name="q5" value="3"> Sim, por escrito</label>
+      </div></fieldset></div>
+      <div class="pergunta"><fieldset><legend>6. Quantas minutas ou peças a equipe produz por mês?</legend><div class="opcoes">
+        <label><input type="radio" name="q6" value="0" data-vol="10"> Até 10</label>
+        <label><input type="radio" name="q6" value="0" data-vol="30"> De 11 a 50</label>
+        <label><input type="radio" name="q6" value="0" data-vol="100"> De 51 a 200</label>
+        <label><input type="radio" name="q6" value="0" data-vol="250"> Mais de 200</label>
+      </div></fieldset></div>
+      <p id="erroEnquete" class="nota" role="alert" style="color:var(--rosa);margin-top:12px"></p>
+      <div class="botoes">
+        <button class="botao" type="submit">Ver meu diagnóstico</button>
+        <button class="botao sec" type="reset">Limpar respostas</button>
+      </div>
+    </form>
+    <div class="resultado" id="resultado" aria-live="polite" hidden>
+      <div class="nivel" id="resNivel"></div>
+      <div class="pontos" id="resPontos"></div>
+      <p id="resTexto" style="margin-top:8px"></p>
+      <h3 style="margin-top:14px">Próximas ações</h3>
+      <ul class="lista" id="resAcoes"></ul>
+      <div class="botoes">
+        <a class="botao" href="#roi" id="levarRoi">Calcular o ROI com o meu volume</a>
+        <button class="botao sec" type="button" id="copiarDiag">Copiar diagnóstico</button>
+      </div>
+      <p class="nota" id="statusCopia"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FONTES (sempre visível) ============ -->
+<section class="painel" id="fontes">
+  <div class="cartao-grande">
+    <span class="etiqueta">Fontes e aviso</span>
+    <h2>De onde vêm as informações</h2>
+    <ol class="fontes">
+      <li>Conselho Federal da OAB — Recomendação nº 001/2024 sobre uso de IA na advocacia (resumos em <a href="https://cj.estrategia.com/portal/uso-da-inteligencia-artificial-na-advocacia/" rel="noopener noreferrer" target="_blank">Estratégia</a> e <a href="https://www.barbieriadvogados.com/inteligencia-artificial-advogados/" rel="noopener noreferrer" target="_blank">Barbieri Advogados</a>). Consulte o texto integral no site da OAB Nacional.</li>
+      <li>Casos de 2025 (TJSC e TRT-MG) e Resolução CNJ nº 615/2025 — mesmas fontes acima.</li>
+      <li>Lei Geral de Proteção de Dados — <a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" rel="noopener noreferrer" target="_blank">Lei nº 13.709/2018</a>.</li>
+      <li>Referências de custo de IA generativa: <a href="https://www.eesel.ai/blog/chatgpt-work-pricing" rel="noopener noreferrer" target="_blank">eesel</a> e <a href="https://krater.ai/blog/claude-team-plan-pricing" rel="noopener noreferrer" target="_blank">krater</a>.</li>
+      <li>Referências de IA jurídica: <a href="https://ialocus.com.br/blog/post-ia-juridica-preco.html" rel="noopener noreferrer" target="_blank">ialocus</a>, contratação pública da <a href="https://www.gov.br/casacivil/pt-br/acesso-a-informacao/licitacoes-e-contratos/secretaria-de-administracao/contratacoes-diretas/atos-de-inexigibilidade-2026/tr-237-2026.pdf" rel="noopener noreferrer" target="_blank">Casa Civil</a> e reportagem da <a href="https://www.contxto.com/en/brazil/lexter-ai-raises-r16m-to-bring-ai-to-law-firms/" rel="noopener noreferrer" target="_blank">Contxto</a>.</li>
+      <li>Referências de automação de documentos: <a href="https://www.b2bstack.com.br/compare/looplex-vs-astrea" rel="noopener noreferrer" target="_blank">B2B Stack</a> e <a href="https://www.baguete.com.br/noticias/dasa-automatiza-gestao-juridica-com-netlex" rel="noopener noreferrer" target="_blank">Baguete</a>.</li>
+    </ol>
+    <p class="nota" style="margin-top:14px">Conteúdo informativo, que não constitui consultoria jurídica. A página não usa cookies nem ferramentas de análise. Só a votação ao vivo envia dados: o voto anônimo, apagado em 24 horas. Última revisão: outubro de 2026.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>IA na Prática Jurídica · Guia, Enquetes, Comparativo e Calculadora de ROI</span>
+    <span>Outubro de 2026</span>
+  </div>
+</footer>
+
+<script src="qrcode.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>

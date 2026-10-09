@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amanhã Legal — Fluxo jurídico com revisão humana</title>
+<meta name="description" content="Proposta conceitual do fluxo atendimento, minuta, revisão humana e versão aprovada. Demonstração com dados fictícios.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="canonical" href="https://www.eiah.ia.br/amanha-legal/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="pular" href="#demo">Ir para a demonstração</a>
+
+<header class="topo">
+  <div class="wrap topo-in">
+    <a class="marca" href="#inicio" aria-label="Amanhã Legal">
+      <!-- Logo oficial: preencher data-logo com o caminho do arquivo quando for entregue. -->
+      <img class="logo" data-logo="" alt="Amanhã Legal" hidden>
+      <span class="simbolo" aria-hidden="true">Am</span>
+      <span class="marca-nome">Amanhã Legal</span>
+    </a>
+    <nav class="nav" aria-label="Seções">
+      <a href="#fluxo">Fluxo</a>
+      <a href="#demo">Demonstração</a>
+      <a href="#papeis">Quem faz o quê</a>
+      <a href="#limites">Limites</a>
+    </nav>
+  </div>
+</header>
+
+<div class="aviso" role="note">
+  Proposta conceitual · dados fictícios · sem IA conectada · nada é enviado nem guardado
+</div>
+
+<main id="inicio">
+  <section class="hero">
+    <div class="wrap">
+      <p class="sobretitulo">Fluxo jurídico com revisão humana</p>
+      <h1>O jurídico à frente. <em>A tecnologia como base.</em></h1>
+      <p class="lema">Direito do amanhã, para todos.</p>
+      <p class="hero-txt">Do atendimento à versão aprovada, cada minuta passa por uma pessoa responsável antes de sair. Esta página mostra o caminho com dados inventados, para conversarmos sobre ele.</p>
+      <p><a class="botao" href="#demo">Ver a demonstração</a></p>
+    </div>
+  </section>
+
+  <section id="fluxo" class="secao">
+    <div class="wrap">
+      <h2>O fluxo em quatro passos</h2>
+      <ol class="passos">
+        <li><span class="n">1</span><h3>Atendimento</h3><p>As informações do caso entram em um roteiro único, sem retrabalho.</p></li>
+        <li><span class="n">2</span><h3>Minuta</h3><p>Um rascunho é montado a partir do roteiro, em texto editável.</p></li>
+        <li class="destaque"><span class="n">3</span><h3>Revisão humana</h3><p>Uma pessoa habilitada confere, ajusta e decide. É aqui que a responsabilidade fica.</p></li>
+        <li><span class="n">4</span><h3>Versão aprovada</h3><p>Só o texto aprovado sai, com versão, responsável e horário registrados.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="demo" class="secao claro">
+    <div class="wrap">
+      <h2>Demonstração interativa</h2>
+      <p class="intro">Tudo roda no seu navegador, com dados fictícios. Ao fechar a página, nada permanece.</p>
+
+      <ol class="stepper" id="stepper" aria-label="Etapas da demonstração">
+        <li data-passo="1" class="ativo">Atendimento</li>
+        <li data-passo="2">Minuta</li>
+        <li data-passo="3">Revisão humana</li>
+        <li data-passo="4">Versão aprovada</li>
+      </ol>
+
+      <div class="demo">
+        <!-- Passo 1 -->
+        <section class="painel" data-painel="1" aria-labelledby="t1">
+          <h3 id="t1">1. Atendimento</h3>
+          <div class="grade">
+            <label>Tipo de documento
+              <select id="tipo">
+                <option value="servicos">Contrato de prestação de serviços</option>
+                <option value="nda">Acordo de confidencialidade (NDA)</option>
+              </select>
+            </label>
+            <label>Parte contratante
+              <input id="parteA" type="text" value="Empresa Exemplo Ltda." maxlength="80">
+            </label>
+            <label>Parte contratada
+              <input id="parteB" type="text" value="Fulano de Tal (fictício)" maxlength="80">
+            </label>
+            <label>Objeto
+              <input id="objeto" type="text" value="consultoria em organização de processos" maxlength="120">
+            </label>
+            <label>Prazo (meses)
+              <input id="prazo" type="number" min="1" max="60" value="12">
+            </label>
+            <label>Foro
+              <input id="foro" type="text" value="Comarca da Capital" maxlength="60">
+            </label>
+          </div>
+          <p class="nota">Não digite dados de pessoas ou clientes reais. Esta página é só uma demonstração.</p>
+          <p><button class="botao" type="button" id="gerar">Gerar minuta</button></p>
+        </section>
+
+        <!-- Passo 2 -->
+        <section class="painel" data-painel="2" aria-labelledby="t2" hidden>
+          <h3 id="t2">2. Minuta</h3>
+          <p class="nota">Rascunho montado a partir do atendimento. Ainda não tem valor: falta a revisão humana.</p>
+          <div class="folha" id="minutaPreview" aria-live="polite"></div>
+          <p class="acoes">
+            <button class="botao sec" type="button" data-ir="1">Voltar ao atendimento</button>
+            <button class="botao" type="button" data-ir="3">Enviar para revisão</button>
+          </p>
+        </section>
+
+        <!-- Passo 3 -->
+        <section class="painel" data-painel="3" aria-labelledby="t3" hidden>
+          <h3 id="t3">3. Revisão humana</h3>
+          <div class="grade">
+            <label>Quem está usando
+              <select id="papel">
+                <option value="redator">Redator(a) — pode editar, não aprova</option>
+                <option value="revisor">Revisor(a) — pode editar e aprovar</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="bloco">Texto da minuta (editável)
+            <textarea id="texto" rows="14" spellcheck="false"></textarea>
+          </label>
+
+          <fieldset class="check">
+            <legend>Conferência obrigatória antes de aprovar</legend>
+            <label><input type="checkbox" class="chk"> Partes e qualificação conferidas</label>
+            <label><input type="checkbox" class="chk"> Objeto descrito corretamente</label>
+            <label><input type="checkbox" class="chk"> Prazo e condições conferidos</label>
+            <label><input type="checkbox" class="chk"> Foro e cláusulas finais conferidos</label>
+            <label><input type="checkbox" class="chk"> Li o texto inteiro e assumo a responsabilidade pela aprovação</label>
+          </fieldset>
+
+          <p class="msg" id="msg" role="status" aria-live="polite"></p>
+          <p class="acoes">
+            <button class="botao sec" type="button" data-ir="2">Voltar à minuta</button>
+            <button class="botao" type="button" id="aprovar">Aprovar versão</button>
+          </p>
+        </section>
+
+        <!-- Passo 4 -->
+        <section class="painel" data-painel="4" aria-labelledby="t4" hidden>
+          <h3 id="t4">4. Versão aprovada</h3>
+          <div class="selo" id="selo" role="status"></div>
+          <div class="folha" id="minutaFinal"></div>
+          <p class="acoes">
+            <button class="botao sec" type="button" data-ir="3">Voltar à revisão</button>
+            <button class="botao sec" type="button" id="copiar">Copiar texto</button>
+            <button class="botao sec" type="button" id="recomecar">Recomeçar</button>
+          </p>
+        </section>
+      </div>
+
+      <div class="registro">
+        <h3>Registro desta sessão</h3>
+        <ul id="log" aria-live="polite"><li class="vazio">Nenhum evento ainda.</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="papeis" class="secao">
+    <div class="wrap">
+      <h2>Quem faz o quê</h2>
+      <div class="tres">
+        <article><h3>Amanhã Legal</h3><p>Conhece o cliente, define o roteiro, os modelos e o padrão de linguagem. É a marca e a relação com o cliente.</p></article>
+        <article><h3>Tecnologia (EIAH)</h3><p>Organiza o fluxo, monta o rascunho, guarda versões e registra quem aprovou. Fica na base, sem aparecer na frente.</p></article>
+        <article class="destaque"><h3>Decisão humana</h3><p>Aprovar, ajustar ou recusar é sempre de uma pessoa habilitada. Nada sai sem essa decisão.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="limites" class="secao claro">
+    <div class="wrap">
+      <h2>O que esta página deixa claro</h2>
+      <ul class="lista">
+        <li>É uma proposta conceitual, não um produto em operação.</li>
+        <li>Os dados são fictícios e nada é enviado nem guardado.</li>
+        <li>Não há IA conectada nesta demonstração: a minuta vem de um modelo de texto fixo.</li>
+        <li>Não use dados de clientes reais aqui.</li>
+        <li>O uso real depende de diagnóstico, implantação e validação com a equipe.</li>
+      </ul>
+    </div>
+  </section>
+  <!-- Reservado: seção "Sobre" e contatos, a incluir após confirmação da Amanhã Legal. -->
+</main>
+
+<footer class="rodape">
+  <div class="wrap">
+    <p class="lema">Direito do amanhã, para todos.</p>
+    <p class="peq">Base tecnológica: EIAH</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
