@@ -1,0 +1,192 @@
+# CI Unit Suite Manual Informative — ARQUIVO LOCAL, NAO PUBLICADO, NAO DISPARADO.
+#
+# Execucao exclusivamente MANUAL (workflow_dispatch) e INFORMATIVA do modo `observe` do gate de completude
+# da suite unitaria. Separado do CI obrigatorio: nao altera ci.yml, nao e check obrigatorio (o job tem nome
+# distinto de `CiUnitSuite`) e nao entra no ruleset. Nao usa pull_request, push nem schedule.
+#
+# O QUE FAZ: executa `scripts/ci/unitSuiteGate.ts --mode observe` sobre os arquivos do manifesto
+# (`scripts/unit-tests-manifest.txt`, que reproduz o script `test:ci-unit-suite`). SEM baseline: produz
+# contagens e SHA-256 CANDIDATOS por arquivo para revisao humana. Nunca emite PASS, nunca gera nem ratifica
+# `scripts/unit-tests-baseline.v1.json`. O modo `gate` NAO esta disponivel neste workflow (sem input).
+#
+# STATUS DA EXECUCAO FUTURA: BLOCKED ate (a) o codigo do gate estar versionado, (b) este arquivo existir no
+# branch padrao (workflow_dispatch so e acionavel/listavel a partir dele — comportamento do GitHub a confirmar)
+# e (c) a contencao de egress abaixo ser verificada ou o risco ser aceito explicitamente por um humano.
+#
+# CREDENCIAIS: nenhuma. `permissions: contents: read`; checkout com persist-credentials=false; sem `secrets.`,
+# sem `environment:`, sem services (Postgres/Redis). O gate ainda repassa ao runner de testes apenas
+# PATH/HOME/TMPDIR/LANG/LC_ALL/TZ e injeta DATABASE_URL=127.0.0.1:1 (inalcancavel). Falha se existir `.env`
+# (ou variante nao-template) no checkout.
+#
+# EGRESS (rede de saida) — ubuntu-latest NAO bloqueia saida por padrao. Conexoes necessarias:
+#   - checkout / setup-node / pnpm / cache / install / build: github.com, api.github.com, registry.npmjs.org,
+#     distribuicao do Node e do pnpm, servico de cache do Actions;
+#   - upload-artifact: servico de artefatos do GitHub (feito pelo agente do runner, fora do namespace abaixo);
+#   - execucao dos testes: NENHUMA. Os testes sao unitarios/mock e nao devem acessar a rede.
+# Contencao proposta: o passo de observacao roda em um network namespace proprio (`unshare --net`), sem
+# interfaces alem de `lo`, e um canario fail-closed confere isso ANTES de iniciar o gate. NAO FOI VERIFICADO
+# neste ambiente (exige sudo num runner real). Se o canario ou o `unshare` falhar, o job falha: nunca ha
+# fallback para execucao sem isolamento. Efeito esperado: testes com dependencia oculta de rede falham aqui
+# mesmo passando no CiUnitSuite (que tem egress livre) — isso e informacao, nao regressao.
+#
+# ARTEFATOS: somente events.ndjson, stdout.txt, stderr.txt e decision.json da execucao, apos varredura de
+# exposicao (falha fechada, SEM redacao: mascarar poderia esconder falha ou apagar prova). Sem outros uploads.
+# Sem `continue-on-error`: falha do gate/observacao aparece como job vermelho.
+
+name: CI Unit Suite Manual Informative
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-unit-suite-manual-informative-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: '10.12.4'
+
+jobs:
+  ci_unit_suite_manual_informative:
+    name: CI Unit Suite Manual Informative
+    runs-on: ubuntu-latest
+    # Orcamento de tempo (todos em cascata, do menor para o maior):
+    #   lancador 20 min (1200000 ms) + tolerancia de encerramento 5 s  <  passo de observacao 25 min  <  job 40 min.
+    # O job (40) comporta instalacao/build lentos (ate ~10 min) sem cortar o lancador antes do encerramento limpo.
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Mesmo sentinela do CiUnitSuite: banco deliberadamente inalcancavel. Nenhum banco real e usado.
+      DATABASE_URL: postgresql://user:pass@127.0.0.1:1/test
+      UNIT_SUITE_RUN_ID: run-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Refuse any .env file in the checkout
+        run: |
+          found="$(find . -type f \( -name '.env' -o -name '.env.*' \) ! -name '.env.template' ! -name '.env.hash' ! -name '*.example' -print)"
+          if [ -n "$found" ]; then
+            echo "Unexpected .env files in the checkout (refusing to run):" >&2
+            echo "$found" >&2
+            exit 1
+          fi
+          echo "No .env files present."
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build @repo/db for the unit suite
+        run: pnpm --filter @repo/db build
+
+      - name: Build @eiah/core for the unit suite
+        run: pnpm --filter @eiah/core build
+
+      - name: Guard — manifest must equal the test:ci-unit-suite script
+        run: |
+          node -e '
+          const fs = require("fs");
+          const manifest = fs.readFileSync("scripts/unit-tests-manifest.txt", "utf8").split("\n").filter((l) => l && !l.startsWith("#"));
+          const script = JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:ci-unit-suite"].split(" ").filter((t) => /\.test\.tsx?$/.test(t));
+          if (JSON.stringify(manifest) !== JSON.stringify(script)) {
+            console.error("manifest/script drift: manifest=" + manifest.length + " script=" + script.length);
+            process.exit(1);
+          }
+          console.log("manifest == test:ci-unit-suite (" + manifest.length + " files, same order)");
+          '
+
+      - name: Observe unit suite (network-isolated, no baseline, no approval)
+        id: observe
+        timeout-minutes: 25
+        run: |
+          # Isolamento de rede do passo de observacao. Sem fallback: qualquer falha aqui falha o job.
+          UNIT_SUITE_OUT="$RUNNER_TEMP/unit-suite-observe"
+          cat > "$RUNNER_TEMP/netns-run.sh" <<'NETNS'
+          #!/bin/sh
+          set -eu
+          uid=$1; gid=$2; path_value=$3; home_value=$4
+          shift 4
+          ip link set lo up
+          exec setpriv --reuid="$uid" --regid="$gid" --clear-groups --inh-caps=-all --bounding-set=-all --no-new-privs \
+            env -i PATH="$path_value" HOME="$home_value" "$@"
+          NETNS
+          chmod 700 "$RUNNER_TEMP/netns-run.sh"
+
+          NODE_BIN="$(command -v node)"
+          run_isolated() {
+            sudo -n unshare --net -- sh "$RUNNER_TEMP/netns-run.sh" "$(id -u)" "$(id -g)" "$PATH" "$HOME" "$@"
+          }
+
+          # Canario: so a interface lo, sem rota padrao. Nenhum pacote sai do namespace.
+          run_isolated "$NODE_BIN" -e '
+          const os = require("os");
+          const fs = require("fs");
+          const names = Object.keys(os.networkInterfaces());
+          const defaults = fs.readFileSync("/proc/net/route", "utf8").trim().split("\n").slice(1).filter((l) => l.split("\t")[1] === "00000000");
+          if (names.some((n) => n !== "lo") || defaults.length > 0) {
+            console.error("egress NOT contained: interfaces=" + names.join(",") + " defaultRoutes=" + defaults.length);
+            process.exit(1);
+          }
+          console.log("network namespace OK: interfaces=[" + names.join(",") + "], no default route");
+          '
+
+          mapfile -t FILES < <(grep -v -e '^#' -e '^$' scripts/unit-tests-manifest.txt)
+          if [ "${#FILES[@]}" -eq 0 ]; then echo "empty manifest" >&2; exit 1; fi
+          echo "Observing ${#FILES[@]} test files (mode=observe, no baseline)"
+
+          run_isolated "$NODE_BIN" --import tsx scripts/ci/unitSuiteGate.ts --mode observe \
+            --manifest scripts/unit-tests-manifest.txt \
+            --out "$UNIT_SUITE_OUT" --run-id "$UNIT_SUITE_RUN_ID" \
+            --timeout-ms 1200000 --kill-grace-ms 5000 \
+            --reporter scripts/ci/unitSuiteReporter.mjs \
+            --tsconfig apps/web/tsconfig.json \
+            -- "${FILES[@]}"
+
+      - name: Exposure review of the four evidence files (fail-closed, no redaction)
+        if: ${{ always() && steps.observe.outcome != 'skipped' }}
+        id: exposure
+        run: |
+          dir="$RUNNER_TEMP/unit-suite-observe/$UNIT_SUITE_RUN_ID"
+          for name in events.ndjson stdout.txt stderr.txt decision.json; do
+            if [ ! -f "$dir/$name" ]; then echo "missing evidence file: $name" >&2; exit 1; fi
+          done
+          if [ "$(ls -A "$dir" | wc -l)" -ne 4 ]; then echo "unexpected extra files in $dir" >&2; ls -la "$dir" >&2; exit 1; fi
+          if [ -n "$(find "$dir" -type f -size +50M -print)" ]; then echo "evidence file larger than 50 MiB" >&2; exit 1; fi
+          # -a: arquivos que pareçam binarios tambem sao varridos (com -I seriam ignorados).
+          if grep -R -a -n -E 'gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|xox[abprs]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9]{32,}' "$dir" >/dev/null; then
+            echo "possible secret pattern found in evidence files; not uploading" >&2
+            exit 1
+          fi
+          echo "Evidence files reviewed: 4 files, no secret patterns, size within limit."
+
+      - name: Upload evidence (only the four files)
+        if: ${{ always() && steps.exposure.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-suite-observe-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/unit-suite-observe/run-${{ github.run_id }}-${{ github.run_attempt }}/events.ndjson
+            ${{ runner.temp }}/unit-suite-observe/run-${{ github.run_id }}-${{ github.run_attempt }}/stdout.txt
+            ${{ runner.temp }}/unit-suite-observe/run-${{ github.run_id }}-${{ github.run_attempt }}/stderr.txt
+            ${{ runner.temp }}/unit-suite-observe/run-${{ github.run_id }}-${{ github.run_attempt }}/decision.json
+          if-no-files-found: error
+          retention-days: 14

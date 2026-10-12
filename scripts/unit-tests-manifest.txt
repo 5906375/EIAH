@@ -24,6 +24,16 @@
 #   - apps/api/src/tests/imob-lead-matching.e2e.test.ts (falha real, pendente de triagem)
 #   - apps/api/src/tests/imob-owner-blocker-consult.test.ts (falha real, pendente de triagem)
 #   - apps/workers/action-runner/src/index.test.ts (falha real no GitHub Actions: ERR_MODULE_NOT_FOUND para @repo/db/dist/index.js, @eiah/core/dist/index.js e @eiah/providers/dist/index.js no runner limpo; excluído para manter PR-CI-02 como unit/mock sem services nem build amplo — MCP-1A: continua fora deste Grupo B, mas passou a rodar em CI via job build_validate/step "Run action-runner MCP gate-ordering test" (pnpm test:action-runner-gates), que já builda @repo/db, @eiah/core e @eiah/providers antes)
+#
+# Reconciliacao 2026-10-12 (gate de completude da suite): este manifesto representa os mesmos caminhos,
+# na mesma ordem, do script test:ci-unit-suite em package.json (o comando acima gera exatamente esse script).
+# 33 caminhos que constavam apenas do script foram registrados aqui; o script e o CI nao foram alterados.
+# Dois deles sao CONDICIONAIS (exigem Postgres real e sao ignorados sem REAL_POSTGRES_INTEGRATION_DATABASE_URL):
+# quando ignorados, a cobertura e NAO DEMONSTRADA e skip nunca conta como teste aprovado:
+#   - apps/api/src/services/apeWeeklyCycleV3BillingCollector.realPostgres.integration.test.ts
+#   - apps/api/src/services/apeWeeklyCycleV3BillingCycle.realPostgres.integration.test.ts
+apps/api/src/tests/session-entitlement-shadow.contract.test.ts
+apps/api/src/tests/vertical-access-resolver.test.ts
 apps/api/src/tests/agent-chat-runtime-readiness.test.ts
 apps/api/src/tests/agents-public-view.contract.test.ts
 apps/api/src/tests/billing.vertical-entitlement.contract.test.ts
@@ -195,10 +205,41 @@ packages/mcp-runner/src/validator/SchemaValidator.test.ts
 packages/mcp-runner/src/executor/MCPExecutor.test.ts
 packages/mcp-runner/src/registry/ToolRegistry.test.ts
 scripts/sloBaselineCollect.test.ts
+apps/api/src/services/securityRelaxationFlags.test.ts
 apps/api/src/services/billingReconciliation.test.ts
-apps/api/src/tests/vertical-access-resolver.test.ts
-apps/api/src/tests/session-entitlement-shadow.contract.test.ts
+apps/api/src/services/apeWeeklyCycleV3BillingCollector.test.ts
+apps/api/src/services/apeWeeklyCycleV3BillingCollector.realPostgres.integration.test.ts
+apps/api/src/services/apeWeeklyCycleV3BillingCycle.test.ts
+apps/api/src/services/apeWeeklyCycleV3BillingCycle.realPostgres.integration.test.ts
+apps/api/src/tests/auth-default-polarity.test.ts
+apps/api/src/tests/imob-rental-lease.test.ts
+apps/web/src/pages/app/imob/rentalLeaseForm.test.ts
+apps/web/src/pages/app/imob/propertyCreateForm.test.ts
+apps/web/src/pages/app/imob/ownerCreateForm.test.ts
+apps/web/src/pages/app/imob/ownerEditForm.test.ts
+apps/web/src/pages/app/imob/propertyEditForm.test.ts
+apps/web/src/pages/app/imob/tokenizationForm.test.ts
+apps/web/src/pages/app/imob/documentAttachForm.test.ts
+apps/web/src/features/imob/contractInterviewEngine.test.ts
+apps/web/src/pages/app/imob/rentalContractForm.test.ts
+apps/web/src/pages/app/imob/saleContractForm.test.ts
+apps/api/src/tests/imob-sale-contract.test.ts
+apps/api/src/tests/imob-rental-contract.test.ts
+apps/api/src/tests/imob-document-link.test.ts
+apps/api/src/tests/imob-rental-lifecycle.test.ts
+apps/web/src/pages/app/imob/rentalLifecycleForms.test.ts
+apps/web/src/features/imob/structured/createImobStructuredForms.test.ts
+apps/api/src/tests/chat-vertical-registry.test.ts
+apps/web/src/components/agents/verticalHandoffEngine.test.ts
+apps/web/src/components/agents/verticalActivationEngine.test.ts
+apps/web/src/components/agents/verticalApprovalChatEngine.test.ts
+apps/web/src/components/agents/frontDoorAccessEngine.test.ts
+apps/web/src/components/agents/verticalAccessNoticeEngine.test.ts
+apps/web/src/components/agents/frontDoorBillingEngine.test.ts
+apps/web/src/pages/app/admin/verticalApprovalsView.test.ts
+apps/api/src/tests/redact-url-credentials.test.ts
+apps/api/src/tests/experience-front-door-landing.test.ts
+apps/api/src/tests/idempotent-ddl.test.ts
 apps/web/src/state/sessionContextSync.test.ts
 apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx
-apps/web/src/components/agents/verticalActivationEngine.test.ts
 apps/web/src/pages/app/marketplace/imob.test.ts
