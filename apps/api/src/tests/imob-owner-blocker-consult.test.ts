@@ -1,9 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveImobCrmOperationalConsult } from "../services/imob/crm/imobCrmResolver";
+import { resolveImobCrmOperationalConsult as resolveImobCrmOperationalConsultBase } from "../services/imob/crm/imobCrmResolver";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS } from "../services/imob/imobSpecialistBridge";
 import { buildImobCrmCaseContextFromRecord } from "../services/imob/crm/imobCrmCaseContext";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+
+// Estes cenários verificam o conteúdo da leitura com os especialistas comprovadamente disponíveis; sem disponibilidade
+// informada o resolvedor falha fechado e não apresenta nenhum apoio (ver imob-specialist-bridge.test.ts).
+const resolveImobCrmOperationalConsult: typeof resolveImobCrmOperationalConsultBase = (params) =>
+  resolveImobCrmOperationalConsultBase({
+    readBackingSpecialistAvailability: async () => Object.fromEntries(IMOB_BACKING_SPECIALIST_AGENT_IDS.map((id) => [id, "available"])),
+    ...params,
+  } as any);
 
 const tenantId = "tenant-owner-blocker";
 const workspaceId = "workspace-owner-blocker";

@@ -51,7 +51,14 @@ export type ImobBackingSpecialistOutputType =
 
 export type ImobBackingSpecialistReasonCode = ImobReasonCode;
 
+/**
+ * Disponibilidade REAL do especialista candidato no workspace (verificação canônica de agents.ts).
+ * Ausente = candidato ainda não avaliado. Qualquer valor diferente de "available" nunca é apresentado como acionável.
+ */
+export type ImobBackingSpecialistAvailability = "available" | "unavailable" | "unverified";
+
 export type ImobResolvedBackingSpecialist = ImobBackingSpecialistContract & {
+  availability?: ImobBackingSpecialistAvailability;
   rationale: string;
   reasonCode?: ImobBackingSpecialistReasonCode;
   suggestedAction?: string | null;

@@ -32,30 +32,47 @@ function getSpecialistBadgeTone(urgency?: ImobResolvedBackingSpecialist["urgency
   return "text-muted-foreground border-white/10 bg-black/10";
 }
 
+/** Apenas apresenta o estado já resolvido pelo backend; sem regra de elegibilidade própria. Valor desconhecido = não verificado. */
+function normalizeSpecialistAvailability(availability?: string | null): "available" | "unavailable" | "unverified" {
+  return availability === "available" || availability === "unavailable" ? availability : "unverified";
+}
+
+function getSpecialistAvailabilityNote(availability: "available" | "unavailable" | "unverified") {
+  if (availability === "available") return null;
+  if (availability === "unavailable") return "Indisponível neste workspace. Este apoio não será acionado.";
+  return "Disponibilidade não verificada. Este apoio não será acionado.";
+}
+
 function renderSpecialists(specialists: ImobResolvedBackingSpecialist[]) {
   if (!specialists.length) return null;
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Apoios contextuais</p>
-      {specialists.map((item) => (
-        <div key={item.key} className="rounded-lg border border-white/10 bg-black/20 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-foreground">{item.primaryAgentId}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{item.responsibility}</p>
+      {specialists.map((item) => {
+        const availability = normalizeSpecialistAvailability(item.availability);
+        return (
+          <div key={item.key} data-availability={availability} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">{item.primaryAgentId}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{item.responsibility}</p>
+              </div>
+              {item.urgency ? (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${getSpecialistBadgeTone(item.urgency)}`}>
+                  {item.urgency}
+                </span>
+              ) : null}
             </div>
-            {item.urgency ? (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${getSpecialistBadgeTone(item.urgency)}`}>
-                {item.urgency}
-              </span>
+            <p className="mt-2 text-xs text-foreground/90">{item.rationale}</p>
+            {availability === "available" && item.suggestedAction ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Ação sugerida: {item.suggestedAction}</p>
+            ) : null}
+            {getSpecialistAvailabilityNote(availability) ? (
+              <p className="mt-2 text-[11px] text-amber-200/90">{getSpecialistAvailabilityNote(availability)}</p>
             ) : null}
           </div>
-          <p className="mt-2 text-xs text-foreground/90">{item.rationale}</p>
-          {item.suggestedAction ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">Ação sugerida: {item.suggestedAction}</p>
-          ) : null}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

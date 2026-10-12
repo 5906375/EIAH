@@ -1134,6 +1134,64 @@ function buildEffectiveChatRuntimeInput(
  * Multi-tenant: o client Prisma é obtido via prismaGlobal
  * para garantir isolamento de dados por tenant/workspace.
  */
+export type AgentAvailability = "available" | "unavailable" | "unverified";
+
+type AgentAvailabilityCatalogEntry = {
+  id?: string | null;
+  participation?: Partial<NonNullable<AgentListing["participation"]>> | null;
+};
+
+/**
+ * Disponibilidade de um agente a partir do catálogo canônico de `listAgents` (política do workspace +
+ * delegação ativa + pricing + estado de participação + gate de chatRuntime). Mesma semântica de
+ * `canSuggestAgent` e `canHandoffToAgent` do Front Door (web): visível, `active`, sugerível E apto a handoff.
+ * Fail-closed: catálogo inválido ou participação ausente => "unverified". Agente fora do catálogo =>
+ * "unavailable" (`listAgents` só devolve agentes habilitados no workspace).
+ */
+export function resolveAgentAvailabilityFromCatalog(
+  catalog: readonly AgentAvailabilityCatalogEntry[] | null | undefined,
+  agentId: string,
+): AgentAvailability {
+  if (!Array.isArray(catalog) || typeof agentId !== "string") return "unverified";
+  const wanted = normalizeAgentKey(resolveAgentId(agentId));
+  if (!wanted) return "unverified";
+  const entry = catalog.find((item) => normalizeAgentKey(resolveAgentId(item?.id ?? "")) === wanted);
+  if (!entry) return "unavailable";
+  const participation = entry.participation;
+  if (!participation) return "unverified";
+  return participation.visibility === "visible"
+    && participation.status === "active"
+    && participation.canBeSuggested === true
+    && participation.canReceiveHandoff === true
+    ? "available"
+    : "unavailable";
+}
+
+/**
+ * Lê a disponibilidade dos agentes informados, no escopo do tenant e do workspace, reutilizando `listAgents`
+ * (a mesma fonte do catálogo do Front Door). Qualquer falha de consulta ou escopo inválido => todos "unverified".
+ */
+export async function readAgentAvailability(params: {
+  tenantId: string;
+  workspaceId: string;
+  agentIds: readonly string[];
+  client?: PrismaClient;
+}): Promise<Record<string, AgentAvailability>> {
+  const ids = Array.from(new Set((params.agentIds ?? []).filter((id): id is string => typeof id === "string" && id.trim() !== "")));
+  const unverified = (): Record<string, AgentAvailability> => Object.fromEntries(ids.map((id) => [id, "unverified" as const]));
+  if (ids.length === 0) return {};
+  if (typeof params.tenantId !== "string" || params.tenantId.trim() === "" || typeof params.workspaceId !== "string" || params.workspaceId.trim() === "") {
+    return unverified();
+  }
+  let catalog: AgentListing[];
+  try {
+    catalog = await listAgents(params.tenantId, params.workspaceId, params.client);
+  } catch {
+    return unverified();
+  }
+  return Object.fromEntries(ids.map((id) => [id, resolveAgentAvailabilityFromCatalog(catalog, id)]));
+}
+
 export async function listAgents(
   tenantId: string,
   workspaceId: string,

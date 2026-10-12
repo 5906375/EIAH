@@ -22,7 +22,8 @@ import {
   type ImobContractIntakeBlockedOperation,
 } from "../services/imob/intake/imobContractIntakeRuntime";
 import { matchImobConversationalIntents } from "../services/imob/imobIntentCatalog";
-import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS, resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { readAgentAvailability } from "../services/agents";
 import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshotService";
 import { buildImobBusinessExport } from "../services/imob/imobCaseExportService";
 import { lookupImobCep } from "../services/imob/imobCepLookup";
@@ -698,8 +699,22 @@ async function resolveImobOperationalUpdate(params: ImobOperationalResolverParam
   return resolveImobCrmOperationalUpdateLegacy(params as any);
 }
 
+/**
+ * Disponibilidade real dos especialistas de apoio do IMOB no workspace do turno. Usa a verificação canônica de
+ * agents.ts (a mesma fonte do catálogo do Front Door); não cria regra própria de elegibilidade.
+ */
+async function readImobBackingSpecialistAvailabilityForTurn(params: { prisma: unknown; tenantId: string; workspaceId: string }) {
+  return readAgentAvailability({
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    agentIds: IMOB_BACKING_SPECIALIST_AGENT_IDS,
+    client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+  });
+}
+
 async function resolveImobOperationalConsult(params: ImobOperationalResolverParams) {
   const resolved = await resolveImobOperationalConsultImpl(params, {
+    readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
     auditAgentId: IMOB_CHAT_AUDIT_AGENT_ID,
     resolveImobCrmOperationalUpdate: async () => null,
     resolveImobCrmOperationalConsult: async () => null,
@@ -782,7 +797,10 @@ async function resolveImobOperationalConsult(params: ImobOperationalResolverPara
     decision: fallbackDecision,
     event: "crm_legacy_fallback_invoked",
   });
-  return resolveImobCrmOperationalConsultLegacy(params as any);
+  return resolveImobCrmOperationalConsultLegacy({
+    ...(params as any),
+    readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
+  });
 }
 
 const IMOB_CRM_LEGACY_FALLBACK_CONFIG = getLegacyCrmFallbackConfigFromEnv();

@@ -2139,6 +2139,8 @@ export type ImobResolvedBackingSpecialist = {
   responsibility: string;
   visibleToUserByDefault: false;
   escalationTriggers: string[];
+  /** Disponibilidade real no workspace, resolvida pelo backend. Ausente = não verificada (nenhuma ação é exibida). */
+  availability?: "available" | "unavailable" | "unverified";
   rationale: string;
   reasonCode?: ImobReasonCode;
   suggestedAction?: string | null;
