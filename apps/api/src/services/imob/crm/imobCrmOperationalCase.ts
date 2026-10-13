@@ -55,6 +55,7 @@ async function readTransversalCapabilitiesSafely(helpers: ResolverHelpers, param
       prisma: params.prisma,
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
+      userId: params.userId ?? null,
       caseContext,
       operational: (params.threadState as { operational?: unknown } | null | undefined)?.operational ?? null,
     });

@@ -153,7 +153,7 @@ export type ResolverHelpers = {
    * Descoberta somente leitura das capacidades transversais que o caso declara (domínio + capacidade). Ausente ou com
    * falha => nenhum cartão transversal é apresentado.
    */
-  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
+  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; userId?: string | null; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
   isBulkPropertyOnboardingQuestion: (normalized: string) => boolean;
   buildBulkPropertyOnboardingConsult: (params: { threadState: ThreadStateLike }) => OperationalResolution;
   isImobRecentRegistrationReadRequest: (normalized: string) => boolean;

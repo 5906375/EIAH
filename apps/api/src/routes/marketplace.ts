@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { z } from "zod";
+import { isReservedAuthorityScopeName } from "@eiah/core";
 import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
@@ -11,6 +12,12 @@ import {
   verticalNotApprovedError,
 } from "../services/products/productActivation";
 import { readVerticalAccess } from "../services/products/verticalAccessApproval";
+import {
+  evaluateSubscriptionAuthority,
+  recordSubscriptionDecision,
+  SUBSCRIBE_FORBIDDEN_ERROR,
+  subscriptionAuthorityDeps,
+} from "../services/marketplaceSubscriptionAuthority";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -102,6 +109,11 @@ function scopePriority(scope: string) {
   if (normalized === "read") return 1;
   return 0;
 }
+
+const RESERVED_ITEM_NAME_ERROR = {
+  code: "MARKETPLACE_ITEM_NAME_RESERVED",
+  message: "Este nome é reservado a um escopo de autorização canônico e não pode ser usado por itens do Marketplace.",
+} as const;
 
 marketplaceRouter.get("/marketplace", async (req, res) => {
   const request = req as TenantAwareRequest;
@@ -260,6 +272,10 @@ marketplaceRouter.post("/marketplace", async (req, res) => {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
+  if (isReservedAuthorityScopeName(parsed.data.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
+  }
+
   const item = await request.prisma.marketplaceItem.create({
     data: {
       type: parsed.data.type,
@@ -303,6 +319,10 @@ marketplaceRouter.patch("/marketplace/:id", async (req, res) => {
 
   if (!existing || existing.publisherId !== request.authContext.tenantId) {
     return res.status(404).json({ ok: false, error: { code: "MARKETPLACE_NOT_FOUND" } });
+  }
+
+  if (parsed.data.name !== undefined && isReservedAuthorityScopeName(parsed.data.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
   }
 
   const item = await request.prisma.marketplaceItem.update({
@@ -358,6 +378,29 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     });
   }
 
+  // AUTHZ-SCOPE-1: a autoridade humana é verificada ANTES de qualquer leitura ou efeito, inclusive de validação do corpo.
+  const actor = {
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+    tokenId: request.authContext.tokenId ?? null,
+  };
+  const authority = await evaluateSubscriptionAuthority(actor, subscriptionAuthorityDeps.forClient(request.prisma));
+  if (!authority.allowed) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma,
+      actor,
+      outcome: "denied",
+      reasonCode: authority.reasonCode,
+      action: "marketplace.subscribe",
+      target: { marketplaceItemId: req.params.id },
+    });
+    return res.status(403).json({
+      ok: false,
+      error: { ...SUBSCRIBE_FORBIDDEN_ERROR, reasonCode: authority.reasonCode },
+    });
+  }
+
   const parsed = MarketplaceSubscribeSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
@@ -374,6 +417,34 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
 
   if (!item.isPublic && item.publisherId !== request.authContext.tenantId) {
     return res.status(403).json({ ok: false, error: { code: "MARKETPLACE_FORBIDDEN" } });
+  }
+
+  // O nome do item vira TenantActionPolicy.actionName: nomes de scopes canônicos não podem cunhar concessões.
+  if (isReservedAuthorityScopeName(item.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
+  }
+
+  // Identificação inequívoca do agente: o mesmo nome publicado por outro publicador visível é ambíguo.
+  if (item.type === "agent") {
+    const homonyms = await request.prisma.marketplaceItem.findMany({
+      where: {
+        type: "agent",
+        name: { equals: item.name, mode: "insensitive" },
+        publisherId: { not: item.publisherId },
+        OR: [{ isPublic: true }, { publisherId: request.authContext.tenantId }],
+      },
+      select: { id: true },
+      take: 1,
+    });
+    if (homonyms.length > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: "AGENT_IDENTITY_AMBIGUOUS",
+          message: "Há mais de um agente visível com este nome. A contratação exige identificar o agente sem ambiguidade.",
+        },
+      });
+    }
   }
 
   const scope = parsed.data.scope ?? "execute";
@@ -396,6 +467,32 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
   const signatureHash =
     parsed.data.signatureHash ??
     crypto.createHash("sha256").update(`${policyHash}:${item.publisherId}`).digest("hex");
+
+  // Evidência da decisão ANTES de qualquer efeito; sem registro, não há contratação.
+  const decisionRecorded = await recordSubscriptionDecision({
+    prisma: request.prisma,
+    actor,
+    outcome: "authorized",
+    reasonCode: authority.reasonCode,
+    action: "marketplace.subscribe",
+    target: {
+      marketplaceItemId: item.id,
+      agentName: item.name,
+      publisherId: item.publisherId,
+      scope,
+      trustMin,
+      validUntil: validUntil.toISOString(),
+    },
+  });
+  if (!decisionRecorded) {
+    return res.status(503).json({
+      ok: false,
+      error: {
+        code: "SUBSCRIBE_DECISION_RECORD_UNAVAILABLE",
+        message: "Não foi possível registrar a decisão de contratação. Nada foi contratado.",
+      },
+    });
+  }
 
   const now = new Date();
   let delegation = null as Awaited<ReturnType<typeof request.prisma.delegationPolicy.create>> | null;

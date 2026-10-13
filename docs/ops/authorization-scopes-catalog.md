@@ -48,6 +48,68 @@ Tools nas rotas explicitamente protegidas:
 - `POST /api/tools`
 - `GET /api/tools (administrative/global/cross-tenant listing)`
 
+## Decisão AUTHZ-SCOPE-1 — autoridade comercial
+
+| Campo | Valor |
+| --- | --- |
+| Decisão de produto | Carlos Alberto Merlo (comunicada em sessão de trabalho) |
+| Data | 2026-10-12 |
+| Decision ref | `AUTHZ-SCOPE-1/2026-10-12` (referência provisória) |
+| Status | Adotado; ratificação formal assinada **PENDENTE** |
+
+Esta decisão NÃO é uma ratificação formal assinada nos moldes da `AUTHZ-SCOPE-0`: não há declaração assinada nem
+data de ratificação. A referência acima é provisória e deve ser confirmada ou substituída pelo aprovador. Enquanto a
+ratificação formal não existir, o escopo não deve ser tratado como ratificado em nenhum registro ou evidência.
+
+Decisão: adotar `marketplace.subscribe` como escopo específico de contratação de agentes, distinto de qualquer
+permissão de execução operacional. A vertical e seus agentes podem identificar necessidades e recomendar; não
+contratam. A contratação pertence a uma identidade humana permissionada do tenant e workspace.
+
+### `marketplace.subscribe`
+
+Autoriza uma identidade humana a contratar (assinar) um agente do Marketplace para o tenant/workspace autenticado,
+nas rotas explicitamente protegidas:
+
+- `POST /api/marketplace/:id/subscribe`
+- `POST /api/delegations (self-delegation of a Marketplace item)`
+- `PATCH /api/delegations/:id (retargeting by the delegatee)`
+
+Concessão padrão: **nenhuma**. O escopo não é concedido a administradores da plataforma, usuários existentes, papéis
+genéricos (inclusive Founder) nem a quem tem `actions.admin`, `tools.admin` ou `products.activate`.
+
+A contratação exige, antes de qualquer efeito, todas estas condições (fail-closed; falha ou dúvida = negar):
+
+1. identidade humana autenticada (`userId`) no tenant e workspace do token;
+2. política explícita `marketplace.subscribe` para o workspace exato do token (`TenantActionPolicy`, avaliada por
+   `TenantPolicyStore.resolveExactWorkspaceScopeDecision`; política tenant-wide NÃO é herdada);
+3. permissão `marketplace.subscribe` na membership ATIVA da pessoa naquele workspace;
+4. agente identificado de forma inequívoca (item do Marketplace existente, visível, de tipo `agent`, nome não
+   reservado e sem homônimo de outro publicador);
+5. registro prévio da decisão em `GuardrailAuditLedger` (identidade decisora, tenant, workspace, agente, condições
+   aceitas, horário e resultado); se o registro falhar, a contratação é negada. Negações também são registradas.
+
+`marketplace.subscribe` não autoriza executar, ativar fluxos nem publicar campanhas com o agente contratado.
+
+Nomes de scopes canônicos (`actions.admin`, `tools.admin`, `marketplace.subscribe`) são reservados: itens do
+Marketplace com esses nomes não podem ser publicados nem contratados, porque o nome do item vira
+`TenantActionPolicy.actionName` na assinatura.
+
+### Bloqueadores de publicação de `marketplace.subscribe` (registrados, não implementados)
+
+O código desta decisão pode ser versionado de forma parcial, mas a funcionalidade NÃO deve ser publicada enquanto
+estes pontos estiverem abertos:
+
+1. Proteção de `POST /api/actions/override` contra concessões indevidas: hoje `actions.admin` grava
+   `TenantActionPolicy` com qualquer `actionName`, inclusive nomes de agentes e do próprio escopo.
+2. Cerimonial governado para atribuir `marketplace.subscribe` a uma pessoa do tenant ("ninguém dá o que não tem");
+   hoje não há fluxo, então a contratação permanece bloqueada por padrão.
+3. Restrições de papéis personalizados e dos demais caminhos capazes de produzir concessão equivalente (papéis
+   personalizados aceitam permissões arbitrárias; delegação cross-tenant feita pelo publicador; onboarding).
+4. Testes integrados de autorização em PostgreSQL e por HTTP (os testes atuais usam fixtures em memória).
+5. Confirmação e evidência da decisão humana de contratação (condições aceitas vinculadas a agente, tenant,
+   workspace e escopo); hoje só existe o registro da decisão de autoridade em `GuardrailAuditLedger`, sem hash
+   encadeado.
+
 ## Scopes funcionais preexistentes
 
 Os scopes abaixo continuam com sua semântica anterior e não substituem os

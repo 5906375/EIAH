@@ -736,6 +736,7 @@ agentsRouter.get("/agents/capabilities/discover", async (req, res) => {
     tenantId: request.authContext.tenantId,
     workspaceId: request.authContext.workspaceId,
     client: request.prisma,
+    actor: { userId: request.authContext.userId ?? null },
   });
   res.set("Cache-Control", "no-store");
   return res.json({ ok: true, item });

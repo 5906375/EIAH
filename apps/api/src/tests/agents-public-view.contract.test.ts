@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import ts from "typescript";
@@ -30,8 +30,12 @@ type Fixture = {
   pricing?: Row[];
   /** tenant_recipes (consulta bruta). Linhas já no formato do banco: tenantId, status, workspaceScopeMode, workspaceScopeIds... */
   recipes?: Row[];
-  /** Tabelas cuja leitura falha (simula indisponibilidade). `tenant_recipes` falha a consulta bruta. */
+  /** Tabelas cuja leitura falha (simula indisponibilidade). `tenant_recipes` e `eiah_workspace_memberships` falham a consulta bruta. */
   failTables?: string[];
+  /** eiah_workspace_memberships (consulta bruta): userId, tenantId, workspaceId, status, permissions. */
+  memberships?: Row[];
+  /** Simula indisponibilidade do registro de auditoria (GuardrailAuditLedger). */
+  failAudit?: boolean;
 };
 
 const future = () => new Date(Date.now() + 86_400_000);
@@ -48,28 +52,49 @@ function matches(row: Row, where: Row = {}): boolean {
       if ("in" in condition) return condition.in.includes(row[key]);
       if ("gt" in condition) return row[key] > condition.gt;
       if ("not" in condition) return row[key] !== condition.not;
+      if ("equals" in condition) {
+        return condition.mode === "insensitive"
+          ? String(row[key]).toLowerCase() === String(condition.equals).toLowerCase()
+          : row[key] === condition.equals;
+      }
       return true;
     }
     return row[key] === condition;
   });
 }
 
-function makeDb(fixture: Fixture) {
+/**
+ * `writable: false` (padrão): qualquer escrita é registrada e LANÇA, como na descoberta somente leitura.
+ * `writable: true` (rotas de contratação): escritas são registradas e aplicadas em memória, para provar
+ * tanto a ausência de efeitos nos cenários negativos quanto os efeitos e a ordem no cenário autorizado.
+ */
+function makeDb(fixture: Fixture, options: { writable?: boolean } = {}) {
   const writes: string[] = [];
+  const events: string[] = [];
+  const audits: Row[] = [];
   const sql: Array<{ text: string; values: unknown[] }> = [];
   const table = (rows: Row[], name: string) => {
-    const forbidden = (method: string) => async () => { writes.push(`${name}.${method}`); throw new Error(`WRITE_ATTEMPT ${name}.${method}`); };
+    const guarded = (method: string, apply: (args: Row) => unknown) => async (args: Row = {}) => {
+      writes.push(`${name}.${method}`);
+      events.push(`write:${name}.${method}`);
+      if (!options.writable) throw new Error(`WRITE_ATTEMPT ${name}.${method}`);
+      return apply(args);
+    };
     return {
       findMany: async (query: Row = {}) => {
         if (fixture.failTables?.includes(name)) throw new Error(`read failure ${name}`);
-        return rows.filter((row) => matches(row, query.where)).map((row) =>
+        const found = rows.filter((row) => matches(row, query.where)).map((row) =>
           query.include?.marketplace
             ? { ...row, marketplace: (fixture.marketplaceItems ?? []).find((entry) => entry.id === row.marketplaceId) ?? null }
             : row);
+        return typeof query.take === "number" ? found.slice(0, query.take) : found;
       },
       findUnique: async (query: Row = {}) => rows.find((row) => matches(row, query.where)) ?? null,
-      create: forbidden("create"), createMany: forbidden("createMany"), update: forbidden("update"), updateMany: forbidden("updateMany"),
-      upsert: forbidden("upsert"), delete: forbidden("delete"), deleteMany: forbidden("deleteMany"),
+      findFirst: async (query: Row = {}) => rows.find((row) => matches(row, query.where)) ?? null,
+      create: guarded("create", ({ data }) => { const row = { id: `new-${name}-${rows.length + 1}`, publisher: { name: "Synthetic Publisher" }, ...data }; rows.push(row); return row; }),
+      update: guarded("update", ({ where, data }) => { const row = rows.find((entry) => entry.id === where?.id); if (row) Object.assign(row, data); return { publisher: { name: "Synthetic Publisher" }, ...row }; }),
+      createMany: guarded("createMany", () => ({ count: 0 })), updateMany: guarded("updateMany", () => ({ count: 0 })),
+      upsert: guarded("upsert", () => ({})), delete: guarded("delete", () => ({})), deleteMany: guarded("deleteMany", () => ({ count: 0 })),
     };
   };
   return {
@@ -82,6 +107,16 @@ function makeDb(fixture: Fixture) {
     $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
       const text = strings.join("?");
       sql.push({ text, values });
+      if (/FROM eiah_workspace_memberships/.test(text)) {
+        if (fixture.failTables?.includes("eiah_workspace_memberships")) throw new Error("relation eiah_workspace_memberships does not exist");
+        const [userId, tenantId, workspaceId] = values;
+        const select = /SELECT([\s\S]*?)FROM eiah_workspace_memberships/.exec(text)?.[1] ?? "";
+        const columns = select.split(",").map((column) => column.trim()).filter(Boolean);
+        return (fixture.memberships ?? [])
+          .filter((row) => row.userId === userId && row.tenantId === tenantId && row.workspaceId === workspaceId)
+          .slice(0, 1)
+          .map((row) => Object.fromEntries(columns.map((column) => [column, row[column]])));
+      }
       if (fixture.failTables?.includes("tenant_recipes")) throw new Error("relation tenant_recipes does not exist");
       if (!/FROM tenant_recipes/.test(text) || values.length !== 2) throw new Error("unexpected raw query");
       const [tenantId, workspaceId] = values;
@@ -98,17 +133,26 @@ function makeDb(fixture: Fixture) {
     $executeRaw: async () => { writes.push("$executeRaw"); throw new Error("WRITE_ATTEMPT $executeRaw"); },
     $disconnect: async () => {},
     __writes: writes,
+    __events: events,
+    __audits: audits,
     __sql: sql,
   };
 }
 
-function harness(fixture: Fixture, auth: Row | null) {
-  const db = makeDb(fixture);
+function harness(fixture: Fixture, auth: Row | null, options: { writable?: boolean } = {}) {
+  const db = makeDb(fixture, options);
   const coreProfiles: Record<string, unknown> = {};
   const overrides: Record<string, unknown> = {
     "@repo/db": { prismaGlobal: db, getPrismaForTenant: () => db, Prisma: { JsonNull: null }, PrismaClient: class {} },
     "@eiah/core/logging/logger": { bindLogger: (logger: unknown) => logger, createLogger: () => ({ info() {}, warn() {}, error() {} }) },
-    "@eiah/core/services/guardrailLedgerStore": { recordGuardrailLedger: async () => {}, recordGuardrailAudit: async () => {} },
+    "@eiah/core/services/guardrailLedgerStore": {
+      recordGuardrailLedger: async () => {},
+      recordGuardrailAudit: async (params: Row) => {
+        db.__events.push(`audit:${params.eventType}`);
+        if (fixture.failAudit) throw new Error("audit ledger unavailable");
+        db.__audits.push(params);
+      },
+    },
   };
   const cache = new Map<string, { exports: any }>();
   function load(path: string): any {
@@ -125,6 +169,8 @@ function harness(fixture: Fixture, auth: Row | null) {
         // Somente os perfis core reais; filas e conexões do pacote raiz não são carregadas.
         if (Object.keys(coreProfiles).length === 0) {
           for (const file of CORE_FILES) Object.assign(coreProfiles, load(resolve("packages/core/src/actions/agents", `${file}.ts`)));
+          // Catálogo real de escopos canônicos (AUTHZ-SCOPE-0/1): consumido pela guarda de contratação.
+          Object.assign(coreProfiles, load(resolve("packages/core/src/security/adminScopes.ts")));
           coreProfiles.listRegisteredActions = () => [];
           coreProfiles.publishRun = async () => { throw new Error("publishRun is not available in this harness"); };
         }
@@ -430,10 +476,20 @@ const recipe = (over: Row = {}): Row => ({
   instructions: "SENTINEL_INSTRUCTIONS_9c1", content: { steps: ["SENTINEL_CONTENT_9c1"] }, ...over,
 });
 
-async function discover(fixture: Fixture, tenantId = T, workspaceId = W, need: Row = NEED) {
+// Autoridade de contratação (AUTHZ-SCOPE-1): exige política explícita no workspace E permissão na membership ativa.
+const SUBSCRIBE = "marketplace.subscribe";
+const subscribePolicy = (tenant = T, workspace = W) => policy(tenant, workspace, SUBSCRIBE);
+const membership = (over: Row = {}) => ({ tenantId: T, workspaceId: W, userId: "synthetic-member", status: "active", permissions: [SUBSCRIBE], ...over });
+const withAuthority = (fixture: Fixture, over: Row = {}): Fixture => ({
+  ...fixture,
+  policies: [...(fixture.policies ?? []), subscribePolicy()],
+  memberships: [...(fixture.memberships ?? []), membership(over)],
+});
+
+async function discover(fixture: Fixture, tenantId = T, workspaceId = W, need: Row = NEED, actor: Row | null = { userId: authA.userId }) {
   const h = harness(fixture, authA);
   const module = h.load(resolve("apps/api/src/services/capabilityDiscovery.ts"));
-  const result = await module.discoverCapabilityNeed({ need, tenantId, workspaceId, client: h.db });
+  const result = await module.discoverCapabilityNeed({ need, tenantId, workspaceId, client: h.db, ...(actor ? { actor } : {}) });
   return { h, module, result };
 }
 
@@ -470,7 +526,13 @@ test("T17 estados: habilitado, habilitavel, indisponivel e participação fechad
   assert.equal(listed.enablement.marketplaceItemId, "mkt-MKT");
   assert.equal(listed.enablement.visibility, "public");
   assert.ok(listed.enablement.conditions.some((line: string) => /confirmação humana explícita/i.test(line)));
-  assert.deepEqual(listed.nextAction, { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" });
+  // AUTHZ-SCOPE-1: habilitável NÃO implica contratação autorizada. Sem autoridade a ação de contratação nem é emitida.
+  assert.equal(listed.authority.status, "somente_consulta");
+  assert.deepEqual(listed.nextAction, { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe" });
+  const authorizedListed = (await discover(withAuthority({ marketplaceItems: [marketplaceMkt()], recipes: [recipe()] }))).result;
+  assert.equal(authorizedListed.state, "habilitavel");
+  assert.equal(authorizedListed.authority.status, "contratacao_autorizada");
+  assert.deepEqual(authorizedListed.nextAction, { kind: "review_commercial_terms", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" });
 
   // inscrito (política do workspace + delegação ativa) => habilitado; o encaminhamento operacional ainda não existe
   const enabled = (await discover({ ...subscribed(["MKT"]), recipes: [recipe()] })).result;
@@ -530,7 +592,11 @@ test("T18 modelos: somente homologados, do tenant, compatíveis com o workspace 
   assert.equal(serialized.includes("SENTINEL_INSTRUCTIONS_9c1"), false, "instruções internas nunca saem");
   assert.equal(serialized.includes("SENTINEL_CONTENT_9c1"), false, "conteúdo interno nunca sai");
   for (const entry of result.recipes.items) assert.deepEqual(Object.keys(entry).sort(), ["homologatedAt", "id", "summary", "tags", "title"]);
-  assert.deepEqual(h.db.__sql.map((query: Row) => query.values), [[T, W]], "uma consulta, parametrizada por tenant e workspace");
+  assert.deepEqual(
+    h.db.__sql.filter((query: Row) => /FROM tenant_recipes/.test(query.text)).map((query: Row) => query.values),
+    [[T, W]],
+    "uma consulta de modelos, parametrizada por tenant e workspace",
+  );
 
   // outro workspace do mesmo tenant só vê os modelos do seu escopo
   const other = (await discover({ ...fixture, ...subscribed(["MKT"], T, W2) }, T, W2)).result;
@@ -662,4 +728,397 @@ test("T23 o SQL de modelos reproduz o filtro de /tenant-recipes e não seleciona
   const route = readFileSync(resolve("apps/api/src/routes/tenant-recipes.ts"), "utf8");
   assert.match(route, /AND status = 'homologated'/);
   assert.match(route, /workspace_scope_mode = 'all_workspaces'\s+OR workspace_scope_ids \? \$\{effectiveWorkspaceId\}/);
+});
+
+// ---------------------------------------------------------------------------------------------
+// AUTHZ-SCOPE-1: autoridade de contratação (marketplace.subscribe) no servidor
+// ---------------------------------------------------------------------------------------------
+
+const LISTED: Fixture = { marketplaceItems: [marketplaceMkt()], recipes: [recipe()] };
+
+test("T24 eixo de autoridade: habilitável nunca implica contratação autorizada; descoberta e modelos seguem visíveis", async () => {
+  const privileged = ["products.activate", "actions.admin", "tools.admin", "workspace.manage_roles", "workspace.manage_members", "imob.chat.use", "imob.stage.*"];
+  const cases: Array<[string, Fixture, string]> = [
+    ["sem política e sem permissão", LISTED, "POLICY_NOT_GRANTED"],
+    ["política do workspace, sem membership", { ...LISTED, policies: [subscribePolicy()] }, "MEMBERSHIP_NOT_FOUND"],
+    ["membership com a permissão, sem política", { ...LISTED, memberships: [membership()] }, "POLICY_NOT_GRANTED"],
+    ["política + membership de papel privilegiado SEM marketplace.subscribe", withAuthority(LISTED, { permissions: privileged }), "MEMBERSHIP_PERMISSION_MISSING"],
+    ["membership não ativa (invited)", withAuthority(LISTED, { status: "invited" }), "MEMBERSHIP_NOT_ACTIVE"],
+    ["membership suspensa", withAuthority(LISTED, { status: "suspended" }), "MEMBERSHIP_NOT_ACTIVE"],
+    ["membership de outra pessoa", withAuthority(LISTED, { userId: "someone-else" }), "MEMBERSHIP_NOT_FOUND"],
+    ["membership de outro workspace", withAuthority(LISTED, { workspaceId: W2 }), "MEMBERSHIP_NOT_FOUND"],
+    ["membership de outro tenant", withAuthority(LISTED, { tenantId: T2 }), "MEMBERSHIP_NOT_FOUND"],
+    ["política de outro workspace", { ...LISTED, policies: [subscribePolicy(T, W2)], memberships: [membership()] }, "POLICY_NOT_GRANTED"],
+    ["política de outro tenant", { ...LISTED, policies: [subscribePolicy(T2, W)], memberships: [membership()] }, "POLICY_NOT_GRANTED"],
+    ["política tenant-wide não é herdada", { ...LISTED, policies: [{ ...subscribePolicy(), workspaceId: null }], memberships: [membership()] }, "POLICY_NOT_GRANTED"],
+    ["política revogada (allowed:false)", { ...LISTED, policies: [{ ...subscribePolicy(), allowed: false }], memberships: [membership()] }, "POLICY_NOT_GRANTED"],
+    ["política duplicada/conflitante", { ...LISTED, policies: [subscribePolicy(), { ...subscribePolicy(), id: "dup" }], memberships: [membership()] }, "POLICY_UNAVAILABLE"],
+    ["permissão com nome parecido", withAuthority(LISTED, { permissions: ["marketplace.subscribe.extra", "marketplace.*", "Marketplace.Subscribe", "marketplace"] }), "MEMBERSHIP_PERMISSION_MISSING"],
+    ["leitura da membership indisponível", { ...withAuthority(LISTED), failTables: ["eiah_workspace_memberships"] }, "MEMBERSHIP_UNAVAILABLE"],
+  ];
+  for (const [label, fixture, reason] of cases) {
+    const { result, h } = await discover(fixture);
+    assert.equal(result.state, "habilitavel", `${label}: a descoberta continua`);
+    assert.equal(result.authority.status, "somente_consulta", label);
+    assert.equal(result.authority.reasonCode, reason, label);
+    assert.equal(result.provider.agentId, "MKT", `${label}: recomendação visível`);
+    assert.equal(result.recipes.items.length, 1, `${label}: modelos homologados visíveis`);
+    assert.equal(result.nextAction.kind, "request_approval", label);
+    assert.equal(result.nextAction.enabled, false, label);
+    assert.equal(JSON.stringify(result.nextAction).includes("/app/marketplace"), false, `${label}: nenhum caminho de contratação`);
+    assert.deepEqual(h.db.__writes, [], `${label}: nenhuma escrita`);
+  }
+
+  const granted = (await discover(withAuthority(LISTED))).result;
+  assert.equal(granted.state, "habilitavel");
+  assert.equal(granted.authority.status, "contratacao_autorizada");
+  assert.equal(granted.authority.reasonCode, "AUTHORITY_GRANTED");
+  assert.equal(granted.nextAction.kind, "review_commercial_terms");
+  assert.equal(granted.nextAction.requiresHumanConfirmation, true);
+
+  // os dois eixos são independentes: autorizada + já habilitado => estado habilitado, sem ação de contratação
+  const hired = (await discover(withAuthority({ ...subscribed(["MKT"]), recipes: [recipe()] }))).result;
+  assert.equal(hired.state, "habilitado");
+  assert.equal(hired.authority.status, "contratacao_autorizada");
+  assert.equal(hired.nextAction.kind, "request_work");
+  assert.equal(hired.nextAction.enabled, false);
+});
+
+test("T24b identidade, escopo e ausência de leitura da autoridade: sempre somente_consulta (fail-closed)", async () => {
+  const full = withAuthority(LISTED);
+  for (const actor of [null, {}, { userId: null }, { userId: "" }, { userId: "   " }, { userId: 42 }]) {
+    const { result } = await discover(full, T, W, NEED, actor as Row | null);
+    assert.equal(result.authority.status, "somente_consulta", JSON.stringify(actor));
+    assert.equal(result.authority.reasonCode, "IDENTITY_REQUIRED", JSON.stringify(actor));
+    assert.equal(result.nextAction.kind, "request_approval");
+  }
+  // isolamento: a autoridade vale só para o tenant/workspace em que foi atribuída
+  for (const [tenant, workspace] of [[T, W2], [T2, W], [T2, W2]] as const) {
+    const { result } = await discover(full, tenant, workspace);
+    assert.equal(result.authority.status, "somente_consulta", `${tenant}/${workspace}`);
+    assert.notEqual(result.nextAction.kind, "review_commercial_terms");
+  }
+  const h = harness(full, authA);
+  const module = h.load(resolve("apps/api/src/services/capabilityDiscovery.ts"));
+  const readers = module.createDefaultCapabilityReaders(h.db);
+  // sem cliente para ler a autoridade (apenas leitores): nunca autorizada
+  const noAuthorityReader = (await module.discoverCapabilityNeeds({ needs: [NEED], tenantId: T, workspaceId: W, readers, actor: { userId: authA.userId } }))[0];
+  assert.equal(noAuthorityReader.state, "habilitavel");
+  assert.equal(noAuthorityReader.authority.status, "somente_consulta");
+  assert.equal(noAuthorityReader.authority.reasonCode, "AUTHORITY_UNAVAILABLE");
+  // leitura de política que falha ou responde de forma incoerente nega
+  const service = h.load(resolve("apps/api/src/services/marketplaceSubscriptionAuthority.ts"));
+  const okMembership = async () => ({ status: "active", permissions: ["marketplace.subscribe"] });
+  const actor = { tenantId: T, workspaceId: W, userId: "u" };
+  const decide = (deps: Row, who: Row = actor) => service.evaluateSubscriptionAuthority(who, deps);
+  assert.equal((await decide({ resolvePolicy: async () => { throw new Error("down"); }, readMembership: okMembership })).reasonCode, "POLICY_UNAVAILABLE");
+  assert.equal((await decide({ resolvePolicy: async () => ({ allowed: "true", reasonCode: "SCOPE_ALLOWED" }), readMembership: okMembership })).allowed, false, "só allowed===true autoriza");
+  assert.equal((await decide({ resolvePolicy: async () => ({ allowed: true, reasonCode: "SCOPE_ALLOWED" }), readMembership: async () => { throw new Error("down"); } })).reasonCode, "MEMBERSHIP_UNAVAILABLE");
+  assert.equal((await decide({ resolvePolicy: async () => ({ allowed: true, reasonCode: "SCOPE_ALLOWED" }), readMembership: okMembership })).allowed, true);
+  for (const who of [{ tenantId: "", workspaceId: W, userId: "u" }, { tenantId: T, workspaceId: " ", userId: "u" }, { tenantId: T, workspaceId: W, userId: undefined }]) {
+    const never = { resolvePolicy: async () => { throw new Error("não deveria consultar"); }, readMembership: async () => { throw new Error("não deveria consultar"); } };
+    assert.equal((await decide(never, who as Row)).allowed, false);
+  }
+  // formatos da coluna permissions: lista, JSON em texto, lixo
+  const withPermissions = (permissions: unknown) => harness({ ...withAuthority(LISTED), memberships: [membership({ permissions })] }, authA);
+  for (const [permissions, expected] of [[[SUBSCRIBE], true], [JSON.stringify([SUBSCRIBE]), true], ["{not-json", false], [{ [SUBSCRIBE]: true }, false], [null, false], [[42, null], false]] as Array<[unknown, boolean]>) {
+    const harnessed = withPermissions(permissions);
+    const loaded = harnessed.load(resolve("apps/api/src/services/marketplaceSubscriptionAuthority.ts"));
+    const decision = await loaded.evaluateSubscriptionAuthority({ tenantId: T, workspaceId: W, userId: "synthetic-member" }, loaded.subscriptionAuthorityDeps.forClient(harnessed.db));
+    assert.equal(decision.allowed, expected, JSON.stringify(permissions));
+  }
+});
+
+// Rotas reais de mutação montadas no Express com identidade controlada. A cadeia `enforceTenant` (autenticação por
+// token/banco) é substituída pelo contexto abaixo; o handler executado é o código real da rota.
+function mutationApp(h: ReturnType<typeof harness>, file: string, exportName: string, method: "post" | "patch", path: string, auth: Row | null) {
+  const router = h.load(resolve(file))[exportName];
+  const layer = router.stack.find((entry: Row) => entry.route?.path === path && entry.route.methods[method]);
+  assert.ok(layer, `${method.toUpperCase()} ${path} existe em ${file}`);
+  const app = express();
+  app.use(express.json());
+  app.use((req: Row, _res, next) => { if (auth) { req.authContext = auth; req.prisma = h.db; } next(); });
+  (app as any)[method](`/api${path}`, ...layer.route.stack.map((entry: Row) => entry.handle));
+  return app;
+}
+
+const publisherItem = (over: Row = {}) => ({ ...item("mkt-MKT", "MKT"), version: "1", trustScore: 70, createdAt: new Date(), ...over });
+const subscribeFixture = (over: Fixture = {}): Fixture => ({ marketplaceItems: [publisherItem()], ...over });
+const subscribeAs = (h: ReturnType<typeof harness>, auth: Row | null, id = "mkt-MKT", body: Row = {}) =>
+  supertest(mutationApp(h, "apps/api/src/routes/marketplace.ts", "marketplaceRouter", "post", "/marketplace/:id/subscribe", auth))
+    .post(`/api/marketplace/${id}/subscribe`).set("authorization", `Bearer ${RAW_BEARER}`).send(body);
+// Token bruto sentinela enviado em toda chamada: nenhum registro de auditoria nem resposta pode carregá-lo.
+const RAW_BEARER = "SENTINEL_RAW_BEARER_5521.payload.signature";
+const assertNoRawToken = (h: ReturnType<typeof harness>, ...bodies: unknown[]) => {
+  for (const value of [h.db.__audits.map(({ prisma: _client, ...record }: Row) => record), ...bodies]) {
+    const serialized = JSON.stringify(value);
+    assert.equal(serialized.includes("SENTINEL_RAW_BEARER_5521"), false, "token bruto nunca é armazenado nem devolvido");
+    assert.equal(/bearer\s/i.test(serialized), false);
+  }
+};
+const EFFECT_TABLES = /^(delegationPolicy|tenantActionPolicy|marketplaceItem)\./;
+
+test("T25 POST /marketplace/:id/subscribe: sem autoridade expressa nada é contratado, mesmo chamando a API diretamente", async () => {
+  const forged = { userId: "attacker", tenantId: T2, workspaceId: W2, authority: "contratacao_autorizada", scope: "admin", delegatorId: T2 };
+  const denials: Array<[string, Fixture, Row | null, string, Row?]> = [
+    ["token de serviço sem pessoa", withAuthority(subscribeFixture()), { ...authA, userId: undefined }, "IDENTITY_REQUIRED"],
+    ["pessoa sem política do workspace", subscribeFixture({ memberships: [membership()] }), authA, "POLICY_NOT_GRANTED"],
+    ["política sem permissão da pessoa", subscribeFixture({ policies: [subscribePolicy()], memberships: [membership({ permissions: ["imob.chat.use"] })] }), authA, "MEMBERSHIP_PERMISSION_MISSING"],
+    ["Founder/admin típico sem marketplace.subscribe", withAuthority(subscribeFixture(), { permissions: ["workspace.manage_members", "workspace.manage_roles", "products.activate", "imob.stage.*"] }), authA, "MEMBERSHIP_PERMISSION_MISSING"],
+    ["membership não ativa", withAuthority(subscribeFixture(), { status: "revoked" }), authA, "MEMBERSHIP_NOT_ACTIVE"],
+    ["outro workspace do mesmo tenant", withAuthority(subscribeFixture()), { ...authA, workspaceId: W2 }, "POLICY_NOT_GRANTED"],
+    ["outro tenant", withAuthority(subscribeFixture()), { ...authA, tenantId: T2 }, "POLICY_NOT_GRANTED"],
+    ["leitura da membership indisponível", { ...withAuthority(subscribeFixture()), failTables: ["eiah_workspace_memberships"] }, authA, "MEMBERSHIP_UNAVAILABLE"],
+    ["política indisponível", { ...withAuthority(subscribeFixture()), failTables: ["tenantActionPolicy"] }, authA, "POLICY_UNAVAILABLE"],
+    ["corpo forjado tentando declarar autoridade, tenant e escopo", subscribeFixture({ memberships: [membership()] }), authA, "POLICY_NOT_GRANTED", forged],
+  ];
+  for (const [label, fixture, auth, reason, body] of denials) {
+    const h = harness(fixture, auth, { writable: true });
+    const response = await subscribeAs(h, auth, "mkt-MKT", body ?? {});
+    assert.equal(response.status, 403, label);
+    assert.equal(response.body.error.code, "MARKETPLACE_SUBSCRIBE_FORBIDDEN", label);
+    assert.equal(response.body.error.reasonCode, reason, label);
+    assert.deepEqual(h.db.__writes, [], `${label}: nenhuma assinatura, cobrança, política ou delegação criada`);
+    assert.deepEqual(h.db.__events.filter((event: string) => event.startsWith("write:")), [], label);
+    assert.deepEqual(h.db.__audits.map((entry: Row) => entry.eventType), ["marketplace.subscribe.denied"], `${label}: a negação é registrada`);
+    assert.equal(h.db.__audits[0].metadata.outcome, "denied");
+    assert.equal(h.db.__audits[0].metadata.tokenId, auth?.tokenId ?? null, "somente o id do token, nunca o token");
+    assertNoRawToken(h, response.body);
+  }
+  // a autoridade é verificada ANTES de validar o corpo ou consultar o item: sem oráculo de existência
+  for (const [label, id, body] of [["corpo inválido", "mkt-MKT", { scope: "root", trustMin: -1 }], ["item inexistente", "nao-existe", {}]] as Array<[string, string, Row]>) {
+    const h = harness(subscribeFixture({ memberships: [membership()] }), authA, { writable: true });
+    const response = await subscribeAs(h, authA, id, body);
+    assert.equal(response.status, 403, label);
+    assert.deepEqual(h.db.__writes, [], label);
+  }
+  // sem contexto autenticado: nem chega à regra
+  const anonymous = harness(subscribeFixture(), null, { writable: true });
+  assert.equal((await subscribeAs(anonymous, null)).status, 500);
+  assert.deepEqual(anonymous.db.__writes, []);
+});
+
+test("T26 contratação autorizada: a decisão é registrada ANTES dos efeitos, com identidade, tenant, workspace, agente e condições", async () => {
+  const fixture = withAuthority(subscribeFixture());
+  const h = harness(fixture, authA, { writable: true });
+  const response = await subscribeAs(h, authA, "mkt-MKT", { scope: "execute", trustMin: 55, validUntil: "2031-01-01T00:00:00.000Z", tenantId: T2, workspaceId: W2 });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.ok, true);
+  assert.ok(response.body.delegationId);
+
+  const firstWrite = h.db.__events.findIndex((event: string) => event.startsWith("write:"));
+  const auditIndex = h.db.__events.indexOf("audit:marketplace.subscribe.authorized");
+  assert.ok(auditIndex >= 0 && auditIndex < firstWrite, "registro da decisão precede qualquer efeito");
+  assert.deepEqual(h.db.__audits.map((entry: Row) => entry.eventType), ["marketplace.subscribe.authorized"]);
+  const audit = h.db.__audits[0];
+  assert.equal(audit.tenantId, T);
+  assert.equal(audit.workspaceId, W);
+  assert.equal(audit.metadata.decidedBy, authA.userId);
+  assert.equal(audit.metadata.tokenId, authA.tokenId);
+  assert.equal(audit.metadata.authorityScope, "marketplace.subscribe");
+  assert.equal(audit.metadata.decisionRef, "AUTHZ-SCOPE-1/2026-10-12");
+  assert.equal(audit.metadata.outcome, "authorized");
+  assert.equal(audit.metadata.target.marketplaceItemId, "mkt-MKT");
+  assert.equal(audit.metadata.target.agentName, "MKT");
+  assert.equal(audit.metadata.target.publisherId, "synthetic-publisher");
+  assert.equal(audit.metadata.target.scope, "execute");
+  assert.equal(audit.metadata.target.trustMin, 55);
+  assert.equal(audit.metadata.target.validUntil, "2031-01-01T00:00:00.000Z");
+  assert.ok(!Number.isNaN(Date.parse(audit.metadata.decidedAt)));
+  assertNoRawToken(h, response.body);
+
+  // efeitos exatamente os do fluxo governado existente, no tenant/workspace do TOKEN (nunca do corpo)
+  const delegations = fixture.delegations ?? [];
+  assert.equal(h.db.__writes.filter((entry: string) => entry === "delegationPolicy.create").length, 1);
+  const createdPolicy = (fixture.policies ?? []).find((row: Row) => row.actionName === "MKT");
+  assert.ok(createdPolicy, "política do agente criada");
+  assert.equal(createdPolicy.tenantId, T);
+  assert.equal(createdPolicy.workspaceId, W);
+  assert.equal(createdPolicy.allowed, true);
+  assert.equal(delegations.length, 0, "o fixture original não foi tocado; a delegação vive no armazenamento em memória");
+  assert.ok(h.db.__writes.every((entry: string) => /^(delegationPolicy|tenantActionPolicy)\./.test(entry)), "somente os efeitos de contratação esperados");
+  assert.equal(h.db.__writes.includes("$executeRaw"), false, "nenhuma escrita de membership, convite ou DDL");
+});
+
+test("T27 falha no registro da decisão bloqueia a contratação; nomes reservados e agentes ambíguos são recusados sem efeito", async () => {
+  const noAudit = harness({ ...withAuthority(subscribeFixture()), failAudit: true }, authA, { writable: true });
+  const blocked = await subscribeAs(noAudit, authA);
+  assert.equal(blocked.status, 503);
+  assert.equal(blocked.body.error.code, "SUBSCRIBE_DECISION_RECORD_UNAVAILABLE");
+  assert.deepEqual(noAudit.db.__writes, [], "sem registro da decisão não há contratação");
+  // a negação continua sendo devolvida mesmo se o registro falhar
+  const deniedNoAudit = harness({ ...subscribeFixture({ memberships: [membership()] }), failAudit: true }, authA, { writable: true });
+  assert.equal((await subscribeAs(deniedNoAudit, authA)).status, 403);
+  assert.deepEqual(deniedNoAudit.db.__writes, []);
+
+  // o nome do item vira actionName da política: nomes de escopos canônicos não podem cunhar concessões
+  for (const name of ["marketplace.subscribe", "Actions.Admin", "  tools.admin  "]) {
+    const reserved = harness(withAuthority(subscribeFixture({ marketplaceItems: [publisherItem({ id: "mkt-reserved", name })] })), authA, { writable: true });
+    const response = await subscribeAs(reserved, authA, "mkt-reserved");
+    assert.equal(response.status, 422, name);
+    assert.equal(response.body.error.code, "MARKETPLACE_ITEM_NAME_RESERVED", name);
+    assert.deepEqual(reserved.db.__writes, [], name);
+  }
+
+  // mesmo nome publicado por outro publicador visível: identificação ambígua
+  const ambiguous = harness(withAuthority(subscribeFixture({ marketplaceItems: [publisherItem(), publisherItem({ id: "mkt-other", publisherId: "other-publisher", name: "mkt" })] })), authA, { writable: true });
+  const conflict = await subscribeAs(ambiguous, authA);
+  assert.equal(conflict.status, 409);
+  assert.equal(conflict.body.error.code, "AGENT_IDENTITY_AMBIGUOUS");
+  assert.deepEqual(ambiguous.db.__writes, []);
+  // versões do mesmo publicador não são ambíguas
+  const versions = harness(withAuthority(subscribeFixture({ marketplaceItems: [publisherItem(), publisherItem({ id: "mkt-v2", version: "2" })] })), authA, { writable: true });
+  assert.equal((await subscribeAs(versions, authA)).status, 200);
+  // item privado de outro tenant continua inacessível
+  const hidden = harness(withAuthority(subscribeFixture({ marketplaceItems: [publisherItem({ isPublic: false, publisherId: T2 })] })), authA, { writable: true });
+  const forbidden = await subscribeAs(hidden, authA);
+  assert.equal(forbidden.status, 403);
+  assert.equal(forbidden.body.error.code, "MARKETPLACE_FORBIDDEN");
+  assert.deepEqual(hidden.db.__writes, []);
+});
+
+test("T28 publicar ou renomear item do Marketplace com nome de escopo canônico é recusado", async () => {
+  const create = async (name: string) => {
+    const h = harness({ marketplaceItems: [] }, authA, { writable: true });
+    const response = await supertest(mutationApp(h, "apps/api/src/routes/marketplace.ts", "marketplaceRouter", "post", "/marketplace", authA))
+      .post("/api/marketplace").send({ type: "agent", name, version: "1", isPublic: true });
+    return { response, h };
+  };
+  for (const name of ["marketplace.subscribe", "ACTIONS.ADMIN", "tools.admin"]) {
+    const { response, h } = await create(name);
+    assert.equal(response.status, 422, name);
+    assert.equal(response.body.error.code, "MARKETPLACE_ITEM_NAME_RESERVED");
+    assert.deepEqual(h.db.__writes, [], name);
+  }
+  const ok = await create("MKT");
+  assert.equal(ok.response.status, 200, "nome comum continua publicável");
+
+  const own = publisherItem({ id: "own-1", publisherId: T });
+  const rename = async (name: string) => {
+    const h = harness({ marketplaceItems: [own] }, authA, { writable: true });
+    const response = await supertest(mutationApp(h, "apps/api/src/routes/marketplace.ts", "marketplaceRouter", "patch", "/marketplace/:id", authA))
+      .patch("/api/marketplace/own-1").send({ name });
+    return { response, h };
+  };
+  const renamed = await rename("Marketplace.Subscribe");
+  assert.equal(renamed.response.status, 422);
+  assert.deepEqual(renamed.h.db.__writes, []);
+  assert.equal((await rename("MKT 2")).response.status, 200);
+});
+
+const delegationBody = (over: Row = {}) => ({ delegateeId: T, marketplaceId: "mkt-MKT", scope: "execute", trustMin: 50, validUntil: "2031-01-01T00:00:00.000Z", ...over });
+
+test("T29 /delegations não contorna a autoridade: auto-delegação de item do Marketplace e alteração de termos pela delegatária exigem marketplace.subscribe", async () => {
+  const post = (h: ReturnType<typeof harness>, auth: Row, body: Row) =>
+    supertest(mutationApp(h, "apps/api/src/routes/delegations.ts", "delegationsRouter", "post", "/delegations", auth)).post("/api/delegations").send(body);
+  // auto-delegação (delegatária = o próprio tenant) de um item do Marketplace = contratar por outro caminho
+  const denied = harness(subscribeFixture({ memberships: [membership()] }), authA, { writable: true });
+  const blocked = await post(denied, authA, delegationBody());
+  assert.equal(blocked.status, 403);
+  assert.equal(blocked.body.error.code, "MARKETPLACE_SUBSCRIBE_FORBIDDEN");
+  assert.deepEqual(denied.db.__writes, [], "nenhuma delegação criada");
+  assert.deepEqual(denied.db.__audits.map((entry: Row) => entry.eventType), ["delegations.self_delegation.denied"]);
+
+  const allowed = harness(withAuthority(subscribeFixture()), authA, { writable: true });
+  const created = await post(allowed, authA, delegationBody());
+  assert.equal(created.status, 200);
+  const order = allowed.db.__events;
+  assert.ok(order.indexOf("audit:delegations.self_delegation.authorized") < order.indexOf("write:delegationPolicy.create"), "decisão registrada antes do efeito");
+
+  const noAudit = harness({ ...withAuthority(subscribeFixture()), failAudit: true }, authA, { writable: true });
+  assert.equal((await post(noAudit, authA, delegationBody())).status, 503);
+  assert.deepEqual(noAudit.db.__writes, []);
+
+  // comportamento preservado: delegar a OUTRO tenant não exige a autoridade de contratação
+  const toOther = harness(subscribeFixture(), authA, { writable: true });
+  assert.equal((await post(toOther, authA, delegationBody({ delegateeId: T2 }))).status, 200);
+  assert.deepEqual(toOther.db.__audits, []);
+  // delegação sem item do Marketplace também não é contratação de agente
+  const noItem = harness(subscribeFixture(), authA, { writable: true });
+  assert.equal((await post(noItem, authA, delegationBody({ marketplaceId: undefined }))).status, 200);
+
+  const existing = { id: "d-1", delegatorId: "synthetic-publisher", delegateeId: T, marketplaceId: "mkt-MKT", scope: "read", trustMin: 50, validUntil: new Date("2030-01-01T00:00:00.000Z"), policyHash: "h", signatureHash: "s", createdAt: new Date() };
+  const patch = (h: ReturnType<typeof harness>, auth: Row, body: Row, id = "d-1") =>
+    supertest(mutationApp(h, "apps/api/src/routes/delegations.ts", "delegationsRouter", "patch", "/delegations/:id", auth)).patch(`/api/delegations/${id}`).send(body);
+  // a delegatária não estende nem redireciona sozinha os termos que recebeu
+  for (const body of [{ scope: "admin" }, { validUntil: "2040-01-01T00:00:00.000Z" }, { marketplaceId: "mkt-other" }, { trustMin: 1 }]) {
+    const h = harness(subscribeFixture({ delegations: [{ ...existing }], memberships: [membership()] }), authA, { writable: true });
+    const response = await patch(h, authA, body);
+    assert.equal(response.status, 403, JSON.stringify(body));
+    assert.deepEqual(h.db.__writes, [], JSON.stringify(body));
+  }
+  const authorizedPatch = harness(withAuthority(subscribeFixture({ delegations: [{ ...existing }] })), authA, { writable: true });
+  assert.equal((await patch(authorizedPatch, authA, { scope: "execute" })).status, 200);
+  assert.ok(authorizedPatch.db.__events.indexOf("audit:delegations.retarget.authorized") < authorizedPatch.db.__events.indexOf("write:delegationPolicy.update"));
+  // sem alteração de termos (mesmos valores) e a delegadora (publicador) editando o que concedeu: comportamento preservado
+  const noop = harness(subscribeFixture({ delegations: [{ ...existing }] }), authA, { writable: true });
+  assert.equal((await patch(noop, authA, { scope: "read", trustMin: 50 })).status, 200);
+  const publisherAuth = { ...authA, tenantId: "synthetic-publisher" };
+  const byPublisher = harness(subscribeFixture({ delegations: [{ ...existing }] }), publisherAuth, { writable: true });
+  assert.equal((await patch(byPublisher, publisherAuth, { scope: "admin" })).status, 200);
+  assert.deepEqual(byPublisher.db.__audits, []);
+});
+
+test("T30 deriva de código: nenhuma rota/serviço novo cria assinatura, delegação ou política sem passar pela autoridade", () => {
+  const files = (dir: string) => readdirSync(resolve(dir)).filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts")).map((name) => `${dir}/${name}`);
+  const writes = /(delegationPolicy|tenantActionPolicy)\.(create|createMany|upsert|update|updateMany)\(|INSERT INTO (delegation_policies|tenant_action_policy)/;
+  const found = [...files("apps/api/src/routes"), ...files("apps/api/src/services")]
+    .filter((file) => writes.test(readFileSync(resolve(file), "utf8").replace(/\/\/.*$/gm, "")))
+    .sort();
+  // Cada gravador conhecido tem uma razão explícita. Um novo gravador faz este teste falhar e exige decisão de autoridade.
+  const guarded = ["apps/api/src/routes/delegations.ts", "apps/api/src/routes/marketplace.ts"];
+  const otherAuthority: Record<string, string> = {
+    "apps/api/src/routes/actions.ts": "protegido por actions.admin (override de política administrativa)",
+    "apps/api/src/routes/onboarding.ts": "criação da conta inicial pela própria pessoa que cria o tenant",
+    "apps/api/src/services/workspaceActionPolicyProvisioning.ts": "ativação de produto: liberação da EIAH + products.activate",
+  };
+  assert.deepEqual(found, [...guarded, ...Object.keys(otherAuthority)].sort(), "conjunto de gravadores de delegação/política mudou: decidir a autoridade antes de aceitar");
+  for (const file of guarded) {
+    const source = readFileSync(resolve(file), "utf8");
+    assert.match(source, /evaluateSubscriptionAuthority/, file);
+    assert.match(source, /recordSubscriptionDecision/, file);
+  }
+  const marketplace = readFileSync(resolve("apps/api/src/routes/marketplace.ts"), "utf8");
+  const subscribe = marketplace.slice(marketplace.indexOf('"/marketplace/:id/subscribe"'), marketplace.indexOf('"/marketplace/installations/activate"'));
+  assert.ok(subscribe.indexOf("evaluateSubscriptionAuthority") > 0);
+  for (const effect of ["delegationPolicy.create", "tenantActionPolicy.create", "tenantActionPolicy.update", "tenantActionPolicy.deleteMany", "MarketplaceSubscribeSchema.safeParse"]) {
+    assert.ok(subscribe.indexOf("evaluateSubscriptionAuthority") < subscribe.indexOf(effect), `a autoridade vem antes de ${effect}`);
+  }
+  assert.ok(subscribe.indexOf("recordSubscriptionDecision({\n    prisma: request.prisma,\n    actor,\n    outcome: \"authorized\"") < subscribe.indexOf("delegationPolicy.create"), "registro da decisão antes do primeiro efeito");
+});
+
+test("T31 marketplace.subscribe não é concedido por padrão a nenhum papel, convite ou escopo administrativo", () => {
+  for (const file of ["apps/api/src/services/workspaceResponsibility.ts", "apps/api/src/services/frontDoorAccess.ts", "apps/api/src/services/products/productActivation.ts", "apps/api/src/services/products/verticalAccessApproval.ts"]) {
+    assert.equal(readFileSync(resolve(file), "utf8").includes("marketplace.subscribe"), false, `${file} não concede nem referencia a permissão`);
+  }
+  const h = harness({}, authA);
+  const scopes = h.load(resolve("packages/core/src/security/adminScopes.ts"));
+  assert.deepEqual(Object.values(scopes.ADMIN_SCOPES), ["actions.admin", "tools.admin"], "nenhum escopo administrativo foi ampliado");
+  assert.equal(scopes.isAdminScope("marketplace.subscribe"), false);
+  assert.ok(scopes.COMMERCIAL_AUTHORITY_SCOPE_CATALOG.every((entry: Row) => entry.defaultGrant === "none"));
+  // a autoridade de contratação não autoriza executar nem publicar: o serviço só decide e registra
+  const source = readFileSync(resolve("apps/api/src/services/marketplaceSubscriptionAuthority.ts"), "utf8").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(source, /\.(create|update|upsert|delete|deleteMany)\(|\$executeRaw|\bINSERT\b|\bUPDATE\b|\bDELETE\b|\bCREATE\b|ensureWorkspaceResponsibilityStore/);
+});
+
+test("T32 rota de descoberta: a autoridade vem do servidor e não pode ser informada pelo cliente", async () => {
+  const url = "/api/agents/capabilities/discover?domain=marketing&capability=campaign";
+  const plain = harness(LISTED, authA);
+  const noAuthority = await supertest(plain.app).get(`${url}&authority=contratacao_autorizada&userId=attacker`).set("authorization", "Bearer synthetic").set("x-user-id", "synthetic-member").set("x-authority", "contratacao_autorizada");
+  assert.equal(noAuthority.status, 200);
+  assert.equal(noAuthority.body.item.state, "habilitavel");
+  assert.equal(noAuthority.body.item.authority.status, "somente_consulta");
+  assert.equal(noAuthority.body.item.nextAction.kind, "request_approval");
+  assert.deepEqual(plain.db.__writes, []);
+  const granted = harness(withAuthority(LISTED), authA);
+  const ok = await supertest(granted.app).get(url).set("authorization", "Bearer synthetic");
+  assert.equal(ok.body.item.authority.status, "contratacao_autorizada");
+  assert.equal(ok.body.item.nextAction.kind, "review_commercial_terms");
+  assert.deepEqual(granted.db.__writes, [], "consultar a autoridade nunca escreve (nem registro de decisão)");
+  assert.deepEqual(granted.db.__audits, []);
+  // token sem pessoa associada nunca é autorizado
+  const service = harness(withAuthority(LISTED), { ...authA, userId: undefined });
+  const response = await supertest(service.app).get(url).set("authorization", "Bearer synthetic");
+  assert.equal(response.body.item.authority.status, "somente_consulta");
+  assert.equal(response.body.item.authority.reasonCode, "IDENTITY_REQUIRED");
 });

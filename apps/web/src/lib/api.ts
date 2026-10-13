@@ -2679,6 +2679,8 @@ export type ImobInventoryShowcaseWidget = {
 export type ImobTransversalCapability = {
   need: { needId: string; domain: string; capability: string; label?: string };
   state: "habilitado" | "habilitavel" | "indisponivel" | "nao_verificado";
+  /** Autoridade da pessoa atual para contratar (resolvida no servidor). `habilitavel` não implica autorizada. */
+  authority?: { status: "contratacao_autorizada" | "somente_consulta"; reasonCode: string };
   reasons: string[];
   provider: {
     agentId: string;
@@ -2693,7 +2695,8 @@ export type ImobTransversalCapability = {
   };
   enablement: { marketplaceItemId: string; visibility: "public" | "own_tenant"; conditions: string[] } | null;
   nextAction:
-    | { kind: "enable_agent"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }
+    | { kind: "review_commercial_terms"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }
+    | { kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: "marketplace.subscribe" }
     | { kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }
     | { kind: "none"; actionDomain: null };
 };

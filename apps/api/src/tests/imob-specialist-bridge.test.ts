@@ -378,7 +378,7 @@ test("availability: o caminho operacional (helpers do resolvedor) consulta no es
         : {}),
     };
     const resolved: any = await resolveImobCaseOperationalConsult(
-      { prisma: prisma as any, tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, caseId: item.id, message: "qual status desse caso?", threadState: null as any },
+      { prisma: prisma as any, tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, userId: "user-person-2", caseId: item.id, message: "qual status desse caso?", threadState: null as any },
       helpers,
       { normalized: "qual status desse caso?", businessReadIntent: "pipeline_status" } as any,
     );
@@ -467,11 +467,12 @@ function discoveredCapability(over: Record<string, unknown> = {}) {
   return {
     need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
     state: "habilitavel",
+    authority: { status: "contratacao_autorizada", reasonCode: "AUTHORITY_GRANTED" },
     reasons: ["NOT_ENABLED_IN_WORKSPACE"],
     provider: { agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", declaredCapabilities: ["Planejamento de campanha de divulgação multicanal"], origin: "agent_registry" },
     recipes: { status: "ok", items: [{ id: "rec-1", title: "Campanha de lançamento", summary: "Plano", tags: [], homologatedAt: null }] },
     enablement: { marketplaceItemId: "mkt-MKT", visibility: "public", conditions: ["Confirmação humana explícita antes de habilitar."] },
-    nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
+    nextAction: { kind: "review_commercial_terms", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
     ...over,
   };
 }
@@ -490,7 +491,7 @@ function buildListingCaseRecord() {
   };
 }
 
-async function consultListing(reader?: (params: any) => Promise<unknown>, message = "qual status desse caso?") {
+async function consultListing(reader?: (params: any) => Promise<unknown>, message = "qual status desse caso?", userId: string | null = null) {
   const item = buildListingCaseRecord();
   const seen: any[] = [];
   const threadState = { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null } as any;
@@ -498,6 +499,7 @@ async function consultListing(reader?: (params: any) => Promise<unknown>, messag
     prisma: { imobCase: { findFirst: async ({ where }: any) => (where.id === item.id ? item : null) } } as any,
     tenantId: AVAILABILITY_TENANT,
     workspaceId: AVAILABILITY_WORKSPACE,
+    userId,
     caseId: item.id,
     message,
     threadState,
@@ -510,7 +512,7 @@ test("transversal: o cartão aparece no caso IMOB por sinal estrutural e a conve
   const baseline = await consultListing();
   assert.equal(baseline.resolved.presentation.widget.transversalCapabilities, undefined, "sem leitor, nenhum cartão");
 
-  const withCard = await consultListing(async () => [discoveredCapability()]);
+  const withCard = await consultListing(async () => [discoveredCapability()], "qual status desse caso?", "user-person-1");
   const card = withCard.resolved.presentation.widget.transversalCapabilities;
   assert.equal(card.length, 1);
   assert.equal(card[0].state, "habilitavel");
@@ -518,6 +520,7 @@ test("transversal: o cartão aparece no caso IMOB por sinal estrutural e a conve
   assert.equal(withCard.seen.length, 1);
   assert.equal(withCard.seen[0].tenantId, AVAILABILITY_TENANT);
   assert.equal(withCard.seen[0].workspaceId, AVAILABILITY_WORKSPACE);
+  assert.equal(withCard.seen[0].userId, "user-person-1", "a autoridade de contratação é avaliada para a PESSOA que conversa");
   assert.equal(withCard.seen[0].caseContext.flow, "listing.activate", "o leitor recebe o contexto do caso");
   assert.equal(withCard.seen[0].operational, null);
 
@@ -576,7 +579,7 @@ test("transversal: o caminho operacional (helpers do resolvedor) apresenta o mes
       ...(reader ? { readTransversalCapabilities: async (params: any) => { seen.push(params); return reader(params); } } : {}),
     };
     const resolved: any = await resolveImobCaseOperationalConsult(
-      { prisma: prisma as any, tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, caseId: item.id, message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational } as any },
+      { prisma: prisma as any, tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, userId: "user-person-2", caseId: item.id, message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational } as any },
       helpers,
       { normalized: "qual status desse caso?", businessReadIntent: "pipeline_status" } as any,
     );
@@ -586,9 +589,9 @@ test("transversal: o caminho operacional (helpers do resolvedor) apresenta o mes
   assert.equal(baseline.resolved.presentation.widget.transversalCapabilities, undefined);
   const withCard = await run(async () => [discoveredCapability({ state: "habilitado", nextAction: { kind: "request_work", actionDomain: "agent_work", enabled: false, reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }, enablement: null })]);
   assert.equal(withCard.resolved.presentation.widget.transversalCapabilities[0].state, "habilitado");
-  assert.deepEqual(withCard.seen.map(({ tenantId, workspaceId, sameClient, operational: op }) => ({ tenantId, workspaceId, op })), [
-    { tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, op: operational },
-  ], "o estado operacional do turno chega ao leitor");
+  assert.deepEqual(withCard.seen.map(({ tenantId, workspaceId, userId, operational: op }) => ({ tenantId, workspaceId, userId, op })), [
+    { tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, userId: "user-person-2", op: operational },
+  ], "o estado operacional do turno e a pessoa que conversa chegam ao leitor");
   const stripped = stable(withCard.resolved);
   delete stripped.presentation.widget.transversalCapabilities;
   assert.deepEqual(stripped, stable(baseline.resolved), "conversa preservada");
@@ -601,5 +604,6 @@ test("transversal: a rota liga a descoberta aos dois resolvedores e só consulta
   assert.equal((source.match(/readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn/g) ?? []).length, 2);
   assert.match(source, /const needs = resolveImobTransversalNeeds\([\s\S]*?\);\s*if \(needs\.length === 0\) return \[\];/);
   assert.match(source, /discoverCapabilityNeeds\(\{\s*needs,\s*tenantId: params\.tenantId,\s*workspaceId: params\.workspaceId,/);
+  assert.match(source, /actor: \{ userId: params\.userId \?\? null \}/, "a autoridade de contratação é avaliada para a pessoa do turno");
   assert.doesNotMatch(source, /marketplace\.subscribe|\/subscribe|installations\/activate/, "a descoberta não chama habilitação");
 });

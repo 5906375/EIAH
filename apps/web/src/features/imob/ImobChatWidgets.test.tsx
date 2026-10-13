@@ -137,6 +137,7 @@ function capability(over: Partial<ImobTransversalCapability> = {}): ImobTransver
   return {
     need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
     state: "habilitavel",
+    authority: { status: "contratacao_autorizada", reasonCode: "AUTHORITY_GRANTED" },
     reasons: ["NOT_ENABLED_IN_WORKSPACE"],
     provider: {
       agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", origin: "agent_registry",
@@ -147,7 +148,7 @@ function capability(over: Partial<ImobTransversalCapability> = {}): ImobTransver
       marketplaceItemId: "mkt-MKT", visibility: "public",
       conditions: ["Assinatura governada pelo Marketplace (delegação e política do workspace).", "Confirmação humana explícita antes de habilitar."],
     },
-    nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
+    nextAction: { kind: "review_commercial_terms", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
     ...over,
   };
 }
@@ -159,7 +160,7 @@ function renderTransversal(items: ImobTransversalCapability[], kind: "case_summa
   return renderToStaticMarkup(<ImobChatWidgets widget={widget} onAction={() => {}} />);
 }
 
-test("transversal card: habilitável mostra especialidade, agente, capacidades, modelos, condições e a ação de habilitar agente", () => {
+test("transversal card: habilitável com autoridade mostra especialidade, agente, capacidades, modelos, condições e o caminho de revisão", () => {
   const html = renderTransversal([capability()]);
   assert.match(html, /Especialistas transversais/);
   assert.match(html, /data-capability-state="habilitavel"/);
@@ -170,7 +171,9 @@ test("transversal card: habilitável mostra especialidade, agente, capacidades, 
   assert.match(html, /Modelos homologados neste workspace/);
   assert.match(html, /Campanha de lançamento/);
   assert.match(html, /Confirmação humana explícita antes de habilitar/);
-  assert.match(html, /<a href="\/app\/marketplace"[^>]*>Revisar e habilitar o agente no Marketplace<\/a>/);
+  assert.match(html, /data-capability-authority="contratacao_autorizada"/);
+  assert.match(html, /<a href="\/app\/marketplace"[^>]*>Revisar as condições comerciais no Marketplace<\/a>/);
+  assert.match(html, /só acontece com a sua confirmação no Marketplace/i);
   assert.match(html, /habilitar um agente não é convidar uma pessoa para o workspace/i);
   assert.doesNotMatch(html, />\s*Convidar/, "nenhuma ação de convite de pessoa");
   assert.doesNotMatch(html, /<button/, "apresentação apenas: nada é executado pelo cartão");
@@ -202,7 +205,7 @@ test("transversal card: payload incoerente falha fechado (estado desconhecido, a
   assert.doesNotMatch(forgedState, /<a /);
   const actionWithoutState = renderTransversal([capability({ state: "indisponivel" })]);
   assert.doesNotMatch(actionWithoutState, /<a /, "a ação só aparece para habilitável");
-  const foreignTarget = renderTransversal([capability({ nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "x", path: "https://example.invalid/enable" } })]);
+  const foreignTarget = renderTransversal([capability({ nextAction: { kind: "review_commercial_terms", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "x", path: "https://example.invalid/enable" } })]);
   assert.doesNotMatch(foreignTarget, /<a |example\.invalid/);
   const noRecipes = renderTransversal([capability({ recipes: undefined as never, provider: null })]);
   assert.match(noRecipes, /data-capability-state="habilitavel"/);
@@ -226,4 +229,36 @@ test("transversal card: coexiste com os apoios internos e aparece também no che
   assert.doesNotMatch(html, /Especialistas transversais/, "sem descoberta, nenhum cartão transversal");
   assert.match(html, /Apoios contextuais/);
   assert.equal(renderTransversal([]).includes("Especialistas transversais"), false);
+});
+
+test("transversal card: sem autoridade de contratação só há recomendação, sem link, botão ou pedido inexistente", () => {
+  const noAuthority = capability({
+    authority: { status: "somente_consulta", reasonCode: "MEMBERSHIP_PERMISSION_MISSING" },
+    nextAction: { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe" },
+  });
+  const html = renderTransversal([noAuthority]);
+  assert.match(html, /data-capability-state="habilitavel"/);
+  assert.match(html, /data-capability-authority="somente_consulta"/);
+  assert.match(html, /Marketing GPS \(MKT\)/, "a recomendação continua visível");
+  assert.match(html, /Campanha de lançamento/, "modelos homologados continuam visíveis");
+  assert.match(html, /exige a aprovação de uma pessoa autorizada deste workspace/i);
+  assert.match(html, /não contrata nem habilita agentes/i);
+  assert.doesNotMatch(html, /<a |<button|href=/, "nenhuma ação, mesmo desabilitada, sugere operação inexistente");
+  assert.doesNotMatch(html, /Revisar|Solicitar|Contratar|Habilitar o agente/i);
+});
+
+test("transversal card: autoridade é soberana do servidor - ausente, desconhecida ou incoerente com a ação falha fechado", () => {
+  const withoutAuthority = renderTransversal([capability({ authority: undefined })]);
+  assert.match(withoutAuthority, /data-capability-authority="somente_consulta"/);
+  assert.doesNotMatch(withoutAuthority, /<a /, "habilitável sem autoridade informada não oferece caminho");
+  const unknown = renderTransversal([capability({ authority: { status: "autorizado-quase" as never, reasonCode: "X" } })]);
+  assert.doesNotMatch(unknown, /<a /);
+  // ação de revisão sem autoridade (payload forjado ou inconsistente): continua sem link
+  const forged = renderTransversal([capability({ authority: { status: "somente_consulta", reasonCode: "POLICY_NOT_GRANTED" } })]);
+  assert.doesNotMatch(forged, /<a |Revisar as condições/);
+  // autoridade sem estado habilitável também não cria link
+  const wrongState = renderTransversal([capability({ state: "indisponivel" })]);
+  assert.doesNotMatch(wrongState, /<a /);
+  const unverifiedWithAuthority = renderTransversal([capability({ state: "nao_verificado", nextAction: { kind: "none", actionDomain: null } })]);
+  assert.doesNotMatch(unverifiedWithAuthority, /<a /);
 });
