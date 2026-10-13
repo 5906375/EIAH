@@ -149,6 +149,11 @@ export type ResolverHelpers = {
    * Ausente ou com falha => os especialistas ficam "unverified" e nenhuma ação é apresentada (fail-closed).
    */
   readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
+  /**
+   * Descoberta somente leitura das capacidades transversais que o caso declara (domínio + capacidade). Ausente ou com
+   * falha => nenhum cartão transversal é apresentado.
+   */
+  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
   isBulkPropertyOnboardingQuestion: (normalized: string) => boolean;
   buildBulkPropertyOnboardingConsult: (params: { threadState: ThreadStateLike }) => OperationalResolution;
   isImobRecentRegistrationReadRequest: (normalized: string) => boolean;

@@ -28,6 +28,10 @@ type Fixture = {
   policies?: Row[];
   agentProfiles?: Row[];
   pricing?: Row[];
+  /** tenant_recipes (consulta bruta). Linhas já no formato do banco: tenantId, status, workspaceScopeMode, workspaceScopeIds... */
+  recipes?: Row[];
+  /** Tabelas cuja leitura falha (simula indisponibilidade). `tenant_recipes` falha a consulta bruta. */
+  failTables?: string[];
 };
 
 const future = () => new Date(Date.now() + 86_400_000);
@@ -37,8 +41,9 @@ const delegation = (tenant: string, marketplaceId: string) => ({
 });
 const policy = (tenant: string, workspace: string, actionName: string) => ({ id: `p-${tenant}-${workspace}-${actionName}`, tenantId: tenant, workspaceId: workspace, actionName, allowed: true });
 
-function matches(row: Row, where: Row = {}) {
+function matches(row: Row, where: Row = {}): boolean {
   return Object.entries(where).every(([key, condition]) => {
+    if (key === "OR" && Array.isArray(condition)) return condition.some((entry) => matches(row, entry));
     if (condition && typeof condition === "object" && !(condition instanceof Date)) {
       if ("in" in condition) return condition.in.includes(row[key]);
       if ("gt" in condition) return row[key] > condition.gt;
@@ -50,19 +55,50 @@ function matches(row: Row, where: Row = {}) {
 }
 
 function makeDb(fixture: Fixture) {
-  const table = (rows: Row[]) => ({
-    findMany: async (query: Row = {}) => rows.filter((row) => matches(row, query.where)).map((row) =>
-      query.include?.marketplace
-        ? { ...row, marketplace: (fixture.marketplaceItems ?? []).find((entry) => entry.id === row.marketplaceId) ?? null }
-        : row),
-    findUnique: async (query: Row = {}) => rows.find((row) => matches(row, query.where)) ?? null,
-  });
+  const writes: string[] = [];
+  const sql: Array<{ text: string; values: unknown[] }> = [];
+  const table = (rows: Row[], name: string) => {
+    const forbidden = (method: string) => async () => { writes.push(`${name}.${method}`); throw new Error(`WRITE_ATTEMPT ${name}.${method}`); };
+    return {
+      findMany: async (query: Row = {}) => {
+        if (fixture.failTables?.includes(name)) throw new Error(`read failure ${name}`);
+        return rows.filter((row) => matches(row, query.where)).map((row) =>
+          query.include?.marketplace
+            ? { ...row, marketplace: (fixture.marketplaceItems ?? []).find((entry) => entry.id === row.marketplaceId) ?? null }
+            : row);
+      },
+      findUnique: async (query: Row = {}) => rows.find((row) => matches(row, query.where)) ?? null,
+      create: forbidden("create"), createMany: forbidden("createMany"), update: forbidden("update"), updateMany: forbidden("updateMany"),
+      upsert: forbidden("upsert"), delete: forbidden("delete"), deleteMany: forbidden("deleteMany"),
+    };
+  };
   return {
-    pricing: table(fixture.pricing ?? []),
-    agentProfile: table(fixture.agentProfiles ?? []),
-    delegationPolicy: table(fixture.delegations ?? []),
-    tenantActionPolicy: table(fixture.policies ?? []),
+    pricing: table(fixture.pricing ?? [], "pricing"),
+    agentProfile: table(fixture.agentProfiles ?? [], "agentProfile"),
+    delegationPolicy: table(fixture.delegations ?? [], "delegationPolicy"),
+    tenantActionPolicy: table(fixture.policies ?? [], "tenantActionPolicy"),
+    marketplaceItem: table(fixture.marketplaceItems ?? [], "marketplaceItem"),
+    // Consulta bruta de receitas: reproduz o filtro SQL a partir dos VALORES recebidos (tenantId, workspaceId).
+    $queryRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      const text = strings.join("?");
+      sql.push({ text, values });
+      if (fixture.failTables?.includes("tenant_recipes")) throw new Error("relation tenant_recipes does not exist");
+      if (!/FROM tenant_recipes/.test(text) || values.length !== 2) throw new Error("unexpected raw query");
+      const [tenantId, workspaceId] = values;
+      return (fixture.recipes ?? [])
+        .filter((row) => row.tenantId === tenantId && row.status === "homologated"
+          && (row.workspaceScopeMode === "all_workspaces" || (Array.isArray(row.workspaceScopeIds) && row.workspaceScopeIds.includes(workspaceId))))
+        // Devolve somente as colunas que o SQL realmente seleciona (alias "x" ou nome da coluna): uma coluna a mais vazaria.
+        .map((row) => {
+          const select = /SELECT([\s\S]*?)FROM tenant_recipes/.exec(text)?.[1] ?? "";
+          const keys = select.split(",").map((column) => /AS "(\w+)"/.exec(column)?.[1] ?? column.trim()).filter(Boolean);
+          return Object.fromEntries(keys.map((key) => [key, row[key]]));
+        });
+    },
+    $executeRaw: async () => { writes.push("$executeRaw"); throw new Error("WRITE_ATTEMPT $executeRaw"); },
     $disconnect: async () => {},
+    __writes: writes,
+    __sql: sql,
   };
 }
 
@@ -380,4 +416,250 @@ test("T15 a disponibilidade é derivada do mesmo catálogo que o Front Door cons
     const web = Boolean(p && p.visibility === "visible" && p.status === "active" && p.canBeSuggested && p.canReceiveHandoff);
     assert.equal(result[id] === "available", web, `${id}: regra equivalente a canSuggestAgent && canHandoffToAgent do Front Door`);
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// Descoberta transversal de capacidades (somente leitura): necessidade estruturada -> estado + modelos + ação legítima
+// ---------------------------------------------------------------------------------------------
+
+const NEED = { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" };
+const marketplaceMkt = (over: Row = {}) => ({ ...item("mkt-MKT", "MKT"), trustScore: 0.9, ...over });
+const recipe = (over: Row = {}): Row => ({
+  id: "rec-1", tenantId: T, agentId: "MKT", title: "Campanha de lançamento", summary: "Plano multicanal para divulgação", tags: ["imob"],
+  status: "homologated", workspaceScopeMode: "all_workspaces", workspaceScopeIds: [], homologatedAt: new Date("2026-10-01T00:00:00Z"), deprecatedAt: null,
+  instructions: "SENTINEL_INSTRUCTIONS_9c1", content: { steps: ["SENTINEL_CONTENT_9c1"] }, ...over,
+});
+
+async function discover(fixture: Fixture, tenantId = T, workspaceId = W, need: Row = NEED) {
+  const h = harness(fixture, authA);
+  const module = h.load(resolve("apps/api/src/services/capabilityDiscovery.ts"));
+  const result = await module.discoverCapabilityNeed({ need, tenantId, workspaceId, client: h.db });
+  return { h, module, result };
+}
+
+test("T16 descoberta estrutural: domínio + capacidade resolvem o provedor declarado, sem texto do usuário", async () => {
+  const { result } = await discover({ ...subscribed(["MKT"]), recipes: [recipe()] });
+  assert.deepEqual(result.need, NEED);
+  assert.equal(result.provider.agentId, "MKT");
+  assert.equal(result.provider.origin, "agent_registry");
+  assert.ok(result.provider.declaredCapabilities.length >= 1, "capacidades declaradas pelo registro");
+  assert.match(result.provider.declaredCapabilities[0], /campanha/i);
+
+  const unknown = await discover({}, T, W, { needId: "x.y", domain: "juridico", capability: "parecer" });
+  assert.equal(unknown.result.state, "indisponivel");
+  assert.deepEqual(unknown.result.reasons, ["NO_DECLARED_PROVIDER"]);
+  assert.equal(unknown.result.provider, null);
+  assert.deepEqual(unknown.result.nextAction, { kind: "none", actionDomain: null });
+
+  for (const bad of [{ needId: "b", domain: "", capability: "campaign" }, { needId: "b", domain: "marketing", capability: "a b" }, { needId: "b", domain: "../x", capability: "campaign" }]) {
+    const invalid = (await discover({}, T, W, bad)).result;
+    assert.equal(invalid.state, "nao_verificado", JSON.stringify(bad));
+    assert.deepEqual(invalid.nextAction, { kind: "none", actionDomain: null });
+  }
+
+  const source = readFileSync(resolve("apps/api/src/services/capabilityDiscovery.ts"), "utf8");
+  assert.doesNotMatch(source, /specialistExplainCatalog|userText|utterance|\bmessage\b/i, "o resolvedor não recebe nem interpreta texto do usuário");
+});
+
+test("T17 estados: habilitado, habilitavel, indisponivel e participação fechada são distintos", async () => {
+  // existe no Marketplace, mas não está habilitado => habilitavel (nunca habilitado)
+  const listed = (await discover({ marketplaceItems: [marketplaceMkt()], recipes: [recipe()] })).result;
+  assert.equal(listed.state, "habilitavel");
+  assert.deepEqual(listed.reasons, ["NOT_ENABLED_IN_WORKSPACE"]);
+  assert.equal(listed.provider.agentId, "MKT");
+  assert.equal(listed.enablement.marketplaceItemId, "mkt-MKT");
+  assert.equal(listed.enablement.visibility, "public");
+  assert.ok(listed.enablement.conditions.some((line: string) => /confirmação humana explícita/i.test(line)));
+  assert.deepEqual(listed.nextAction, { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" });
+
+  // inscrito (política do workspace + delegação ativa) => habilitado; o encaminhamento operacional ainda não existe
+  const enabled = (await discover({ ...subscribed(["MKT"]), recipes: [recipe()] })).result;
+  assert.equal(enabled.state, "habilitado");
+  assert.deepEqual(enabled.reasons, []);
+  assert.equal(enabled.enablement, null);
+  assert.deepEqual(enabled.nextAction, { kind: "request_work", actionDomain: "agent_work", enabled: false, reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" });
+
+  // fora do Marketplace e não habilitado => indisponivel
+  const absent = (await discover({})).result;
+  assert.equal(absent.state, "indisponivel");
+  assert.deepEqual(absent.reasons, ["NOT_IN_MARKETPLACE"]);
+  assert.deepEqual(absent.nextAction, { kind: "none", actionDomain: null });
+
+  // item privado de outro tenant não é elegível; item privado do próprio tenant é
+  const foreignPrivate = (await discover({ marketplaceItems: [marketplaceMkt({ isPublic: false, publisherId: T2 })] })).result;
+  assert.equal(foreignPrivate.state, "indisponivel");
+  const ownPrivate = (await discover({ marketplaceItems: [marketplaceMkt({ isPublic: false, publisherId: T })] })).result;
+  assert.equal(ownPrivate.state, "habilitavel");
+  assert.equal(ownPrivate.enablement.visibility, "own_tenant");
+
+  // item de outro tipo com o mesmo nome não conta
+  const wrongType = (await discover({ marketplaceItems: [marketplaceMkt({ type: "tool" })] })).result;
+  assert.equal(wrongType.state, "indisponivel");
+
+  // habilitado no catálogo, mas com participação fechada => indisponivel (e sem ação)
+  const closedProfile = {
+    id: "ap-mkt", agent: "MKT", name: "Marketing GPS", description: "synthetic", model: "synthetic-model", systemPrompt: SENTINEL_PROMPT, tools: [],
+    participation: { agentId: "MKT", requiresEntitlement: false, requiredModules: [], requiredWorkspaceCapabilities: [], ...activeParticipation, canBeSuggested: false },
+    createdAt: new Date(), updatedAt: new Date(),
+  };
+  const closed = (await discover({ ...subscribed(["MKT"]), agentProfiles: [closedProfile], recipes: [recipe()] })).result;
+  assert.equal(closed.state, "indisponivel");
+  assert.deepEqual(closed.reasons, ["PARTICIPATION_NOT_ACTIVE"]);
+  assert.deepEqual(closed.nextAction, { kind: "none", actionDomain: null });
+  assert.deepEqual(closed.recipes, { status: "nao_aplicavel", items: [] }, "sem disponibilidade, nenhum modelo é oferecido");
+});
+
+test("T18 modelos: somente homologados, do tenant, compatíveis com o workspace e com o agente; sem instruções ou conteúdo", async () => {
+  const fixture: Fixture = {
+    ...subscribed(["MKT"]),
+    recipes: [
+      recipe({ id: "ok-all" }),
+      recipe({ id: "ok-selected", title: "Modelo do workspace A", workspaceScopeMode: "selected_workspaces", workspaceScopeIds: [W] }),
+      recipe({ id: "out-scope", workspaceScopeMode: "selected_workspaces", workspaceScopeIds: [W2] }),
+      recipe({ id: "draft", status: "draft" }),
+      recipe({ id: "deprecated", deprecatedAt: new Date() }),
+      recipe({ id: "other-agent", agentId: "J_360" }),
+      recipe({ id: "other-tenant", tenantId: T2 }),
+      recipe({ id: "alias", agentId: "mkt", title: "Alias do agente" }),
+    ],
+  };
+  const { result, h } = await discover(fixture);
+  assert.equal(result.recipes.status, "ok");
+  assert.deepEqual(result.recipes.items.map((entry: Row) => entry.id).sort(), ["alias", "ok-all", "ok-selected"]);
+  const serialized = JSON.stringify(result);
+  assert.equal(serialized.includes("SENTINEL_INSTRUCTIONS_9c1"), false, "instruções internas nunca saem");
+  assert.equal(serialized.includes("SENTINEL_CONTENT_9c1"), false, "conteúdo interno nunca sai");
+  for (const entry of result.recipes.items) assert.deepEqual(Object.keys(entry).sort(), ["homologatedAt", "id", "summary", "tags", "title"]);
+  assert.deepEqual(h.db.__sql.map((query: Row) => query.values), [[T, W]], "uma consulta, parametrizada por tenant e workspace");
+
+  // outro workspace do mesmo tenant só vê os modelos do seu escopo
+  const other = (await discover({ ...fixture, ...subscribed(["MKT"], T, W2) }, T, W2)).result;
+  assert.deepEqual(other.recipes.items.map((entry: Row) => entry.id).sort(), ["alias", "ok-all", "out-scope"]);
+  // habilitável: modelos homologados são informativos; indisponível/não verificado: nenhum
+  const listed = (await discover({ marketplaceItems: [marketplaceMkt()], recipes: [recipe()] })).result;
+  assert.equal(listed.recipes.items.length, 1);
+  assert.deepEqual((await discover({ recipes: [recipe()] })).result.recipes, { status: "nao_aplicavel", items: [] });
+  // sem nenhum modelo homologado: lista vazia, status ok
+  assert.deepEqual((await discover({ ...subscribed(["MKT"]), recipes: [] })).result.recipes, { status: "ok", items: [] });
+});
+
+test("T19 isolamento entre tenants e workspaces na descoberta", async () => {
+  const fixture: Fixture = {
+    ...subscribed(["MKT"], T, W),
+    recipes: [recipe(), recipe({ id: "only-workspace-a", workspaceScopeMode: "selected_workspaces", workspaceScopeIds: [W] })],
+  };
+  const home = (await discover(fixture, T, W)).result;
+  assert.equal(home.state, "habilitado");
+  assert.deepEqual(home.recipes.items.map((entry: Row) => entry.id).sort(), ["only-workspace-a", "rec-1"]);
+
+  // mesmo tenant, outro workspace: a habilitação do workspace A não vale; modelo restrito ao A não aparece
+  const sibling = (await discover(fixture, T, W2)).result;
+  assert.notEqual(sibling.state, "habilitado");
+  assert.notEqual(sibling.nextAction.kind, "request_work");
+  assert.deepEqual(sibling.recipes.items.map((entry: Row) => entry.id), ["rec-1"], "apenas o modelo de escopo all_workspaces");
+
+  // outro tenant: nada do tenant A (habilitação, modelos ou ação)
+  for (const workspace of [W, W2]) {
+    const { result } = await discover(fixture, T2, workspace);
+    assert.notEqual(result.state, "habilitado", `${T2}/${workspace}`);
+    assert.deepEqual(result.recipes.items, [], `${T2}/${workspace}: modelos de outro tenant nunca aparecem`);
+    assert.notEqual(result.nextAction.kind, "request_work", `${T2}/${workspace}`);
+  }
+  // item privado publicado por outro tenant não vira habilitável para este
+  const foreign = await discover({ ...fixture, marketplaceItems: [marketplaceMkt({ isPublic: false, publisherId: T2 })], delegations: [], policies: [] }, T, W);
+  assert.equal(foreign.result.state, "indisponivel");
+});
+
+test("T20 falhas de consulta e escopo inválido: não verificado, sem ação, sem lançar", async () => {
+  const none = { kind: "none", actionDomain: null };
+  for (const table of ["pricing", "agentProfile", "delegationPolicy", "tenantActionPolicy"]) {
+    const { result } = await discover({ ...subscribed(["MKT"]), failTables: [table], recipes: [recipe()] });
+    assert.equal(result.state, "nao_verificado", table);
+    assert.deepEqual(result.reasons, ["CATALOG_QUERY_FAILED"], table);
+    assert.deepEqual(result.nextAction, none, table);
+    assert.deepEqual(result.recipes, { status: "nao_aplicavel", items: [] }, table);
+  }
+  const market = (await discover({ failTables: ["marketplaceItem"] })).result;
+  assert.equal(market.state, "nao_verificado");
+  assert.deepEqual(market.reasons, ["MARKETPLACE_QUERY_FAILED"]);
+  assert.deepEqual(market.nextAction, none);
+  // falha só nos modelos: o estado do agente é mantido e os modelos ficam "nao_verificado"
+  const noRecipes = (await discover({ ...subscribed(["MKT"]), failTables: ["tenant_recipes"] })).result;
+  assert.equal(noRecipes.state, "habilitado");
+  assert.deepEqual(noRecipes.recipes, { status: "nao_verificado", items: [] });
+  const listedNoRecipes = (await discover({ marketplaceItems: [marketplaceMkt()], failTables: ["tenant_recipes"] })).result;
+  assert.equal(listedNoRecipes.state, "habilitavel");
+  assert.equal(listedNoRecipes.recipes.status, "nao_verificado");
+  for (const [tenant, workspace] of [["", W], [T, ""], ["  ", W]] as const) {
+    const { result } = await discover(subscribed(["MKT"]), tenant, workspace);
+    assert.equal(result.state, "nao_verificado");
+    assert.deepEqual(result.reasons, ["SCOPE_INVALID"]);
+    assert.deepEqual(result.nextAction, none);
+  }
+  const h = harness({}, authA);
+  const module = h.load(resolve("apps/api/src/services/capabilityDiscovery.ts"));
+  assert.deepEqual((await module.discoverCapabilityNeeds({ needs: [NEED], tenantId: T, workspaceId: W })).map((entry: Row) => entry.reasons), [["READERS_UNAVAILABLE"]], "sem cliente nem leitores");
+  assert.deepEqual(await module.discoverCapabilityNeeds({ needs: null, tenantId: T, workspaceId: W, client: h.db }), []);
+});
+
+test("T21 somente leitura; habilitar agente é estruturalmente distinto de convidar uma pessoa", async () => {
+  for (const fixture of [
+    { marketplaceItems: [marketplaceMkt()], recipes: [recipe()] },
+    { ...subscribed(["MKT"]), recipes: [recipe()] },
+    {},
+  ] as Fixture[]) {
+    const before = JSON.stringify(fixture);
+    const { result, h } = await discover(fixture);
+    assert.equal(JSON.stringify(fixture), before, "o fixture não mudou");
+    assert.deepEqual(h.db.__writes, [], "nenhuma escrita (assinatura, política, delegação, DDL) foi tentada");
+    assert.equal(["agent_enablement", "agent_work", null].includes(result.nextAction.actionDomain), true);
+    assert.equal(/invit|convid|member|membro|usu[aá]rio/i.test(JSON.stringify(result.nextAction)), false, "nenhuma ação de convite de pessoa");
+  }
+  const source = readFileSync(resolve("apps/api/src/services/capabilityDiscovery.ts"), "utf8").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(source, /\b(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b|ensureTenantRecipesTable|\.create\(|\.update\(|\.upsert\(|\.delete\(|\$executeRaw/i);
+});
+
+test("T22 rota GET /api/agents/capabilities/discover: autenticada, validada, somente leitura e no escopo do token", async () => {
+  const h = harness({ ...subscribed(["MKT"]), recipes: [recipe()] }, authA);
+  const url = "/api/agents/capabilities/discover?domain=marketing&capability=campaign";
+  assert.equal((await supertest(h.app).get(url)).status, 401);
+  const ok = await supertest(h.app).get(url).set("authorization", "Bearer synthetic");
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.ok, true);
+  assert.equal(ok.body.item.state, "habilitado");
+  assert.equal(ok.body.item.provider.agentId, "MKT");
+  assert.equal(ok.body.item.recipes.items.length, 1);
+  assert.match(String(ok.headers["cache-control"]), /no-store/);
+  const upper = await supertest(h.app).get("/api/agents/capabilities/discover?domain=Marketing&capability=CAMPAIGN").set("authorization", "Bearer synthetic");
+  assert.equal(upper.body.item.state, "habilitado");
+  for (const bad of ["", "?domain=marketing", "?capability=campaign", "?domain=a%20b&capability=campaign", "?domain=marketing&capability=../x"]) {
+    const response = await supertest(h.app).get(`/api/agents/capabilities/discover${bad}`).set("authorization", "Bearer synthetic");
+    assert.equal(response.status, 400, bad);
+    assert.equal(response.body.error.code, "INVALID_QUERY");
+  }
+  const unknown = await supertest(h.app).get("/api/agents/capabilities/discover?domain=juridico&capability=parecer").set("authorization", "Bearer synthetic");
+  assert.equal(unknown.status, 200);
+  assert.equal(unknown.body.item.state, "indisponivel");
+  // outro token (outro tenant) não enxerga a habilitação deste
+  const foreign = harness({ ...subscribed(["MKT"]), recipes: [recipe()] }, { ...authA, tenantId: T2, workspaceId: W2 });
+  const response = await supertest(foreign.app).get(url).set("authorization", "Bearer synthetic");
+  assert.notEqual(response.body.item.state, "habilitado");
+  assert.deepEqual(response.body.item.recipes.items, []);
+  assert.deepEqual(h.db.__writes, []);
+  // /agents/:name continua resolvendo (a rota nova não o captura)
+  assert.equal((await supertest(h.app).get("/api/agents/EIAH").set("authorization", "Bearer synthetic")).status, 200);
+});
+
+test("T23 o SQL de modelos reproduz o filtro de /tenant-recipes e não seleciona instruções nem conteúdo", () => {
+  const source = readFileSync(resolve("apps/api/src/services/capabilityDiscovery.ts"), "utf8");
+  const sql = /client\.\$queryRaw<RecipeEntry\[\]>`([\s\S]*?)`/.exec(source)?.[1] ?? "";
+  assert.ok(sql.length > 0, "consulta bruta localizada");
+  assert.match(sql, /FROM tenant_recipes/);
+  assert.match(sql, /WHERE tenant_id = \$\{tenantId\}/);
+  assert.match(sql, /AND status = 'homologated'/);
+  assert.match(sql, /workspace_scope_mode = 'all_workspaces'\s+OR workspace_scope_ids \? \$\{workspaceId\}/);
+  assert.doesNotMatch(sql, /\binstructions\b|\bcontent\b|created_by_user_id|updated_by_user_id/);
+  const route = readFileSync(resolve("apps/api/src/routes/tenant-recipes.ts"), "utf8");
+  assert.match(route, /AND status = 'homologated'/);
+  assert.match(route, /workspace_scope_mode = 'all_workspaces'\s+OR workspace_scope_ids \? \$\{effectiveWorkspaceId\}/);
 });

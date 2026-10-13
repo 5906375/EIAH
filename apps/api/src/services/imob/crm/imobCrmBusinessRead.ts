@@ -230,11 +230,19 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return nextStep ?? "definir o próximo movimento comercial";
   }
 
+  /** Cartões de capacidades transversais já descobertas (somente leitura). Entrada fora do formato => nenhum cartão. */
+  function normalizeTransversalCapabilities(value: unknown) {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item: any) => item && typeof item === "object" && typeof item.state === "string" && item.need && typeof item.need.needId === "string");
+  }
+
   function buildImobCaseExperienceWidget(
     caseContext?: ImobCrmCaseContext | null,
     specialistAvailability?: ImobBackingSpecialistAvailabilityMap,
+    transversalCapabilitiesInput?: unknown,
   ) {
     if (!caseContext?.canonical?.journeyType) return undefined;
+    const transversalCapabilities = normalizeTransversalCapabilities(transversalCapabilitiesInput);
     // Candidatos vindos do bridge + disponibilidade real: o card mostra todos, mas só os disponíveis mantêm a ação.
     const specialists = applyBackingSpecialistAvailability(
       (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [],
@@ -263,6 +271,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         blocker: helpers.asString(caseContext.blocker) ?? null,
         nextStep: helpers.asString(caseContext.nextStep) ?? null,
         specialists,
+        ...(transversalCapabilities.length > 0 ? { transversalCapabilities } : {}),
       };
     }
 
@@ -275,6 +284,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       blocker: helpers.asString(caseContext.blocker) ?? null,
       recommendedActions,
       specialists,
+      ...(transversalCapabilities.length > 0 ? { transversalCapabilities } : {}),
     };
   }
 
@@ -2773,6 +2783,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     caseSelectionNote?: string | null;
     /** Disponibilidade real dos especialistas candidatos (agents.ts). Ausente => "unverified" (fail-closed). */
     specialistAvailability?: ImobBackingSpecialistAvailabilityMap;
+    /** Capacidades transversais do caso descobertas (somente leitura); ausente => nenhum cartão transversal. */
+    transversalCapabilities?: unknown;
   }) {
     const { intent, caseContext } = params;
     const journeyLabel = formatImobJourneyLabel(caseContext?.canonical?.journeyType);
@@ -3116,7 +3128,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       }),
       pendingFieldLabels: pendingItems,
       suggestedNextAction: primaryNextStep,
-      widget: intent !== "blocked_run_resolution" ? buildImobCaseExperienceWidget(caseContext, params.specialistAvailability) : null,
+      widget: intent !== "blocked_run_resolution" ? buildImobCaseExperienceWidget(caseContext, params.specialistAvailability, params.transversalCapabilities) : null,
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
       workflow: {
         primaryState: primaryWorkflowState,

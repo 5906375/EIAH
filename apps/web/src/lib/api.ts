@@ -2672,6 +2672,32 @@ export type ImobInventoryShowcaseWidget = {
   }>;
 };
 
+/**
+ * Capacidade transversal descoberta pelo backend (somente leitura). O Front Door apenas apresenta: estado, modelos e
+ * a próxima ação legítima. `actionDomain` separa habilitação de AGENTE de convite de PESSOA (que não existe aqui).
+ */
+export type ImobTransversalCapability = {
+  need: { needId: string; domain: string; capability: string; label?: string };
+  state: "habilitado" | "habilitavel" | "indisponivel" | "nao_verificado";
+  reasons: string[];
+  provider: {
+    agentId: string;
+    name: string;
+    description: string | null;
+    declaredCapabilities: string[];
+    origin: "agent_registry" | "marketplace";
+  } | null;
+  recipes: {
+    status: "ok" | "nao_verificado" | "nao_aplicavel";
+    items: Array<{ id: string; title: string; summary: string; tags: string[]; homologatedAt: string | null }>;
+  };
+  enablement: { marketplaceItemId: string; visibility: "public" | "own_tenant"; conditions: string[] } | null;
+  nextAction:
+    | { kind: "enable_agent"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }
+    | { kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }
+    | { kind: "none"; actionDomain: null };
+};
+
 export type ImobCaseSummaryWidget = {
   kind: "case_summary";
   title: string;
@@ -2685,6 +2711,7 @@ export type ImobCaseSummaryWidget = {
     autoprompt?: string | null;
   }>;
   specialists: ImobResolvedBackingSpecialist[];
+  transversalCapabilities?: ImobTransversalCapability[];
 };
 
 export type ImobDocumentChecklistWidget = {
@@ -2694,6 +2721,7 @@ export type ImobDocumentChecklistWidget = {
   blocker?: string | null;
   nextStep?: string | null;
   specialists: ImobResolvedBackingSpecialist[];
+  transversalCapabilities?: ImobTransversalCapability[];
 };
 
 export type ImobPrintBundleWidget = {
