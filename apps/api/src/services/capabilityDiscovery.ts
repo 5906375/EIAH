@@ -12,11 +12,24 @@
 //   indisponivel   condição necessária não atendida (sem provedor declarado, fora do Marketplace, participação fechada)
 //   nao_verificado informação insuficiente ou falha de consulta (fail-closed: nenhuma ação é oferecida)
 //
+// Dois eixos independentes (AUTHZ-SCOPE-1):
+//   estado       disponibilidade da capacidade (acima);
+//   autoridade   `contratacao_autorizada` | `somente_consulta` — se a PESSOA atual pode contratar agentes, resolvida
+//                aqui no servidor (nunca informada pelo cliente) com a mesma regra que protege POST
+//                /marketplace/:id/subscribe. `habilitavel` NÃO implica `contratacao_autorizada`.
+//
 // Este módulo NÃO escreve nada: não assina, não cria política nem delegação, não inicia handoff, não cria a tabela de
-// receitas. A única ação possível é a habilitação governada de AGENTE, que exige confirmação humana explícita e acontece
-// no Marketplace. Convite de pessoa ao workspace é outro fluxo (frontDoorAccess) e nunca é emitido aqui.
+// receitas, não registra decisão. A única ação possível é levar quem TEM autoridade a revisar as condições comerciais
+// no Marketplace (a contratação em si exige confirmação humana lá e é aplicada pela API). Sem autoridade, nenhuma ação
+// de contratação é emitida. Convite de pessoa ao workspace é outro fluxo (frontDoorAccess) e nunca é emitido aqui.
 
 import type { PrismaClient } from "@repo/db";
+import {
+  evaluateSubscriptionAuthority,
+  subscriptionAuthorityDeps,
+  SUBSCRIBE_SCOPE,
+  type SubscriptionAuthorityDeps,
+} from "./marketplaceSubscriptionAuthority";
 import {
   getAgentCapabilityDeclarations,
   listAgents,
@@ -46,18 +59,28 @@ export type DiscoveredRecipe = Readonly<{
   homologatedAt: string | null;
 }>;
 
+export type ContractingAuthorityStatus = "contratacao_autorizada" | "somente_consulta";
+
+/** Autoridade da PESSOA atual para contratar agentes. `reasonCode` explica a negação; nunca é aceita do cliente. */
+export type ContractingAuthority = Readonly<{ status: ContractingAuthorityStatus; reasonCode: string }>;
+
 /**
- * `actionDomain` separa estruturalmente a habilitação de AGENTE (única emitida aqui) do convite de PESSOA ao
- * workspace, que pertence a outro fluxo e nunca aparece nesta lista de ações.
+ * `actionDomain` separa estruturalmente a contratação de AGENTE do convite de PESSOA ao workspace, que pertence a
+ * outro fluxo e nunca aparece nesta lista de ações.
+ *  - `review_commercial_terms`: só para quem tem autoridade; leva ao Marketplace para revisar condições. Não contrata.
+ *  - `request_approval`: sem autoridade; o pedido de apreciação ainda NÃO existe, então vem desabilitado.
  */
 export type CapabilityNextAction =
-  | Readonly<{ kind: "enable_agent"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }>
+  | Readonly<{ kind: "review_commercial_terms"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }>
+  | Readonly<{ kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: typeof SUBSCRIBE_SCOPE }>
   | Readonly<{ kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }>
   | Readonly<{ kind: "none"; actionDomain: null }>;
 
 export type DiscoveredCapability = Readonly<{
   need: CapabilityNeed;
   state: CapabilityState;
+  /** Eixo independente do estado: se a pessoa atual pode contratar. `habilitavel` não a autoriza. */
+  authority: ContractingAuthority;
   reasons: readonly string[];
   provider: Readonly<{
     agentId: string;
@@ -179,10 +202,20 @@ type Evaluation = {
   marketplaceItem: MarketplaceEntry | null;
 };
 
-function closed(need: CapabilityNeed, state: CapabilityState, reasons: string[]): DiscoveredCapability {
+const AUTHORITY_UNVERIFIED: ContractingAuthority = { status: "somente_consulta", reasonCode: "AUTHORITY_UNAVAILABLE" };
+/** Necessidade sem provedor avaliável: não há o que contratar, então a autoridade nem chega a ser consultada. */
+const AUTHORITY_NOT_EVALUATED: ContractingAuthority = { status: "somente_consulta", reasonCode: "AUTHORITY_NOT_EVALUATED" };
+
+function closed(
+  need: CapabilityNeed,
+  state: CapabilityState,
+  reasons: string[],
+  authority: ContractingAuthority = AUTHORITY_NOT_EVALUATED,
+): DiscoveredCapability {
   return {
     need,
     state,
+    authority,
     reasons,
     provider: null,
     recipes: { status: "nao_aplicavel", items: [] },
@@ -201,6 +234,10 @@ export async function discoverCapabilityNeeds(params: {
   workspaceId: string;
   client?: PrismaClient;
   readers?: CapabilityDiscoveryReaders;
+  /** Pessoa que consulta. Sem `userId` a autoridade é sempre `somente_consulta`. */
+  actor?: { userId?: string | null } | null;
+  /** Leitura da autoridade (testes). Em produção deriva de `client`. Ausente = `somente_consulta`. */
+  authorityDeps?: SubscriptionAuthorityDeps;
 }): Promise<DiscoveredCapability[]> {
   const needs = (Array.isArray(params.needs) ? params.needs : []).map((need) => ({
     needId: String(need?.needId ?? ""),
@@ -220,6 +257,17 @@ export async function discoverCapabilityNeeds(params: {
   const loadMarketplace = memoLoader(() => readers.listMarketplaceAgents({ tenantId }));
   const loadRecipes = memoLoader(() => readers.listHomologatedRecipes({ tenantId, workspaceId }));
   const loadCore = memoLoader(async () => listCoreAgentCatalog());
+
+  const authorityDeps = params.authorityDeps ?? (params.client ? subscriptionAuthorityDeps.forClient(params.client) : null);
+  // Autoridade por pessoa/tenant/workspace, resolvida uma vez por consulta e sem escrever nada.
+  const loadAuthority = memoLoader(async (): Promise<ContractingAuthority> => {
+    if (authorityDeps === null) return AUTHORITY_UNVERIFIED;
+    const decision = await evaluateSubscriptionAuthority(
+      { tenantId, workspaceId, userId: params.actor?.userId ?? null },
+      authorityDeps,
+    );
+    return { status: decision.allowed ? "contratacao_autorizada" : "somente_consulta", reasonCode: decision.reasonCode };
+  });
 
   async function evaluate(agentId: string): Promise<Evaluation> {
     const key = normalizeAgentKey(resolveAgentId(agentId));
@@ -256,6 +304,9 @@ export async function discoverCapabilityNeeds(params: {
       if (best === null || RANK[evaluation.state] > RANK[best.state]) best = evaluation;
     }
     if (best === null) return closed(need, "nao_verificado", ["NO_EVALUATION"]);
+
+    const authorityLoaded = await loadAuthority();
+    const authority: ContractingAuthority = authorityLoaded.ok ? authorityLoaded.value : AUTHORITY_UNVERIFIED;
 
     const core = await loadCore();
     const coreEntry = core.ok ? core.value.find((item) => normalizeAgentKey(item.id) === normalizeAgentKey(resolveAgentId(best!.agentId))) : undefined;
@@ -304,23 +355,32 @@ export async function discoverCapabilityNeeds(params: {
         visibility: own ? "own_tenant" : "public",
         conditions: [
           "Assinatura governada pelo Marketplace (delegação e política do workspace).",
+          "Exige pessoa com autoridade de contratação neste workspace (marketplace.subscribe).",
           "Confirmação humana explícita antes de habilitar.",
           own ? "Item privado do próprio tenant." : "Item público do Marketplace.",
           "Revisões adicionais impostas por política do workspace: não verificadas nesta consulta.",
         ],
       };
-      nextAction = {
-        kind: "enable_agent",
-        actionDomain: "agent_enablement",
-        requiresHumanConfirmation: true,
-        marketplaceItemId: best.marketplaceItem.id,
-        path: MARKETPLACE_PATH,
-      };
+      nextAction = authority.status === "contratacao_autorizada"
+        ? {
+            kind: "review_commercial_terms",
+            actionDomain: "agent_enablement",
+            requiresHumanConfirmation: true,
+            marketplaceItemId: best.marketplaceItem.id,
+            path: MARKETPLACE_PATH,
+          }
+        : {
+            kind: "request_approval",
+            actionDomain: "agent_enablement",
+            enabled: false,
+            reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED",
+            requiredAuthority: SUBSCRIBE_SCOPE,
+          };
     } else if (best.state === "habilitado") {
       nextAction = { kind: "request_work", actionDomain: "agent_work", enabled: false, reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" };
     }
 
-    return { need, state: best.state, reasons: best.reasons, provider, recipes, enablement, nextAction };
+    return { need, state: best.state, authority, reasons: best.reasons, provider, recipes, enablement, nextAction };
   }
 
   const results: DiscoveredCapability[] = [];
@@ -340,6 +400,8 @@ export async function discoverCapabilityNeed(params: {
   workspaceId: string;
   client?: PrismaClient;
   readers?: CapabilityDiscoveryReaders;
+  actor?: { userId?: string | null } | null;
+  authorityDeps?: SubscriptionAuthorityDeps;
 }): Promise<DiscoveredCapability> {
   const [result] = await discoverCapabilityNeeds({ ...params, needs: [params.need] });
   return result;

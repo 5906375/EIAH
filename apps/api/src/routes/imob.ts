@@ -728,6 +728,7 @@ async function discoverImobTransversalCapabilitiesForTurn(params: {
   prisma: unknown;
   tenantId: string;
   workspaceId: string;
+  userId?: string | null;
   caseContext: unknown;
   operational: unknown;
 }) {
@@ -738,6 +739,8 @@ async function discoverImobTransversalCapabilitiesForTurn(params: {
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
     client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+    // A autoridade de contratação é da PESSOA que conversa; sem usuário identificado resulta em somente_consulta.
+    actor: { userId: params.userId ?? null },
   });
 }
 

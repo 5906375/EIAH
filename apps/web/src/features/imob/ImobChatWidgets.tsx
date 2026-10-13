@@ -88,9 +88,11 @@ const TRANSVERSAL_STATE_LABEL = {
 const MARKETPLACE_PATH = "/app/marketplace";
 
 /**
- * Apenas apresenta o que o backend descobriu (somente leitura). Estado desconhecido vale "não verificado" e a ação de
- * habilitação só aparece para "habilitável", apontando para o Marketplace, onde a confirmação humana acontece.
- * Habilitar um AGENTE não é convidar uma PESSOA para o workspace.
+ * Apenas apresenta o que o backend descobriu (somente leitura). Estado desconhecido vale "não verificado" e autoridade
+ * ausente ou desconhecida vale "somente consulta". O caminho de revisão das condições comerciais só aparece para
+ * "habilitável" COM autoridade de contratação resolvida pelo servidor, apontando para o Marketplace, onde a
+ * confirmação humana acontece e a API reaplica a autoridade. Sem autoridade só há a recomendação. Esta tela não
+ * contrata, não habilita e não solicita aprovação. Habilitar um AGENTE não é convidar uma PESSOA para o workspace.
  */
 function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
   if (!Array.isArray(items) || items.length === 0) return null;
@@ -99,13 +101,14 @@ function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
       <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Especialistas transversais</p>
       {items.map((item) => {
         const state = item.state in TRANSVERSAL_STATE_LABEL ? item.state : "nao_verificado";
-        const enable = state === "habilitavel" && item.nextAction?.kind === "enable_agent" && item.nextAction.path === MARKETPLACE_PATH
+        const authorized = item.authority?.status === "contratacao_autorizada";
+        const enable = state === "habilitavel" && authorized && item.nextAction?.kind === "review_commercial_terms" && item.nextAction.path === MARKETPLACE_PATH
           ? item.nextAction
           : null;
         const declared = (item.provider?.declaredCapabilities ?? []).slice(0, 3);
         const recipes = item.recipes ?? { status: "nao_aplicavel", items: [] };
         return (
-          <div key={item.need.needId} data-capability-state={state} data-capability-domain={item.need.domain} className="rounded-lg border border-white/10 bg-black/20 p-3">
+          <div key={item.need.needId} data-capability-state={state} data-capability-authority={authorized ? "contratacao_autorizada" : "somente_consulta"} data-capability-domain={item.need.domain} className="rounded-lg border border-white/10 bg-black/20 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium text-foreground">{item.need.label ?? `${item.need.domain} · ${item.need.capability}`}</p>
@@ -141,8 +144,13 @@ function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
                 {(item.enablement?.conditions ?? []).slice(0, 4).map((condition) => (
                   <p key={condition} className="text-muted-foreground">{condition}</p>
                 ))}
-                <a href={enable.path} className="mt-2 inline-block underline text-foreground">Revisar e habilitar o agente no Marketplace</a>
-                <p className="mt-1 text-muted-foreground">Exige confirmação humana. Habilitar um agente não é convidar uma pessoa para o workspace.</p>
+                <a href={enable.path} className="mt-2 inline-block underline text-foreground">Revisar as condições comerciais no Marketplace</a>
+                <p className="mt-1 text-muted-foreground">Você tem autoridade para contratar neste workspace. A contratação só acontece com a sua confirmação no Marketplace. Habilitar um agente não é convidar uma pessoa para o workspace.</p>
+              </div>
+            ) : state === "habilitavel" ? (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                <p>Recomendação: este agente pode ser habilitado neste workspace, mas ainda não está contratado.</p>
+                <p className="mt-1">A contratação exige a aprovação de uma pessoa autorizada deste workspace. Esta conversa não contrata nem habilita agentes.</p>
               </div>
             ) : state === "habilitado" ? (
               <p className="mt-2 text-[11px] text-muted-foreground">Agente habilitado. O encaminhamento operacional ainda não está disponível nesta versão.</p>
