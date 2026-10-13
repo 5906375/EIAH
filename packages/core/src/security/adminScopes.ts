@@ -68,8 +68,9 @@ export function isAdminScope(value: string): value is AdminScope {
  * operational execution permission: contracting an agent never implies running or publishing anything with it.
  *
  * Catalog membership grants nothing to any token, user, role, tenant or workspace (`defaultGrant: "none"`). The
- * enforcement requires BOTH an explicit tenant/workspace policy for the scope AND an explicit permission on the
- * acting person's active workspace membership.
+ * enforcement requires an ACTIVE workspace membership AND an explicit, unrevoked, unexpired designation of that person
+ * (see `apps/api/src/services/commercialAuthority.ts`). Roles, member permissions, invitations, Founder, `actions.admin`
+ * and `products.activate` never produce it. Granting it requires a distinct `grantor` designation.
  */
 export const COMMERCIAL_AUTHORITY_SCOPES = {
   marketplaceSubscribe: "marketplace.subscribe",
@@ -103,6 +104,10 @@ export const COMMERCIAL_AUTHORITY_SCOPE_CATALOG = [
       "POST /api/marketplace/:id/subscribe",
       "POST /api/delegations (self-delegation of a Marketplace item)",
       "PATCH /api/delegations/:id (retargeting by the delegatee)",
+      "POST /api/commercial-authority/designations",
+      "POST /api/commercial-authority/designations/:id/revoke",
+      "POST /api/commercial-authority/enablements/:id/revoke",
+      "POST /api/actions/override (policy of an agent)",
     ],
     defaultGrant: "none",
     productDecisionBy: "Carlos Alberto Merlo",

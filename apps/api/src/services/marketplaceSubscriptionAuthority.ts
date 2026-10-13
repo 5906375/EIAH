@@ -1,18 +1,29 @@
-import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
-import { COMMERCIAL_AUTHORITY_SCOPE_CATALOG, COMMERCIAL_AUTHORITY_SCOPES } from "@eiah/core";
+import crypto from "node:crypto";
+import { COMMERCIAL_AUTHORITY_SCOPE_CATALOG } from "@eiah/core";
+import {
+  COMMERCIAL_SCOPE,
+  commercialLimitViolation,
+  readActiveDesignation,
+  readActiveMembershipStatus,
+  type AuthorityLimits,
+  type Designation,
+} from "./commercialAuthority";
 
 /**
- * Autoridade para contratar agentes (AUTHZ-SCOPE-1, escopo `marketplace.subscribe`).
+ * Autoridade para CONTRATAR agentes (AUTHZ-SCOPE-1, escopo `marketplace.subscribe`).
  *
- * Contratar um agente pertence a uma identidade humana permissionada do tenant e workspace. Esta camada só decide e
- * registra; não cria assinatura, política nem delegação. Qualquer falha ou dúvida nega (fail-closed).
+ * Contratar pertence a uma pessoa humana com autoridade comercial EXPLICITAMENTE designada pelo tenant, no workspace
+ * aplicável (ver `commercialAuthority.ts`). Esta camada só decide e registra; não cria assinatura, política nem
+ * delegação. Qualquer falha ou dúvida nega (fail-closed).
  *
- * A autorização exige DUAS atribuições expressas, nenhuma concedida por padrão:
- *  1. política `marketplace.subscribe` para o workspace exato (mecanismo canônico `TenantActionPolicy`);
- *  2. permissão `marketplace.subscribe` na membership ATIVA da pessoa naquele workspace.
- * Founder, administradores, `actions.admin` e `products.activate` não substituem nenhuma das duas.
+ * A autorização exige, ao mesmo tempo:
+ *  1. pessoa autenticada (token de serviço/agente nunca contrata);
+ *  2. membership ATIVA da pessoa no tenant/workspace do token;
+ *  3. designação `holder` ATIVA (não revogada, não expirada) da pessoa para o workspace exato.
+ * Founder, administradores, `actions.admin`, `products.activate`, papéis personalizados e permissões de membro NÃO
+ * substituem a designação: a leitura é feita direto no registro de designações, sem cache.
  */
-export const SUBSCRIBE_SCOPE = COMMERCIAL_AUTHORITY_SCOPES.marketplaceSubscribe;
+export const SUBSCRIBE_SCOPE = COMMERCIAL_SCOPE;
 
 export type SubscriptionAuthorityActor = {
   tenantId: string;
@@ -25,79 +36,43 @@ export type SubscriptionAuthorityReason =
   | "AUTHORITY_GRANTED"
   | "IDENTITY_REQUIRED"
   | "CONTEXT_INVALID"
-  | "POLICY_NOT_GRANTED"
-  | "POLICY_UNAVAILABLE"
+  | "DESIGNATION_NOT_FOUND"
+  | "DESIGNATION_UNAVAILABLE"
   | "MEMBERSHIP_NOT_FOUND"
   | "MEMBERSHIP_NOT_ACTIVE"
-  | "MEMBERSHIP_PERMISSION_MISSING"
   | "MEMBERSHIP_UNAVAILABLE";
 
 export type SubscriptionAuthorityDecision = {
   allowed: boolean;
   reasonCode: SubscriptionAuthorityReason;
-  /** Código bruto da política quando ela negou (ex.: TENANT_POLICY_DISABLED). Informativo. */
-  policyReasonCode?: string;
+  /** Designação que fundamenta a autorização; só presente quando `allowed`. */
+  designationId?: string;
+  /** Limites comerciais da designação (escopos de delegação e prazo máximo); só presente quando `allowed`. */
+  limits?: AuthorityLimits;
 };
 
-export type SubscriptionMembership = { status: string | null; permissions: string[] } | null;
+export type SubscriptionMembership = { status: string | null } | null;
 
 export type SubscriptionAuthorityDeps = {
-  /**
-   * Política explícita `marketplace.subscribe` para o workspace EXATO do token. Não herda política tenant-wide
-   * (mesma regra estrita de `resolveExactWorkspaceScopeDecision`). Não escreve nada.
-   */
-  resolvePolicy: (actor: SubscriptionAuthorityActor) => Promise<{ allowed: boolean; reasonCode: string }>;
   readMembership: (actor: SubscriptionAuthorityActor) => Promise<SubscriptionMembership>;
+  /** Designação `holder` ativa da pessoa no workspace exato. Não escreve nada. */
+  readDesignation: (actor: SubscriptionAuthorityActor) => Promise<Pick<Designation, "id" | "limits"> | null>;
 };
 
 type PrismaLike = { $queryRaw: (...args: any[]) => Promise<any> };
 
-function parsePermissions(value: unknown): string[] {
-  let source: unknown = value;
-  if (typeof source === "string") {
-    try {
-      source = JSON.parse(source);
-    } catch {
-      return [];
-    }
-  }
-  if (!Array.isArray(source)) return [];
-  return source.filter((item): item is string => typeof item === "string").map((item) => item.trim());
-}
-
-/**
- * Leitura SOMENTE LEITURA da membership (sem DDL, sem bootstrap de membership, sem promoção a Founder). Ausência de
- * linha ou tabela inexistente nunca cria autoridade.
- */
+/** Leituras SOMENTE LEITURA: sem DDL, sem bootstrap de membership, sem promoção a Founder. Ausência nunca cria autoridade. */
 export function createDefaultSubscriptionAuthorityDeps(prisma: PrismaLike): SubscriptionAuthorityDeps {
   return {
-    async resolvePolicy(actor) {
-      const { TenantPolicyStore } = await import("@eiah/core/policy/TenantPolicyStore");
-      const decision = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
-        actor.tenantId,
-        actor.workspaceId,
-        SUBSCRIBE_SCOPE,
-      );
-      return { allowed: decision.allowed === true, reasonCode: String(decision.reasonCode ?? "UNKNOWN") };
-    },
-    async readMembership(actor) {
-      const rows = (await prisma.$queryRaw`
-        SELECT status, permissions
-        FROM eiah_workspace_memberships
-        WHERE user_id = ${actor.userId}
-          AND tenant_id = ${actor.tenantId}
-          AND workspace_id = ${actor.workspaceId}
-        LIMIT 1
-      `) as Array<{ status?: unknown; permissions?: unknown }>;
-      const row = rows[0];
-      if (!row) return null;
-      return { status: typeof row.status === "string" ? row.status : null, permissions: parsePermissions(row.permissions) };
-    },
+    readMembership: (actor) =>
+      readActiveMembershipStatus(prisma, { tenantId: actor.tenantId, workspaceId: actor.workspaceId, userId: String(actor.userId) }),
+    readDesignation: (actor) =>
+      readActiveDesignation(prisma, { tenantId: actor.tenantId, workspaceId: actor.workspaceId, userId: String(actor.userId), role: "holder" }),
   };
 }
 
 /**
- * Seam de teste (mesmo padrão de `requireScopeDeps`): em produção resolve a política canônica e a membership real.
+ * Seam de teste (mesmo padrão de `requireScopeDeps`): em produção lê membership e designação reais.
  * Nunca é alimentado por request, header ou body.
  */
 export const subscriptionAuthorityDeps = {
@@ -116,20 +91,6 @@ export async function evaluateSubscriptionAuthority(
   if (!userId) return { allowed: false, reasonCode: "IDENTITY_REQUIRED" };
   const scoped = { ...actor, tenantId, workspaceId, userId };
 
-  let policy: { allowed: boolean; reasonCode: string };
-  try {
-    policy = await deps.resolvePolicy(scoped);
-  } catch {
-    return { allowed: false, reasonCode: "POLICY_UNAVAILABLE" };
-  }
-  if (policy.allowed !== true) {
-    return {
-      allowed: false,
-      reasonCode: /UNAVAILABLE/.test(policy.reasonCode) ? "POLICY_UNAVAILABLE" : "POLICY_NOT_GRANTED",
-      policyReasonCode: policy.reasonCode,
-    };
-  }
-
   let membership: SubscriptionMembership;
   try {
     membership = await deps.readMembership(scoped);
@@ -140,24 +101,46 @@ export async function evaluateSubscriptionAuthority(
   if (String(membership.status ?? "").trim().toLowerCase() !== "active") {
     return { allowed: false, reasonCode: "MEMBERSHIP_NOT_ACTIVE" };
   }
-  if (!membership.permissions.includes(SUBSCRIBE_SCOPE)) {
-    return { allowed: false, reasonCode: "MEMBERSHIP_PERMISSION_MISSING" };
+
+  let designation: Pick<Designation, "id" | "limits"> | null;
+  try {
+    designation = await deps.readDesignation(scoped);
+  } catch {
+    return { allowed: false, reasonCode: "DESIGNATION_UNAVAILABLE" };
   }
-  return { allowed: true, reasonCode: "AUTHORITY_GRANTED" };
+  if (!designation) return { allowed: false, reasonCode: "DESIGNATION_NOT_FOUND" };
+  return { allowed: true, reasonCode: "AUTHORITY_GRANTED", designationId: designation.id, limits: designation.limits };
+}
+
+/**
+ * Aplica os limites comerciais da designação a uma contratação concreta (escopo de delegação e prazo). Retorna o
+ * motivo da violação ou null. Sem limites conhecidos, nega.
+ */
+export function subscriptionLimitViolation(
+  decision: SubscriptionAuthorityDecision,
+  request: { scope: string; validUntil: Date },
+): string | null {
+  if (!decision.allowed || !decision.limits) return "LIMITS_UNKNOWN";
+  return commercialLimitViolation(decision.limits, request);
 }
 
 export const SUBSCRIBE_FORBIDDEN_ERROR = {
   code: "MARKETPLACE_SUBSCRIBE_FORBIDDEN",
   message:
-    "Contratar um agente exige uma pessoa autorizada deste workspace (permissão marketplace.subscribe). A recomendação continua disponível; peça a aprovação a quem tem essa autoridade.",
+    "Contratar um agente exige uma pessoa com autoridade comercial designada neste workspace (marketplace.subscribe). A recomendação continua disponível; peça a aprovação a quem tem essa autoridade.",
+} as const;
+
+export const COMMERCIAL_LIMIT_ERROR = {
+  code: "COMMERCIAL_LIMIT_EXCEEDED",
+  message: "A contratação excede os limites da sua autoridade comercial (escopo de delegação ou prazo).",
 } as const;
 
 export type SubscriptionDecisionRecord = {
-  prisma: Parameters<typeof recordGuardrailAudit>[0]["prisma"];
+  prisma: { guardrailAuditLedger: { create: (args: any) => Promise<unknown> } };
   actor: SubscriptionAuthorityActor;
   outcome: "authorized" | "denied";
   reasonCode: string;
-  /** Rota/efeito pretendido, ex.: "marketplace.subscribe" ou "delegations.self_delegation". */
+  /** Rota/efeito pretendido, ex.: "marketplace.subscribe", "delegations.self_delegation" ou "actions.override.commercial". */
   action: string;
   target?: {
     marketplaceItemId?: string | null;
@@ -166,38 +149,45 @@ export type SubscriptionDecisionRecord = {
     scope?: string | null;
     trustMin?: number | null;
     validUntil?: string | null;
+    /** Designação comercial que fundamentou a decisão. */
+    designationId?: string | null;
   };
 };
 
 /**
- * Registro da decisão em GuardrailAuditLedger (mecanismo existente): identidade decisora, tenant, workspace, agente,
- * condições aceitas, horário e resultado. Retorna false se não conseguiu gravar; quem chama deve negar a contratação
- * quando `outcome === "authorized"` e o registro falhar.
+ * Registro da decisão em GuardrailAuditLedger (mecanismo existente): identidade decisora, designação, tenant, workspace,
+ * agente, condições aceitas, horário e resultado. Devolve o id do evento (que a habilitação passa a referenciar) ou
+ * null se não conseguiu gravar; quem chama deve negar o efeito quando `outcome === "authorized"` e o retorno for null.
+ * Só ids: nunca token, JWT, senha ou credencial.
  */
-export async function recordSubscriptionDecision(record: SubscriptionDecisionRecord): Promise<boolean> {
+export async function recordSubscriptionDecision(record: SubscriptionDecisionRecord): Promise<string | null> {
   try {
-    await recordGuardrailAudit({
-      prisma: record.prisma,
-      tenantId: record.actor.tenantId,
-      workspaceId: record.actor.workspaceId,
-      eventType: `${record.action}.${record.outcome}`,
-      severity: record.outcome === "authorized" ? "info" : "warn",
-      message: `${record.action} ${record.outcome} (${record.reasonCode})`,
-      metadata: {
-        decisionRef: COMMERCIAL_AUTHORITY_SCOPE_CATALOG[0].decisionRef,
-        authorityScope: SUBSCRIBE_SCOPE,
-        decidedBy: record.actor.userId ?? null,
-        tokenId: record.actor.tokenId ?? null,
+    const id = crypto.randomUUID();
+    await record.prisma.guardrailAuditLedger.create({
+      data: {
+        id,
         tenantId: record.actor.tenantId,
         workspaceId: record.actor.workspaceId,
-        outcome: record.outcome,
-        reasonCode: record.reasonCode,
-        target: record.target ?? null,
-        decidedAt: new Date().toISOString(),
+        eventType: `${record.action}.${record.outcome}`,
+        severity: record.outcome === "authorized" ? "info" : "warn",
+        message: `${record.action} ${record.outcome} (${record.reasonCode})`,
+        metadata: {
+          decisionRef: COMMERCIAL_AUTHORITY_SCOPE_CATALOG[0].decisionRef,
+          formalRatification: "pending",
+          authorityScope: SUBSCRIBE_SCOPE,
+          decidedBy: record.actor.userId ?? null,
+          tokenId: record.actor.tokenId ?? null,
+          tenantId: record.actor.tenantId,
+          workspaceId: record.actor.workspaceId,
+          outcome: record.outcome,
+          reasonCode: record.reasonCode,
+          target: record.target ?? null,
+          decidedAt: new Date().toISOString(),
+        },
       },
     });
-    return true;
+    return id;
   } catch {
-    return false;
+    return null;
   }
 }

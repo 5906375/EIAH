@@ -4,10 +4,12 @@ import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
+  COMMERCIAL_LIMIT_ERROR,
   evaluateSubscriptionAuthority,
   recordSubscriptionDecision,
   SUBSCRIBE_FORBIDDEN_ERROR,
   subscriptionAuthorityDeps,
+  subscriptionLimitViolation,
 } from "../services/marketplaceSubscriptionAuthority";
 import {
   buildDelegationRenewalPolicyContract,
@@ -39,6 +41,7 @@ async function requireContractingAuthority(
     scope: params.scope ?? null,
     trustMin: params.trustMin ?? null,
     validUntil: params.validUntil ?? null,
+    designationId: authority.designationId ?? null,
   };
   if (!authority.allowed) {
     await recordSubscriptionDecision({
@@ -50,6 +53,23 @@ async function requireContractingAuthority(
       target,
     });
     res.status(403).json({ ok: false, error: { ...SUBSCRIBE_FORBIDDEN_ERROR, reasonCode: authority.reasonCode } });
+    return false;
+  }
+  // Os limites da designação (escopo de delegação e prazo) valem também por este caminho.
+  const limitViolation = subscriptionLimitViolation(authority, {
+    scope: String(params.scope ?? ""),
+    validUntil: new Date(String(params.validUntil ?? "")),
+  });
+  if (limitViolation) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma!,
+      actor,
+      outcome: "denied",
+      reasonCode: limitViolation,
+      action: params.action,
+      target,
+    });
+    res.status(403).json({ ok: false, error: { ...COMMERCIAL_LIMIT_ERROR, reasonCode: limitViolation } });
     return false;
   }
   const recorded = await recordSubscriptionDecision({

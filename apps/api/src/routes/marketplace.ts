@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
 import { z } from "zod";
 import { isReservedAuthorityScopeName } from "@eiah/core";
+import { ensureAgentEnablementStore, recordAgentEnablement } from "../services/agentEnablement";
+import { isCommerciallyGovernedAgent } from "../services/agents";
+import { commercialLimitViolation } from "../services/commercialAuthority";
 import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
@@ -13,10 +16,12 @@ import {
 } from "../services/products/productActivation";
 import { readVerticalAccess } from "../services/products/verticalAccessApproval";
 import {
+  COMMERCIAL_LIMIT_ERROR,
   evaluateSubscriptionAuthority,
   recordSubscriptionDecision,
   SUBSCRIBE_FORBIDDEN_ERROR,
   subscriptionAuthorityDeps,
+  subscriptionLimitViolation,
 } from "../services/marketplaceSubscriptionAuthority";
 
 export const marketplaceRouter = createGovernedRouter();
@@ -468,6 +473,34 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     parsed.data.signatureHash ??
     crypto.createHash("sha256").update(`${policyHash}:${item.publisherId}`).digest("hex");
 
+  // Os limites da designação (escopo de delegação e prazo) valem para esta contratação concreta.
+  const limitViolation = subscriptionLimitViolation(authority, { scope, validUntil });
+  if (limitViolation) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma,
+      actor,
+      outcome: "denied",
+      reasonCode: limitViolation,
+      action: "marketplace.subscribe",
+      target: { marketplaceItemId: item.id, agentName: item.name, scope, trustMin, validUntil: validUntil.toISOString(), designationId: authority.designationId ?? null },
+    });
+    return res.status(403).json({ ok: false, error: { ...COMMERCIAL_LIMIT_ERROR, reasonCode: limitViolation } });
+  }
+
+  // Agente governado (capacidade transversal): a habilitação é um registro verificável criado SÓ aqui, após a decisão.
+  // O registro precisa existir antes de qualquer efeito; sem ele, nada é contratado.
+  const governed = item.type === "agent" && isCommerciallyGovernedAgent(item.name);
+  if (governed) {
+    try {
+      await ensureAgentEnablementStore(request.prisma);
+    } catch {
+      return res.status(503).json({
+        ok: false,
+        error: { code: "ENABLEMENT_STORE_UNAVAILABLE", message: "O registro de habilitações está indisponível. Nada foi contratado." },
+      });
+    }
+  }
+
   // Evidência da decisão ANTES de qualquer efeito; sem registro, não há contratação.
   const decisionRecorded = await recordSubscriptionDecision({
     prisma: request.prisma,
@@ -482,6 +515,7 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
       scope,
       trustMin,
       validUntil: validUntil.toISOString(),
+      designationId: authority.designationId ?? null,
     },
   });
   if (!decisionRecorded) {
@@ -538,6 +572,12 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     if (existingByMarketplace) {
       delegation = existingByMarketplace;
     }
+  }
+
+  // Delegação reaproveitada é termo do PUBLICADOR: se excede os limites da autoridade que decidiu, não serve de base.
+  if (delegation && governed && authority.limits
+    && commercialLimitViolation(authority.limits, { scope: delegation.scope, validUntil: delegation.validUntil, now })) {
+    delegation = null;
   }
 
   if (!delegation) {
@@ -601,9 +641,36 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     }
   }
 
+  let enablementId: string | null = null;
+  if (governed) {
+    // Vínculo verificável: decisão (evento de auditoria), designação, tenant/workspace, item, delegação e condições aceitas.
+    try {
+      enablementId = await recordAgentEnablement(request.prisma, {
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        agentKey: item.name.trim().toLowerCase().replace(/[^a-z0-9]/g, ""),
+        marketplaceItemId: delegation.marketplaceId ?? item.id,
+        delegationId: delegation.id,
+        scope: delegation.scope,
+        trustMin: Number(delegation.trustMin),
+        validUntil: delegation.validUntil,
+        designationId: authority.designationId ?? "",
+        decidedByUserId: String(request.authContext.userId),
+        decisionAuditEventId: decisionRecorded,
+      }, now);
+    } catch {
+      // Política e delegação ficam inertes sem a habilitação: o agente governado não é habilitado.
+      return res.status(503).json({
+        ok: false,
+        error: { code: "ENABLEMENT_RECORD_UNAVAILABLE", message: "Não foi possível registrar a habilitação. O agente não foi habilitado." },
+      });
+    }
+  }
+
   return res.json({
     ok: true,
     delegationId: delegation.id,
+    enablementId,
     publisherName: item.publisher?.name ?? null,
   });
 });
