@@ -10,6 +10,7 @@ import { uploadsRouter } from "./routes/uploads";
 import { opsRouter } from "./routes/ops";
 import { delegationsRouter } from "./routes/delegations";
 import { marketplaceRouter } from "./routes/marketplace";
+import { commercialAuthorityRouter } from "./routes/commercialAuthority";
 import { governanceRouter } from "./routes/governance";
 import { startRunQueueBullMqWorker } from "./workers/runWorker";
 import { createLogger, requireRedisUrl } from "@eiah/core";
@@ -117,6 +118,8 @@ app.use("/api", runsRouter);
 app.use("/api", agentsRouter);
 app.use("/api", defiRouter);
 app.use("/api", uploadsRouter);
+// Prefixo estreito exclusivo: o enforceTenant desse router não alcança as demais rotas de /api.
+app.use("/api/commercial-authority", commercialAuthorityRouter);
 app.use("/api", marketplaceRouter);
 app.use("/api", delegationsRouter);
 app.use("/api", governanceRouter);
