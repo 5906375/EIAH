@@ -60,6 +60,8 @@ import {
   buildImobCaseList,
   type ImobCommandCenterCaseRow,
   mapImobStatusFilterToCaseStatus,
+  DEFAULT_COMMAND_CENTER_STATUS_FILTER,
+  normalizeCommandCenterStatusFilter,
 } from "@/features/imob/imobCommandCenterHelper";
 import { saveImobArtifactHtml, saveImobArtifactPdf } from "@/features/imob/imobArtifactExport";
 import { formatPct } from "@/lib/formatters";
@@ -68,7 +70,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api
 
 type DashboardSource = "real" | "empty";
 
-const IMOB_COMMAND_CENTER_STATUS_FILTERS = new Set(["all", "pending_data", "ready_for_review", "blocked", "done"]);
 
 
 function currencyFromCents(value: number | null | undefined) {
@@ -268,11 +269,6 @@ function formatDashboardCaseLabel(item: ImobCase | null) {
 }
 
 
-function normalizeCommandCenterStatusFilter(value: string | null | undefined) {
-  const normalized = (value ?? "").trim().toLowerCase();
-  return IMOB_COMMAND_CENTER_STATUS_FILTERS.has(normalized) ? normalized : "pending_data";
-}
-
 function normalizeCommandCenterReasonFilter(value: string | null | undefined) {
   const normalized = (value ?? "").trim();
   return normalized.length > 0 ? normalized : "all";
@@ -466,7 +462,7 @@ const ImobDashboardPage: React.FC = () => {
 
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams);
-    if (imobStatusFilter === "pending_data") {
+    if (imobStatusFilter === DEFAULT_COMMAND_CENTER_STATUS_FILTER) {
       params.delete("cc_status");
     } else {
       params.set("cc_status", imobStatusFilter);

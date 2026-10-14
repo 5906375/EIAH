@@ -12,12 +12,35 @@ function asStringArray(value: unknown): string[] {
     : [];
 }
 
+// P10-F: etapas do caso com texto de leitura. Só traduz o que é conhecido; um identificador desconhecido segue visível
+// (não se inventa tradução) para não esconder o dado real.
+const IMOB_STAGE_LABELS: Record<string, string> = {
+  listing: "Anúncio",
+  collecting: "Coleta de dados",
+  qualified: "Qualificado",
+  proposal: "Proposta",
+  visit: "Visita",
+  closing: "Fechamento",
+  settled: "Concluído",
+  pending_data: "Dados pendentes",
+  ready_for_review: "Pronto para revisão",
+  documents_collecting: "Coleta de documentos",
+  contract_generated: "Contrato gerado",
+  handoff: "Encaminhamento",
+};
+
+export function formatImobStageLabel(stage: string | null | undefined) {
+  const raw = (stage ?? "").trim();
+  if (!raw) return "—";
+  return IMOB_STAGE_LABELS[raw.toLowerCase()] ?? raw;
+}
+
 function buildImobCaseRiskLabel(item: ImobCase) {
   const blockers = asStringArray(item.blockers);
   if (blockers.length > 0) return blockers.slice(0, 2).join(", ");
   const pending = asStringArray(item.pendingItems);
   if (pending.length > 0) return pending.slice(0, 2).join(", ");
-  return item.stage || "—";
+  return formatImobStageLabel(item.stage);
 }
 
 function formatImobJourneyTypeLabel(value: string | null | undefined) {
@@ -103,7 +126,21 @@ export function formatImobCaseStatusLabel(status: string) {
   if (status === "ready_for_review") return "pronto para revisão";
   if (status === "blocked") return "bloqueado";
   if (status === "done") return "concluído";
+  // P10-E: estados que o filtro não oferece, mas que existem no caso, ganham texto de leitura em vez do identificador.
+  if (status === "running") return "em andamento";
+  if (status === "collecting") return "em coleta";
+  if (status === "qualified") return "qualificado";
+  if (status === "archived") return "arquivado";
   return status || "—";
+}
+
+/** Filtros de estado da Central Operacional. O padrão é TODOS: um caso em andamento não pode ficar oculto por padrão. */
+export const COMMAND_CENTER_STATUS_FILTERS = new Set(["all", "pending_data", "ready_for_review", "blocked", "done"]);
+export const DEFAULT_COMMAND_CENTER_STATUS_FILTER = "all";
+
+export function normalizeCommandCenterStatusFilter(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return COMMAND_CENTER_STATUS_FILTERS.has(normalized) ? normalized : DEFAULT_COMMAND_CENTER_STATUS_FILTER;
 }
 
 export function buildImobChatRoute(base: {

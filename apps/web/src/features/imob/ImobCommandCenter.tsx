@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { formatRunId } from "@/components/runs/utils";
 import type { ImobFunnelHealth, ImobHeatmapCell, ImobPriorityQueueItem, ImobWaitingOnBucket } from "@/lib/api";
 import {
@@ -10,6 +10,29 @@ import {
 import { ImobPriorityQueue } from "./ImobPriorityQueue";
 import { ImobWaitingOnBoard } from "./ImobWaitingOnBoard";
 import { ImobBottleneckHeatmap } from "./ImobBottleneckHeatmap";
+
+/** Rota do chat IMOB para um caso (preserva caseId, thread e conversa). Null quando o chat não está liberado. */
+function caseChatRoute(item: ImobCommandCenterCaseRow, conversationId: string | null | undefined) {
+  if (item.artifactCapabilities?.canOpenChat?.allowed !== true) return null;
+  return buildImobChatRoute(
+    item.recommendedActions[0]
+      ? {
+          conversationId,
+          caseId: item.caseId,
+          threadId: item.threadId,
+          status: item.status,
+          actionId: item.recommendedActions[0].id,
+          reasonCode: item.recommendedActions[0].reasonCode ?? null,
+          autoprompt: item.recommendedActions[0].inputHint ?? item.recommendedActions[0].label,
+        }
+      : {
+          conversationId,
+          caseId: item.caseId,
+          threadId: item.threadId,
+          autoprompt: "consultar caso",
+        },
+  );
+}
 
 function formatCents(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(
@@ -64,6 +87,7 @@ export function ImobCommandCenter({
 }: ImobCommandCenterProps) {
   const noop = React.useCallback((_item: ImobPriorityQueueItem) => "#", []);
   const resolvedBuildHref = buildPriorityQueueHref ?? noop;
+  const navigate = useNavigate();
   return (
     <section id="command-center" className="glass-panel overflow-hidden p-4 sm:p-5">
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -174,11 +198,25 @@ export function ImobCommandCenter({
                 const hasConsolidatedCost = caseCostMap?.has(item.caseId) ?? false;
                 const costCents = caseCostMap?.get(item.caseId) ?? 0;
                 const costLabel = hasConsolidatedCost ? `${formatCents(costCents)} (${caseCostWindowDays}d)` : null;
+                const chatRoute = caseChatRoute(item, conversationId);
                 return (
-                  <tr key={item.processId} className="border-t border-white/10">
+                  <tr
+                    key={item.processId}
+                    className={`border-t border-white/10${chatRoute ? " cursor-pointer hover:bg-white/5" : ""}`}
+                    title={chatRoute ? "Abrir este caso no chat" : undefined}
+                    onClick={chatRoute ? (event) => {
+                      // clique em links e botões da linha mantém o comportamento próprio; no resto, abre o caso no chat
+                      if ((event.target as HTMLElement).closest("a,button,select,input")) return;
+                      navigate(chatRoute);
+                    } : undefined}
+                  >
                     {/* Processo + contexto */}
                     <td className="px-4 py-3">
-                      <p className="text-foreground/90">{item.processLabel}</p>
+                      {chatRoute ? (
+                        <Link to={chatRoute} className="text-foreground/90 underline-offset-2 hover:underline">{item.processLabel}</Link>
+                      ) : (
+                        <p className="text-foreground/90">{item.processLabel}</p>
+                      )}
                       {item.context ? (
                         <p className="mt-0.5 text-[10px] text-muted-foreground">{item.context}</p>
                       ) : null}
@@ -233,26 +271,9 @@ export function ImobCommandCenter({
                             processo {formatRunId(item.processId)}
                           </p>
                         ) : null}
-                        {item.artifactCapabilities?.canOpenChat?.allowed === true ? (
+                        {chatRoute ? (
                           <Link
-                            to={buildImobChatRoute(
-                              item.recommendedActions[0]
-                                ? {
-                                    conversationId,
-                                    caseId: item.caseId,
-                                    threadId: item.threadId,
-                                    status: item.status,
-                                    actionId: item.recommendedActions[0].id,
-                                    reasonCode: item.recommendedActions[0].reasonCode ?? null,
-                                    autoprompt: item.recommendedActions[0].inputHint ?? item.recommendedActions[0].label,
-                                  }
-                                : {
-                                    conversationId,
-                                    caseId: item.caseId,
-                                    threadId: item.threadId,
-                                    autoprompt: "consultar caso",
-                                  }
-                            )}
+                            to={chatRoute}
                             className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
                           >
                             abrir no chat

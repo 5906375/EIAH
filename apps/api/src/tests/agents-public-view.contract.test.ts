@@ -586,11 +586,18 @@ test("T17 estados: habilitado, habilitavel, indisponivel e participação fechad
   assert.ok(listed.enablement.conditions.some((line: string) => /confirmação humana explícita/i.test(line)));
   // AUTHZ-SCOPE-1: habilitável NÃO implica contratação autorizada. Sem autoridade a ação de contratação nem é emitida.
   assert.equal(listed.authority.status, "somente_consulta");
-  assert.deepEqual(listed.nextAction, { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe" });
+  // consulta permitida pela visibilidade do item (detalhes no Self-service, identificando item e workspace), sem assinatura
+  assert.deepEqual(listed.nextAction, {
+    kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe",
+    marketplaceItemId: "mkt-MKT", workspaceId: W, detailsPath: `/self-service?marketplaceItem=mkt-MKT&workspaceId=${W}`,
+  });
   const authorizedListed = (await discover(withAuthority({ marketplaceItems: [marketplaceMkt()], recipes: [recipe()] }))).result;
   assert.equal(authorizedListed.state, "habilitavel");
   assert.equal(authorizedListed.authority.status, "contratacao_autorizada");
-  assert.deepEqual(authorizedListed.nextAction, { kind: "review_commercial_terms", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" });
+  assert.deepEqual(authorizedListed.nextAction, {
+    kind: "open_commercial_details", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT",
+    workspaceId: W, path: `/self-service?marketplaceItem=mkt-MKT&workspaceId=${W}`,
+  });
 
   // inscrito (política do workspace + delegação ativa) => habilitado; o encaminhamento operacional ainda não existe
   const active = (await discover({ ...enabled(["MKT"]), recipes: [recipe()] })).result;
@@ -824,7 +831,9 @@ test("T24 eixo de autoridade: habilitável nunca implica contratação autorizad
     assert.equal(result.recipes.items.length, 1, `${label}: modelos homologados visíveis`);
     assert.equal(result.nextAction.kind, "request_approval", label);
     assert.equal(result.nextAction.enabled, false, label);
-    assert.equal(JSON.stringify(result.nextAction).includes("/app/marketplace"), false, `${label}: nenhum caminho de contratação`);
+    // sem autoridade: só o caminho de CONSULTA (detalhes), nunca o caminho de contratação
+    assert.equal(JSON.stringify(result.nextAction).includes("/app/marketplace"), false, `${label}: nada aponta ao catálogo de verticais`);
+    assert.equal("path" in result.nextAction, false, `${label}: nenhum caminho de contratação`);
     assert.deepEqual(h.db.__writes, [], `${label}: nenhuma escrita`);
   }
 
@@ -832,7 +841,7 @@ test("T24 eixo de autoridade: habilitável nunca implica contratação autorizad
   assert.equal(granted.state, "habilitavel");
   assert.equal(granted.authority.status, "contratacao_autorizada");
   assert.equal(granted.authority.reasonCode, "AUTHORITY_GRANTED");
-  assert.equal(granted.nextAction.kind, "review_commercial_terms");
+  assert.equal(granted.nextAction.kind, "open_commercial_details");
   assert.equal(granted.nextAction.requiresHumanConfirmation, true);
 
   // os dois eixos são independentes: autorizada + já habilitado => estado habilitado, sem ação de contratação
@@ -854,7 +863,7 @@ test("T24b identidade, escopo e ausência de leitura da autoridade: sempre somen
   for (const [tenant, workspace] of [[T, W2], [T2, W], [T2, W2]] as const) {
     const { result } = await discover(full, tenant, workspace);
     assert.equal(result.authority.status, "somente_consulta", `${tenant}/${workspace}`);
-    assert.notEqual(result.nextAction.kind, "review_commercial_terms");
+    assert.notEqual(result.nextAction.kind, "open_commercial_details");
   }
   const h = harness(full, authA);
   const module = h.load(resolve("apps/api/src/services/capabilityDiscovery.ts"));
@@ -1212,7 +1221,7 @@ test("T32 rota de descoberta: a autoridade vem do servidor e não pode ser infor
   const granted = harness(withAuthority(LISTED), authA);
   const ok = await supertest(granted.app).get(url).set("authorization", "Bearer synthetic");
   assert.equal(ok.body.item.authority.status, "contratacao_autorizada");
-  assert.equal(ok.body.item.nextAction.kind, "review_commercial_terms");
+  assert.equal(ok.body.item.nextAction.kind, "open_commercial_details");
   assert.deepEqual(granted.db.__writes, [], "consultar a autoridade nunca escreve (nem registro de decisão)");
   assert.deepEqual(granted.db.__audits, []);
   const service = harness(withAuthority(LISTED), { ...authA, userId: undefined });

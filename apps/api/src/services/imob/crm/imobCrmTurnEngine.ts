@@ -1,3 +1,5 @@
+import { interpretTransversalTurn } from "../imobTransversalTurn";
+import { buildInviteClarificationResolution, buildInviteGuidanceResolution } from "../imobTransversalTurnCopy";
 import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
 import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
 import { matchImobConversationalIntents, parseImobIntent } from "../imobIntentCatalog";
@@ -1826,6 +1828,39 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         data: params.helpers.applyCanonicalJourneyToResolvedData(data, null),
         caseContext: null,
       };
+    }
+
+    // P10: capacidades transversais (divulgar, contratar agente) e convites. A interpretação combina PAPÉIS do turno com o
+    // contexto (há caso vinculado?); sem referente claro pergunta. Não intercepta enquanto há fluxo operacional em
+    // andamento (o usuário pode estar preenchendo outro passo), exceto quando cita o agente pelo nome.
+    const transversalTurn = interpretTransversalTurn({ message: effectiveMessage, caseBound: Boolean(turn.caseId) });
+    if (transversalTurn && (!hasActivePendingOperationalFlow(hydratedThreadState) || transversalTurn.explicitAgent)) {
+      if (transversalTurn.operation === "clarify_invite_referent" || transversalTurn.operation === "invite_person") {
+        const resolution = transversalTurn.operation === "clarify_invite_referent"
+          ? buildInviteClarificationResolution({ threadState: hydratedThreadState, caseBound: Boolean(turn.caseId) })
+          : buildInviteGuidanceResolution({ threadState: hydratedThreadState });
+        const data = applyResponsibleLabelToResolvedTurn(resolution as any, params.workspaceResponsibleLabel) as Record<string, unknown>;
+        return { data: params.helpers.applyCanonicalJourneyToResolvedData(data, null), caseContext: null };
+      }
+      const transversalData = await params.helpers.resolveImobOperationalConsult({
+        prisma: params.prisma,
+        tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
+        userId: params.authContext.userId ?? null,
+        message: effectiveMessage,
+        caseId: turn.caseId,
+        threadState: hydratedThreadState,
+        transversalTurn,
+      });
+      if (transversalData) {
+        const data = normalizeLeadQualifyResolution(
+          applyResponsibleLabelToResolvedTurn(transversalData, params.workspaceResponsibleLabel) as Record<string, unknown>,
+        );
+        return {
+          data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
+          caseContext: data.caseContext ?? null,
+        };
+      }
     }
 
     const updateData = await params.helpers.resolveImobOperationalUpdate({
