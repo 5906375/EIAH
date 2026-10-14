@@ -9,7 +9,7 @@ import {
   buildImobBottleneckHeatmap,
   buildImobPriorityQueue,
 } from "../services/imob/control/imobControlSurfaceAggregates";
-import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS, resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
 
 function createThreadState() {
   return {
@@ -244,6 +244,9 @@ async function resolveCaseRead(item: MockCaseRecord, message: string) {
     caseId: item.id,
     message,
     threadState: createThreadState(),
+    // Estes cenários verificam a consistência entre superfícies com os especialistas comprovadamente disponíveis;
+    // sem disponibilidade informada o resolvedor falha fechado e não apresenta nenhum apoio.
+    readBackingSpecialistAvailability: async () => Object.fromEntries(IMOB_BACKING_SPECIALIST_AGENT_IDS.map((id) => [id, "available"])),
   });
 }
 

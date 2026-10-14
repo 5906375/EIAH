@@ -35,6 +35,19 @@ function buildChatSafeCaseLookupText(params: {
   return [summary, ...hints].join("\n");
 }
 
+async function readSpecialistAvailabilitySafely(helpers: ResolverHelpers, params: ImobOperationalResolverParams) {
+  if (typeof helpers.readBackingSpecialistAvailability !== "function") return undefined;
+  try {
+    return await helpers.readBackingSpecialistAvailability({
+      prisma: params.prisma,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 export async function resolveImobCaseOperationalConsult(
   params: ImobOperationalResolverParams,
   helpers: ResolverHelpers,
@@ -119,6 +132,8 @@ export async function resolveImobCaseOperationalConsult(
       };
     }
 
+    // Só chega aqui quando a apresentação será montada (o ramo de dedupe acima não consulta a disponibilidade).
+    const specialistAvailability = await readSpecialistAvailabilitySafely(helpers, params);
     return {
       mode: "consult",
       action: `crm.case.${context.businessReadIntent}`,
@@ -129,6 +144,7 @@ export async function resolveImobCaseOperationalConsult(
         intent: context.businessReadIntent,
         caseContext,
         caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
+        specialistAvailability,
       }),
     };
   }

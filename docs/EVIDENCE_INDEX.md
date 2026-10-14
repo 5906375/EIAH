@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Front Door + IMOB — validação local dos especialistas (2026-10-12)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Commits locais do gate e disponibilidade IMOB; evidências sanitizadas | `ops/evidence/local/frontdoor-imob-2026-10-12/sanitized/README.md` + `ops/evidence/local/frontdoor-imob-2026-10-12/sanitized/results.json` + `ops/evidence/local/frontdoor-imob-2026-10-12/sanitized/selected-tests.tap` + `ops/evidence/local/frontdoor-imob-2026-10-12/sanitized/gate-synthetic-tests.tap` + `ops/evidence/local/frontdoor-imob-2026-10-12/sanitized/packaging-verification.json` | Reúne execuções anteriores: 221 testes sintéticos de gate e 246 testes dirigidos PASS; fixtures Chromium; falhas históricas de login 401/500 preservadas; cadastro/login legítimos e fila administrativa posteriormente validados em ambiente descartável. Distingue funcionalidade existente, incremento local não publicado, simulação e ausência de aceite manual completo. Registra seleção exata dos patches e exclusão de CRM/C4 e artifacts sensíveis. Não comprova execução de especialistas, decisão administrativa humana posterior, suíte real completa, GitHub Actions ou deploy. Status parcial. |
+
 ## Hardening transversal — Passo 2C.2 entitlement shadow IMOB local (2026-10-07)
 
 | Assunto | Arquivo | O que prova |

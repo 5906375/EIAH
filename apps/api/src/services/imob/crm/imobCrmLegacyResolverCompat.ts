@@ -42,6 +42,8 @@ type ResolverParams = {
   message: string;
   caseId?: string | null;
   threadState: ImobCrmConversationState | null | undefined;
+  /** Disponibilidade real dos especialistas de apoio; ausente ou com falha => "unverified" (fail-closed). */
+  readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
 };
 
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
@@ -1976,10 +1978,23 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
       } as any;
     }
 
+    let specialistAvailability: Record<string, unknown> | null | undefined;
+    if (typeof params.readBackingSpecialistAvailability === "function") {
+      try {
+        specialistAvailability = await params.readBackingSpecialistAvailability({
+          prisma: params.prisma,
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+        });
+      } catch {
+        specialistAvailability = undefined;
+      }
+    }
     const presentation = legacyBusinessRead.buildImobBusinessReadPresentation({
       intent: businessReadIntent,
       caseContext,
       caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
+      specialistAvailability,
     }) as any;
     if (
       businessReadIntent === "blocked_run_resolution"

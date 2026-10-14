@@ -6,6 +6,7 @@ import { dirname, resolve } from "node:path";
 import ts from "typescript";
 import express from "express";
 import supertest from "supertest";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS } from "../services/imob/imobSpecialistBridge";
 
 // P0: GET /api/agents e GET /api/agents/:name não serializam instruções internas.
 // Fontes .ts canônicas com dependências externas controladas: Prisma em memória, sem banco,
@@ -268,4 +269,115 @@ test("T8 internal service objects keep systemPrompt for the runtime", async () =
   assert.equal(internal.systemPrompt === expected, true, "runtime profile keeps the core systemPrompt");
   assert.ok(Array.isArray(internal.tools), "runtime profile keeps tools");
   assert.equal(services.listCoreAgentCatalog().every((entry: Row) => typeof entry.profile.systemPrompt === "string"), true);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Disponibilidade real de agentes (consumida pelos especialistas de apoio do IMOB)
+// ---------------------------------------------------------------------------------------------
+
+const subscribed = (agents: string[], tenant = T, workspace = W): Fixture => ({
+  marketplaceItems: agents.map((agent) => item(`mkt-${agent}`, agent)),
+  delegations: agents.map((agent) => delegation(tenant, `mkt-${agent}`)),
+  policies: agents.map((agent) => policy(tenant, workspace, agent)),
+});
+
+async function availabilityOf(fixture: Fixture, tenantId: string, workspaceId: string, agentIds: string[] = [...IMOB_BACKING_SPECIALIST_AGENT_IDS]) {
+  const h = harness(fixture, authA);
+  const services = h.load(resolve("apps/api/src/services/agents.ts"));
+  return { h, services, result: await services.readAgentAvailability({ tenantId, workspaceId, agentIds, client: h.db }) };
+}
+
+const activeParticipation = { visibility: "visible", status: "active", canBeSuggested: true, canReceiveHandoff: true };
+
+test("T9 predicado canônico: visível, ativo, sugerível e apto a handoff; qualquer desvio é indisponível; dados inválidos são não verificados", () => {
+  const services = harness({}, authA).load(resolve("apps/api/src/services/agents.ts"));
+  const decide = services.resolveAgentAvailabilityFromCatalog as (catalog: unknown, id: string) => string;
+  const entry = (participation: Row | null | undefined) => [{ id: "guardian", participation }];
+  assert.equal(decide(entry(activeParticipation), "guardian"), "available");
+  assert.equal(decide(entry(activeParticipation), "Guardian"), "available", "alias/caixa resolvem para o mesmo agente");
+  const deviations: Array<[string, Row]> = [
+    ["hidden", { visibility: "hidden" }], ["internal_only", { visibility: "internal_only" }],
+    ["restricted", { status: "restricted" }], ["experimental", { status: "experimental" }],
+    ["future", { status: "future" }], ["deprecated", { status: "deprecated" }],
+    ["sem sugestão", { canBeSuggested: false }], ["sem handoff", { canReceiveHandoff: false }],
+    ["flag não booleana", { canBeSuggested: "true" }],
+  ];
+  for (const [label, change] of deviations) assert.equal(decide(entry({ ...activeParticipation, ...change }), "guardian"), "unavailable", label);
+  assert.equal(decide([], "guardian"), "unavailable", "fora do catálogo do workspace");
+  assert.equal(decide([{ id: "EIAH", participation: activeParticipation }], "guardian"), "unavailable");
+  for (const bad of [null, undefined, {}, "x", 1]) assert.equal(decide(bad, "guardian"), "unverified", String(bad));
+  assert.equal(decide(entry(null), "guardian"), "unverified", "participação ausente");
+  assert.equal(decide(entry(undefined), "guardian"), "unverified");
+  for (const id of ["", "   ", null as unknown as string, 7 as unknown as string]) assert.equal(decide(entry(activeParticipation), id), "unverified", String(id));
+});
+
+test("T10 todos os candidatos do bridge existem no registro canônico de agentes", () => {
+  const services = harness({}, authA).load(resolve("apps/api/src/services/agents.ts"));
+  for (const id of IMOB_BACKING_SPECIALIST_AGENT_IDS) assert.equal(services.hasCoreAgentProfile(id), true, `${id} precisa existir no registro`);
+  const canonical = IMOB_BACKING_SPECIALIST_AGENT_IDS.map((id) => services.resolveAgentId(id));
+  assert.equal(new Set(canonical).size, canonical.length, "ids canônicos distintos");
+});
+
+test("T11 inscrito no workspace (política + delegação) fica disponível; os demais, indisponíveis", async () => {
+  const { result } = await availabilityOf(subscribed(["guardian", "Diarias", "I_BC", "fin-nexus"]), T, W);
+  assert.deepEqual(result, { I_BC: "available", Diarias: "available", J_360: "unavailable", "fin-nexus": "available", guardian: "available" });
+});
+
+test("T12 isolamento: inscrição de outro workspace ou de outro tenant nunca torna o agente disponível", async () => {
+  const fixture = subscribed(["guardian", "I_BC"], T, W);
+  const same = (await availabilityOf(fixture, T, W)).result;
+  assert.equal(same.guardian, "available");
+  for (const [tenant, workspace] of [[T, W2], [T2, W], [T2, W2]] as const) {
+    const other = (await availabilityOf(fixture, tenant, workspace)).result;
+    assert.deepEqual(Object.values(other).filter((value) => value !== "unavailable"), [], `${tenant}/${workspace}`);
+  }
+  // política do workspace sem delegação ativa, e delegação sem política do workspace, não bastam
+  const onlyPolicy = (await availabilityOf({ policies: [policy(T, W, "guardian")], marketplaceItems: [item("mkt-guardian", "guardian")] }, T, W)).result;
+  const onlyDelegation = (await availabilityOf({ delegations: [delegation(T, "mkt-guardian")], marketplaceItems: [item("mkt-guardian", "guardian")] }, T, W)).result;
+  assert.equal(onlyPolicy.guardian, "unavailable");
+  assert.equal(onlyDelegation.guardian, "unavailable");
+  // delegação expirada não conta
+  const expired = { ...subscribed(["guardian"]), delegations: [{ ...delegation(T, "mkt-guardian"), validUntil: new Date(Date.now() - 1000) }] };
+  assert.equal((await availabilityOf(expired, T, W)).result.guardian, "unavailable");
+});
+
+test("T13 estado operacional: perfil que não permite sugestão, handoff ou visibilidade torna o agente indisponível", async () => {
+  const profile = (participation: Row) => ({
+    id: "ap-guardian", agent: "guardian", name: "Guardian", description: "synthetic", model: "synthetic-model", systemPrompt: SENTINEL_PROMPT, tools: [],
+    participation: { agentId: "guardian", requiresEntitlement: false, requiredModules: [], requiredWorkspaceCapabilities: [], ...activeParticipation, ...participation },
+    createdAt: new Date(), updatedAt: new Date(),
+  });
+  const base = subscribed(["guardian"]);
+  assert.equal((await availabilityOf({ ...base, agentProfiles: [profile({})] }, T, W)).result.guardian, "available");
+  for (const change of [{ canBeSuggested: false }, { canReceiveHandoff: false }, { visibility: "hidden" }, { visibility: "internal_only" }]) {
+    assert.equal((await availabilityOf({ ...base, agentProfiles: [profile(change)] }, T, W)).result.guardian, "unavailable", JSON.stringify(change));
+  }
+});
+
+test("T14 falha de consulta, escopo inválido e lista vazia: não verificado, sem lançar, sem presumir disponibilidade", async () => {
+  const h = harness(subscribed(["guardian"]), authA);
+  const services = h.load(resolve("apps/api/src/services/agents.ts"));
+  const ids = ["guardian", "I_BC"];
+  for (const table of ["pricing", "agentProfile", "delegationPolicy", "tenantActionPolicy"] as const) {
+    const broken = { ...h.db, [table]: { findMany: async () => { throw new Error("falha sintética de consulta"); } } };
+    assert.deepEqual(await services.readAgentAvailability({ tenantId: T, workspaceId: W, agentIds: ids, client: broken }), { guardian: "unverified", I_BC: "unverified" }, table);
+  }
+  for (const [tenantId, workspaceId] of [["", W], [T, ""], ["  ", W], [undefined, W], [T, undefined]] as const) {
+    assert.deepEqual(await services.readAgentAvailability({ tenantId, workspaceId, agentIds: ids, client: h.db }), { guardian: "unverified", I_BC: "unverified" }, `${tenantId}/${workspaceId}`);
+  }
+  assert.deepEqual(await services.readAgentAvailability({ tenantId: T, workspaceId: W, agentIds: [], client: h.db }), {});
+  assert.deepEqual(await services.readAgentAvailability({ tenantId: T, workspaceId: W, agentIds: ["guardian", "guardian", "", "  "], client: h.db }), { guardian: "available" }, "ids duplicados ou vazios são ignorados");
+});
+
+test("T15 a disponibilidade é derivada do mesmo catálogo que o Front Door consome (listAgents), sem regra paralela", async () => {
+  const { h, services } = await availabilityOf(subscribed(["guardian", "Diarias"]), T, W);
+  const catalog = await services.listAgents(T, W, h.db);
+  const listed = new Map<string, Row>(catalog.map((agent: Row) => [services.resolveAgentId(agent.id), agent]));
+  const result = await services.readAgentAvailability({ tenantId: T, workspaceId: W, agentIds: [...IMOB_BACKING_SPECIALIST_AGENT_IDS], client: h.db });
+  for (const id of IMOB_BACKING_SPECIALIST_AGENT_IDS) {
+    const entry = listed.get(services.resolveAgentId(id));
+    const p = entry?.participation;
+    const web = Boolean(p && p.visibility === "visible" && p.status === "active" && p.canBeSuggested && p.canReceiveHandoff);
+    assert.equal(result[id] === "available", web, `${id}: regra equivalente a canSuggestAgent && canHandoffToAgent do Front Door`);
+  }
 });

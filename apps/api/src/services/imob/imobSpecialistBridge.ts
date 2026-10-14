@@ -1,4 +1,5 @@
 import type {
+  ImobBackingSpecialistAvailability,
   ImobBackingSpecialistContract,
   ImobCaseContext,
   ImobResolvedBackingSpecialist,
@@ -118,6 +119,50 @@ function resolveSpecialistUrgency(
 
 export function listImobBackingSpecialists() {
   return IMOB_BACKING_SPECIALISTS.map((item) => ({ ...item }));
+}
+
+/** Ids dos agentes candidatos, na forma usada para consultar a disponibilidade canônica. */
+export const IMOB_BACKING_SPECIALIST_AGENT_IDS: readonly string[] = IMOB_BACKING_SPECIALISTS.map((item) => item.primaryAgentId);
+
+/** Mapa agentId -> disponibilidade, produzido fora deste módulo (agents.ts). Valores desconhecidos valem "unverified". */
+export type ImobBackingSpecialistAvailabilityMap = Readonly<Record<string, unknown>> | null | undefined;
+
+/**
+ * Fail-closed: só "available" e "unavailable" explícitos são aceitos; mapa ausente, malformado, agente
+ * ausente do mapa ou valor desconhecido => "unverified". Nunca presume disponibilidade.
+ */
+export function readImobBackingSpecialistAvailability(
+  availability: ImobBackingSpecialistAvailabilityMap,
+  agentId: string,
+): ImobBackingSpecialistAvailability {
+  if (typeof availability !== "object" || availability === null || Array.isArray(availability)) return "unverified";
+  if (!Object.prototype.hasOwnProperty.call(availability, agentId)) return "unverified";
+  const value = (availability as Record<string, unknown>)[agentId];
+  return value === "available" || value === "unavailable" ? value : "unverified";
+}
+
+/**
+ * Anota cada candidato com a disponibilidade. Disponível: conteúdo e ação preservados. Indisponível ou não
+ * verificado: a necessidade (rationale) permanece, mas a ação sugerida e o contexto requerido são removidos,
+ * para que nada seja apresentado como acionável. Não altera a lista de candidatos nem a ordem.
+ */
+export function applyBackingSpecialistAvailability<T extends { primaryAgentId: string }>(
+  specialists: readonly T[] | null | undefined,
+  availability: ImobBackingSpecialistAvailabilityMap,
+): Array<T & { availability: ImobBackingSpecialistAvailability }> {
+  if (!Array.isArray(specialists)) return [];
+  return specialists.map((item) => {
+    const resolved = readImobBackingSpecialistAvailability(availability, item.primaryAgentId);
+    if (resolved === "available") return { ...item, availability: resolved };
+    return { ...item, availability: resolved, suggestedAction: null, requiredContext: [] };
+  });
+}
+
+/** Somente os comprovadamente disponíveis: base de `supportingAgents`, `pendingHandoffs` e apoio por especialista. */
+export function filterAvailableBackingSpecialists<T extends { availability?: ImobBackingSpecialistAvailability }>(
+  specialists: readonly T[] | null | undefined,
+): T[] {
+  return Array.isArray(specialists) ? specialists.filter((item) => item.availability === "available") : [];
 }
 
 export function resolveImobBackingSpecialists(caseContext?: ImobCaseContext | null): ImobResolvedBackingSpecialist[] {

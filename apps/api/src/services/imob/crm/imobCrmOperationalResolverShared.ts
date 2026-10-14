@@ -144,6 +144,11 @@ export type ResolverHelpers = {
   buildCaseContextFromRecord: (item: CaseSummary) => any;
   formatImobCaseFlowLabel: (flow: string) => string;
   buildImobBusinessReadPresentation: (params: any) => OperationalResolution;
+  /**
+   * Disponibilidade REAL dos especialistas de apoio (agents.ts), no escopo do tenant e do workspace.
+   * Ausente ou com falha => os especialistas ficam "unverified" e nenhuma ação é apresentada (fail-closed).
+   */
+  readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
   isBulkPropertyOnboardingQuestion: (normalized: string) => boolean;
   buildBulkPropertyOnboardingConsult: (params: { threadState: ThreadStateLike }) => OperationalResolution;
   isImobRecentRegistrationReadRequest: (normalized: string) => boolean;

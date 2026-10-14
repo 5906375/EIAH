@@ -29,6 +29,12 @@ import { buildImobPilotControlSurface } from "../imobPilotControlSurface";
 import { buildImobPilotOperationalSurface } from "../imobPilotOperationalSurface";
 import { resolveImobMissionRuntime } from "../imobMissionRuntime";
 import {
+  applyBackingSpecialistAvailability,
+  filterAvailableBackingSpecialists,
+  readImobBackingSpecialistAvailability,
+  type ImobBackingSpecialistAvailabilityMap,
+} from "../imobSpecialistBridge";
+import {
   buildImobCrmWorkflowReasonCodes,
   deriveImobCrmReviewState,
   filterImobCrmWorkflowCtas,
@@ -224,9 +230,16 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return nextStep ?? "definir o próximo movimento comercial";
   }
 
-  function buildImobCaseExperienceWidget(caseContext?: ImobCrmCaseContext | null) {
+  function buildImobCaseExperienceWidget(
+    caseContext?: ImobCrmCaseContext | null,
+    specialistAvailability?: ImobBackingSpecialistAvailabilityMap,
+  ) {
     if (!caseContext?.canonical?.journeyType) return undefined;
-    const specialists = helpers.resolveImobBackingSpecialists(caseContext);
+    // Candidatos vindos do bridge + disponibilidade real: o card mostra todos, mas só os disponíveis mantêm a ação.
+    const specialists = applyBackingSpecialistAvailability(
+      (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [],
+      specialistAvailability,
+    );
     const recommendedActions = Array.isArray(caseContext.canonical.recommendedActions)
       ? caseContext.canonical.recommendedActions
           .map((item: any) => ({
@@ -2026,14 +2039,21 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       watchStatus?: string | null;
       recommendedNextMove?: string | null;
     } | null;
+    specialistAvailability?: ImobBackingSpecialistAvailabilityMap;
   }) {
-    const specialists = (helpers.resolveImobBackingSpecialists(params.caseContext) as any[] | null | undefined) ?? [];
+    // Apenas especialistas comprovadamente disponíveis entram em supportingAgents, pendingHandoffs e motivos da missão.
+    const specialists = filterAvailableBackingSpecialists(applyBackingSpecialistAvailability(
+      (helpers.resolveImobBackingSpecialists(params.caseContext) as any[] | null | undefined) ?? [],
+      params.specialistAvailability,
+    ));
+    const isSpecialistAvailable = (agentId: string) =>
+      readImobBackingSpecialistAvailability(params.specialistAvailability, agentId) === "available";
     const specialistAgents = specialists
       .map((item) => helpers.asString(item?.primaryAgentId))
       .filter(Boolean) as string[];
     const inferredSupportingAgents = [
-      params.closingDocuments?.readinessStatus === "blocked" ? "J_360" : null,
-      helpers.asString(params.caseContext?.blocker)?.match(/finance|pag|comissao|repasse|sinal/i) ? "fin-nexus" : null,
+      params.closingDocuments?.readinessStatus === "blocked" && isSpecialistAvailable("J_360") ? "J_360" : null,
+      helpers.asString(params.caseContext?.blocker)?.match(/finance|pag|comissao|repasse|sinal/i) && isSpecialistAvailable("fin-nexus") ? "fin-nexus" : null,
     ].filter(Boolean) as string[];
     const supportingAgents = Array.from(new Set([
       ...specialistAgents,
@@ -2047,7 +2067,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         return agentId && suggestedAction ? `${agentId}: ${suggestedAction}` : null;
       })
       .filter(Boolean) as string[],
-      params.closingDocuments?.readinessStatus === "blocked"
+      params.closingDocuments?.readinessStatus === "blocked" && isSpecialistAvailable("J_360")
         ? "J_360: validar pendências documentais e contratuais antes de avançar o caso."
         : null,
     ].filter(Boolean) as string[];
@@ -2751,6 +2771,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     intent: BusinessReadIntent;
     caseContext: ImobCrmCaseContext;
     caseSelectionNote?: string | null;
+    /** Disponibilidade real dos especialistas candidatos (agents.ts). Ausente => "unverified" (fail-closed). */
+    specialistAvailability?: ImobBackingSpecialistAvailabilityMap;
   }) {
     const { intent, caseContext } = params;
     const journeyLabel = formatImobJourneyLabel(caseContext?.canonical?.journeyType);
@@ -2782,7 +2804,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       caseContext,
       waitingOn: normalizedWaitingOn,
     });
-    const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
+    // Apoio por especialista, handoff pack, racional e missão usam somente os comprovadamente disponíveis.
+    const specialists = filterAvailableBackingSpecialists(applyBackingSpecialistAvailability(
+      (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [],
+      params.specialistAvailability,
+    ));
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
     const shouldExposeSpecialistSupport = intent === "pipeline_status";
     const proof = caseContext?.proof ?? null;
@@ -2919,7 +2945,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         viabilityMarketAnalysis,
         inventoryWatch,
       },
-      buildSnapshot: buildMissionOrchestrationSnapshot,
+      // A disponibilidade entra por closure: o `input` registrado na execução do especialista não muda.
+      buildSnapshot: (missionInput) => buildMissionOrchestrationSnapshot({ ...missionInput, specialistAvailability: params.specialistAvailability }),
     });
     const missionOrchestration = missionExecution.output;
     const pilotFlow = buildPilotFlowSnapshot({
@@ -3089,7 +3116,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       }),
       pendingFieldLabels: pendingItems,
       suggestedNextAction: primaryNextStep,
-      widget: intent !== "blocked_run_resolution" ? buildImobCaseExperienceWidget(caseContext) : null,
+      widget: intent !== "blocked_run_resolution" ? buildImobCaseExperienceWidget(caseContext, params.specialistAvailability) : null,
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
       workflow: {
         primaryState: primaryWorkflowState,
