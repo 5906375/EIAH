@@ -72,6 +72,7 @@ import {
   resolveImobOperationalUpdateImpl,
 } from "../services/imob/crm/imobCrmOperationalResolvers";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import { withStageScopedPrisma } from "../services/imob/crm/imobCrmOperationalResolverShared";
 import { resolveImobRecipeMissionContext } from "../services/imob/crm/imobRecipeMissionConfig";
 import { resolveImobTenantRecipeForWorkspace } from "../services/imob/crm/imobTenantRecipeContext";
 import { buildOwnerPendingSuggestion } from "../services/imob/crm/imobOwnerPendingSuggestion";
@@ -111,6 +112,7 @@ import {
 } from "./imobCrmSchemas";
 import { sendImobAccessDenied } from "../services/imob/imobAccessGate";
 import { imobRevocationGate } from "../services/imob/imobRevocationGate";
+import { imobMembershipGate } from "../services/imob/imobMembershipGate";
 import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
@@ -149,6 +151,8 @@ export const imobRouter = createGovernedRouter();
 imobRouter.use(enforceTenant);
 // ADR-011 §2.5: revogação pela EIAH (somente leitura ou bloqueio total) vale para todas as rotas do IMOB.
 imobRouter.use(imobRevocationGate);
+// P12.1: vínculo com o workspace revogado/não ativo não consulta nem opera casos (todas as rotas do IMOB).
+imobRouter.use(imobMembershipGate);
 
 function parseWindowStart(windowRaw: unknown) {
   const normalized = typeof windowRaw === "string" ? windowRaw : "7d";
@@ -614,7 +618,9 @@ function injectResolvedPendingSuggestion(resolved: any) {
   });
 }
 
-async function resolveImobOperationalUpdate(params: ImobOperationalResolverParams) {
+async function resolveImobOperationalUpdate(rawParams: ImobOperationalResolverParams) {
+  // P12.2/P12.3: leituras de caso, owner, lead e imóvel do turno respeitam a permissão de etapa da pessoa.
+  const params = withStageScopedPrisma(rawParams);
   const resolved = await resolveImobOperationalUpdateImpl(params, {
     auditAgentId: IMOB_CHAT_AUDIT_AGENT_ID,
     resolveImobCrmOperationalUpdate: async () => null,
@@ -735,7 +741,9 @@ async function discoverImobTransversalCapabilitiesForTurn(params: {
   });
 }
 
-async function resolveImobOperationalConsult(params: ImobOperationalResolverParams) {
+async function resolveImobOperationalConsult(rawParams: ImobOperationalResolverParams) {
+  // P12.2/P12.3: leituras de caso, owner, lead e imóvel do turno respeitam a permissão de etapa da pessoa.
+  const params = withStageScopedPrisma(rawParams);
   const resolved = await resolveImobOperationalConsultImpl(params, {
     readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
     readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
@@ -1410,10 +1418,13 @@ async function readImobWorkspaceAccessProfile(params: {
 }
 
 function sendImobPermissionDenied(
-  req: TenantAwareRequest | undefined,
+  reqOrUndefined: TenantAwareRequest | undefined,
   res: Response,
   params: { code: string; message: string; stage?: string | null; capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH" }
 ) {
+  // P12: as guardas na forma legada `(res, permissões, …)` não recebem `req`; sem ele o escopo ficava vazio, a montagem do evento
+  // de auditoria falhava na validação e a NEGATIVA virava HTTP 500. A requisição autenticada é a da própria resposta (`res.req`).
+  const req = reqOrUndefined ?? ((res as Response & { req?: TenantAwareRequest }).req);
   return sendImobAccessDenied(res, {
     req,
     code: params.code,
@@ -1877,6 +1888,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const reviewEvent = asObject(existingScopedCase?.events?.[0]?.payload);
   const reviewDraft = reviewEvent?.flow === "proposal.create" && reviewEvent.operationalStatus === "ready_for_review"
     ? asObject(reviewEvent.proposalDraft) : null;
+  const canOperateStage = (stage: string | null | undefined) => canWorkspaceOperateImobStage(workspaceAccess.permissions, stage);
   const data = await resolveImobCrmTurnEngine({
     prisma,
     authContext,
@@ -1893,8 +1905,11 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     helpers: {
       asString,
       hydrateThreadStateWithPersistedLead,
-      resolveImobOperationalUpdate,
-      resolveImobOperationalConsult,
+      // P12: toda leitura de caso do turno (explícita, digitada na mensagem ou "o mais recente") respeita a permissão de ETAPA da pessoa.
+      resolveImobOperationalUpdate: (resolverParams: ImobOperationalResolverParams) =>
+        resolveImobOperationalUpdate({ ...resolverParams, canOperateStage }),
+      resolveImobOperationalConsult: (resolverParams: ImobOperationalResolverParams) =>
+        resolveImobOperationalConsult({ ...resolverParams, canOperateStage }),
       applyCanonicalJourneyToResolvedData: imobCrmBusinessRead.applyCanonicalJourneyToResolvedData as (data: any, caseContext?: unknown) => any,
       applyExistingRegistrationResolution,
       injectResolvedPendingSuggestion,

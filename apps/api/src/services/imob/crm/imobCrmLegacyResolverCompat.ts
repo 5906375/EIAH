@@ -18,6 +18,7 @@ import { planImobCase } from "./imobCrmCasePlanner";
 import { buildImobCrmLegacyCanonicalCase } from "./imobCrmLegacyCanonical";
 import { linkImobPropertyOwner } from "./operations/propertyLinkOwner";
 import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
+import { scopedImobCases, type ImobStageGate } from "./imobCrmOperationalResolverShared";
 import {
   getImobCrmPropertyTypeLabel,
   IMOB_CRM_PROPERTY_TYPE_OPTIONS,
@@ -46,6 +47,8 @@ type ResolverParams = {
   readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
   /** Descoberta somente leitura de capacidades transversais do caso; ausente ou com falha => nenhum cartão. */
   readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
+  /** P12: permissão de etapa da pessoa do turno (leitura do caso, explícita ou "o mais recente", só em etapa permitida). */
+  canOperateStage?: ImobStageGate;
 };
 
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
@@ -1913,7 +1916,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
 
   if (businessReadIntent) {
     const item = params.caseId
-      ? await params.prisma.imobCase.findFirst({
+      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
           include: {
             owner: { select: { id: true, name: true } },
@@ -1922,7 +1925,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
             _count: { select: { events: true } },
           },
         })
-      : await params.prisma.imobCase.findFirst({
+      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
           orderBy: { updatedAt: "desc" },
           include: {
@@ -2540,7 +2543,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
     }
 
     const item = scopedCaseId
-      ? await params.prisma.imobCase.findFirst({
+      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: scopedCaseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
           include: {
             owner: { select: { id: true, name: true } },
@@ -2549,7 +2552,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
             _count: { select: { events: true } },
           },
         })
-      : await params.prisma.imobCase.findFirst({
+      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
           orderBy: { updatedAt: "desc" },
           include: {

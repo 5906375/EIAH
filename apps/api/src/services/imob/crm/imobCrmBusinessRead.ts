@@ -45,6 +45,7 @@ import {
   type ImobCrmWorkflowCta,
   type ImobCrmWorkflowState,
 } from "./imobCrmWorkflowMachine";
+import { scopedImobCases, type ImobStageGate } from "./imobCrmOperationalResolverShared";
 
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
 type BusinessReadCaseRecord = {
@@ -3258,13 +3259,15 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     workspaceId: string;
     caseId?: string | null;
     threadState: ImobCrmConversationState | null | undefined;
+    /** P12: permissão de etapa da pessoa do turno (leitura implícita do "mais recente" só em etapa permitida). */
+    canOperateStage?: ImobStageGate;
   }) {
     const latestCase = params.caseId
-      ? await params.prisma.imobCase.findFirst({
+      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
           include: { owner: true, property: true, lead: true, _count: { select: { events: true } } },
         })
-      : await params.prisma.imobCase.findFirst({
+      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
           orderBy: { updatedAt: "desc" },
           include: { owner: true, property: true, lead: true, _count: { select: { events: true } } },
