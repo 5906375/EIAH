@@ -286,7 +286,7 @@ export function listCoreAgentCatalog(): AgentListing[] {
   })).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-function normalizeAgentKey(value: string) {
+export function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
@@ -308,6 +308,36 @@ export function resolveAgentId(input: string) {
 
 export function hasCoreAgentProfile(agent: string) {
   return coreProfileForAgent(agent) !== null;
+}
+
+export type AgentCapabilityDeclaration = Readonly<{ domain: string; capability: string; label: string }>;
+
+/**
+ * Declaração ESTRUTURADA das capacidades transversais que um agente oferece a outras verticais (domínio + capacidade).
+ * É a chave da descoberta por necessidade estruturada: não depende de texto do usuário nem de lista de expressões.
+ * Declarar aqui NÃO habilita nada: a disponibilidade operacional continua vindo do catálogo, da política do workspace,
+ * da delegação e do estado de participação (`listAgents`). Chave = identificador normalizado do agente.
+ */
+const AGENT_CAPABILITY_DECLARATIONS: Readonly<Record<string, readonly AgentCapabilityDeclaration[]>> = {
+  mkt: [{ domain: "marketing", capability: "campaign", label: "Planejamento de campanha de divulgação multicanal" }],
+};
+
+export function getAgentCapabilityDeclarations(agentId: string): AgentCapabilityDeclaration[] {
+  if (typeof agentId !== "string") return [];
+  const declared = AGENT_CAPABILITY_DECLARATIONS[normalizeAgentKey(resolveAgentId(agentId))];
+  return declared ? declared.map((entry) => ({ ...entry })) : [];
+}
+
+/** Ids canônicos dos agentes que declaram a capacidade (domínio + capacidade), em ordem estável. */
+export function listAgentsDeclaringCapability(domain: string, capability: string): string[] {
+  if (typeof domain !== "string" || typeof capability !== "string") return [];
+  const wantedDomain = domain.trim().toLowerCase();
+  const wantedCapability = capability.trim().toLowerCase();
+  if (!wantedDomain || !wantedCapability) return [];
+  return Object.entries(AGENT_CAPABILITY_DECLARATIONS)
+    .filter(([, declarations]) => declarations.some((entry) => entry.domain === wantedDomain && entry.capability === wantedCapability))
+    .map(([key]) => CANONICAL_AGENT_BY_KEY.get(key) ?? key)
+    .sort();
 }
 
 function coreProfileForAgent(agent: string) {

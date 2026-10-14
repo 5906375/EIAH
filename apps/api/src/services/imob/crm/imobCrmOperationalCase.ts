@@ -48,6 +48,21 @@ async function readSpecialistAvailabilitySafely(helpers: ResolverHelpers, params
   }
 }
 
+async function readTransversalCapabilitiesSafely(helpers: ResolverHelpers, params: ImobOperationalResolverParams, caseContext: unknown) {
+  if (typeof helpers.readTransversalCapabilities !== "function") return undefined;
+  try {
+    return await helpers.readTransversalCapabilities({
+      prisma: params.prisma,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      caseContext,
+      operational: (params.threadState as { operational?: unknown } | null | undefined)?.operational ?? null,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 export async function resolveImobCaseOperationalConsult(
   params: ImobOperationalResolverParams,
   helpers: ResolverHelpers,
@@ -134,6 +149,7 @@ export async function resolveImobCaseOperationalConsult(
 
     // Só chega aqui quando a apresentação será montada (o ramo de dedupe acima não consulta a disponibilidade).
     const specialistAvailability = await readSpecialistAvailabilitySafely(helpers, params);
+    const transversalCapabilities = await readTransversalCapabilitiesSafely(helpers, params, caseContext);
     return {
       mode: "consult",
       action: `crm.case.${context.businessReadIntent}`,
@@ -145,6 +161,7 @@ export async function resolveImobCaseOperationalConsult(
         caseContext,
         caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
         specialistAvailability,
+        transversalCapabilities,
       }),
     };
   }

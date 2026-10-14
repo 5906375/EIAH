@@ -44,6 +44,8 @@ type ResolverParams = {
   threadState: ImobCrmConversationState | null | undefined;
   /** Disponibilidade real dos especialistas de apoio; ausente ou com falha => "unverified" (fail-closed). */
   readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
+  /** Descoberta somente leitura de capacidades transversais do caso; ausente ou com falha => nenhum cartão. */
+  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
 };
 
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
@@ -1990,11 +1992,26 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
         specialistAvailability = undefined;
       }
     }
+    let transversalCapabilities: unknown[] | null | undefined;
+    if (typeof params.readTransversalCapabilities === "function") {
+      try {
+        transversalCapabilities = await params.readTransversalCapabilities({
+          prisma: params.prisma,
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          caseContext,
+          operational: asObject(params.threadState)?.operational ?? null,
+        });
+      } catch {
+        transversalCapabilities = undefined;
+      }
+    }
     const presentation = legacyBusinessRead.buildImobBusinessReadPresentation({
       intent: businessReadIntent,
       caseContext,
       caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
       specialistAvailability,
+      transversalCapabilities,
     }) as any;
     if (
       businessReadIntent === "blocked_run_resolution"

@@ -4,6 +4,7 @@ import type {
   ImobCommercialHomeWidget,
   ImobResolvedBackingSpecialist,
   ImobPresentationWidget,
+  ImobTransversalCapability,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "./propertyTypes";
 import { ImobContractIntakeDraftCard } from "./ImobContractIntakeDraftCard";
@@ -70,6 +71,86 @@ function renderSpecialists(specialists: ImobResolvedBackingSpecialist[]) {
             {getSpecialistAvailabilityNote(availability) ? (
               <p className="mt-2 text-[11px] text-amber-200/90">{getSpecialistAvailabilityNote(availability)}</p>
             ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const TRANSVERSAL_STATE_LABEL = {
+  habilitado: "Habilitado neste workspace",
+  habilitavel: "Habilitável (ainda não habilitado)",
+  indisponivel: "Indisponível neste workspace",
+  nao_verificado: "Não verificado",
+} as const;
+
+const MARKETPLACE_PATH = "/app/marketplace";
+
+/**
+ * Apenas apresenta o que o backend descobriu (somente leitura). Estado desconhecido vale "não verificado" e a ação de
+ * habilitação só aparece para "habilitável", apontando para o Marketplace, onde a confirmação humana acontece.
+ * Habilitar um AGENTE não é convidar uma PESSOA para o workspace.
+ */
+function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Especialistas transversais</p>
+      {items.map((item) => {
+        const state = item.state in TRANSVERSAL_STATE_LABEL ? item.state : "nao_verificado";
+        const enable = state === "habilitavel" && item.nextAction?.kind === "enable_agent" && item.nextAction.path === MARKETPLACE_PATH
+          ? item.nextAction
+          : null;
+        const declared = (item.provider?.declaredCapabilities ?? []).slice(0, 3);
+        const recipes = item.recipes ?? { status: "nao_aplicavel", items: [] };
+        return (
+          <div key={item.need.needId} data-capability-state={state} data-capability-domain={item.need.domain} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">{item.need.label ?? `${item.need.domain} · ${item.need.capability}`}</p>
+                {item.provider ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">{item.provider.name} ({item.provider.agentId})</p>
+                ) : null}
+              </div>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {TRANSVERSAL_STATE_LABEL[state]}
+              </span>
+            </div>
+            {declared.length > 0 ? (
+              <ul className="mt-2 list-disc pl-4 text-[11px] text-muted-foreground">
+                {declared.map((entry) => <li key={entry}>{entry}</li>)}
+              </ul>
+            ) : null}
+            {recipes.status === "ok" ? (
+              recipes.items.length > 0 ? (
+                <div className="mt-2 text-[11px] text-foreground/90">
+                  <p>Modelos homologados neste workspace:</p>
+                  <ul className="list-disc pl-4">
+                    {recipes.items.slice(0, 3).map((recipe) => <li key={recipe.id}>{recipe.title}</li>)}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-muted-foreground">Nenhum modelo homologado disponível para este workspace.</p>
+              )
+            ) : recipes.status === "nao_verificado" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Modelos homologados: não verificados.</p>
+            ) : null}
+            {enable ? (
+              <div className="mt-2 text-[11px]">
+                {(item.enablement?.conditions ?? []).slice(0, 4).map((condition) => (
+                  <p key={condition} className="text-muted-foreground">{condition}</p>
+                ))}
+                <a href={enable.path} className="mt-2 inline-block underline text-foreground">Revisar e habilitar o agente no Marketplace</a>
+                <p className="mt-1 text-muted-foreground">Exige confirmação humana. Habilitar um agente não é convidar uma pessoa para o workspace.</p>
+              </div>
+            ) : state === "habilitado" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Agente habilitado. O encaminhamento operacional ainda não está disponível nesta versão.</p>
+            ) : state === "indisponivel" ? (
+              <p className="mt-2 text-[11px] text-amber-200/90">Esta capacidade não pode ser acionada neste workspace.</p>
+            ) : (
+              <p className="mt-2 text-[11px] text-amber-200/90">Não foi possível verificar esta capacidade. Nenhuma ação é oferecida.</p>
+            )}
           </div>
         );
       })}
@@ -199,6 +280,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
           </div>
         ) : null}
         {renderSpecialists(widget.specialists)}
+        {renderTransversalCapabilities(widget.transversalCapabilities)}
       </div>
     );
   }
@@ -238,6 +320,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
       {widget.blocker ? <p className="mt-3 text-xs text-rose-200">Bloqueio: {widget.blocker}</p> : null}
       {widget.nextStep ? <p className="mt-2 text-xs text-muted-foreground">Próximo passo: {widget.nextStep}</p> : null}
       {renderSpecialists(widget.specialists)}
+      {renderTransversalCapabilities(widget.transversalCapabilities)}
     </div>
   );
 };

@@ -11,6 +11,7 @@ import {
   resolveImobBackingSpecialists,
 } from "../services/imob/imobSpecialistBridge";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import { IMOB_TRANSVERSAL_NEEDS, resolveImobTransversalNeeds } from "../services/imob/imobTransversalNeeds";
 import { buildImobCrmLegacyCanonicalCase } from "../services/imob/crm/imobCrmLegacyCanonical";
 import { resolveImobCaseOperationalConsult } from "../services/imob/crm/imobCrmOperationalCase";
 import { resolveImobCrmOperationalConsult } from "../services/imob/crm/imobCrmResolver";
@@ -428,4 +429,177 @@ test("availability: fin-nexus inferido por bloqueio financeiro só entra quando 
     const closed = await consultDocumentationCase("qual status desse caso?", async () => (state === "unavailable" ? { ...others, "fin-nexus": state } : others), financeCase);
     assert.deepEqual(closed.resolved.presentation.missionOrchestration.supportingAgents, ["I_BC", "Diarias"], state);
   }
+});
+
+// ---------------------------------------------------------------------------------------------
+// Necessidades transversais da vertical IMOB (descoberta somente leitura; gatilho estrutural)
+// ---------------------------------------------------------------------------------------------
+
+test("transversal: a necessidade é declarada por domínio e capacidade e disparada só por sinais estruturais", () => {
+  assert.deepEqual(IMOB_TRANSVERSAL_NEEDS.map(({ needId, domain, capability }) => ({ needId, domain, capability })), [
+    { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign" },
+  ]);
+  const expected = [{ needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" }];
+  assert.deepEqual(resolveImobTransversalNeeds({ caseContext: { flow: "listing.activate" }, operational: null }), expected, "fluxo do caso");
+  assert.deepEqual(resolveImobTransversalNeeds({ caseContext: { flow: "lead.qualify" }, operational: { flow: "listing.activate" } }), expected, "fluxo operacional");
+  assert.deepEqual(resolveImobTransversalNeeds({ caseContext: { flow: "lead.qualify" }, operational: { campaignDraft: { objective: "promote_listing" } } }), expected, "rascunho de campanha");
+  assert.deepEqual(resolveImobTransversalNeeds({ operational: { marketScanOpportunity: { recommendedAction: "campanha" } } }), expected, "oportunidade de market scan");
+  // nada de texto: palavras de marketing em qualquer campo textual não disparam nada
+  assert.deepEqual(resolveImobTransversalNeeds({
+    caseContext: { flow: "lead.qualify", nextStep: "fazer campanha de marketing", blocker: "marketing campanha divulgação" } as never,
+    operational: { flow: "lead.qualify", lastMessage: "quero uma campanha de marketing", marketScanOpportunity: { recommendedAction: "captar" } },
+  }), []);
+  for (const bad of [undefined, null, {}, { caseContext: null, operational: "listing.activate" }, { caseContext: { flow: 42 }, operational: [] }, { operational: { campaignDraft: "x" } }]) {
+    assert.deepEqual(resolveImobTransversalNeeds(bad as never), [], JSON.stringify(bad));
+  }
+});
+
+/** Compara respostas de execuções distintas ignorando apenas o que é gerado a cada chamada (carimbos de tempo e ids de execução). */
+function stable(value: unknown) {
+  return JSON.parse(
+    JSON.stringify(value)
+      .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g, "<ts>")
+      .replace(/flowrun-[0-9a-f]{8,}/g, "flowrun-<id>"),
+  );
+}
+
+function discoveredCapability(over: Record<string, unknown> = {}) {
+  return {
+    need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
+    state: "habilitavel",
+    reasons: ["NOT_ENABLED_IN_WORKSPACE"],
+    provider: { agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", declaredCapabilities: ["Planejamento de campanha de divulgação multicanal"], origin: "agent_registry" },
+    recipes: { status: "ok", items: [{ id: "rec-1", title: "Campanha de lançamento", summary: "Plano", tags: [], homologatedAt: null }] },
+    enablement: { marketplaceItemId: "mkt-MKT", visibility: "public", conditions: ["Confirmação humana explícita antes de habilitar."] },
+    nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
+    ...over,
+  };
+}
+
+function buildListingCaseRecord() {
+  return {
+    ...buildDocumentationCaseRecord(),
+    id: "case-availability-listing",
+    flow: "listing.activate",
+    stage: "listing",
+    status: "running",
+    nextStep: "ativar anúncio do imóvel",
+    blockers: [],
+    pendingItems: [],
+    canonical: { journeyType: "property_capture", recommendedActions: [{ id: "activate_listing", label: "Ativar anúncio", actionType: "consultive", inputHint: "ativar anúncio" }], blockedActions: [], missingContext: [], reasonCodes: [] },
+  };
+}
+
+async function consultListing(reader?: (params: any) => Promise<unknown>, message = "qual status desse caso?") {
+  const item = buildListingCaseRecord();
+  const seen: any[] = [];
+  const threadState = { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null } as any;
+  const resolved: any = await resolveImobCrmOperationalConsult({
+    prisma: { imobCase: { findFirst: async ({ where }: any) => (where.id === item.id ? item : null) } } as any,
+    tenantId: AVAILABILITY_TENANT,
+    workspaceId: AVAILABILITY_WORKSPACE,
+    caseId: item.id,
+    message,
+    threadState,
+    ...(reader ? { readTransversalCapabilities: async (params: any) => { seen.push(params); return reader(params); } } : {}),
+  } as any);
+  return { resolved, seen };
+}
+
+test("transversal: o cartão aparece no caso IMOB por sinal estrutural e a conversa original é preservada", async () => {
+  const baseline = await consultListing();
+  assert.equal(baseline.resolved.presentation.widget.transversalCapabilities, undefined, "sem leitor, nenhum cartão");
+
+  const withCard = await consultListing(async () => [discoveredCapability()]);
+  const card = withCard.resolved.presentation.widget.transversalCapabilities;
+  assert.equal(card.length, 1);
+  assert.equal(card[0].state, "habilitavel");
+  assert.equal(card[0].nextAction.actionDomain, "agent_enablement");
+  assert.equal(withCard.seen.length, 1);
+  assert.equal(withCard.seen[0].tenantId, AVAILABILITY_TENANT);
+  assert.equal(withCard.seen[0].workspaceId, AVAILABILITY_WORKSPACE);
+  assert.equal(withCard.seen[0].caseContext.flow, "listing.activate", "o leitor recebe o contexto do caso");
+  assert.equal(withCard.seen[0].operational, null);
+
+  // preservação: removendo apenas o cartão, a resposta é idêntica à de antes (ação, texto, estado da conversa, widget)
+  const stripped = stable(withCard.resolved);
+  delete stripped.presentation.widget.transversalCapabilities;
+  assert.deepEqual(stripped, stable(baseline.resolved));
+  assert.equal(withCard.resolved.action, baseline.resolved.action);
+  assert.deepEqual(withCard.resolved.conversationState, baseline.resolved.conversationState);
+});
+
+test("transversal: falha, retorno malformado ou formato inesperado não geram cartão nem ação", async () => {
+  const baseline = stable((await consultListing()).resolved);
+  const bad: Array<[string, (p: any) => Promise<unknown>]> = [
+    ["lança", async () => { throw new Error("falha de consulta"); }],
+    ["null", async () => null],
+    ["objeto", async () => ({ state: "habilitado" })],
+    ["itens sem need", async () => [{ state: "habilitado" }, null, 3]],
+    ["itens sem state", async () => [{ need: { needId: "x" } }]],
+  ];
+  for (const [label, reader] of bad) {
+    const { resolved } = await consultListing(reader);
+    assert.deepEqual(stable(resolved), baseline, label);
+  }
+});
+
+test("transversal: o caminho operacional (helpers do resolvedor) apresenta o mesmo cartão, com tenant e workspace do turno", async () => {
+  const item = buildListingCaseRecord();
+  const businessRead = buildImobCrmBusinessReadHelpers({
+    asObject: (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null),
+    asString: (value: unknown) => (typeof value === "string" && value.trim().length > 0 ? value.trim() : null),
+    asStringList: (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []),
+    normalizeImobRouteText: (value: string) => value.toLowerCase(),
+    formatBudgetCentsForImob: () => null,
+    formatImobStatusLabel: (status: string | null | undefined) => status ?? "desconhecido",
+    formatImobPendingList: (items: unknown) => (Array.isArray(items) ? items.join(", ") : ""),
+    formatImobCaseFlowLabel: (flow: string) => flow,
+    titleCaseRouteWords: (value: string) => value,
+    createEmptyThreadState: (() => ({ mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null })) as any,
+    resolveImobBackingSpecialists,
+    buildImobCanonicalCase: buildImobCrmLegacyCanonicalCase as any,
+    resolveBusinessReadIntent: () => "pipeline_status",
+  });
+  const prisma = { imobCase: { findFirst: async ({ where }: any) => (where.id === item.id ? item : null) } };
+  const operational = { flow: "listing.activate", campaignDraft: { objective: "promote_listing" } };
+  const run = async (reader?: (params: any) => Promise<unknown>) => {
+    const seen: any[] = [];
+    const helpers: any = {
+      ...businessRead,
+      asString: (value: unknown) => (typeof value === "string" && value.trim().length > 0 ? value.trim() : null),
+      asObject: (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value : null),
+      createEmptyThreadState: () => ({ mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null }),
+      formatImobCaseFlowLabel: (flow: string) => flow,
+      isBulkPropertyOnboardingQuestion: () => false,
+      isImobRecentRegistrationReadRequest: () => false,
+      ...(reader ? { readTransversalCapabilities: async (params: any) => { seen.push(params); return reader(params); } } : {}),
+    };
+    const resolved: any = await resolveImobCaseOperationalConsult(
+      { prisma: prisma as any, tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, caseId: item.id, message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational } as any },
+      helpers,
+      { normalized: "qual status desse caso?", businessReadIntent: "pipeline_status" } as any,
+    );
+    return { resolved, seen };
+  };
+  const baseline = await run();
+  assert.equal(baseline.resolved.presentation.widget.transversalCapabilities, undefined);
+  const withCard = await run(async () => [discoveredCapability({ state: "habilitado", nextAction: { kind: "request_work", actionDomain: "agent_work", enabled: false, reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }, enablement: null })]);
+  assert.equal(withCard.resolved.presentation.widget.transversalCapabilities[0].state, "habilitado");
+  assert.deepEqual(withCard.seen.map(({ tenantId, workspaceId, sameClient, operational: op }) => ({ tenantId, workspaceId, op })), [
+    { tenantId: AVAILABILITY_TENANT, workspaceId: AVAILABILITY_WORKSPACE, op: operational },
+  ], "o estado operacional do turno chega ao leitor");
+  const stripped = stable(withCard.resolved);
+  delete stripped.presentation.widget.transversalCapabilities;
+  assert.deepEqual(stripped, stable(baseline.resolved), "conversa preservada");
+  const failed = await run(async () => { throw new Error("falha"); });
+  assert.equal(failed.resolved.presentation.widget.transversalCapabilities, undefined);
+});
+
+test("transversal: a rota liga a descoberta aos dois resolvedores e só consulta quando a necessidade se aplica", () => {
+  const source = readFileSync(new URL("../routes/imob.ts", import.meta.url), "utf8");
+  assert.equal((source.match(/readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn/g) ?? []).length, 2);
+  assert.match(source, /const needs = resolveImobTransversalNeeds\([\s\S]*?\);\s*if \(needs\.length === 0\) return \[\];/);
+  assert.match(source, /discoverCapabilityNeeds\(\{\s*needs,\s*tenantId: params\.tenantId,\s*workspaceId: params\.workspaceId,/);
+  assert.doesNotMatch(source, /marketplace\.subscribe|\/subscribe|installations\/activate/, "a descoberta não chama habilitação");
 });

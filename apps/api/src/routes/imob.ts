@@ -24,6 +24,8 @@ import {
 import { matchImobConversationalIntents } from "../services/imob/imobIntentCatalog";
 import { IMOB_BACKING_SPECIALIST_AGENT_IDS, resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
 import { readAgentAvailability } from "../services/agents";
+import { discoverCapabilityNeeds } from "../services/capabilityDiscovery";
+import { resolveImobTransversalNeeds } from "../services/imob/imobTransversalNeeds";
 import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshotService";
 import { buildImobBusinessExport } from "../services/imob/imobCaseExportService";
 import { lookupImobCep } from "../services/imob/imobCepLookup";
@@ -712,9 +714,31 @@ async function readImobBackingSpecialistAvailabilityForTurn(params: { prisma: un
   });
 }
 
+/**
+ * Capacidades transversais que o caso declara por sinais estruturais (fluxo, rascunho, oportunidade), descobertas em
+ * modo somente leitura no escopo do turno. Sem necessidade aplicável não há nenhuma consulta.
+ */
+async function discoverImobTransversalCapabilitiesForTurn(params: {
+  prisma: unknown;
+  tenantId: string;
+  workspaceId: string;
+  caseContext: unknown;
+  operational: unknown;
+}) {
+  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational });
+  if (needs.length === 0) return [];
+  return discoverCapabilityNeeds({
+    needs,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+  });
+}
+
 async function resolveImobOperationalConsult(params: ImobOperationalResolverParams) {
   const resolved = await resolveImobOperationalConsultImpl(params, {
     readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
+    readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
     auditAgentId: IMOB_CHAT_AUDIT_AGENT_ID,
     resolveImobCrmOperationalUpdate: async () => null,
     resolveImobCrmOperationalConsult: async () => null,
@@ -800,6 +824,7 @@ async function resolveImobOperationalConsult(params: ImobOperationalResolverPara
   return resolveImobCrmOperationalConsultLegacy({
     ...(params as any),
     readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
+    readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
   });
 }
 
