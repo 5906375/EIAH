@@ -67,12 +67,14 @@ export type ContractingAuthority = Readonly<{ status: ContractingAuthorityStatus
 /**
  * `actionDomain` separa estruturalmente a contratação de AGENTE do convite de PESSOA ao workspace, que pertence a
  * outro fluxo e nunca aparece nesta lista de ações.
- *  - `review_commercial_terms`: só para quem tem autoridade; leva ao Marketplace para revisar condições. Não contrata.
- *  - `request_approval`: sem autoridade; o pedido de apreciação ainda NÃO existe, então vem desabilitado.
+ *  - `open_commercial_details`: só para quem tem autoridade; leva aos detalhes comerciais do agente no Self-service,
+ *    identificando o item e o workspace. Não contrata nem aceita termos: a contratação é um passo à parte, no servidor.
+ *  - `request_approval`: sem autoridade; o pedido de apreciação ainda NÃO existe, então vem desabilitado. Traz
+ *    `detailsPath` (somente consulta, conforme a visibilidade do item) para ver o agente sem nenhuma ação de assinatura.
  */
 export type CapabilityNextAction =
-  | Readonly<{ kind: "review_commercial_terms"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }>
-  | Readonly<{ kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: typeof SUBSCRIBE_SCOPE }>
+  | Readonly<{ kind: "open_commercial_details"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; workspaceId: string; path: string }>
+  | Readonly<{ kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: typeof SUBSCRIBE_SCOPE; marketplaceItemId: string; workspaceId: string; detailsPath: string }>
   | Readonly<{ kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }>
   | Readonly<{ kind: "none"; actionDomain: null }>;
 
@@ -129,7 +131,10 @@ export type CapabilityDiscoveryReaders = Readonly<{
   listHomologatedRecipes: (params: { tenantId: string; workspaceId: string }) => Promise<RecipeEntry[]>;
 }>;
 
-const MARKETPLACE_PATH = "/app/marketplace";
+/** Detalhes comerciais do agente: o Self-service é onde a assinatura de agentes existe (`/app/marketplace` é o catálogo de verticais). */
+function commercialDetailsPath(marketplaceItemId: string, workspaceId: string) {
+  return `/self-service?marketplaceItem=${encodeURIComponent(marketplaceItemId)}&workspaceId=${encodeURIComponent(workspaceId)}`;
+}
 const TOKEN = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
 
 /** Leituras reais. Todas filtram por tenant (e workspace quando aplicável) e são somente leitura. */
@@ -363,11 +368,12 @@ export async function discoverCapabilityNeeds(params: {
       };
       nextAction = authority.status === "contratacao_autorizada"
         ? {
-            kind: "review_commercial_terms",
+            kind: "open_commercial_details",
             actionDomain: "agent_enablement",
             requiresHumanConfirmation: true,
             marketplaceItemId: best.marketplaceItem.id,
-            path: MARKETPLACE_PATH,
+            workspaceId,
+            path: commercialDetailsPath(best.marketplaceItem.id, workspaceId),
           }
         : {
             kind: "request_approval",
@@ -375,6 +381,9 @@ export async function discoverCapabilityNeeds(params: {
             enabled: false,
             reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED",
             requiredAuthority: SUBSCRIBE_SCOPE,
+            marketplaceItemId: best.marketplaceItem.id,
+            workspaceId,
+            detailsPath: commercialDetailsPath(best.marketplaceItem.id, workspaceId),
           };
     } else if (best.state === "habilitado") {
       nextAction = { kind: "request_work", actionDomain: "agent_work", enabled: false, reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" };

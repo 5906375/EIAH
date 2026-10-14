@@ -468,7 +468,8 @@ describe("AUTHZ-SCOPE-1: autoridade comercial de contratação de agentes", () =
     // o titular vê a ação de revisão; quem só consulta não
     const seen = await api.get("holder", "/api/agents/capabilities/discover?domain=marketing&capability=campaign");
     assert.equal(seen.body.item.authority.status, "contratacao_autorizada");
-    assert.equal(seen.body.item.nextAction.kind, "review_commercial_terms");
+    assert.equal(seen.body.item.nextAction.kind, "open_commercial_details");
+    assert.equal(seen.body.item.nextAction.path, `/self-service?marketplaceItem=${itemIds.mkt}&workspaceId=${ids.wA}`);
 
     // revogação: valida imediatamente
     const designation = (await api.get("grantor", "/api/commercial-authority/designations")).body.designations.find((entry: any) => entry.beneficiaryUserId === users.holder && !entry.revokedAt);
@@ -820,5 +821,185 @@ describe("AUTHZ-SCOPE-1: autoridade comercial de contratação de agentes", () =
     const all = JSON.stringify(await prismaGlobal.guardrailAuditLedger.findMany({ where: { tenantId: ids.tA } }));
     assert.equal(all.includes("SECRETLIKE"), false);
     assert.equal(/password|senha|jwt|eyJ[A-Za-z0-9_-]{20,}/i.test(all), false);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// P10 — continuidade conversacional e jornada comercial: HTTP + PostgreSQL reais, dados sintéticos descartáveis.
+// Interpretação estruturada do turno (papéis + contexto do caso), sem LLM. Nenhuma contratação, cobrança, campanha,
+// publicação ou integração externa: o que se afirma é, justamente, que NADA disso acontece.
+// ---------------------------------------------------------------------------------------------
+
+describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT → autoridade → consulta", () => {
+  const sx = `${suffix}-p10`;
+  const ids = { t: `tenant-p10-${sx}`, p: `tenant-p10-pub-${sx}`, w: `workspace-p10-${sx}` };
+  const users = { founder: `user-p10-founder-${sx}`, a: `user-p10-a-${sx}`, b: `user-p10-b-${sx}` };
+  const tokens = { founder: `tok-p10-founder-${sx}`, a: `tok-p10-a-${sx}`, b: `tok-p10-b-${sx}` };
+  let caseId = "";
+  let mktItemId = "";
+  let setupBaseline = { assignments: 0, runs: 0 };
+  const turn = (who: keyof typeof tokens, message: string, over: Record<string, unknown> = {}) =>
+    request.post("/api/imob/chat/resolve-turn").set("Authorization", `Bearer ${tokens[who]}`).send({ message, caseId, ...over });
+  const textOf = (res: { body: any }) => String(res.body?.data?.presentation?.text ?? res.body?.data?.text ?? "");
+  const sideEffects = async () => ({
+    cases: await prismaGlobal.imobCase.count({ where: { tenantId: ids.t } }),
+    properties: await prismaGlobal.imobProperty.count({ where: { tenantId: ids.t } }),
+    owners: await prismaGlobal.imobOwner.count({ where: { tenantId: ids.t } }),
+    delegations: await prismaGlobal.delegationPolicy.count({ where: { delegateeId: ids.t } }),
+    policies: await prismaGlobal.tenantActionPolicy.count({ where: { tenantId: ids.t, actionName: { equals: "MKT", mode: "insensitive" } } }),
+    assignments: await prismaGlobal.workspaceAgentAssignment.count({ where: { tenantId: ids.t } }),
+    runs: await prismaGlobal.run.count({ where: { tenantId: ids.t } }),
+    enablements: Number(((await prismaGlobal.$queryRawUnsafe("SELECT COUNT(*)::bigint AS n FROM eiah_agent_commercial_enablements WHERE tenant_id = $1", ids.t)) as Array<{ n: bigint }>)[0]?.n ?? 0),
+  });
+
+  before(async () => {
+    await prismaGlobal.tenant.createMany({ data: [ids.t, ids.p].map((id) => ({ id, name: id })) });
+    await prismaGlobal.workspace.create({ data: { id: ids.w, tenantId: ids.t, name: ids.w } });
+    await prismaGlobal.user.createMany({ data: Object.entries(users).map(([name, id]) => ({ id, tenantId: ids.t, email: `${name}-${sx}@example.com`, displayName: `P10 ${name}` })) });
+    await prismaGlobal.apiToken.createMany({ data: Object.entries(users).map(([name, id]) => ({ token: tokens[name as keyof typeof tokens], tenantId: ids.t, workspaceId: ids.w, userId: id, description: `p10-${name}`, revoked: false })) });
+    await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.founder, roleKey: "founder" });
+    await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.a, roleKey: "corretor" });
+    await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.b, roleKey: "gestor" });
+    await ensureVerticalAccessStore(prismaGlobal);
+    await prismaGlobal.$executeRaw`
+      INSERT INTO vertical_access_approvals (id, tenant_id, workspace_id, vertical, status, source, decided_by, decided_at)
+      VALUES (${`approval-${sx}`}, ${ids.t}, ${ids.w}, 'IMOB', 'aprovado', 'request', 'admin:test@example.com', NOW())`;
+    const activation = await request.post("/api/marketplace/installations/activate").set("Authorization", `Bearer ${tokens.founder}`).send({ product: "IMOB" });
+    assert.equal(activation.status, 200);
+    const mkt = await prismaGlobal.marketplaceItem.create({ data: { type: "agent", name: "MKT", version: "1", isPublic: true, publisherId: ids.p, trustScore: 80 } });
+    mktItemId = mkt.id;
+    await ensureCommercialAuthorityStore(prismaGlobal);
+    await ensureAgentEnablementStore(prismaGlobal);
+    // B é titular por FIXTURE sintética (não é o bootstrap real); A não tem designação alguma
+    await prismaGlobal.$executeRawUnsafe(
+      `INSERT INTO eiah_commercial_authority_designations
+         (id, tenant_id, workspace_id, beneficiary_user_id, scope, authority_role, limits, granted_by_user_id, evidence_ref, valid_until)
+       VALUES ($1, $2, $3, $4, 'marketplace.subscribe', 'holder', $5::jsonb, 'synthetic-fixture', 'SYNTHETIC-FIXTURE-P10', NOW() + interval '7 days')`,
+      `cad_p10_holder_${sx}`, ids.t, ids.w, users.b, JSON.stringify({ allowedScopes: ["read", "execute"], maxValidityDays: 30 }),
+    );
+    const owner = await prismaGlobal.imobOwner.create({ data: { tenantId: ids.t, workspaceId: ids.w, name: "Marta (sintética)", personType: "person", status: "active", email: "marta@teste-local.invalid" } });
+    const property = await prismaGlobal.imobProperty.create({ data: { tenantId: ids.t, workspaceId: ids.w, ownerId: owner.id, propertyType: "apartamento", goal: "venda", address: "Rua das Acácias, 120 (sintético)", city: "Curitiba", neighborhood: "Batel", bedrooms: 3, bathrooms: 2, areaM2: 98, garageSpots: 2, askingPriceCents: 85000000, description: "sintético", status: "active" } });
+    const created = await prismaGlobal.imobCase.create({ data: { tenantId: ids.t, workspaceId: ids.w, flow: "listing.activate", stage: "listing", status: "running", ownerResponsible: "Ana (A)", nextStep: "ativar anúncio do imóvel", ownerId: owner.id, propertyId: property.id, blockers: [], pendingItems: [] } });
+    caseId = created.id;
+    const base = await sideEffects();
+    setupBaseline = { assignments: base.assignments, runs: base.runs };
+  });
+
+  after(async () => {
+    await prismaGlobal.$executeRawUnsafe("DELETE FROM eiah_agent_commercial_enablements WHERE tenant_id = $1", ids.t).catch(() => undefined);
+    await prismaGlobal.$executeRawUnsafe("DELETE FROM eiah_commercial_authority_designations WHERE tenant_id = $1", ids.t).catch(() => undefined);
+    await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+    await prismaGlobal.imobCase.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+    await prismaGlobal.imobProperty.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+    await prismaGlobal.imobOwner.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+    await prismaGlobal.marketplaceItem.deleteMany({ where: { publisherId: ids.p } }).catch(() => undefined);
+    await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+  });
+
+  const needSentences = [
+    "Quero divulgar este apartamento do Batel.",
+    "Precisamos preparar uma campanha para esse imóvel.",
+    "O Marketing pode ajudar a anunciar essa unidade?",
+  ];
+
+  test("necessidade de divulgação reconhecida SEM frase mágica: o MKT aparece no contexto do caso, com a autoridade de cada pessoa", async () => {
+    for (const message of needSentences) {
+      const asA = await turn("a", message);
+      assert.equal(asA.status, 200, message);
+      assert.equal(asA.body.data.action, "crm.case.transversal.request_capability", message);
+      const cardA = asA.body.data.presentation.widget.transversalCapabilities?.[0];
+      assert.equal(cardA?.provider?.agentId, "MKT", message);
+      assert.equal(cardA.need.domain, "marketing");
+      assert.equal(cardA.authority.status, "somente_consulta", "A não tem autoridade comercial");
+      assert.equal(cardA.nextAction.kind, "request_approval", "sem CTA de contratar/assinar/habilitar");
+      assert.equal(cardA.nextAction.enabled, false);
+      assert.match(textOf(asA), /ainda não foi contratado nem ativado/);
+      assert.match(textOf(asA), /Nenhum cadastro novo será aberto/);
+      // B (titular fixture) vê o mesmo MKT com o caminho de detalhes comerciais; nada foi contratado
+      const asB = await turn("b", message);
+      const cardB = asB.body.data.presentation.widget.transversalCapabilities?.[0];
+      assert.equal(cardB.authority.status, "contratacao_autorizada");
+      assert.equal(cardB.nextAction.kind, "open_commercial_details");
+      assert.equal(cardB.nextAction.marketplaceItemId, mktItemId, "identifica o MKT, e não o catálogo de verticais");
+      assert.equal(cardB.nextAction.workspaceId, ids.w);
+      assert.equal(cardB.nextAction.path, `/self-service?marketplaceItem=${mktItemId}&workspaceId=${ids.w}`);
+      assert.equal(cardB.state, "habilitavel", "habilitável não é habilitado");
+    }
+  });
+
+  test("'Isso já contratou o Marketing?' é consulta de ESTADO da contratação de agente, nunca contrato imobiliário", async () => {
+    const before = await sideEffects();
+    for (const who of ["a", "b"] as const) {
+      const res = await turn(who, "Isso já contratou o Marketing?");
+      assert.equal(res.status, 200);
+      assert.equal(res.body.data.action, "crm.case.transversal.agent_engagement");
+      assert.match(textOf(res), /^Ainda não\./);
+      assert.doesNotMatch(textOf(res), /contrato de (locação|compra|venda)|minuta|cláusula/i);
+      // nenhum fluxo operacional (contrato/cadastro) foi aberto: sem estado operacional, sem ação pendente, sem formulário
+      assert.equal(res.body.data.conversationState.operational ?? null, null);
+      assert.equal(res.body.data.presentation.widget.kind, "case_summary");
+      assert.equal(res.body.data.presentation.form ?? null, null);
+      assert.deepEqual(res.body.data.presentation.blocks ?? [], []);
+      assert.equal(res.body.data.presentation.widget.transversalCapabilities[0].state, "habilitavel");
+    }
+    assert.deepEqual(await sideEffects(), before, "perguntar não contrata nem cadastra nada");
+  });
+
+  test("'Qual o status desse caso?' com e sem artigo é o mesmo pedido de status do caso (não é interceptado como agente)", async () => {
+    const [withArticle, without] = [await turn("a", "Qual o status desse caso?"), await turn("a", "Qual status desse caso?")];
+    for (const res of [withArticle, without]) {
+      assert.equal(res.status, 200);
+      assert.doesNotMatch(String(res.body.data.action), /transversal/);
+    }
+    assert.equal(withArticle.body.data.action, without.body.data.action, "variação equivalente => mesmo roteamento");
+    assert.match(textOf(withArticle), /Batel|anúncio|ativar|Etapa|Aguardando|andamento/i);
+    assert.doesNotMatch(textOf(withArticle), /Reason|COMMERCIAL_|case\.review|listingTitle/);
+  });
+
+  test("'Preciso convidar alguém?' é ambíguo: pede esclarecimento, não abre formulário nem convida ninguém", async () => {
+    const before = await sideEffects();
+    const res = await turn("a", "Preciso convidar alguém?");
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.action, "crm.turn.clarify_invite_referent");
+    const labels = res.body.data.presentation.card.ctas.map((cta: { label: string }) => cta.label);
+    assert.deepEqual(labels, ["Convidar uma pessoa para o workspace", "Contratar o especialista de Marketing"]);
+    assert.equal(res.body.data.conversationState.operational ?? null, null, "nenhum fluxo operacional aberto");
+    assert.equal(res.body.data.presentation.form ?? null, null);
+    for (const cta of res.body.data.presentation.card.ctas) assert.equal(cta.action, "send_suggested_message", "as opções só reenviam uma mensagem: nada executa");
+    // escolher a 2ª opção cai na contratação de AGENTE (estado/pedido), não em convite de pessoa
+    const next = res.body.data.presentation.card.ctas[1].nextMessage;
+    const chosen = await turn("a", next);
+    assert.equal(chosen.body.data.action, "crm.case.transversal.agent_engagement");
+    assert.deepEqual(await sideEffects(), before);
+  });
+
+  test("fluxos legítimos continuam: cadastrar imóvel e contrato de locação NÃO são interceptados como Marketing", async () => {
+    for (const message of ["cadastrar imóvel", "gerar contrato de locação", "Quero elaborar o contrato de compra e venda do imóvel", "contrato de divulgação do imóvel"]) {
+      const res = await turn("b", message);
+      assert.equal(res.status, 200, message);
+      assert.doesNotMatch(String(res.body.data.action ?? ""), /transversal|clarify_invite/, message);
+    }
+  });
+
+  test("limite sem LLM: frase fora do léxico fechado NÃO é entendida como divulgação (segue o roteamento existente)", async () => {
+    const res = await turn("a", "Será que dá pra fazer esse apê aparecer mais por aí?");
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(String(res.body.data.action ?? ""), /transversal/);
+  });
+
+  test("a autoridade vem do servidor: cabeçalhos/corpo forjados não elevam A; nada foi contratado, cobrado, habilitado ou publicado", async () => {
+    const before = await sideEffects();
+    const forged = await request.post("/api/imob/chat/resolve-turn").set("Authorization", `Bearer ${tokens.a}`).set("x-user-id", users.b)
+      .send({ message: needSentences[0], caseId, authority: "contratacao_autorizada", userId: users.b, canSubscribe: true });
+    assert.equal(forged.body.data.presentation.widget.transversalCapabilities[0].authority.status, "somente_consulta");
+    assert.equal(forged.body.data.presentation.widget.transversalCapabilities[0].nextAction.kind, "request_approval");
+    // A tenta assinar direto pela API: o servidor recusa (P8/P9 intactos)
+    const subscribe = await request.post(`/api/marketplace/${mktItemId}/subscribe`).set("Authorization", `Bearer ${tokens.a}`).send({});
+    assert.ok([401, 403].includes(subscribe.status), `A não pode assinar (status ${subscribe.status})`);
+    assert.deepEqual(await sideEffects(), before);
+    // a ativação do IMOB (setup) pode provisionar o que é dela; o que se garante é que as conversas e a tentativa de A não acrescentam nada
+    assert.deepEqual({ assignments: before.assignments, runs: before.runs, enablements: before.enablements, delegations: before.delegations }, { assignments: setupBaseline.assignments, runs: setupBaseline.runs, enablements: 0, delegations: 0 }, "nenhuma habilitação, delegação, agente de workspace ou campanha novos");
+    const everything = JSON.stringify(await prismaGlobal.guardrailAuditLedger.findMany({ where: { tenantId: ids.t } }));
+    assert.equal(/password|senha|jwt|eyJ[A-Za-z0-9_-]{20,}/i.test(everything), false);
   });
 });

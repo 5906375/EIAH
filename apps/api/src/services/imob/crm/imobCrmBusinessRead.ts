@@ -46,6 +46,49 @@ import {
   type ImobCrmWorkflowState,
 } from "./imobCrmWorkflowMachine";
 
+// P10-F: linguagem para o usuário. Identificadores técnicos (campos, etapas do fluxo, códigos de motivo) continuam em
+// `presentation.workflow` e nos metadados para diagnóstico e auditoria, mas não aparecem como texto de leitura.
+const PENDING_FIELD_LABELS: Readonly<Record<string, string>> = {
+  listingTitle: "título do anúncio",
+  publicationGoal: "objetivo da divulgação",
+  publicationChannels: "canais de divulgação",
+  askingPrice: "valor pedido",
+  propertyPrice: "valor do imóvel",
+  leadPhone: "telefone do lead",
+  budgetMax: "orçamento máximo",
+  dealReference: "referência do negócio",
+  reviewStage: "etapa da revisão",
+  blockers: "bloqueios",
+  ownerName: "nome do proprietário",
+  propertyAddress: "endereço do imóvel",
+};
+
+const WORKFLOW_STATE_LABELS: Readonly<Record<string, string>> = {
+  "property.create": "cadastro de imóvel",
+  "property.market_scan": "varredura de mercado",
+  "property.market_scan.selection": "seleção na varredura de mercado",
+  "owner.create": "cadastro de proprietário",
+  "owner.dedupe_review": "revisão de duplicidade do proprietário",
+  "owner.update": "atualização de proprietário",
+  "lead.qualify": "qualificação do lead",
+  "case.review": "revisão do caso",
+  "visit.schedule": "agendamento de visita",
+  "pilot.status": "acompanhamento do piloto",
+  "documents.review": "revisão documental",
+};
+
+export function humanizePendingItem(item: string): string {
+  return PENDING_FIELD_LABELS[item] ?? item;
+}
+
+export function humanizePendingItems(items: readonly string[]): string[] {
+  return items.map(humanizePendingItem);
+}
+
+export function humanizeWorkflowState(state: string): string {
+  return WORKFLOW_STATE_LABELS[state] ?? "em andamento";
+}
+
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
 type BusinessReadCaseRecord = {
   id: string;
@@ -2523,9 +2566,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         lines: [
           params.caseBrief.summary,
           params.primaryBlocker ? `Bloqueio principal: ${params.primaryBlocker}` : null,
-          params.primaryPending ? `Pendência dominante: ${params.primaryPending}` : null,
+          params.primaryPending ? `Pendência dominante: ${humanizePendingItem(params.primaryPending)}` : null,
           params.caseBrief.waitingOn ? `WaitingOn: ${params.caseBrief.waitingOn}` : null,
-          params.caseBrief.nextActionOwner ? `Owner da ação: ${params.caseBrief.nextActionOwner}` : null,
+          params.caseBrief.nextActionOwner ? `Responsável pela ação: ${params.caseBrief.nextActionOwner}` : null,
           `Próximo passo principal: ${params.primaryNextStep}`,
         ].filter(Boolean),
       },
@@ -2563,7 +2606,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
           params.caseBrief.phaseObjective ? `Objetivo da fase: ${params.caseBrief.phaseObjective}` : null,
           params.caseBrief.primaryRisk ? `Risco principal: ${params.caseBrief.primaryRisk}` : null,
           params.caseBrief.waitingOn ? `WaitingOn: ${params.caseBrief.waitingOn}` : null,
-          params.caseBrief.nextActionOwner ? `Owner da ação: ${params.caseBrief.nextActionOwner}` : null,
+          params.caseBrief.nextActionOwner ? `Responsável pela ação: ${params.caseBrief.nextActionOwner}` : null,
           params.caseBrief.nextSafeStep ? `Próximo passo seguro: ${params.caseBrief.nextSafeStep}` : null,
         ].filter(Boolean),
       },
@@ -2996,10 +3039,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       pipeline_status: [
         ...baseLines,
         humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
-        primaryPending ? `Pendência principal: ${primaryPending}.` : "Pendência principal: nada crítico registrado.",
+        primaryPending ? `Pendência principal: ${humanizePendingItem(primaryPending)}.` : "Pendência principal: nada crítico registrado.",
         primaryBlocker ? `Bloqueio atual: ${primaryBlocker}.` : "Bloqueio atual: nenhum bloqueio comercial registrado.",
-        waitingOn ? `Waiting on: ${waitingOn}.` : null,
-        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
+        waitingOn ? `Aguardando: ${waitingOn}.` : null,
+        nextActionOwner ? `Responsável pela ação: ${nextActionOwner}.` : null,
         proofSummaryLine,
         shouldExposeSpecialistSupport ? (primarySpecialist?.text ?? null) : null,
         `Próximo movimento: ${nextStep}.`,
@@ -3008,7 +3051,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         primaryBlocker
           ? `Bloqueio ativo: ${primaryBlocker.replace(/\.$/, "").toLowerCase()}.`
           : "Nenhum bloqueio comercial registrado.",
-        primaryPending ? `Pendência crítica: ${primaryPending}.` : null,
+        primaryPending ? `Pendência crítica: ${humanizePendingItem(primaryPending)}.` : null,
         pendingItems.slice(1, 3).length > 0
           ? `Também faltam: ${pendingItems.slice(1, 3).join(", ")}${pendingItems.length > 3 ? " e outros" : ""}.`
           : null,
@@ -3020,8 +3063,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
         `Melhor ação agora: ${actionLabel}.`,
         primaryBlocker ? `Motivo: existe bloqueio ativo (${primaryBlocker}).` : primaryPending ? `Motivo: existe pendência aberta (${primaryPending}).` : "Motivo: é o movimento com maior chance de avançar este atendimento.",
-        waitingOn ? `Waiting on: ${waitingOn}.` : null,
-        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
+        waitingOn ? `Aguardando: ${waitingOn}.` : null,
+        nextActionOwner ? `Responsável pela ação: ${nextActionOwner}.` : null,
         proofSummaryLine,
         `Como seguir: ${nextStep}.`,
       ],
@@ -3146,8 +3189,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
               subject,
               `Fase: ${humanPhaseLabel}`,
               primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
-              primaryPending ? `Pendência dominante: ${primaryPending}` : null,
-              nextActionOwner ? `Owner da ação: ${nextActionOwner}` : null,
+              primaryPending ? `Pendência dominante: ${humanizePendingItem(primaryPending)}` : null,
+              nextActionOwner ? `Responsável pela ação: ${nextActionOwner}` : null,
               proofSummaryLine,
               `Próximo movimento: ${primaryNextStep}`,
             ]
@@ -3155,12 +3198,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
               subject,
               `Fase: ${humanPhaseLabel}`,
               `Momento: ${stageLabel}`,
-              `Pendências: ${helpers.formatImobPendingList(pendingItems)}`,
+              `Pendências: ${helpers.formatImobPendingList(humanizePendingItems(pendingItems))}`,
               primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
-              waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
-              nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
-              `Workflow: ${primaryWorkflowState}.`,
-              workflowReasonCodes.length > 0 ? `Reason codes: ${workflowReasonCodes.join(", ")}` : null,
+              waitingOn ? `Aguardando: ${waitingOn}` : "Aguardando: não identificado",
+              nextActionOwner ? `Responsável pela ação: ${nextActionOwner}` : "Responsável pela ação: não identificado",
+              `Etapa do fluxo: ${humanizeWorkflowState(primaryWorkflowState)}.`,
               shouldExposePilotReadOnly && pilotControlState ? `Piloto operacional: ${pilotControlState.summary}` : null,
               shouldExposePilotReadOnly && pilotControlState ? `Próxima ação governada: ${pilotControlState.nextHumanAction}` : null,
               proofSummaryLine,

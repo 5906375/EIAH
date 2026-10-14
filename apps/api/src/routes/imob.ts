@@ -723,10 +723,11 @@ async function discoverImobTransversalCapabilitiesForTurn(params: {
   tenantId: string;
   workspaceId: string;
   userId?: string | null;
+  turnNeeds?: ReadonlyArray<{ domain: string; capability: string; label?: string }> | null;
   caseContext: unknown;
   operational: unknown;
 }) {
-  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational });
+  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational, turnNeeds: params.turnNeeds });
   if (needs.length === 0) return [];
   return discoverCapabilityNeeds({
     needs,

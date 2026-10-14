@@ -1108,6 +1108,11 @@ export async function apiListMarketplace(params?: {
   return http(`/marketplace${qs}`, { method: "GET" });
 }
 
+/** Autoridade comercial da pessoa atual (servidor). Só leitura; a API reaplica a autoridade em toda contratação. */
+export async function apiGetCommercialAuthorityStatus(): Promise<unknown> {
+  return http("/commercial-authority/status");
+}
+
 export async function apiSubscribeMarketplace(
   id: string,
   body?: {
@@ -2695,8 +2700,8 @@ export type ImobTransversalCapability = {
   };
   enablement: { marketplaceItemId: string; visibility: "public" | "own_tenant"; conditions: string[] } | null;
   nextAction:
-    | { kind: "review_commercial_terms"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }
-    | { kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: "marketplace.subscribe" }
+    | { kind: "open_commercial_details"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; workspaceId: string; path: string }
+    | { kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: "marketplace.subscribe"; marketplaceItemId: string; workspaceId: string; detailsPath: string }
     | { kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }
     | { kind: "none"; actionDomain: null };
 };
