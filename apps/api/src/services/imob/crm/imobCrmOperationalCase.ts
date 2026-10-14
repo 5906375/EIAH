@@ -4,6 +4,7 @@ import {
   ImobOperationalResolverParams,
   OperationalResolution,
   ResolverHelpers,
+  scopedImobCases,
 } from "./imobCrmOperationalResolverShared";
 
 function extractCaseIdFromMessage(message: string): string | null {
@@ -78,11 +79,12 @@ export async function resolveImobCaseOperationalConsult(
       workspaceId: params.workspaceId,
       caseId: params.caseId,
       threadState: params.threadState,
+      canOperateStage: params.canOperateStage,
     });
   }
   if (context.businessReadIntent) {
     const item = params.caseId
-      ? await params.prisma.imobCase.findFirst({
+      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
           include: {
             owner: { select: { id: true, name: true } },
@@ -91,7 +93,7 @@ export async function resolveImobCaseOperationalConsult(
             _count: { select: { events: true } },
           },
         })
-      : await params.prisma.imobCase.findFirst({
+      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
           orderBy: { updatedAt: "desc" },
           include: {
@@ -190,7 +192,7 @@ export async function resolveImobCaseOperationalConsult(
   }
 
   const item = scopedCaseId
-    ? await params.prisma.imobCase.findFirst({
+    ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
         where: { id: scopedCaseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
         include: {
           owner: { select: { id: true, name: true } },
@@ -199,7 +201,7 @@ export async function resolveImobCaseOperationalConsult(
           _count: { select: { events: true } },
         },
       })
-    : await params.prisma.imobCase.findFirst({
+    : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
         where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
         orderBy: { updatedAt: "desc" },
         include: {
