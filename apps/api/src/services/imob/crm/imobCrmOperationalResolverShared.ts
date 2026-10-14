@@ -1,4 +1,122 @@
 export type JsonObject = Record<string, unknown>;
+
+/** Permissão de etapa do IMOB (`canWorkspaceOperateImobStage` já aplicada às permissões da pessoa do turno). */
+export type ImobStageGate = (stage: string | null | undefined) => boolean;
+
+/**
+ * Leitor de casos com a permissão de etapa aplicada (P12). Sem gate, delega ao Prisma como antes. Com gate:
+ * - caso por id: devolve o caso só se a etapa for permitida (senão null, como "não encontrado": sem dado e sem oráculo);
+ * - seleção implícita ("o mais recente", com `orderBy`): o mais recente ENTRE os de etapa permitida (janela de 25); nenhum => null.
+ * Nunca devolve dados de um caso cuja etapa a pessoa não opera.
+ */
+export function scopedImobCases(prisma: any, canOperateStage?: ImobStageGate) {
+  return {
+    async findFirst(args: any): Promise<any> {
+      if (!canOperateStage) return prisma.imobCase.findFirst(args);
+      if (args?.orderBy) {
+        const candidates = await prisma.imobCase.findMany({ ...args, take: 25 });
+        return candidates.find((candidate: any) => canOperateStage(candidate?.stage)) ?? null;
+      }
+      const found = await prisma.imobCase.findFirst(args);
+      return found && canOperateStage(found.stage) ? found : null;
+    },
+  };
+}
+
+/**
+ * Escopo de etapa para as demais entidades do IMOB lidas pelos resolvedores (P12.2). A "etapa" de cada entidade é o campo
+ * que o domínio já usa para ela: caso e lead => `stage`; owner e imóvel => `status`. A decisão é a mesma `canOperateStage`
+ * (permissões `imob.stage.*` da pessoa do turno). Só leituras (`findFirst`/`findMany`/`findUnique`) são filtradas; nada
+ * de etapa não permitida é devolvido, seja por id, por critério ou por seleção implícita ("o mais recente").
+ */
+const IMOB_STAGE_FIELD_BY_DELEGATE: Readonly<Record<string, string>> = {
+  imobCase: "stage",
+  imobOwner: "status",
+  imobProperty: "status",
+  imobLead: "stage",
+};
+const IMOB_STAGE_SCAN_WINDOW = 25;
+// Etapa improvável: se o gate a permite, a pessoa opera todas as etapas (curinga) e nada precisa ser filtrado.
+const IMOB_STAGE_UNRESTRICTED_PROBE = "__p12_unrestricted_probe__";
+
+function withStageField(args: any, field: string) {
+  if (args?.select && typeof args.select === "object" && !args.select[field]) {
+    return { args: { ...args, select: { ...args.select, [field]: true } }, added: true };
+  }
+  return { args, added: false };
+}
+
+function stripStageField(row: any, field: string, added: boolean) {
+  if (!added || !row || typeof row !== "object") return row;
+  const { [field]: _omitted, ...rest } = row;
+  return rest;
+}
+
+function scopedDelegate(delegate: any, field: string, gate: ImobStageGate) {
+  const allowed = (row: any) => gate(row?.[field]);
+  return new Proxy(delegate, {
+    get(target, prop) {
+      if (prop === "findFirst") {
+        return async (args: any) => {
+          const { args: scoped, added } = withStageField(args, field);
+          if (typeof target.findMany === "function") {
+            const rows = await target.findMany({ ...scoped, take: IMOB_STAGE_SCAN_WINDOW });
+            const found = rows.find(allowed);
+            return found ? stripStageField(found, field, added) : null;
+          }
+          const found = await target.findFirst(scoped);
+          return found && allowed(found) ? stripStageField(found, field, added) : null;
+        };
+      }
+      if (prop === "findMany") {
+        return async (args: any) => {
+          const { args: scoped, added } = withStageField(args, field);
+          const rows = await target.findMany(scoped);
+          return rows.filter(allowed).map((row: any) => stripStageField(row, field, added));
+        };
+      }
+      if (prop === "findUnique") {
+        return async (args: any) => {
+          const { args: scoped, added } = withStageField(args, field);
+          const found = await target.findUnique(scoped);
+          return found && allowed(found) ? stripStageField(found, field, added) : null;
+        };
+      }
+      const value = Reflect.get(target, prop);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
+export function scopeImobPrismaToStage<T>(prisma: T, canOperateStage?: ImobStageGate): T {
+  if (!prisma || typeof prisma !== "object" || typeof canOperateStage !== "function") return prisma;
+  if (canOperateStage(IMOB_STAGE_UNRESTRICTED_PROBE)) return prisma;
+  const delegates = new Map<string, unknown>();
+  return new Proxy(prisma as object, {
+    get(target, prop) {
+      if (typeof prop === "string" && prop in IMOB_STAGE_FIELD_BY_DELEGATE) {
+        if (!delegates.has(prop)) {
+          const delegate = Reflect.get(target, prop);
+          delegates.set(prop, delegate ? scopedDelegate(delegate, IMOB_STAGE_FIELD_BY_DELEGATE[prop], canOperateStage) : delegate);
+        }
+        return delegates.get(prop);
+      }
+      if (prop === "$transaction") {
+        return (work: unknown, options?: unknown) => (typeof work === "function"
+          ? (target as any).$transaction((tx: unknown) => (work as (tx: unknown) => unknown)(scopeImobPrismaToStage(tx, canOperateStage)), options)
+          : (target as any).$transaction(work, options));
+      }
+      const value = Reflect.get(target, prop);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as T;
+}
+
+/** Aplica o escopo de etapa ao `prisma` dos parâmetros do resolvedor; sem gate (ou com curinga) devolve os mesmos parâmetros. */
+export function withStageScopedPrisma<T extends { prisma?: unknown; canOperateStage?: ImobStageGate }>(params: T): T {
+  const scoped = scopeImobPrismaToStage(params.prisma, params.canOperateStage);
+  return scoped === params.prisma ? params : { ...params, prisma: scoped };
+}
 export type OperationalResolution = Record<string, unknown>;
 export type LookupCondition = Partial<Record<"document" | "phone" | "email" | "name", string>>;
 export type ThreadStateLike = Record<string, unknown> | null | undefined;
@@ -96,6 +214,8 @@ export type ImobOperationalResolverParams = {
   message: string;
   caseId?: string | null;
   threadState: ThreadStateLike;
+  /** P12: permissão de ETAPA da pessoa do turno; toda leitura de caso (explícita ou "o mais recente") só vale em etapa permitida. */
+  canOperateStage?: ImobStageGate;
 };
 
 export type ResolverHelpers = {
