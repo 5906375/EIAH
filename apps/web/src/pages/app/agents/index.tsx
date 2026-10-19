@@ -8,6 +8,7 @@ import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
 import FrontDoorSessionHeader from "../../../components/agents/FrontDoorSessionHeader";
+import LogisticaFrontDoorContextPanel from "../../../features/logistica/LogisticaFrontDoorContextPanel";
 import {
   buildChatRouteEntryTelemetry,
   emitChatRouteTelemetry,
@@ -1025,6 +1026,7 @@ const AgentsPage: React.FC = () => {
       <div className="glass-panel p-8">
         <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
           <div className="space-y-2">
+            {activeDomain === "logistica" || launcherDomainHint === "logistica" ? <LogisticaFrontDoorContextPanel /> : null}
             <div className="mt-6" id="chat-agent-launcher">
               <ChatAgentLauncher
                 historyScope="conversation"

@@ -65,7 +65,7 @@ test("global menu has one canonical chat across roles, installations and PRE_DUI
             primaryNavigation: [{ surfaceId: "imob_chat", path: "/app/imob/chat", label: "IMOB" }] },
         }, enabled);
         const expected = ["/app/runs", "/app/chat",
-          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace",
+          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace", "/app/logistica",
           ...(enabled ? ["/app/logistica/pre-duimp"] : []), "/self-service", "/profile"];
         assert.deepEqual(navigationLinks(html), expected);
         assert.equal((html.match(/aria-label="Chat"/g) ?? []).length, 1);

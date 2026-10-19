@@ -14,6 +14,7 @@ import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
 import PreDuimpPage from "./pages/app/logistica/pre-duimp";
+import LogisticaCockpitPage from "./pages/app/logistica/cockpit";
 import { EiahBrandMark } from "./components/brand/EiahBrandMark";
 import {
   getPreDuimpDirectAccessRedirect,
@@ -67,6 +68,7 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/chat", label: "Chat" },
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
+  { to: "/app/logistica", label: "Logística & Comex" },
   { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
@@ -173,19 +175,19 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     if (!session.token) return;
     let active = true;
     const contextRequest = beginSessionContextRequest();
-    const targetDomain =
-      location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
-        ? "imob"
-        : session.activeDomain === "imob"
-          ? "imob"
-          : undefined;
+    const explicitDomain = new URLSearchParams(location.search).get("domain");
+    const targetDomain = explicitDomain === "logistica" ? "logistica"
+      : explicitDomain === "core" ? "core"
+      : location.pathname === "/app/logistica" ? "logistica"
+      : explicitDomain === "imob" || location.pathname.startsWith("/app/imob") ? "imob"
+      : session.activeDomain;
     updateSession({ preDuimpAccess: { status: "loading" } });
     void loadPreDuimpSessionContext((signal) => apiGetSessionContext(targetDomain, signal))
       .then(({ context: ctx, access, error }) => {
         if (!active) return;
         if (!contextRequest.isCurrent()) return;
         if (!ctx?.ok || !ctx.data) {
-          updateSession({ preDuimpAccess: access });
+          updateSession({ preDuimpAccess: access, ...(targetDomain === "logistica" ? { logisticaAccess: null, activeDomain: "core" as const, availableDomains: session.availableDomains?.filter((domain) => domain !== "logistica"), verticals: session.verticals?.map((vertical) => vertical.verticalId === "LOGISTICA" ? { ...vertical, enabled: false, frontDoorSurface: null } : vertical) } : {}) });
           if (
             targetDomain === "imob" &&
             error instanceof ApiError &&
@@ -213,6 +215,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           workspaceId: ctx.data.workspaceId,
           userId: ctx.data.userId ?? undefined,
           activeDomain: ctx.data.activeDomain,
+          logisticaAccess: ctx.data.capabilities?.logisticaContext ?? null,
           availableDomains: ctx.data.availableDomains,
           entitlements: ctx.data.entitlements,
           installedProducts: (ctx.data.productInstallations ?? []).map((entry) => entry.product),
@@ -423,6 +426,10 @@ function AppRoutes() {
             </RequireAuth>
           </Layout>
         }
+      />
+      <Route
+        path="/app/logistica"
+        element={<Layout><RequireAuth><LogisticaCockpitPage /></RequireAuth></Layout>}
       />
       <Route
         path="/app/logistica/pre-duimp"

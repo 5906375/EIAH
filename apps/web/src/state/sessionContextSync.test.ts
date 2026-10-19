@@ -202,3 +202,26 @@ test("callback canônico de RequireAuth descarta bootstrap atrasado após sync m
   assert.equal(isImobSurfaceAvailable(getSession()), false);
   cleanup();
 });
+
+test("contexto logístico vem do servidor e falha posterior remove o acesso local", async () => {
+  const capability = { allowed: true, mode: "context_only" as const, usage: "read_only" as const, executionAllowed: false as const, externalTransmissionAllowed: false as const, reason: "available" as const };
+  await syncSessionContext("logistica", async () => ({ ok: true, data: {
+    ...context, activeDomain: "logistica", availableDomains: ["core", "logistica"], capabilities: { logisticaContext: capability },
+  } }));
+  assert.equal(getSession().activeDomain, "logistica");
+  assert.deepEqual(getSession().logisticaAccess, capability);
+  await assert.rejects(syncSessionContext("logistica", async () => { throw new Error("revoked"); }));
+  assert.equal(getSession().logisticaAccess, null);
+  assert.equal(getSession().activeDomain, "core");
+  assert.equal(getSession().availableDomains?.includes("logistica"), false);
+});
+
+test("troca de identidade invalida a projeção logística antes de qualquer nova requisição", () => {
+  updateSession({ activeDomain: "logistica", availableDomains: ["core", "logistica"], logisticaAccess: {
+    allowed: true, mode: "context_only", usage: "full", reason: "available", executionAllowed: false, externalTransmissionAllowed: false,
+  } });
+  updateSession({ workspaceId: "other-workspace" });
+  assert.equal(getSession().logisticaAccess, null);
+  assert.equal(getSession().activeDomain, "core");
+  assert.equal(getSession().availableDomains?.includes("logistica"), false);
+});
