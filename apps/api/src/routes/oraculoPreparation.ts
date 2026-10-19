@@ -23,6 +23,14 @@ oraculoPreparationRouter.use(base, asyncHandler(async (req: TenantAwareRequest, 
   res.locals.preparationWriteAllowed = writeAllowed;
   return next();
 }));
+// Identificadores vindos do cliente são só ponteiros: formato inválido nunca chega ao banco (evita 500) e responde como inexistente.
+const OPAQUE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+for (const name of ["id", "documentId"] as const) {
+  oraculoPreparationRouter.param(name, (_req, res, next, value) => {
+    if (!OPAQUE_ID.test(String(value))) return res.status(404).json({ ok: false, error: { code: "NOT_FOUND" } });
+    return next();
+  });
+}
 function repository(req: TenantAwareRequest) {
   return new OraculoPreparationRepository(req.prisma!, req.authContext!);
 }
