@@ -1,6 +1,7 @@
 import { readVerifiedEnablementKeys, type ActiveDelegationRef } from "./agentEnablement";
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { listRegisteredActions } from "@eiah/core";
+import { AGENT_CAPABILITY_DECLARATIONS, listCapabilityTurnVocabulary, type AgentCapabilityDeclaration } from "./agentCapabilityVocabulary";
 import {
   applyChatRuntimeGateToParticipation,
   buildChatRuntimeSnapshot,
@@ -23,6 +24,10 @@ import {
   pitchProfileThinking,
   riskAnalyzerProfile,
 } from "@eiah/core";
+
+// API pública preservada: estes símbolos continuam exportados por este módulo.
+export { listCapabilityTurnVocabulary };
+export type { AgentCapabilityDeclaration };
 
 /**
  * Estrutura de listagem de agentes com pricing e perfil.
@@ -311,58 +316,8 @@ export function hasCoreAgentProfile(agent: string) {
   return coreProfileForAgent(agent) !== null;
 }
 
-export type AgentCapabilityDeclaration = Readonly<{
-  domain: string;
-  capability: string;
-  label: string;
-  /**
-   * Vocabulário que o próprio agente declara para ser reconhecido na conversa (registro estruturado, não regra de
-   * roteamento): como o agente é chamado (`agentTerms`) e quais necessidades ele cobre (`needTerms`). Termos sem acento e
-   * em minúsculas. Servem só para interpretar o turno; declarar não habilita nada nem substitui a descoberta por servidor.
-   */
-  agentTerms?: readonly string[];
-  needTerms?: readonly string[];
-}>;
 
-/**
- * Declaração ESTRUTURADA das capacidades transversais que um agente oferece a outras verticais (domínio + capacidade).
- * É a chave da descoberta por necessidade estruturada: não depende de texto do usuário nem de lista de expressões.
- * Declarar aqui NÃO habilita nada: a disponibilidade operacional continua vindo do catálogo, da política do workspace,
- * da delegação e do estado de participação (`listAgents`). Chave = identificador normalizado do agente.
- */
-const AGENT_CAPABILITY_DECLARATIONS: Readonly<Record<string, readonly AgentCapabilityDeclaration[]>> = {
-  mkt: [{
-    domain: "marketing",
-    capability: "campaign",
-    label: "Planejamento de campanha de divulgação multicanal",
-    agentTerms: ["marketing", "marketing gps", "mkt"],
-    needTerms: [
-      "divulgar", "divulgue", "divulgando", "divulgacao", "anunciar", "anuncie", "anunciando",
-      "campanha", "campanhas", "promover", "promocao", "publicidade", "propaganda", "impulsionar",
-    ],
-  }],
-};
 
-/** Vocabulário declarado pelos agentes governados, para a interpretação do turno (somente leitura). */
-export function listCapabilityTurnVocabulary(): Array<{
-  agentId: string;
-  domain: string;
-  capability: string;
-  label: string;
-  agentTerms: readonly string[];
-  needTerms: readonly string[];
-}> {
-  return Object.entries(AGENT_CAPABILITY_DECLARATIONS).flatMap(([key, declarations]) =>
-    declarations.map((entry) => ({
-      agentId: CANONICAL_AGENT_BY_KEY.get(key) ?? key,
-      domain: entry.domain,
-      capability: entry.capability,
-      label: entry.label,
-      agentTerms: entry.agentTerms ?? [],
-      needTerms: entry.needTerms ?? [],
-    })),
-  );
-}
 
 export function getAgentCapabilityDeclarations(agentId: string): AgentCapabilityDeclaration[] {
   if (typeof agentId !== "string") return [];

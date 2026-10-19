@@ -248,3 +248,5 @@ apps/api/src/tests/session-context-logistica-access.mock.test.ts
 apps/web/src/pages/app/logistica/cockpit.test.tsx
 apps/web/src/components/agents/logisticaCaseContextEngine.test.ts
 apps/web/src/features/logistica/LogisticaFrontDoorContextPanel.test.tsx
+apps/api/src/tests/imob-turn-engine-no-db-import.test.ts
+apps/api/src/tests/agent-capability-vocabulary.test.ts

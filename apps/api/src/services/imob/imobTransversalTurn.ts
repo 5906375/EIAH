@@ -13,7 +13,7 @@
 // termos, sem tocar neste arquivo. Frases fora desse léxico NÃO são interceptadas: seguem o roteamento existente.
 // Nada aqui lê banco, habilita agente ou decide autoridade: só interpreta o turno.
 
-import { listCapabilityTurnVocabulary } from "../agents";
+import { listCapabilityTurnVocabulary } from "../agentCapabilityVocabulary";
 
 export type TransversalTurnOperation =
   /** Pedir ajuda/divulgação de um imóvel: o resolvedor de capacidades mostra quem pode atender. */
