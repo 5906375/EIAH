@@ -348,7 +348,7 @@ export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
   roleProfile?: RoleProfile | null;
-  activeDomain?: "core" | "imob" | null;
+  activeDomain?: "core" | "imob" | "logistica" | null;
   installedProducts?: string[] | null;
   entitlements?: {
     REAL_ESTATE_CORE?: boolean;
@@ -358,7 +358,7 @@ export type LauncherAccessContext = {
 
 type ResolvedEiahJourneyContract = {
   roleProfile: NonNullable<LauncherAccessContext["roleProfile"]>;
-  activeDomain: "core" | "imob";
+  activeDomain: "core" | "imob" | "logistica";
   frontDoorSurface: string;
   frontDoorLabel: string;
   firstStepLabel: string;
@@ -2136,7 +2136,7 @@ export async function resolveLauncherTurnDecision(params: {
       || isImobOperationalRequest(params.trimmedInput)
     ));
     const action = resolveProposalTurnContinuation({ input: params.trimmedInput, threadState: continuation.threadState,
-      activeDomain: params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange: Boolean(explicitTopicChange) });
+      activeDomain: params.accessContext?.activeDomain === "logistica" ? "core" : params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange: Boolean(explicitTopicChange) });
     if (action) {
       await continuation.consume(action, params.trimmedInput);
       if (action !== "release") return {
@@ -2223,7 +2223,7 @@ export async function resolveLauncherTurnDecision(params: {
     return {
       kind: `vertical_activation_${activationStep.step}`,
       shouldCreateRun: false,
-      content: "Verificando a ativação do IMOB neste workspace.",
+      content: `Verificando a ativação de ${activationStep.verticalId === "log" ? "Logística & Comex" : "IMOB"} neste workspace.`,
       launcherRouteIntent: "imob",
       presentationRouteIntent: "imob",
       eiahMode: "help",

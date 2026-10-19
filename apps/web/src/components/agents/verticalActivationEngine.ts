@@ -28,25 +28,25 @@ export const ACCESS_REQUEST_CANCEL_REPLY = "Agora não";
 
 /** Proposta pendente, congelada no snapshot da mensagem do assistente. */
 export type VerticalActivationSnapshot =
-  | { status: "proposed"; verticalId: "imob"; registryVersion: string }
+  | { status: "proposed"; verticalId: "imob" | "log"; registryVersion: string }
   | {
       status: "activated" | "already_active" | "cancelled" | "failed" | "access_request_proposed" | "access_requested";
-      verticalId: "imob";
+      verticalId: "imob" | "log";
     };
 
 export type VerticalActivationRequest =
-  | { step: "preview"; verticalId: "imob" }
-  | { step: "confirm"; verticalId: "imob"; registryVersion: string }
-  | { step: "cancel"; verticalId: "imob" }
-  | { step: "request_access"; verticalId: "imob" }
-  | { step: "cancel_access_request"; verticalId: "imob" };
+  | { step: "preview"; verticalId: "imob" | "log" }
+  | { step: "confirm"; verticalId: "imob" | "log"; registryVersion: string }
+  | { step: "cancel"; verticalId: "imob" | "log" }
+  | { step: "request_access"; verticalId: "imob" | "log" }
+  | { step: "cancel_access_request"; verticalId: "imob" | "log" };
 
 const normalize = (value: string) =>
   value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[.!]+$/g, "").replace(/\s+/g, " ").trim();
 
 export function isVerticalActivationRequest(input: string) {
   const text = normalize(input);
-  return /\b(ativar|ative|habilitar|habilite|instalar|instale|liberar|libere)\b/.test(text) && /\bimob\b/.test(text) && !text.endsWith("?");
+  return !(/\bimob\b/.test(text) && /\blogistica\b/.test(text)) && /\b(ativar|ative|habilitar|habilite|instalar|instale|liberar|libere)\b/.test(text) && /\b(imob|logistica)\b/.test(text) && !text.endsWith("?");
 }
 
 /** Confirmação explícita: só frases de confirmação de ativação (um "sim" solto não ativa nada). */
@@ -79,14 +79,14 @@ export function resolveVerticalActivationStep(
   pending: VerticalActivationSnapshot | null | undefined,
 ): VerticalActivationRequest | null {
   if (pending?.status === "proposed") {
-    if (isActivationConfirmation(input)) return { step: "confirm", verticalId: pending.verticalId, registryVersion: pending.registryVersion };
+    if (pending.verticalId === "log" ? normalize(input) === "confirmar ativacao de logistica" : isActivationConfirmation(input)) return { step: "confirm", verticalId: pending.verticalId, registryVersion: pending.registryVersion };
     if (isActivationCancel(input)) return { step: "cancel", verticalId: pending.verticalId };
   }
   if (pending?.status === "access_request_proposed") {
-    if (isAccessRequestConfirmation(input)) return { step: "request_access", verticalId: pending.verticalId };
+    if (pending.verticalId === "log" ? normalize(input) === "pedir liberacao de logistica" : isAccessRequestConfirmation(input)) return { step: "request_access", verticalId: pending.verticalId };
     if (isAccessRequestCancel(input)) return { step: "cancel_access_request", verticalId: pending.verticalId };
   }
-  if (isVerticalActivationRequest(input)) return { step: "preview", verticalId: "imob" };
+  if (isVerticalActivationRequest(input)) return { step: "preview", verticalId: /\blogistica\b/.test(normalize(input)) ? "log" : "imob" };
   return null;
 }
 
@@ -131,7 +131,7 @@ function describeApprovalBlock(code: string | undefined, message: string | undef
   };
 }
 
-export function describeActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
+function describeImobActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
   if (preview.status === "approval_required") {
     return describeApprovalBlock(preview.approval.code, preview.approval.message, preview.canRequest === true);
   }
@@ -157,7 +157,7 @@ export function describeActivationPreview(preview: ChatVerticalActivationPreview
   };
 }
 
-export function describeActivationConfirmation(result: ChatVerticalActivationConfirmResult): VerticalActivationPresentation {
+function describeImobActivationConfirmation(result: ChatVerticalActivationConfirmResult): VerticalActivationPresentation {
   if (result.status === "already_active") {
     return {
       content: "O IMOB já estava ativo neste workspace. Nada foi alterado.",
@@ -218,6 +218,26 @@ export function describeActivationFailure(error: unknown): VerticalActivationPre
   };
 }
 
+function targetActivationPresentation(presentation: VerticalActivationPresentation, verticalId: "imob" | "log"): VerticalActivationPresentation {
+  if (verticalId === "imob") return presentation;
+  const replace = (text: string) => text.replaceAll("Confirmar ativação do IMOB", "Confirmar ativação de Logística")
+    .replaceAll("Pedir liberação do IMOB", "Pedir liberação de Logística")
+    .replaceAll("IMOB", "Logística & Comex").replaceAll("imob", "logistica");
+  const projected = { ...presentation, content: replace(presentation.content), quickReplies: presentation.quickReplies.map(replace), activation: { ...presentation.activation, verticalId: "log" as const } };
+  if (projected.activation.status === "activated" || projected.activation.status === "already_active") {
+    projected.content = "Logística & Comex está instalada neste workspace. O contexto permanece no Front Door e depende de liberação, vínculo ativo e política específica. Nenhuma ação operacional foi concedida.";
+  }
+  return projected;
+}
+
+export function describeActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
+  return targetActivationPresentation(describeImobActivationPreview(preview), preview.verticalId === "log" ? "log" : "imob");
+}
+
+export function describeActivationConfirmation(result: ChatVerticalActivationConfirmResult): VerticalActivationPresentation {
+  return targetActivationPresentation(describeImobActivationConfirmation(result), result.verticalId === "log" ? "log" : "imob");
+}
+
 type DecisionWithActivation = {
   content?: string;
   resolvedQuickReplies?: string[];
@@ -232,7 +252,7 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
     preview: typeof apiPreviewChatVerticalActivation;
     confirm: typeof apiConfirmChatVerticalActivation;
     requestAccess?: typeof apiRequestVerticalAccess;
-    syncSession?: (domain: "imob") => Promise<unknown>;
+    syncSession?: (domain: "imob" | "logistica" | "core") => Promise<unknown>;
   } = { preview: apiPreviewChatVerticalActivation, confirm: apiConfirmChatVerticalActivation, requestAccess: apiRequestVerticalAccess },
 ): Promise<D | null> {
   const request = decision?.verticalActivationRequest;
@@ -245,7 +265,7 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
   } else if (request.step === "request_access") {
     try {
       const requestAccess = api.requestAccess ?? apiRequestVerticalAccess;
-      presentation = describeAccessRequestResult((await requestAccess({ vertical: "IMOB", channel: "chat" })).data.outcome);
+      presentation = describeAccessRequestResult((await requestAccess({ vertical: request.verticalId === "log" ? "LOGISTICA" : "IMOB", channel: "chat" })).data.outcome);
     } catch (error) {
       presentation = describeAccessRequestFailure(error);
     }
@@ -260,12 +280,13 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
       presentation = describeActivationFailure(error);
     }
   }
+  presentation = targetActivationPresentation(presentation, request.verticalId);
   if (presentation.activation.status === "activated" || presentation.activation.status === "already_active") {
     try {
-      await (api.syncSession ?? syncSessionContext)(presentation.activation.verticalId);
+      await (api.syncSession ?? syncSessionContext)(presentation.activation.verticalId === "log" ? "core" : presentation.activation.verticalId);
     } catch {
       // A ativação já foi resolvida pelo servidor; falha de reidratação não a desfaz.
-      presentation.content = "O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.";
+      presentation.content = `${request.verticalId === "log" ? "Logística & Comex" : "O IMOB"} foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.`;
     }
   }
   return {
