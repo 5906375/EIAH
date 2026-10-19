@@ -1,3 +1,4 @@
+import { activatableProductSchema } from "@eiah/contracts";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { isReservedAuthorityScopeName } from "@eiah/core";
@@ -61,7 +62,7 @@ const MarketplaceSubscribeSchema = z.object({
 const MarketplaceActivateInstallationSchema = z.object({
   product: z.preprocess(
     (value) => (typeof value === "string" ? value.trim().toUpperCase() : value),
-    z.enum(["IMOB"])
+    activatableProductSchema
   ),
 });
 
