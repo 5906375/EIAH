@@ -1,3 +1,5 @@
+import type { ActivatableProductId } from "@eiah/contracts";
+
 /**
  * Workspace Agent Provisioning Catalog — ADR-010, PR A.
  *
@@ -11,7 +13,7 @@
  * instead of receiving a generic assignment.
  */
 
-export const WORKSPACE_AGENT_PROVISIONING_VERSION = 1;
+export const WORKSPACE_AGENT_PROVISIONING_VERSION = 2;
 
 export type ProvisionedAgentCatalogMetadata = {
   readonly displayName: string;
@@ -29,7 +31,7 @@ export type ProvisionedAgent = {
   readonly catalogMetadata?: ProvisionedAgentCatalogMetadata;
 };
 
-export type ProvisionableProduct = "IMOB";
+export type ProvisionableProduct = ActivatableProductId;
 
 /** Agents every workspace receives at creation: the EIAH front door. */
 export const FRONT_DOOR_AGENTS: readonly ProvisionedAgent[] = Object.freeze([
@@ -37,6 +39,8 @@ export const FRONT_DOOR_AGENTS: readonly ProvisionedAgent[] = Object.freeze([
 ]);
 
 const PRODUCT_AGENTS: Readonly<Record<ProvisionableProduct, readonly ProvisionedAgent[]>> = Object.freeze({
+  // Context-only logistics reuses the EIAH front door; no operational agent assignment.
+  LOGISTICA: FRONT_DOOR_AGENTS,
   // IMOB dispatcher actions run under EIAH; chat/CRM audit runs under imob-chat-audit.
   IMOB: Object.freeze([
     Object.freeze({ agentKey: "EIAH" }),

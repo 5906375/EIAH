@@ -1,3 +1,6 @@
+import { ORACULO_UPLOAD_AGENT } from "@eiah/contracts";
+import { asyncHandler } from "../middlewares/asyncHandler";
+import { canAccessOraculoUploads } from "../services/logistica/control/oraculoUploadAccess";
 import { Router } from "express";
 import multer from "multer";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
@@ -56,7 +59,7 @@ uploadsRouter.use(enforceTenant);
 uploadsRouter.post(
   "/uploads",
   upload.array("files"),
-  async (req: TenantAwareRequest, res) => {
+  asyncHandler(async (req: TenantAwareRequest, res) => {
     const auth = req.authContext;
     const client = req.prisma;
     if (!auth) {
@@ -72,6 +75,10 @@ uploadsRouter.post(
         ok: false,
         error: { code: "INVALID_REQUEST", message: "agentSlug is required" },
       });
+    }
+
+    if (agentSlug === ORACULO_UPLOAD_AGENT && !await canAccessOraculoUploads(client, auth, true)) {
+      return res.status(403).json({ ok: false, error: { code: "UPLOAD_FORBIDDEN", message: "Sem permissão para enviar documentos do Oráculo neste workspace." } });
     }
 
     const allowed = await canAccessImobUploads({
@@ -104,6 +111,9 @@ uploadsRouter.post(
       }
 
       const normalizedFileName = normalizeUploadedFileName(file.originalname);
+      if (agentSlug === ORACULO_UPLOAD_AGENT && (!normalizedFileName.trim() || normalizedFileName.length > 500)) {
+        return res.status(400).json({ ok: false, error: { code: "INVALID_REQUEST", message: "Nome de arquivo inválido." } });
+      }
       const persisted = await persistBuffer(file.buffer, normalizedFileName, {
         tenantId: auth.tenantId,
         workspaceId: auth.workspaceId,
@@ -145,10 +155,10 @@ uploadsRouter.post(
     }
 
     return res.json({ ok: true, data: results });
-  }
+  })
 );
 
-uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
+uploadsRouter.get("/uploads/:id", asyncHandler(async (req: TenantAwareRequest, res) => {
   const auth = req.authContext;
   const client = req.prisma;
   if (!auth) {
@@ -169,6 +179,10 @@ uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Document not found" } });
   }
 
+  if (doc.agentSlug === ORACULO_UPLOAD_AGENT && !await canAccessOraculoUploads(client, auth, false)) {
+    return res.status(403).json({ ok: false, error: { code: "UPLOAD_DOWNLOAD_FORBIDDEN", message: "Sem acesso aos documentos do Oráculo neste workspace." } });
+  }
+
   const allowed = await canAccessImobUploads({
     agentSlug: doc.agentSlug,
     userId: auth.userId ?? null,
@@ -186,6 +200,10 @@ uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "File not available" } });
   }
 
+  if (doc.agentSlug === ORACULO_UPLOAD_AGENT) {
+    res.setHeader("Content-Disposition", "attachment");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+  }
   res.type(doc.mimeType);
   return res.send(buffer);
-});
+}));

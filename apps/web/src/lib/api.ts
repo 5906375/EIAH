@@ -1,3 +1,4 @@
+import type { LogisticaContextAccess } from "@eiah/contracts";
 // Cliente minimalista com tipos e helpers.
 // Ajuste BASE_URL e a forma de obter token/header do projeto.
 
@@ -731,8 +732,8 @@ export type SessionContextResponse = {
     tenantId: string;
     workspaceId: string;
     userId?: string | null;
-    activeDomain: "core" | "imob";
-    availableDomains: Array<"core" | "imob">;
+    activeDomain: "core" | "imob" | "logistica";
+    availableDomains: Array<"core" | "imob" | "logistica">;
     entitlements: {
       REAL_ESTATE_CORE: boolean;
       EXPORTS_ADDON: boolean;
@@ -740,6 +741,7 @@ export type SessionContextResponse = {
       IMOB_INSTALLED?: boolean;
     };
     capabilities?: {
+      logisticaContext?: LogisticaContextAccess;
       preDuimpShadow?: PreDuimpShadowCapability;
     };
     productInstallations?: Array<{
@@ -747,9 +749,9 @@ export type SessionContextResponse = {
       status: string;
     }>;
     verticals?: Array<{
-      verticalId: "IMOB" | "LEGAL" | "HEALTH";
+      verticalId: "IMOB" | "LEGAL" | "HEALTH" | "LOGISTICA";
       label: string;
-      activeDomain: "core" | "imob";
+      activeDomain: "core" | "imob" | "logistica";
       installedProduct: string | null;
       rolloutStage: "context_only" | "installed_surface" | "operationalized";
       enabled: boolean;
@@ -905,7 +907,7 @@ export type ExperienceAuditResponse = {
       tenantId: string;
       workspaceId: string;
       role: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
-      activeDomain: "core" | "imob";
+      activeDomain: "core" | "imob" | "logistica";
       installedProducts: string[];
       surfaceId:
         | "chat"
@@ -1108,6 +1110,11 @@ export async function apiListMarketplace(params?: {
   return http(`/marketplace${qs}`, { method: "GET" });
 }
 
+/** Autoridade comercial da pessoa atual (servidor). Só leitura; a API reaplica a autoridade em toda contratação. */
+export async function apiGetCommercialAuthorityStatus(): Promise<unknown> {
+  return http("/commercial-authority/status");
+}
+
 export async function apiSubscribeMarketplace(
   id: string,
   body?: {
@@ -1147,11 +1154,11 @@ export type VerticalAccessClientView = {
   decidedAt: string | null;
 };
 
-export async function apiGetVerticalAccess(vertical: "IMOB" = "IMOB") {
+export async function apiGetVerticalAccess(vertical: "IMOB" | "LOGISTICA" = "IMOB") {
   return http<{ ok: true; data: VerticalAccessClientView }>(`/vertical-access?vertical=${vertical}`);
 }
 
-export async function apiRequestVerticalAccess(body: { vertical: "IMOB"; channel?: "marketplace" | "chat" }) {
+export async function apiRequestVerticalAccess(body: { vertical: "IMOB" | "LOGISTICA"; channel?: "marketplace" | "chat" }) {
   return http<{ ok: true; data: VerticalAccessClientView & { outcome: "requested" | "already_requested" | "already_approved" } }>(
     `/vertical-access/request`,
     { method: "POST", body: JSON.stringify(body) },
@@ -1222,7 +1229,7 @@ export function apiErrorMessage(error: unknown): string | null {
 }
 
 export async function apiActivateMarketplaceInstallation(body: {
-  product: "IMOB";
+  product: "IMOB" | "LOGISTICA";
 }): Promise<{
   ok: boolean;
   installation: {
@@ -2679,6 +2686,8 @@ export type ImobInventoryShowcaseWidget = {
 export type ImobTransversalCapability = {
   need: { needId: string; domain: string; capability: string; label?: string };
   state: "habilitado" | "habilitavel" | "indisponivel" | "nao_verificado";
+  /** Autoridade da pessoa atual para contratar (resolvida no servidor). `habilitavel` não implica autorizada. */
+  authority?: { status: "contratacao_autorizada" | "somente_consulta"; reasonCode: string };
   reasons: string[];
   provider: {
     agentId: string;
@@ -2693,7 +2702,8 @@ export type ImobTransversalCapability = {
   };
   enablement: { marketplaceItemId: string; visibility: "public" | "own_tenant"; conditions: string[] } | null;
   nextAction:
-    | { kind: "enable_agent"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; path: string }
+    | { kind: "open_commercial_details"; actionDomain: "agent_enablement"; requiresHumanConfirmation: true; marketplaceItemId: string; workspaceId: string; path: string }
+    | { kind: "request_approval"; actionDomain: "agent_enablement"; enabled: false; reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED"; requiredAuthority: "marketplace.subscribe"; marketplaceItemId: string; workspaceId: string; detailsPath: string }
     | { kind: "request_work"; actionDomain: "agent_work"; enabled: false; reason: "OPERATIONAL_HANDOFF_NOT_IMPLEMENTED" }
     | { kind: "none"; actionDomain: null };
 };
@@ -5529,7 +5539,7 @@ export async function apiSwitchWorkspaceSession(workspaceId: string) {
   }>;
 }
 
-export async function apiGetSessionContext(domain?: "core" | "imob", signal?: AbortSignal) {
+export async function apiGetSessionContext(domain?: "core" | "imob" | "logistica", signal?: AbortSignal) {
   const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
   return http<SessionContextResponse>(`/session/context${query}`, { method: "GET", signal });
 }
@@ -5565,7 +5575,7 @@ export async function apiPostExperienceAudit(
         reasonCodes?: string[];
         metadata?: Record<string, unknown>;
       },
-  domain?: "core" | "imob"
+  domain?: "core" | "imob" | "logistica"
 ) {
   const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
   return http<ExperienceAuditResponse>(`/session/experience/audit${query}`, {
@@ -5849,10 +5859,40 @@ export type ChatVerticalActivationConfirmResult =
   | { status: "already_active"; verticalId: string; registryVersion: string }
   | { status: "activated"; verticalId: string; registryVersion: string | null; releasedRoutes: string[] };
 
-export async function apiPreviewChatVerticalActivation(body: { verticalId: "imob" }) {
+export async function apiPreviewChatVerticalActivation(body: { verticalId: "imob" | "log" }) {
   return http<{ ok: true; data: ChatVerticalActivationPreview }>(`/chat/vertical-activation/preview`, { method: "POST", body: JSON.stringify(body) });
 }
 
-export async function apiConfirmChatVerticalActivation(body: { verticalId: "imob"; registryVersion: string; confirmed: true }) {
+export async function apiConfirmChatVerticalActivation(body: { verticalId: "imob" | "log"; registryVersion: string; confirmed: true }) {
   return http<{ ok: true; data: ChatVerticalActivationConfirmResult }>(`/chat/vertical-activation/confirm`, { method: "POST", body: JSON.stringify(body) });
+}
+
+// Preparation persistence is separate from operational Oráculo and PRE-DUIMP actions.
+export async function apiListOraculoPreparations(signal?: AbortSignal) {
+  return http<{ ok: true; data: { items: import("@eiah/contracts").OraculoPreparationRecordV1[]; writeAllowed: boolean } }>("/logistica/oraculo/preparations", { signal });
+}
+export async function apiGetOraculoPreparation(caseId: string, signal?: AbortSignal) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}`, { signal });
+}
+export async function apiSaveOraculoPreparation(context: import("@eiah/contracts").OraculoEmptyReturnPreparationV1["context"], current?: { caseId: string; revision: number }, operationReference?: import("@eiah/contracts").OraculoOperationReferenceV1) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations${current ? `/${encodeURIComponent(current.caseId)}` : ""}`, {
+    method: current ? "PATCH" : "POST", body: JSON.stringify({ context, ...(operationReference !== undefined ? { operationReference } : {}), ...(current ? { expectedRevision: current.revision } : {}) }),
+  });
+}
+export async function apiListOraculoPreparationRevisions(caseId: string, signal?: AbortSignal) {
+  return http<{ ok: true; data: { items: import("@eiah/contracts").OraculoPreparationRecordV1[] } }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/revisions`, { signal });
+}
+
+export async function apiLinkOraculoEvidence(caseId: string, input: import("@eiah/contracts").OraculoEvidenceLinkV1) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/evidence`, { method: "POST", body: JSON.stringify(input) });
+}
+export async function apiListOraculoEvidence(caseId: string, signal?: AbortSignal) {
+  return http<{ ok: true; data: { revision: number; items: import("@eiah/contracts").OraculoEvidenceCheckV1[]; contentReview: "not_performed" | "recorded"; operationalValidation: "not_performed" } }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/evidence`, { signal });
+}
+
+export async function apiListOraculoDocumentReviews(caseId: string, signal?: AbortSignal) {
+  return http<{ ok: true; data: { revision: number; items: import("@eiah/contracts").OraculoDocumentReviewStateV1[]; reviewAllowed: boolean; referenceOrigin: "user_declared"; operationalValidation: "not_performed" } }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/document-reviews`, { signal });
+}
+export async function apiReviewOraculoDocument(caseId: string, input: import("@eiah/contracts").OraculoDocumentReviewRequestV1) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/document-reviews`, { method: "POST", body: JSON.stringify(input) });
 }

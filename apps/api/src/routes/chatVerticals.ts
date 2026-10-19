@@ -77,13 +77,20 @@ chatVerticalsRouter.post("/chat/vertical-handoff", async (req, res) => {
   return res.json({ ok: true, data: result });
 });
 
-/** Produtos que a conversa pode ativar (mesmo catálogo do Marketplace). */
-const ACTIVATABLE_VERTICALS = { imob: "IMOB" } as const;
+async function hasActiveLogisticaInstallation(request: TenantAwareRequest) {
+  if (!request.prisma || !request.authContext) return false;
+  const { tenantId, workspaceId } = request.authContext;
+  const rows = await request.prisma.$queryRaw<Array<{ status: string }>>`SELECT status FROM tenant_product_installations WHERE tenant_id=${tenantId} AND workspace_id=${workspaceId} AND product='LOGISTICA' LIMIT 1`;
+  return rows[0]?.status === "active";
+}
 
-const activationPreviewSchema = z.object({ verticalId: z.enum(["imob"]) }).strict();
+/** Produtos que a conversa pode ativar (mesmo catálogo do Marketplace). */
+const ACTIVATABLE_VERTICALS = { imob: "IMOB", log: "LOGISTICA" } as const;
+
+const activationPreviewSchema = z.object({ verticalId: z.enum(["imob", "log"]) }).strict();
 const activationConfirmSchema = z
   .object({
-    verticalId: z.enum(["imob"]),
+    verticalId: z.enum(["imob", "log"]),
     /** Versão do registry mostrada na proposta: se o estado mudou, a confirmação não vale. */
     registryVersion: z.string().trim().min(1).max(80),
     /** Confirmação explícita do usuário na conversa (ADR-010). */
@@ -92,6 +99,7 @@ const activationConfirmSchema = z
   .strict();
 
 export const VERTICAL_ACTIVATION_EFFECTS = {
+  log: ["instala Logística & Comex neste workspace pelo serviço existente", "mantém o EIAH como agente do Front Door", "não concede políticas de leitura ou ações operacionais; o contexto exige autorização própria"],
   imob: [
     "instala o IMOB neste workspace (o mesmo que ativar pelo Marketplace)",
     "prepara os agentes do IMOB (EIAH e auditoria do chat)",
@@ -109,7 +117,7 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
     return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
   }
   const vertical = composed.registry.verticals.find((entry) => entry.id === parsed.data.verticalId);
-  if (vertical?.status === "enabled") {
+  if (vertical?.status === "enabled" || (parsed.data.verticalId === "log" && await hasActiveLogisticaInstallation(req as TenantAwareRequest))) {
     return res.json({ ok: true, data: { status: "already_active", verticalId: parsed.data.verticalId, registryVersion: composed.registry.registryVersion } });
   }
   const request = req as TenantAwareRequest;
@@ -170,7 +178,7 @@ chatVerticalsRouter.post("/chat/vertical-activation/confirm", async (req, res) =
     return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
   }
   const vertical = composed.registry.verticals.find((entry) => entry.id === parsed.data.verticalId);
-  if (vertical?.status === "enabled") {
+  if (vertical?.status === "enabled" || (parsed.data.verticalId === "log" && await hasActiveLogisticaInstallation(req as TenantAwareRequest))) {
     return res.json({ ok: true, data: { status: "already_active", verticalId: parsed.data.verticalId, registryVersion: composed.registry.registryVersion } });
   }
   const allowedToActivate = await canUserActivateProducts({

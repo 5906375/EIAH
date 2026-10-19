@@ -28,7 +28,7 @@ export function beginSessionContextRequest() {
 
 /** Reidrata somente o contexto resolvido pelo servidor; preserva token e capabilities independentes. */
 export async function syncSessionContext(
-  domain?: "core" | "imob",
+  domain?: "core" | "imob" | "logistica",
   fetchContext: typeof apiGetSessionContext = apiGetSessionContext,
 ) {
   const request = beginSessionContextRequest();
@@ -46,6 +46,7 @@ export async function syncSessionContext(
       workspaceId: context.workspaceId,
       userId: context.userId ?? undefined,
       activeDomain: context.activeDomain,
+      logisticaAccess: context.capabilities?.logisticaContext ?? null,
       availableDomains: context.availableDomains,
       entitlements: context.entitlements,
       installedProducts: (context.productInstallations ?? []).map((entry) => entry.product),
@@ -56,6 +57,13 @@ export async function syncSessionContext(
       accessGate: null,
     });
     return context;
+  } catch (error) {
+    if (domain === "logistica" && request.isCurrent()) {
+      updateSession({ logisticaAccess: null, activeDomain: "core",
+        availableDomains: getSession().availableDomains?.filter((entry) => entry !== "logistica"),
+        verticals: getSession().verticals?.map((vertical) => vertical.verticalId === "LOGISTICA" ? { ...vertical, enabled: false, frontDoorSurface: null } : vertical) });
+    }
+    throw error;
   } finally {
     request.finish();
   }

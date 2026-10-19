@@ -1,8 +1,9 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { selfServiceConfigs, type AgentDomain, AGENT_DOMAIN_LABELS } from "./config";
 import {
   apiCreateTenantRecipe,
+  apiGetCommercialAuthorityStatus,
   apiGetOnboardingContext,
   apiListDelegations,
   apiListMarketplace,
@@ -34,6 +35,13 @@ import eiahPitchVideo from "../../assets/eiah-pitch.mp4";
 import eiahCoreVideo from "../../assets/eiah-core.mp4";
 import eiahGeralVideo from "../../assets/eiah-geral.mp4";
 import SelfServiceNav from "./components/SelfServiceNav";
+import {
+  COMMERCIAL_AUTHORITY_LOADING,
+  canShowSubscribeControl,
+  parseCommercialDetailsRequest,
+  resolveCommercialAuthorityView,
+  type CommercialAuthorityView,
+} from "./commercialContext";
 import TenantRecipeComposer from "./components/TenantRecipeComposer";
 import {
   buildTenantRecipeContent,
@@ -165,6 +173,23 @@ function CollapsibleRecipeInstructions(props: {
 export default function SelfServiceIndexPage() {
   const session = useSession();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Autoridade comercial resolvida pelo servidor; enquanto carrega ou se falhar, não há controle de contratação.
+  const [authorityView, setAuthorityView] = React.useState<CommercialAuthorityView>(COMMERCIAL_AUTHORITY_LOADING);
+  const canContract = canShowSubscribeControl(authorityView);
+  const commercialRequest = React.useMemo(
+    () => parseCommercialDetailsRequest(location.search, session.workspaceId),
+    [location.search, session.workspaceId],
+  );
+  React.useEffect(() => {
+    if (!session.token) return;
+    let cancelled = false;
+    apiGetCommercialAuthorityStatus()
+      .then((response) => { if (!cancelled) setAuthorityView(resolveCommercialAuthorityView(response)); })
+      .catch(() => { if (!cancelled) setAuthorityView(resolveCommercialAuthorityView(null)); });
+    return () => { cancelled = true; };
+  }, [session.token, session.workspaceId]);
+  const highlightedItemId = commercialRequest.workspaceMismatch ? null : commercialRequest.itemId;
   const founderAccess = isFounderAccess(session.experience?.roleProfile, session.roles);
   const [marketplaceItems, setMarketplaceItems] = React.useState<MarketplaceItem[]>([]);
   const [marketplaceFilter, setMarketplaceFilter] = React.useState<"all" | "agent" | "action">(
@@ -450,6 +475,13 @@ export default function SelfServiceIndexPage() {
       return next;
     });
   }, [marketplaceItems, delegationByMarketplaceId]);
+
+  React.useEffect(() => {
+    if (!highlightedItemId || marketplaceStatus !== "ready") return;
+    const element = typeof document !== "undefined" ? document.getElementById(`marketplace-${highlightedItemId}`) : null;
+    if (element) element.scrollIntoView({ block: "center" });
+  }, [highlightedItemId, marketplaceStatus, marketplaceFilter]);
+  const highlightedItem = highlightedItemId ? marketplaceItems.find((entry) => entry.id === highlightedItemId) ?? null : null;
 
   const handleSubscribe = async (item: MarketplaceItem) => {
     if (subscribingIds.has(item.id) || subscribedIds.has(item.id)) return;
@@ -1031,6 +1063,27 @@ export default function SelfServiceIndexPage() {
         {marketplaceStatus === "error" ? (
           <p className="mt-6 text-sm text-red-300">{marketplaceError ?? "Falha ao carregar marketplace"}</p>
         ) : null}
+        {commercialRequest.itemId ? (
+          <div data-commercial-context="imob-case" className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-sm text-foreground">
+            {commercialRequest.workspaceMismatch ? (
+              <p>Este link foi gerado para outro workspace. Entre no workspace correto para ver este agente.</p>
+            ) : marketplaceStatus !== "ready" ? (
+              <p>Carregando o agente indicado pelo seu caso...</p>
+            ) : highlightedItem ? (
+              <p>
+                Você chegou por uma recomendação do caso IMOB. Abaixo está destacado o agente <strong>{highlightedItem.name}</strong>
+                {" "}deste workspace. {canContract
+                  ? "Ver os detalhes não contrata nada: a assinatura só acontece quando você confirmar abaixo."
+                  : "Você pode consultar os detalhes, mas a contratação cabe a um responsável comercial autorizado."}
+              </p>
+            ) : (
+              <p>O agente indicado não está disponível para consulta neste workspace.</p>
+            )}
+            {commercialRequest.returnTo ? (
+              <Link to={commercialRequest.returnTo} className="mt-2 inline-block text-xs underline text-accent">Voltar ao caso IMOB</Link>
+            ) : null}
+          </div>
+        ) : null}
         {marketplaceStatus === "ready" ? (
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredMarketplaceItems.length === 0 ? (
@@ -1059,7 +1112,8 @@ export default function SelfServiceIndexPage() {
                   <div
                     key={item.id}
                     id={`marketplace-${item.id}`}
-                    className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0a1527] p-5"
+                    data-highlighted={highlightedItemId === item.id ? "true" : undefined}
+                    className={`flex h-full flex-col justify-between rounded-2xl border bg-[#0a1527] p-5 ${highlightedItemId === item.id ? "border-accent ring-2 ring-accent/60" : "border-white/10"}`}
                   >
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
@@ -1125,6 +1179,14 @@ export default function SelfServiceIndexPage() {
                         </p>
                       );
                     })()}
+                    {authorityView.status === "holder" ? (
+                      <>
+                        <p className="mt-3 text-xs text-emerald-200">
+                          Você tem autoridade comercial neste workspace{authorityView.validUntil ? ` até ${formatDate(authorityView.validUntil)}` : ""}.
+                          {authorityView.limits
+                            ? ` Limites: escopos ${authorityView.limits.allowedScopes.join(", ")} e contratos de até ${authorityView.limits.maxValidityDays} dias.`
+                            : ""}
+                        </p>
                     <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
                       <label className="flex flex-col gap-2">
                         <span className="uppercase tracking-[0.2em] text-[10px]">Scope</span>
@@ -1203,6 +1265,16 @@ export default function SelfServiceIndexPage() {
                     >
                       {isSubscribing ? "Assinando..." : buttonLabel}
                     </button>
+                      </>
+                    ) : (
+                      <p data-commercial-authority="consult_only" className="mt-4 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+                        {authorityView.status === "loading"
+                          ? "Verificando a sua autoridade comercial neste workspace..."
+                          : authorityView.status === "unknown"
+                            ? "Não foi possível verificar a sua autoridade comercial agora. Por segurança, a contratação fica indisponível; você pode consultar os detalhes."
+                            : "Contratar agentes cabe a pessoas com autoridade comercial designada neste workspace. Você pode consultar os detalhes deste item, mas não contratar. Peça a um responsável autorizado."}
+                      </p>
+                    )}
                   </div>
                 );
               })

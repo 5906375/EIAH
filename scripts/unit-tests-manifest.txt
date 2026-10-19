@@ -243,3 +243,8 @@ apps/api/src/tests/idempotent-ddl.test.ts
 apps/web/src/state/sessionContextSync.test.ts
 apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx
 apps/web/src/pages/app/marketplace/imob.test.ts
+apps/api/src/tests/logistica-context-access.test.ts
+apps/api/src/tests/session-context-logistica-access.mock.test.ts
+apps/web/src/pages/app/logistica/cockpit.test.tsx
+apps/web/src/components/agents/logisticaCaseContextEngine.test.ts
+apps/web/src/features/logistica/LogisticaFrontDoorContextPanel.test.tsx

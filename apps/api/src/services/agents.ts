@@ -1,3 +1,4 @@
+import { readVerifiedEnablementKeys, type ActiveDelegationRef } from "./agentEnablement";
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { listRegisteredActions } from "@eiah/core";
 import {
@@ -310,7 +311,18 @@ export function hasCoreAgentProfile(agent: string) {
   return coreProfileForAgent(agent) !== null;
 }
 
-export type AgentCapabilityDeclaration = Readonly<{ domain: string; capability: string; label: string }>;
+export type AgentCapabilityDeclaration = Readonly<{
+  domain: string;
+  capability: string;
+  label: string;
+  /**
+   * Vocabulário que o próprio agente declara para ser reconhecido na conversa (registro estruturado, não regra de
+   * roteamento): como o agente é chamado (`agentTerms`) e quais necessidades ele cobre (`needTerms`). Termos sem acento e
+   * em minúsculas. Servem só para interpretar o turno; declarar não habilita nada nem substitui a descoberta por servidor.
+   */
+  agentTerms?: readonly string[];
+  needTerms?: readonly string[];
+}>;
 
 /**
  * Declaração ESTRUTURADA das capacidades transversais que um agente oferece a outras verticais (domínio + capacidade).
@@ -319,8 +331,38 @@ export type AgentCapabilityDeclaration = Readonly<{ domain: string; capability: 
  * da delegação e do estado de participação (`listAgents`). Chave = identificador normalizado do agente.
  */
 const AGENT_CAPABILITY_DECLARATIONS: Readonly<Record<string, readonly AgentCapabilityDeclaration[]>> = {
-  mkt: [{ domain: "marketing", capability: "campaign", label: "Planejamento de campanha de divulgação multicanal" }],
+  mkt: [{
+    domain: "marketing",
+    capability: "campaign",
+    label: "Planejamento de campanha de divulgação multicanal",
+    agentTerms: ["marketing", "marketing gps", "mkt"],
+    needTerms: [
+      "divulgar", "divulgue", "divulgando", "divulgacao", "anunciar", "anuncie", "anunciando",
+      "campanha", "campanhas", "promover", "promocao", "publicidade", "propaganda", "impulsionar",
+    ],
+  }],
 };
+
+/** Vocabulário declarado pelos agentes governados, para a interpretação do turno (somente leitura). */
+export function listCapabilityTurnVocabulary(): Array<{
+  agentId: string;
+  domain: string;
+  capability: string;
+  label: string;
+  agentTerms: readonly string[];
+  needTerms: readonly string[];
+}> {
+  return Object.entries(AGENT_CAPABILITY_DECLARATIONS).flatMap(([key, declarations]) =>
+    declarations.map((entry) => ({
+      agentId: CANONICAL_AGENT_BY_KEY.get(key) ?? key,
+      domain: entry.domain,
+      capability: entry.capability,
+      label: entry.label,
+      agentTerms: entry.agentTerms ?? [],
+      needTerms: entry.needTerms ?? [],
+    })),
+  );
+}
 
 export function getAgentCapabilityDeclarations(agentId: string): AgentCapabilityDeclaration[] {
   if (typeof agentId !== "string") return [];
@@ -338,6 +380,41 @@ export function listAgentsDeclaringCapability(domain: string, capability: string
     .filter(([, declarations]) => declarations.some((entry) => entry.domain === wantedDomain && entry.capability === wantedCapability))
     .map(([key]) => CANONICAL_AGENT_BY_KEY.get(key) ?? key)
     .sort();
+}
+
+/**
+ * Agente "governado": declara capacidades transversais (domínio + capacidade). A habilitação de um agente governado só
+ * vale com a habilitação comercial verificável (`agentEnablement.ts`); política + delegação, sozinhas, não bastam.
+ */
+export function isCommerciallyGovernedAgent(agentIdOrKey: string): boolean {
+  return getAgentCapabilityDeclarations(agentIdOrKey).length > 0;
+}
+
+/**
+ * Remove de `keys` (chaves normalizadas) os agentes governados SEM habilitação comercial verificável vinculada a uma das
+ * delegações ativas. Falha de leitura = nenhum agente governado habilitado (fail-closed). Os demais agentes não mudam.
+ */
+async function withoutUnverifiedGovernedAgents(params: {
+  keys: Set<string>;
+  tenantId: string;
+  workspaceId: string;
+  activeDelegations: ReadonlyArray<ActiveDelegationRef>;
+  db: PrismaClient;
+}) {
+  const governed = [...params.keys].filter((key) => isCommerciallyGovernedAgent(key));
+  if (governed.length === 0) return params.keys;
+  let verified: Set<string>;
+  try {
+    verified = await readVerifiedEnablementKeys(params.db, {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      activeDelegations: params.activeDelegations,
+    });
+  } catch {
+    verified = new Set();
+  }
+  for (const key of governed) if (!verified.has(key)) params.keys.delete(key);
+  return params.keys;
 }
 
 function coreProfileForAgent(agent: string) {
@@ -1267,6 +1344,19 @@ export async function listAgents(
     if (!workspaceAllowedKeys.has(normalizedMarketplaceName)) continue;
     subscribedAgentKeys.add(normalizedMarketplaceName);
   }
+  await withoutUnverifiedGovernedAgents({
+    keys: subscribedAgentKeys,
+    tenantId,
+    workspaceId,
+    activeDelegations: activeDelegations.map((delegation) => ({
+      id: delegation.id,
+      marketplaceId: delegation.marketplaceId,
+      scope: delegation.scope,
+      trustMin: delegation.trustMin,
+      validUntil: delegation.validUntil,
+    })),
+    db,
+  });
 
   const profileMap = new Map<string, (typeof profiles)[number]>();
   for (const profile of profiles) {
@@ -1413,7 +1503,7 @@ export async function listAgents(
   return response;
 }
 
-async function isAgentAvailableInWorkspace(
+export async function isAgentAvailableInWorkspace(
   tenantId: string,
   workspaceId: string,
   agent: string,
@@ -1447,11 +1537,26 @@ async function isAgentAvailableInWorkspace(
     return false;
   }
 
-  return activeDelegations.some((delegation) => {
+  const matching = activeDelegations.some((delegation) => {
     const marketplace = delegation.marketplace;
     if (!marketplace || marketplace.type !== "agent") return false;
     return normalizeAgentKey(resolveAgentId(marketplace.name)) === normalizedCanonical;
   });
+  if (!matching) return false;
+  const kept = await withoutUnverifiedGovernedAgents({
+    keys: new Set([normalizedCanonical]),
+    tenantId,
+    workspaceId,
+    activeDelegations: activeDelegations.map((delegation) => ({
+      id: delegation.id,
+      marketplaceId: delegation.marketplaceId,
+      scope: delegation.scope,
+      trustMin: delegation.trustMin,
+      validUntil: delegation.validUntil,
+    })),
+    db,
+  });
+  return kept.has(normalizedCanonical);
 }
 
 /**

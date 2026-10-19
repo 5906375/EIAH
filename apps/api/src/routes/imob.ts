@@ -722,16 +722,20 @@ async function discoverImobTransversalCapabilitiesForTurn(params: {
   prisma: unknown;
   tenantId: string;
   workspaceId: string;
+  userId?: string | null;
+  turnNeeds?: ReadonlyArray<{ domain: string; capability: string; label?: string }> | null;
   caseContext: unknown;
   operational: unknown;
 }) {
-  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational });
+  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational, turnNeeds: params.turnNeeds });
   if (needs.length === 0) return [];
   return discoverCapabilityNeeds({
     needs,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
     client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+    // A autoridade de contratação é da PESSOA que conversa; sem usuário identificado resulta em somente_consulta.
+    actor: { userId: params.userId ?? null },
   });
 }
 

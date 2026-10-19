@@ -52,6 +52,7 @@ export const IMOB_VERTICAL_ACCESS_CONTRACT_V1: VerticalAccessContractV1 = {
 
 export type VerticalRegistryFacts = {
   scope: { tenantId: string; workspaceId: string };
+  logistica?: { installationStatus: "missing" | "inactive" | "active"; contextAllowed: boolean };
   imob: {
     installationStatus: "missing" | "inactive" | "active";
     entitled: boolean;
@@ -100,6 +101,15 @@ export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registr
       rbac: { requiredRoles: [] },
       policyGates: [IMOB_CHAT_PERMISSION],
       rolloutStage: "installed_surface",
+    });
+  }
+  if (facts.logistica && facts.logistica.installationStatus !== "missing") {
+    verticals.push({
+      id: "log", label: "Logística & Comex",
+      status: facts.logistica.contextAllowed ? "enabled" : "disabled",
+      // Context metadata only; no operational handoff capability is installed.
+      capabilities: [], entitlement: { required: true, key: "LOGISTICA_ACTIVE_INSTALLATION" },
+      rbac: { requiredRoles: [] }, policyGates: ["log.context.read"], rolloutStage: "context_only",
     });
   }
   const registryVersion = `vr1-${crypto.createHash("sha256").update(JSON.stringify(verticals)).digest("hex").slice(0, 12)}`;

@@ -265,8 +265,8 @@ test("IMOB consultive blocked read keeps documentation blocker narrative aligned
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "legal");
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on: jur[ií]dico\/documenta[cç][aã]o/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação: Jurídico/i);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando: jur[ií]dico\/documenta[cç][aã]o/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação: Jurídico/i);
 });
 
 test("IMOB consultive blocked read keeps proposal blocker narrative aligned with broker waitingOn", async () => {
@@ -282,6 +282,6 @@ test("IMOB consultive blocked read keeps proposal blocker narrative aligned with
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "broker");
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on: corretor/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação: Corretor/i);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando: corretor/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação: Corretor/i);
 });
