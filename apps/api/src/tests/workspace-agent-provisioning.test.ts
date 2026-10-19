@@ -150,7 +150,7 @@ test("front door provisioning creates exactly one enabled EIAH assignment at the
   assert.equal(row?.signatureRef, null);
   assert.deepEqual(row?.metadata, {
     source: "workspace_agent_provisioning",
-    catalogVersion: 1,
+    catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
     trigger: "onboarding",
   });
 
