@@ -1,10 +1,11 @@
+import { sessionDomainSchema } from "@eiah/contracts";
 import { z } from "zod";
 import { experienceSurfaceIdSchema } from "./experienceSurfaceContract";
 
 // Source of truth operacional da padronizacao de verticais futuras.
 // Referencia: docs/architecture/adr-experience-surface-contract-source-of-truth.md
 
-export const verticalExperienceIdSchema = z.enum(["IMOB", "LEGAL", "HEALTH"]);
+export const verticalExperienceIdSchema = z.enum(["IMOB", "LEGAL", "HEALTH", "LOGISTICA"]);
 
 export const verticalRolloutStageSchema = z.enum([
   "context_only",
@@ -15,7 +16,7 @@ export const verticalRolloutStageSchema = z.enum([
 export const verticalExperienceContractSchema = z.object({
   verticalId: verticalExperienceIdSchema,
   label: z.string().min(1),
-  activeDomain: z.enum(["core", "imob"]),
+  activeDomain: sessionDomainSchema,
   installedProduct: z.string().min(1).nullable(),
   rolloutStage: verticalRolloutStageSchema,
   enabled: z.boolean(),

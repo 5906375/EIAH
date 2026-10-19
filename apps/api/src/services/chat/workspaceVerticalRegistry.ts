@@ -1,3 +1,4 @@
+import { resolveLogisticaContextAccess } from "../logistica/control/logisticaContextAccess";
 import type { PrismaClient } from "@repo/db";
 import { getProductProvisionedAgents } from "@eiah/core/catalog/workspaceAgentProvisioning";
 import { resolveImobEntitlements } from "../imob/imobEntitlements";
@@ -22,7 +23,12 @@ export async function readVerticalRegistryFacts(prisma: PrismaClient, scope: Sco
   const profile = scope.userId
     ? await readWorkspaceResponsibleProfile({ prisma, tenantId: scope.tenantId, workspaceId: scope.workspaceId, userId: scope.userId })
     : null;
+  const [logisticaContext, logisticsRows] = await Promise.all([
+    resolveLogisticaContextAccess(prisma, scope),
+    prisma.$queryRaw<Array<{ status: string }>>`SELECT status FROM tenant_product_installations WHERE tenant_id=${scope.tenantId} AND workspace_id=${scope.workspaceId} AND product='LOGISTICA' LIMIT 1`.catch(() => []),
+  ]);
   return {
+    logistica: { installationStatus: !logisticsRows[0] ? "missing" : logisticsRows[0].status === "active" ? "active" : "inactive", contextAllowed: logisticaContext.allowed },
     scope: { tenantId: scope.tenantId, workspaceId: scope.workspaceId },
     imob: {
       installationStatus: entitlements.IMOB_INSTALLATION_STATUS,
