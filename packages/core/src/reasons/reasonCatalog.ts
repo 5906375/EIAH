@@ -169,6 +169,14 @@ const NOTIFICATION_PROPOSED_CODES = [
   "NOTIFICATION_BLOCKED_RUN_MISSING",
 ] as const;
 
+const ORACULO_PREPARATION_PROPOSED_CODES = [
+  "ORACULO_CONTEXT_DENIED",
+  "ORACULO_PREPARATION_WRITE_DENIED",
+  "ORACULO_PREPARATION_REVISION_CONFLICT",
+  "ORACULO_PREPARATION_INTEGRITY_VIOLATION",
+  "ORACULO_PREPARATION_INPUT_INVALID",
+] as const;
+
 const PRE_DUIMP_VALIDATION_PROPOSED_CODES = [
   "PRE_DUIMP_ACTION_UNKNOWN",
 ] as const;
@@ -458,6 +466,16 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "Notification governance",
     evidenceRef: "scripts/notify/escalationNotice.ts",
+  }),
+  ...defineReasonCodes(ORACULO_PREPARATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "governance",
+    descriptionPrefix: "Oráculo SC preparation persistence; no operational authority",
+    status: "proposed",
+    owner: "Logística governance / Oráculo SC",
+    introducedBy: "ORACULO-PREPARATION-PERSISTENCE-V1",
+    evidenceRef: "apps/api/src/routes/oraculoPreparation.ts",
   }),
   ...defineReasonCodes(PRE_DUIMP_VALIDATION_PROPOSED_CODES, {
     domain: "log",

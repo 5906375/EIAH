@@ -53,7 +53,7 @@ async function provisionImob(prisma: unknown, workspaceId = scope.workspaceId) {
 }
 
 test("catalog: IMOB default set is exactly the approved registration actions (decision 2026-10-01)", () => {
-  assert.equal(WORKSPACE_ACTION_POLICY_PROVISIONING_VERSION, 1);
+  assert.equal(WORKSPACE_ACTION_POLICY_PROVISIONING_VERSION, 2);
   assert.deepEqual([...getProductDefaultActionPolicies("imob")], IMOB_DEFAULTS);
 });
 
