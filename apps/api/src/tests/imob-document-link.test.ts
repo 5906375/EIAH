@@ -212,13 +212,14 @@ test("mergeLinkedDocuments keeps order and ignores repeated ids", () => {
   assert.deepEqual(merged.added.map((item) => item.documentId), ["b"]);
 });
 
-test("IMOB uploads require imob.chat.use; other agents and service tokens are unchanged", async () => {
+test("IMOB uploads require imob.chat.use; other agents are unchanged; tokens without a user are denied for IMOB (AUTHZ-IMOB-SERVICE-001)", async () => {
   const denied = async () => false;
   const granted = async () => true;
   assert.equal(await canAccessImobUploads({ agentSlug: "imob", userId: "user-a", hasImobChatPermission: denied }), false);
   assert.equal(await canAccessImobUploads({ agentSlug: "imob", userId: "user-a", hasImobChatPermission: granted }), true);
   assert.equal(await canAccessImobUploads({ agentSlug: "j360", userId: "user-a", hasImobChatPermission: denied }), true);
-  assert.equal(await canAccessImobUploads({ agentSlug: "imob", userId: null, hasImobChatPermission: denied }), true);
+  assert.equal(await canAccessImobUploads({ agentSlug: "imob", userId: null, hasImobChatPermission: granted }), false, "token sem usuário: negado mesmo que a permissão \"exista\"");
+  assert.equal(await canAccessImobUploads({ agentSlug: "j360", userId: null, hasImobChatPermission: denied }), true, "outros agentes não mudam");
   const uploadsRoute = readFileSync(new URL("../routes/uploads.ts", import.meta.url), "utf8");
   assert.equal((uploadsRoute.match(/canAccessImobUploads\(/g) ?? []).length, 2, "upload e download passam pela verificação");
 });

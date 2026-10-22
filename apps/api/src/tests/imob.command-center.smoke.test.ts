@@ -3,6 +3,8 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { installImobForTest } from "./support/imobInstallationFixture";
 
 let request: ReturnType<typeof supertest>;
 
@@ -34,6 +36,10 @@ before(async () => {
       revoked: false,
     },
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  await ensureWorkspaceMembershipForUser({ tenantId: tenantId, workspaceId: workspaceId, userId: userId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantId, workspaceId: workspaceId, userId: userId });
 
   await prismaGlobal.run.create({
     data: {
@@ -77,6 +83,7 @@ before(async () => {
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [tenantId]);
   await prismaGlobal.$disconnect();
 });
 

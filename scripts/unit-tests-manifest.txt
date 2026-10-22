@@ -253,3 +253,4 @@ apps/api/src/tests/agent-capability-vocabulary.test.ts
 apps/api/src/tests/chat-vertical-registry-logistica.test.ts
 apps/api/src/tests/workspace-switch-shadow.unit.test.ts
 apps/api/src/tests/workspace-bootstrap-shadow.unit.test.ts
+apps/api/src/tests/imob-history-access.unit.test.ts

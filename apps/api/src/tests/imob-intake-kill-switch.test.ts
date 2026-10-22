@@ -6,6 +6,8 @@ import { Job, Queue, QueueEvents, UnrecoverableError, Worker } from "bullmq";
 import Redis from "ioredis";
 import supertest from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { installImobForTest } from "./support/imobInstallationFixture";
 import {
   clearTenantCapabilityFlag,
   closeCriticalKillSwitchRedis,
@@ -75,9 +77,16 @@ before(async () => {
       { token: tokenB, tenantId: tenantB, workspaceId: workspaceB, userId: userB, description: "ks-b", revoked: false },
     ],
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  await ensureWorkspaceMembershipForUser({ tenantId: tenantA, workspaceId: workspaceA, userId: userA, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantA, workspaceId: workspaceA, userId: userA });
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantB, workspaceId: workspaceB, userId: userB });
+  await ensureWorkspaceMembershipForUser({ tenantId: tenantB, workspaceId: workspaceB, userId: userB, roleKey: "corretor" });
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [tenantA, tenantB]);
   await clearTenantCapabilityFlag({ capabilityId, tenantId: tenantA, workspaceId: workspaceA });
   await clearTenantCapabilityFlag({ capabilityId, tenantId: tenantB, workspaceId: workspaceB });
   await (prismaGlobal as any).guardrailAuditLedger.deleteMany({ where: { tenantId: { in: [tenantA, tenantB] } } });

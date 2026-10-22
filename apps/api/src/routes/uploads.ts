@@ -8,7 +8,8 @@ import { enforceTenant } from "../middlewares/enforceTenant";
 import { loadStoredObject, persistBuffer } from "../services/storage";
 import { createUploadedDocument, findDocumentById, updateDocumentUrl } from "../services/uploads";
 import { canAccessImobUploads } from "../services/imobUploadAccess";
-import { hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
+import { resolveImobEnablement } from "../services/imob/imobInstallationGate";
+import { hasWorkspacePermission, readActiveWorkspaceMembershipPermissions } from "../services/workspaceResponsibility";
 
 const MAX_FILE_SIZE_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024); // 5 MB default
 const ALLOWED_MIME_TYPES = (process.env.ALLOWED_UPLOAD_MIMES ?? "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg")
@@ -43,13 +44,14 @@ async function hasImobChatPermission(
   prisma: NonNullable<TenantAwareRequest["prisma"]>,
   auth: NonNullable<TenantAwareRequest["authContext"]>,
 ) {
-  const profile = await readWorkspaceResponsibleProfile({
+  // AUTHZ-IMOB-CRM-001: só o vínculo ATIVO existente (leitura). Sem vínculo/revogado/erro ⇒ sem permissão; nada é criado nem promovido.
+  const permissions = await readActiveWorkspaceMembershipPermissions({
     prisma,
     tenantId: auth.tenantId,
     workspaceId: auth.workspaceId,
     userId: auth.userId!,
   });
-  return hasWorkspacePermission(profile.permissions, "imob.chat.use");
+  return permissions ? hasWorkspacePermission(permissions, "imob.chat.use") : false;
 }
 
 export const uploadsRouter = Router();
@@ -85,6 +87,7 @@ uploadsRouter.post(
       agentSlug,
       userId: auth.userId ?? null,
       hasImobChatPermission: () => hasImobChatPermission(client, auth),
+      isImobEnabled: async () => (await resolveImobEnablement(client, auth)).enabled,
     });
     if (!allowed) {
       return res.status(403).json({
@@ -187,6 +190,7 @@ uploadsRouter.get("/uploads/:id", asyncHandler(async (req: TenantAwareRequest, r
     agentSlug: doc.agentSlug,
     userId: auth.userId ?? null,
     hasImobChatPermission: () => hasImobChatPermission(client, auth),
+      isImobEnabled: async () => (await resolveImobEnablement(client, auth)).enabled,
   });
   if (!allowed) {
     return res.status(403).json({
