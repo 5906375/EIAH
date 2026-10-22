@@ -1,35 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { LogisticaContextAccess, OraculoPreparationRecordV1 } from "@eiah/contracts";
 import {
   isValidLogisticaCaseRef,
-  logisticaCockpitHref,
   logisticaFrontDoorHref,
   parseLogisticaCaseRef,
-  resolveLogisticaFrontDoorContext,
-  summarizeLogisticaCase,
+  readRememberedLogisticaCase,
+  rememberLogisticaCase,
+  resolveLogisticaCaseForCard,
+  resolveLogisticaCaseToResume,
+  LOGISTICA_ACCESS_MESSAGES,
 } from "./logisticaCaseContextEngine";
 
-const access = (over: Partial<LogisticaContextAccess> = {}): LogisticaContextAccess => ({
-  allowed: true, mode: "context_only", usage: "full", executionAllowed: false, externalTransmissionAllowed: false, reason: "available", ...over,
-});
 const CASE = "cm0synthetic0case01";
-const record = (over: Partial<OraculoPreparationRecordV1> = {}): OraculoPreparationRecordV1 => ({
-  schemaVersion: "oraculo.empty-return-preparation.v1", tenantId: "t", workspaceId: "w",
-  context: { port: { status: "informed", value: "Porto" }, depot: { status: "to_confirm" }, flow: { status: "not_applicable", justification: "x" } },
-  caseId: CASE, caseType: "ORACULO_EMPTY_RETURN_PREPARATION_V1", revision: 3, lifecycle: "DISCOVERY",
-  createdAt: "2026-10-19T10:00:00.000Z", updatedAt: "2026-10-19T11:00:00.000Z",
-  executionAllowed: false, authorizationState: "NOT_REQUESTED", externalTransmissionAllowed: false, ...over,
-} as OraculoPreparationRecordV1);
-function deps(over: Partial<Parameters<typeof resolveLogisticaFrontDoorContext>[0]> = {}) {
-  const calls = { getCase: 0, listCases: 0 };
-  return { calls, value: {
-    getAccess: async (): Promise<LogisticaContextAccess | null> => access(), caseRef: null as string | null,
-    getCase: async (id: string) => { calls.getCase++; return { data: record({ caseId: id }) }; },
-    listCases: async () => { calls.listCases++; return { data: { items: [record()] } }; },
-    ...over,
-  } };
-}
 
 test("referência de caso: só formato opaco válido é aceito; o resto é descartado", () => {
   assert.equal(parseLogisticaCaseRef(`?domain=logistica&case=${CASE}`), CASE);
@@ -41,91 +23,61 @@ test("referência de caso: só formato opaco válido é aceito; o resto é desca
 });
 
 test("URLs de transferência explícita preservam a referência e nada mais", () => {
-  assert.equal(logisticaCockpitHref(), "/app/logistica");
-  assert.equal(logisticaCockpitHref(CASE), `/app/logistica?case=${CASE}`);
   assert.equal(logisticaFrontDoorHref(), "/app/chat?domain=logistica");
   assert.equal(logisticaFrontDoorHref(CASE), `/app/chat?domain=logistica&case=${CASE}`);
-  assert.equal(logisticaCockpitHref("../x"), "/app/logistica", "referência inválida nunca vira URL");
   assert.equal(logisticaFrontDoorHref("a&domain=imob"), "/app/chat?domain=logistica");
 });
 
-test("sem acesso confirmado pelo servidor: nenhuma consulta de caso e mensagem compreensível por motivo", async () => {
-  for (const reason of ["installation_missing", "installation_inactive", "approval_required", "revoked", "membership_required", "policy_denied", "unavailable"] as const) {
-    const d = deps({ getAccess: async () => access({ allowed: false, usage: "blocked", reason }), caseRef: CASE });
-    const out = await resolveLogisticaFrontDoorContext(d.value);
-    assert.equal(out.status, "no_access");
-    assert.equal(out.status === "no_access" && out.reason, reason);
-    assert.ok(out.message.length > 10);
-    assert.deepEqual(d.calls, { getCase: 0, listCases: 0 }, `${reason}: não pode consultar casos`);
-    assert.equal(out.ctas[0].href, "/app/chat?domain=core");
-  }
-  const none = deps({ getAccess: async () => null, caseRef: CASE });
-  assert.equal((await resolveLogisticaFrontDoorContext(none.value)).status, "no_access");
-  assert.equal(none.calls.getCase + none.calls.listCases, 0);
-  const forgedAllowedButBlocked = deps({ getAccess: async () => access({ allowed: true, usage: "blocked" }), caseRef: CASE });
-  assert.equal((await resolveLogisticaFrontDoorContext(forgedAllowedButBlocked.value)).status, "no_access");
-  const failing = deps({ getAccess: async () => { throw new Error("rede"); }, caseRef: CASE });
-  const failed = await resolveLogisticaFrontDoorContext(failing.value);
-  assert.equal(failed.status === "no_access" && failed.reason, "unavailable", "falha ao consultar o acesso é fail-closed");
-  assert.equal(failing.calls.getCase + failing.calls.listCases, 0);
+test("FD-CHAT-ONLY-001: não há mais URL de cockpit no engine; toda mensagem de acesso negado cobre cada motivo", () => {
+  assert.equal(Object.keys(LOGISTICA_ACCESS_MESSAGES).sort().join(","), "approval_required,available,installation_inactive,installation_missing,membership_required,policy_denied,revoked,unavailable");
+  for (const message of Object.values(LOGISTICA_ACCESS_MESSAGES)) assert.doesNotMatch(message, /cockpit/i);
 });
 
-test("com acesso e referência: recupera o caso pelo servidor e resume pendências, revisão humana e evidências", async () => {
-  const d = deps({ caseRef: CASE });
-  const out = await resolveLogisticaFrontDoorContext(d.value);
-  assert.equal(out.status, "case");
-  if (out.status !== "case") return;
-  assert.equal(d.calls.getCase, 1);
-  assert.deepEqual(out.summary.pending, ["Depósito"]);
-  assert.deepEqual(out.summary.needsReview, ["Fluxo pretendido"]);
-  assert.equal(out.summary.evidenceCount, 0);
-  assert.equal(out.summary.lastReview, null);
-  assert.equal(out.ctas[0].href, `/app/logistica?case=${CASE}`);
-  assert.match(out.message, /não autoriza execução/);
+function memoryStore(): Storage & { data: Map<string, string> } {
+  const data = new Map<string, string>();
+  return { data, getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => { data.set(k, v); }, removeItem: (k: string) => { data.delete(k); }, clear: () => data.clear(), key: () => null, get length() { return data.size; } } as Storage & { data: Map<string, string> };
+}
+const scopeA = { tenantId: "t1", workspaceId: "w1", userId: "u1" };
+
+test("FD-E2E-002 continuidade: a referência é lembrada por escopo, a URL tem prioridade e nada fora do formato é aceito", () => {
+  const store = memoryStore();
+  rememberLogisticaCase(store, scopeA, "case_ABCDEFGH12");
+  assert.equal(readRememberedLogisticaCase(store, scopeA), "case_ABCDEFGH12");
+  assert.equal(resolveLogisticaCaseToResume("", store, scopeA), "case_ABCDEFGH12", "sem ?case= retoma o último caso");
+  assert.equal(resolveLogisticaCaseToResume("?case=url_ABCDEFGH34", store, scopeA), "url_ABCDEFGH34", "a URL prevalece");
+  assert.equal(resolveLogisticaCaseToResume("?case=../etc", store, scopeA), "case_ABCDEFGH12", "URL inválida é descartada");
+  // isolamento por workspace, tenant e usuário
+  assert.equal(readRememberedLogisticaCase(store, { ...scopeA, workspaceId: "w2" }), null);
+  assert.equal(readRememberedLogisticaCase(store, { ...scopeA, tenantId: "t2" }), null);
+  assert.equal(readRememberedLogisticaCase(store, { ...scopeA, userId: "u2" }), null);
+  // valor adulterado no armazenamento não vira referência
+  store.setItem([...store.data.keys()][0]!, "<script>x</script>");
+  assert.equal(readRememberedLogisticaCase(store, scopeA), null);
 });
 
-test("conferência registrada aparece como transcrição humana, sem afirmar autorização", () => {
-  const summary = summarizeLogisticaCase(record({ evidences: [{} as never], contentReviews: [{ outcome: "divergent", documentId: "doc1" } as never] }));
-  assert.equal(summary.evidenceCount, 1);
-  assert.deepEqual(summary.lastReview, { outcome: "com divergência", documentId: "doc1" });
+test("FD-E2E-002 continuidade: 'Nova preparação' esquece o caso; referência inválida não grava; armazenamento indisponível não quebra", () => {
+  const store = memoryStore();
+  rememberLogisticaCase(store, scopeA, "case_ABCDEFGH12");
+  rememberLogisticaCase(store, scopeA, null);
+  assert.equal(readRememberedLogisticaCase(store, scopeA), null);
+  rememberLogisticaCase(store, scopeA, "curto");
+  assert.equal(store.data.size, 0, "formato inválido nunca é gravado");
+  const broken = { getItem: () => { throw new Error("blocked"); }, setItem: () => { throw new Error("blocked"); }, removeItem: () => { throw new Error("blocked"); } };
+  assert.doesNotThrow(() => rememberLogisticaCase(broken, scopeA, "case_ABCDEFGH12"));
+  assert.equal(readRememberedLogisticaCase(broken, scopeA), null);
+  assert.equal(resolveLogisticaCaseToResume("", null, scopeA), null);
 });
 
-test("somente leitura: o caso abre, com aviso, e o cockpit continua sendo explícito", async () => {
-  const out = await resolveLogisticaFrontDoorContext(deps({ getAccess: async () => access({ usage: "read_only", reason: "revoked" }), caseRef: CASE }).value);
-  assert.equal(out.status, "case");
-  assert.match(out.message, /somente leitura/);
-});
-
-test("erros do servidor viram mensagens distintas e nunca expõem dados nem selecionam caso", async () => {
-  const cases: Array<[number | undefined, string, RegExp]> = [
-    [404, "not_found", /não foi encontrado/], [403, "forbidden", /permissão/], [401, "session", /sessão/], [409, "integrity", /integridade/], [500, "unavailable", /Não foi possível/], [undefined, "unavailable", /Não foi possível/],
-  ];
-  for (const [status, kind, text] of cases) {
-    const out = await resolveLogisticaFrontDoorContext(deps({ caseRef: CASE, getCase: async () => { throw Object.assign(new Error("HTTP " + status + " segredo-interno"), status === undefined ? {} : { status }); } }).value);
-    assert.equal(out.status, "case_unavailable");
-    if (out.status !== "case_unavailable") continue;
-    assert.equal(out.kind, kind);
-    assert.match(out.message, text);
-    assert.doesNotMatch(JSON.stringify(out), /segredo-interno|caseId|revision/);
-  }
-});
-
-test("caso de outro workspace (servidor responde 404) e id divergente devolvido são tratados como indisponíveis", async () => {
-  const foreign = await resolveLogisticaFrontDoorContext(deps({ caseRef: CASE, getCase: async () => { throw Object.assign(new Error("x"), { status: 404 }); } }).value);
-  assert.equal(foreign.status === "case_unavailable" && foreign.kind, "not_found");
-  const mismatch = await resolveLogisticaFrontDoorContext(deps({ caseRef: CASE, getCase: async () => ({ data: record({ caseId: "cm0otherworkspace99" }) }) }).value);
-  assert.equal(mismatch.status, "case_unavailable", "o servidor deve devolver exatamente o caso pedido");
-  assert.doesNotMatch(JSON.stringify(mismatch), /cm0otherworkspace99/);
-});
-
-test("sem referência: sugere o caso mais recente (ação explícita) ou o cockpit vazio; falha de lista não vaza", async () => {
-  const withCase = await resolveLogisticaFrontDoorContext(deps().value);
-  assert.equal(withCase.status, "no_case");
-  assert.equal(withCase.status === "no_case" && withCase.recent?.caseId, CASE);
-  assert.equal(withCase.ctas[0].label, "Continuar este caso no cockpit");
-  const empty = await resolveLogisticaFrontDoorContext(deps({ listCases: async () => ({ data: { items: [] } }) }).value);
-  assert.equal(empty.status === "no_case" && empty.recent, null);
-  assert.equal(empty.ctas[0].href, "/app/logistica");
-  const failing = await resolveLogisticaFrontDoorContext(deps({ listCases: async () => { throw Object.assign(new Error("x"), { status: 403 }); } }).value);
-  assert.equal(failing.status === "case_unavailable" && failing.kind, "forbidden");
+test("FD-E2E-003 cartão: o veredito do servidor só decide quando recusa a MESMA referência local ou confirma uma que faltava", () => {
+  const A = "case_ABCDEFGH12", B = "case_ZYXWVUTS98";
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: A, memoryRef: null }), { caseRef: A, forget: false }, "sem veredito: URL");
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: B }), { caseRef: B, forget: false }, "sem veredito: memória");
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: A, memoryRef: B, serverCase: { status: "resolved", caseRef: A } }), { caseRef: A, forget: false }, "URL prevalece");
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: A, memoryRef: null, serverCase: { status: "unavailable", caseRef: A } }), { caseRef: null, forget: true }, "recusada: esquece e abre preparação nova");
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: A, serverCase: { status: "unavailable", caseRef: A } }), { caseRef: null, forget: true });
+  // snapshot antigo (conversa restaurada) não derruba o caso mais atual
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: B, serverCase: { status: "unavailable", caseRef: A } }), { caseRef: B, forget: false });
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: null, serverCase: { status: "resolved", caseRef: A } }), { caseRef: A, forget: false }, "confirmada e o cliente não tem mais nada");
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: null, serverCase: { status: "unavailable", caseRef: A } }), { caseRef: null, forget: false });
+  assert.deepEqual(resolveLogisticaCaseForCard({ urlRef: null, memoryRef: null, serverCase: { status: "resolved", caseRef: "../x" } }), { caseRef: null, forget: false }, "veredito com formato inválido é ignorado");
 });

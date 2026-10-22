@@ -34,11 +34,16 @@ import {
   type VerticalApprovalChatSnapshot,
 } from "@/components/agents/verticalApprovalChatEngine";
 import {
+  canonicalVerticalId,
   IMOB_CRM_HANDOFF_REQUEST,
   isImobOperationalRequest,
   resolveExplicitVerticalHandoffRequest,
+  resolveLogisticaEntryRequest,
   type VerticalHandoffRequest,
 } from "@/components/agents/verticalHandoffEngine";
+import { isPreDuimpEntryRequest } from "@/components/agents/preDuimpConversationEngine";
+import { isImobManagementRequest } from "@/components/agents/imobManagementConversationEngine";
+import { isImobHistoryRequest } from "@/components/agents/imobHistoryConversationEngine";
 import type { RoleProfile } from "@/lib/roles";
 import { PRICING_PLANS, quotePlan } from "@/config/pricing";
 import {
@@ -308,6 +313,12 @@ export type LauncherLocalDecision = {
   verticalAccessNotice?: VerticalAccessNoticeSnapshot;
   /** Abre o cartão "Criar acesso" na conversa (ADR-011 §2.7). */
   frontDoorAccessCard?: boolean;
+  /** Abre o cartão do Pré-DUIMP (modo shadow) na conversa; o acesso é decidido pelo servidor no próprio cartão. */
+  preDuimpCard?: boolean;
+  /** Abre o cartão "Gestão IMOB" (leitura e ações já existentes do IMOB) NA conversa; a API autoriza. */
+  imobManagementCard?: boolean;
+  /** Abre o cartão "Histórico IMOB" (chat IMOB persistido) NA conversa; a API autoriza. */
+  imobHistoryCard?: boolean;
   /** Conta de billing e primeira mensalidade simulada antes do pedido de liberação (ADR-011 §2.8). */
   frontDoorBillingRequest?: FrontDoorBillingRequest;
   frontDoorBilling?: FrontDoorBillingSnapshot;
@@ -2070,19 +2081,32 @@ export async function resolveLauncherProposalDecision(params: {
 /** Navigation is an entry intent, never entitlement or a fabricated user turn (ADR-010). */
 export async function resolveLauncherNavigationDecision(params: {
   domainHint?: string | null;
+  /** FD-LEGACY-CLOSURE-001: intenção de entrada explícita e allowlisted (hoje só `pre_duimp`); nunca texto livre da URL. */
+  entryHint?: string | null;
   isUnifiedEiah: boolean;
   continuation?: {
     threadState?: ImobThreadConversationState | null;
     consume: (action: "continue" | "cancel" | "release", input: string) => Promise<void>;
   };
 }): Promise<LauncherLocalDecision | null> {
-  if (!params.isUnifiedEiah || params.domainHint?.trim().toLowerCase() !== "imob") return null;
+  // Entrada Pré-DUIMP (menu/redirecionamento legado): abre o cartão NA conversa; o acesso é decidido pelo servidor no cartão (fail-closed).
+  if (params.isUnifiedEiah && params.entryHint === "pre_duimp") {
+    return {
+      kind: "pre_duimp_entry", shouldCreateRun: false,
+      content: "Abro o Pré-DUIMP aqui na conversa, em modo shadow: nada é transmitido ao Siscomex/Portal Único e o acesso é conferido pelo servidor neste cartão.",
+      launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "simple_help", resolvedQuickReplies: [],
+      persistIntent: { intent: "pre_duimp_entry", confidenceFloor: 0.8 }, preDuimpCard: true,
+    };
+  }
+  const hint = params.domainHint?.trim().toLowerCase() ?? "";
+  const verticalId = params.isUnifiedEiah && hint ? canonicalVerticalId(hint) : null;
+  if (verticalId !== "imob" && verticalId !== "log") return null;
   if (params.continuation?.threadState?.operational) await params.continuation.consume("release", "");
   return {
     kind: "vertical_handoff", shouldCreateRun: false,
-    content: "Verificando o atendimento IMOB neste workspace.",
+    content: verticalId === "imob" ? "Verificando o atendimento IMOB neste workspace." : "Verificando o acesso a Logística & Comex neste workspace.",
     launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "handoff",
-    verticalHandoffRequest: { verticalId: "imob", mode: "read_only" },
+    verticalHandoffRequest: { verticalId, mode: "read_only" },
   };
 }
 
@@ -2218,18 +2242,81 @@ export async function resolveLauncherTurnDecision(params: {
       frontDoorAccessCard: true,
     };
   }
-  // Ativação do IMOB pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
+  // Ativação de vertical pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
+  // A rota "imob" (placeholder, respostas e resumo shadow do IMOB) só vale para o IMOB; outras verticais seguem como ajuda.
   if (activationStep) {
+    const activationRoute = activationStep.verticalId === "imob" ? "imob" : "help";
     return {
       kind: `vertical_activation_${activationStep.step}`,
       shouldCreateRun: false,
       content: `Verificando a ativação de ${activationStep.verticalId === "log" ? "Logística & Comex" : "IMOB"} neste workspace.`,
-      launcherRouteIntent: "imob",
-      presentationRouteIntent: "imob",
+      launcherRouteIntent: activationRoute,
+      presentationRouteIntent: activationRoute,
       eiahMode: "help",
       renderVariant: "handoff",
       persistIntent: { intent: "vertical_activation", confidenceFloor: 0.8 },
       verticalActivationRequest: activationStep,
+    };
+  }
+  // Pedido claro de trabalhar na Logística & Comex (vocabulário declarado no engine de handoff): só pede o handoff de leitura,
+  // avaliado pelo servidor (fail-closed). Reconhecer não instala, não libera e não concede política.
+  const logisticaEntry = params.isUnifiedEiah && params.routeIntent !== "proposal" ? resolveLogisticaEntryRequest(params.input) : null;
+  if (logisticaEntry) {
+    return {
+      kind: "vertical_handoff",
+      shouldCreateRun: false,
+      content: "Verificando o acesso a Logística & Comex neste workspace.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+      verticalHandoffRequest: logisticaEntry,
+    };
+  }
+  // FD-PREDUIMP-001: pedido claro de preparar o Pré-DUIMP (vocabulário controlado; nunca operações aduaneiras reais): o cartão abre na conversa.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isPreDuimpEntryRequest(params.input)) {
+    return {
+      kind: "pre_duimp_entry",
+      shouldCreateRun: false,
+      content: "Abro o Pré-DUIMP aqui na conversa, em modo shadow: nada é transmitido ao Siscomex/Portal Único e o acesso é conferido pelo servidor neste cartão.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "pre_duimp_entry", confidenceFloor: 0.8 },
+      preDuimpCard: true,
+    };
+  }
+  // FD-IMOB-PERSISTENCE-001: pedido claro de ver o histórico do IMOB (vocabulário controlado): o cartão abre na conversa; a API autoriza.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobHistoryRequest(params.input)) {
+    return {
+      kind: "imob_history_entry",
+      shouldCreateRun: false,
+      content: "Abro o histórico do IMOB aqui na conversa. As conversas e threads seguem as permissões do IMOB neste workspace; nada é exibido sem acesso.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "imob_history_entry", confidenceFloor: 0.8 },
+      imobHistoryCard: true,
+    };
+  }
+  // FD-SINGLE-ENTRY-001: pedido claro de ver a gestão do IMOB (vocabulário controlado): o cartão abre na conversa; a API autoriza os dados.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobManagementRequest(params.input)) {
+    return {
+      kind: "imob_management_entry",
+      shouldCreateRun: false,
+      content: "Abro a gestão do IMOB aqui na conversa. Os dados e as ações seguem as permissões do IMOB neste workspace; nada é exibido sem acesso.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "imob_management_entry", confidenceFloor: 0.8 },
+      imobManagementCard: true,
     };
   }
   // Pedido operacional de IMOB (cadastrar, encerrar, gerar contrato…): handoff na mesma conversa (ADR-010).

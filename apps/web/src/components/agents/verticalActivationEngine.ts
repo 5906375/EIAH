@@ -26,6 +26,75 @@ export const ACTIVATION_REQUEST_REPLY = "Ativar o IMOB neste workspace";
 export const ACCESS_REQUEST_CONFIRM_REPLY = "Pedir liberação do IMOB";
 export const ACCESS_REQUEST_CANCEL_REPLY = "Agora não";
 
+/** Verticais que a conversa sabe ativar (mesmo catálogo de `POST /chat/vertical-activation`). */
+export type ActivatableVerticalId = "imob" | "log";
+
+/**
+ * Texto e botões de cada vertical, derivados da vertical efetivamente resolvida no turno. O IMOB mantém exatamente
+ * os textos e botões anteriores; nenhuma vertical herda texto de outra e vertical desconhecida não cai em IMOB.
+ */
+type VerticalActivationCopy = {
+  confirmReply: string;
+  requestAccessReply: string;
+  activateReply: string;
+  notPermitted: string;
+  approvalRequired: string;
+  previewQuestion: string;
+  alreadyActive: string;
+  alreadyActiveOnConfirm: string;
+  activated: string;
+  accessAlreadyApproved: string;
+  accessCancelled: string;
+  activationFailed: string;
+  sessionSyncFailed: string;
+};
+
+const LOG_INSTALLED_TEXT =
+  "Logística & Comex está instalada neste workspace. O contexto permanece no Front Door e depende de liberação, vínculo ativo e política específica. Nenhuma ação operacional foi concedida.";
+
+const VERTICAL_COPY: Record<ActivatableVerticalId, VerticalActivationCopy> = {
+  imob: {
+    confirmReply: ACTIVATION_CONFIRM_REPLY,
+    requestAccessReply: ACCESS_REQUEST_CONFIRM_REPLY,
+    activateReply: ACTIVATION_REQUEST_REPLY,
+    notPermitted:
+      "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar o IMOB neste workspace. Peça ao proprietário para ativar ou para conceder a permissão (Perfil → Gerir funções).",
+    approvalRequired: "O IMOB precisa ser liberado pela EIAH antes de ativar.",
+    previewQuestion: "Quer ativar o IMOB neste workspace? A ativação:",
+    alreadyActive: "O IMOB já está ativo neste workspace. Pode pedir, por exemplo, para cadastrar um imóvel.",
+    alreadyActiveOnConfirm: "O IMOB já estava ativo neste workspace. Nada foi alterado.",
+    activated:
+      "IMOB ativado neste workspace. A partir de agora, pedidos como cadastrar imóvel, proprietário ou locação seguem com o IMOB nesta conversa.",
+    accessAlreadyApproved: "O IMOB já está liberado pela EIAH neste workspace. Se quiser ativar agora, peça para ativar o IMOB.",
+    accessCancelled: 'Tudo bem, nenhum pedido foi enviado. Quando quiser seguir, é só me dizer "ativar o IMOB".',
+    activationFailed: "Não consegui ativar o IMOB agora. Nada foi alterado; tente de novo ou ative pelo Marketplace.",
+    sessionSyncFailed: "O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.",
+  },
+  log: {
+    confirmReply: "Confirmar ativação de Logística",
+    requestAccessReply: "Pedir liberação de Logística",
+    activateReply: "Ativar Logística & Comex neste workspace",
+    notPermitted:
+      "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar Logística & Comex neste workspace. Peça ao proprietário para ativar ou para conceder a permissão (Perfil → Gerir funções).",
+    approvalRequired: "Logística & Comex precisa ser liberada pela EIAH antes de ativar.",
+    previewQuestion: "Quer ativar Logística & Comex neste workspace? A ativação:",
+    alreadyActive: LOG_INSTALLED_TEXT,
+    alreadyActiveOnConfirm: LOG_INSTALLED_TEXT,
+    activated: LOG_INSTALLED_TEXT,
+    accessAlreadyApproved: "Logística & Comex já está liberada pela EIAH neste workspace. Se quiser ativar agora, peça para ativar Logística & Comex.",
+    accessCancelled: 'Tudo bem, nenhum pedido foi enviado. Quando quiser seguir, é só me dizer "ativar Logística".',
+    activationFailed: "Não consegui ativar Logística & Comex agora. Nada foi alterado; tente de novo ou ative pelo Marketplace.",
+    sessionSyncFailed: "Logística & Comex foi ativada, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.",
+  },
+};
+
+export const verticalActivationCopy = (verticalId: ActivatableVerticalId) => VERTICAL_COPY[verticalId];
+
+/** Vertical do servidor → vertical ativável. Valor desconhecido NÃO vira IMOB: o chamador trata como falha. */
+export function asActivatableVertical(value: unknown): ActivatableVerticalId | null {
+  return value === "imob" || value === "log" ? value : null;
+}
+
 /** Proposta pendente, congelada no snapshot da mensagem do assistente. */
 export type VerticalActivationSnapshot =
   | { status: "proposed"; verticalId: "imob" | "log"; registryVersion: string }
@@ -79,11 +148,11 @@ export function resolveVerticalActivationStep(
   pending: VerticalActivationSnapshot | null | undefined,
 ): VerticalActivationRequest | null {
   if (pending?.status === "proposed") {
-    if (pending.verticalId === "log" ? normalize(input) === "confirmar ativacao de logistica" : isActivationConfirmation(input)) return { step: "confirm", verticalId: pending.verticalId, registryVersion: pending.registryVersion };
+    if (pending.verticalId === "log" ? normalize(input) === normalize(VERTICAL_COPY.log.confirmReply) : isActivationConfirmation(input)) return { step: "confirm", verticalId: pending.verticalId, registryVersion: pending.registryVersion };
     if (isActivationCancel(input)) return { step: "cancel", verticalId: pending.verticalId };
   }
   if (pending?.status === "access_request_proposed") {
-    if (pending.verticalId === "log" ? normalize(input) === "pedir liberacao de logistica" : isAccessRequestConfirmation(input)) return { step: "request_access", verticalId: pending.verticalId };
+    if (pending.verticalId === "log" ? normalize(input) === normalize(VERTICAL_COPY.log.requestAccessReply) : isAccessRequestConfirmation(input)) return { step: "request_access", verticalId: pending.verticalId };
     if (isAccessRequestCancel(input)) return { step: "cancel_access_request", verticalId: pending.verticalId };
   }
   if (isVerticalActivationRequest(input)) return { step: "preview", verticalId: /\blogistica\b/.test(normalize(input)) ? "log" : "imob" };
@@ -96,9 +165,6 @@ export type VerticalActivationPresentation = {
   activation: VerticalActivationSnapshot;
 };
 
-const NOT_PERMITTED_TEXT =
-  "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode ativar o IMOB neste workspace. Peça ao proprietário para ativar ou para conceder a permissão (Perfil → Gerir funções).";
-
 const APPROVAL_CODES = new Set([
   "VERTICAL_NOT_APPROVED",
   "VERTICAL_APPROVAL_PENDING",
@@ -110,76 +176,83 @@ const APPROVAL_CODES = new Set([
  * ADR-011: sem liberação da EIAH a conversa explica o estado; não propõe ativar. Quem pode ativar
  * (e não tem pedido em análise) recebe a oferta de pedir a liberação, que só sai com confirmação.
  */
-function describeApprovalBlock(code: string | undefined, message: string | undefined, canRequest = false): VerticalActivationPresentation {
+function describeApprovalBlock(
+  code: string | undefined,
+  message: string | undefined,
+  canRequest: boolean,
+  verticalId: ActivatableVerticalId,
+): VerticalActivationPresentation {
+  const copy = VERTICAL_COPY[verticalId];
   if (canRequest) {
     return {
       content: [
-        message ?? "O IMOB precisa ser liberado pela EIAH antes de ativar.",
+        message ?? copy.approvalRequired,
         "",
         "Quer pedir a liberação à EIAH agora? Um administrador da EIAH analisa e decide; você recebe um aviso aqui quando houver decisão.",
-        `Nada é enviado até você confirmar. Para seguir, responda "${ACCESS_REQUEST_CONFIRM_REPLY}".`,
+        `Nada é enviado até você confirmar. Para seguir, responda "${copy.requestAccessReply}".`,
       ].join("\n"),
-      quickReplies: [ACCESS_REQUEST_CONFIRM_REPLY, ACCESS_REQUEST_CANCEL_REPLY],
-      activation: { status: "access_request_proposed", verticalId: "imob" },
+      quickReplies: [copy.requestAccessReply, ACCESS_REQUEST_CANCEL_REPLY],
+      activation: { status: "access_request_proposed", verticalId },
     };
   }
   const hint = code === "VERTICAL_NOT_APPROVED" ? " Quem pode ativar produtos neste workspace pode pedir a liberação." : "";
   return {
-    content: `${message ?? "O IMOB precisa ser liberado pela EIAH antes de ativar."}${hint}`,
+    content: `${message ?? copy.approvalRequired}${hint}`,
     quickReplies: [],
-    activation: { status: "failed", verticalId: "imob" },
+    activation: { status: "failed", verticalId },
   };
 }
 
-function describeImobActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
+/** Vertical efetiva do resultado: a pedida pelo engine; se ausente, a do servidor — nunca um padrão silencioso. */
+function resolveVerticalOrThrow(requested: ActivatableVerticalId | undefined, serverValue: unknown): ActivatableVerticalId {
+  const resolved = requested ?? asActivatableVertical(serverValue);
+  if (!resolved) throw new Error("vertical_not_activatable");
+  return resolved;
+}
+
+export function describeActivationPreview(preview: ChatVerticalActivationPreview, verticalId?: ActivatableVerticalId): VerticalActivationPresentation {
+  const vertical = resolveVerticalOrThrow(verticalId, preview.verticalId);
+  const copy = VERTICAL_COPY[vertical];
   if (preview.status === "approval_required") {
-    return describeApprovalBlock(preview.approval.code, preview.approval.message, preview.canRequest === true);
+    return describeApprovalBlock(preview.approval.code, preview.approval.message, preview.canRequest === true, vertical);
   }
   if (preview.status === "not_permitted") {
-    return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
+    return { content: copy.notPermitted, quickReplies: [], activation: { status: "failed", verticalId: vertical } };
   }
   if (preview.status === "already_active") {
-    return {
-      content: "O IMOB já está ativo neste workspace. Pode pedir, por exemplo, para cadastrar um imóvel.",
-      quickReplies: [],
-      activation: { status: "already_active", verticalId: "imob" },
-    };
+    return { content: copy.alreadyActive, quickReplies: [], activation: { status: "already_active", verticalId: vertical } };
   }
   return {
     content: [
-      "Quer ativar o IMOB neste workspace? A ativação:",
+      copy.previewQuestion,
       ...preview.effects.map((effect) => `- ${effect}`),
       "",
-      `Nada muda até você confirmar. Para seguir, responda "${ACTIVATION_CONFIRM_REPLY}".`,
+      `Nada muda até você confirmar. Para seguir, responda "${copy.confirmReply}".`,
     ].join("\n"),
-    quickReplies: [ACTIVATION_CONFIRM_REPLY, ACTIVATION_CANCEL_REPLY],
-    activation: { status: "proposed", verticalId: "imob", registryVersion: preview.registryVersion },
+    quickReplies: [copy.confirmReply, ACTIVATION_CANCEL_REPLY],
+    activation: { status: "proposed", verticalId: vertical, registryVersion: preview.registryVersion },
   };
 }
 
-function describeImobActivationConfirmation(result: ChatVerticalActivationConfirmResult): VerticalActivationPresentation {
+export function describeActivationConfirmation(result: ChatVerticalActivationConfirmResult, verticalId?: ActivatableVerticalId): VerticalActivationPresentation {
+  const vertical = resolveVerticalOrThrow(verticalId, result.verticalId);
+  const copy = VERTICAL_COPY[vertical];
   if (result.status === "already_active") {
-    return {
-      content: "O IMOB já estava ativo neste workspace. Nada foi alterado.",
-      quickReplies: [],
-      activation: { status: "already_active", verticalId: "imob" },
-    };
+    return { content: copy.alreadyActiveOnConfirm, quickReplies: [], activation: { status: "already_active", verticalId: vertical } };
   }
-  return {
-    content: "IMOB ativado neste workspace. A partir de agora, pedidos como cadastrar imóvel, proprietário ou locação seguem com o IMOB nesta conversa.",
-    quickReplies: [],
-    activation: { status: "activated", verticalId: "imob" },
-  };
+  return { content: copy.activated, quickReplies: [], activation: { status: "activated", verticalId: vertical } };
 }
 
 export function describeAccessRequestResult(
   outcome: "requested" | "already_requested" | "already_approved",
+  verticalId: ActivatableVerticalId = "imob",
 ): VerticalActivationPresentation {
+  const copy = VERTICAL_COPY[verticalId];
   if (outcome === "already_approved") {
     return {
-      content: "O IMOB já está liberado pela EIAH neste workspace. Se quiser ativar agora, peça para ativar o IMOB.",
-      quickReplies: [ACTIVATION_REQUEST_REPLY],
-      activation: { status: "access_requested", verticalId: "imob" },
+      content: copy.accessAlreadyApproved,
+      quickReplies: [copy.activateReply],
+      activation: { status: "access_requested", verticalId },
     };
   }
   return {
@@ -187,55 +260,36 @@ export function describeAccessRequestResult(
       ? "Pedido de liberação enviado à EIAH! Agora é com a gente: um administrador vai analisar e, assim que houver decisão, o aviso aparece aqui na conversa (e no Marketplace)."
       : "Você já tem um pedido de liberação em análise pela EIAH. Assim que houver decisão, o aviso aparece aqui na conversa (e no Marketplace).",
     quickReplies: [],
-    activation: { status: "access_requested", verticalId: "imob" },
+    activation: { status: "access_requested", verticalId },
   };
 }
 
-export function describeAccessRequestFailure(error: unknown): VerticalActivationPresentation {
+export function describeAccessRequestFailure(error: unknown, verticalId: ActivatableVerticalId = "imob"): VerticalActivationPresentation {
   const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
   return {
     content: body?.error?.code === "VERTICAL_ACCESS_REQUEST_FORBIDDEN"
       ? "Só o proprietário do tenant ou quem tem a permissão de ativar produtos pode pedir a liberação."
       : "Não consegui enviar o pedido de liberação agora. Nada foi enviado; tente de novo ou peça pelo Marketplace.",
     quickReplies: [],
-    activation: { status: "failed", verticalId: "imob" },
+    activation: { status: "failed", verticalId },
   };
 }
 
-export function describeActivationFailure(error: unknown): VerticalActivationPresentation {
+export function describeActivationFailure(error: unknown, verticalId: ActivatableVerticalId = "imob"): VerticalActivationPresentation {
+  const copy = VERTICAL_COPY[verticalId];
   const body = error instanceof ApiError ? (error.body as { error?: { code?: string; message?: string } } | undefined) : undefined;
   const code = body?.error?.code;
-  if (code && APPROVAL_CODES.has(code)) return describeApprovalBlock(code, body?.error?.message);
+  if (code && APPROVAL_CODES.has(code)) return describeApprovalBlock(code, body?.error?.message, false, verticalId);
   if (code === "PRODUCT_ACTIVATION_FORBIDDEN") {
-    return { content: NOT_PERMITTED_TEXT, quickReplies: [], activation: { status: "failed", verticalId: "imob" } };
+    return { content: copy.notPermitted, quickReplies: [], activation: { status: "failed", verticalId } };
   }
   return {
     content: code === "ACTIVATION_PROPOSAL_STALE"
       ? "O estado do workspace mudou desde a proposta, então nada foi ativado. Peça a ativação de novo para ver a proposta atualizada."
-      : "Não consegui ativar o IMOB agora. Nada foi alterado; tente de novo ou ative pelo Marketplace.",
-    quickReplies: code === "ACTIVATION_PROPOSAL_STALE" ? [ACTIVATION_REQUEST_REPLY] : ["Ver opções no Marketplace"],
-    activation: { status: "failed", verticalId: "imob" },
+      : copy.activationFailed,
+    quickReplies: code === "ACTIVATION_PROPOSAL_STALE" ? [copy.activateReply] : ["Ver opções no Marketplace"],
+    activation: { status: "failed", verticalId },
   };
-}
-
-function targetActivationPresentation(presentation: VerticalActivationPresentation, verticalId: "imob" | "log"): VerticalActivationPresentation {
-  if (verticalId === "imob") return presentation;
-  const replace = (text: string) => text.replaceAll("Confirmar ativação do IMOB", "Confirmar ativação de Logística")
-    .replaceAll("Pedir liberação do IMOB", "Pedir liberação de Logística")
-    .replaceAll("IMOB", "Logística & Comex").replaceAll("imob", "logistica");
-  const projected = { ...presentation, content: replace(presentation.content), quickReplies: presentation.quickReplies.map(replace), activation: { ...presentation.activation, verticalId: "log" as const } };
-  if (projected.activation.status === "activated" || projected.activation.status === "already_active") {
-    projected.content = "Logística & Comex está instalada neste workspace. O contexto permanece no Front Door e depende de liberação, vínculo ativo e política específica. Nenhuma ação operacional foi concedida.";
-  }
-  return projected;
-}
-
-export function describeActivationPreview(preview: ChatVerticalActivationPreview): VerticalActivationPresentation {
-  return targetActivationPresentation(describeImobActivationPreview(preview), preview.verticalId === "log" ? "log" : "imob");
-}
-
-export function describeActivationConfirmation(result: ChatVerticalActivationConfirmResult): VerticalActivationPresentation {
-  return targetActivationPresentation(describeImobActivationConfirmation(result), result.verticalId === "log" ? "log" : "imob");
 }
 
 type DecisionWithActivation = {
@@ -257,36 +311,40 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
 ): Promise<D | null> {
   const request = decision?.verticalActivationRequest;
   if (!decision || !request) return decision;
+  const vertical = request.verticalId;
+  const copy = VERTICAL_COPY[vertical];
   let presentation: VerticalActivationPresentation;
   if (request.step === "cancel") {
-    presentation = { content: "Ativação cancelada. Nada foi alterado.", quickReplies: [], activation: { status: "cancelled", verticalId: "imob" } };
+    presentation = { content: "Ativação cancelada. Nada foi alterado.", quickReplies: [], activation: { status: "cancelled", verticalId: vertical } };
   } else if (request.step === "cancel_access_request") {
-    presentation = { content: "Tudo bem, nenhum pedido foi enviado. Quando quiser seguir, é só me dizer \"ativar o IMOB\".", quickReplies: [], activation: { status: "cancelled", verticalId: "imob" } };
+    presentation = { content: copy.accessCancelled, quickReplies: [], activation: { status: "cancelled", verticalId: vertical } };
   } else if (request.step === "request_access") {
     try {
       const requestAccess = api.requestAccess ?? apiRequestVerticalAccess;
-      presentation = describeAccessRequestResult((await requestAccess({ vertical: request.verticalId === "log" ? "LOGISTICA" : "IMOB", channel: "chat" })).data.outcome);
+      presentation = describeAccessRequestResult((await requestAccess({ vertical: vertical === "log" ? "LOGISTICA" : "IMOB", channel: "chat" })).data.outcome, vertical);
     } catch (error) {
-      presentation = describeAccessRequestFailure(error);
+      presentation = describeAccessRequestFailure(error, vertical);
     }
   } else {
     try {
       presentation = request.step === "preview"
-        ? describeActivationPreview((await api.preview({ verticalId: request.verticalId })).data)
+        ? describeActivationPreview((await api.preview({ verticalId: vertical })).data, vertical)
         : describeActivationConfirmation(
-            (await api.confirm({ verticalId: request.verticalId, registryVersion: request.registryVersion, confirmed: true })).data,
+            (await api.confirm({ verticalId: vertical, registryVersion: request.registryVersion, confirmed: true })).data,
+            vertical,
           );
     } catch (error) {
-      presentation = describeActivationFailure(error);
+      presentation = describeActivationFailure(error, vertical);
     }
   }
-  presentation = targetActivationPresentation(presentation, request.verticalId);
   if (presentation.activation.status === "activated" || presentation.activation.status === "already_active") {
     try {
-      await (api.syncSession ?? syncSessionContext)(presentation.activation.verticalId === "log" ? "core" : presentation.activation.verticalId);
+      // Logística só vira domínio ativo da sessão depois de um handoff autorizado (acesso ao contexto confirmado pelo servidor);
+      // ativar a instalação não concede esse acesso, por isso a sincronização aqui é a do domínio core.
+      await (api.syncSession ?? syncSessionContext)(vertical === "log" ? "core" : vertical);
     } catch {
       // A ativação já foi resolvida pelo servidor; falha de reidratação não a desfaz.
-      presentation.content = `${request.verticalId === "log" ? "Logística & Comex" : "O IMOB"} foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.`;
+      presentation.content = copy.sessionSyncFailed;
     }
   }
   return {
