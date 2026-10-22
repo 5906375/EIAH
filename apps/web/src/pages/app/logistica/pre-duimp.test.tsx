@@ -9,7 +9,6 @@ import ts from "typescript";
 import { EiahBrandMark } from "@/components/brand/EiahBrandMark";
 import { isImobInstalled } from "@/lib/entitlements";
 import { isPreDuimpAccessAllowed } from "@/features/logistica/preDuimp";
-import PreDuimpPage from "./pre-duimp";
 
 // Exercise the real shell and route declarations without importing every operational page.
 const shellSource = ts.createSourceFile("App.tsx",
@@ -65,11 +64,12 @@ test("global menu has one canonical chat across roles, installations and PRE_DUI
             primaryNavigation: [{ surfaceId: "imob_chat", path: "/app/imob/chat", label: "IMOB" }] },
         }, enabled);
         const expected = ["/app/runs", "/app/chat",
-          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace", "/app/logistica",
-          ...(enabled ? ["/app/logistica/pre-duimp"] : []), "/self-service", "/profile"];
+          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace", "/app/chat?domain=imob", "/app/chat?domain=logistica", // FD-SINGLE-ENTRY-001: IMOB também abre o Front Door; FD-UNIFICATION-001: o menu de Logística leva ao Front Door; o cockpit /app/logistica segue acessível, mas fora do menu
+          ...(enabled ? ["/app/chat?entry=pre_duimp"] : []), "/self-service", "/profile"];
         assert.deepEqual(navigationLinks(html), expected);
         assert.equal((html.match(/aria-label="Chat"/g) ?? []).length, 1);
-        assert.doesNotMatch(html, /aria-label="IMOB"/);
+        assert.equal((html.match(/aria-label="IMOB"/g) ?? []).length, 1, "o IMOB tem um só item, que abre o Front Door");
+        assert.doesNotMatch(html, /href="\/app\/imob/, "a navegação do servidor não restaura entrada para a página IMOB independente");
         assert.match(html, /aria-current="page" aria-label="Chat"/);
       }
     }
@@ -133,58 +133,6 @@ test("auxiliary IMOB chat keeps authentication and installation guards", () => {
   assert.doesNotMatch(anonymous, /Auxiliary IMOB chat/);
 });
 
-test("PRE_DUIMP page exposes the internal shadow surface and only one editable contract field", () => {
-  const html = renderToStaticMarkup(<PreDuimpPage />);
-
-  assert.match(html, /Logística/);
-  assert.match(html, /Pré-DUIMP/);
-  assert.match(html, /Modo shadow/);
-  assert.match(html, /Nenhuma transmissão ao Siscomex\/Portal Único/);
-  assert.match(html, /Criar contexto/);
-  assert.equal((html.match(/<input/g) ?? []).length, 1);
-  assert.match(html, /name="recordId"/);
-  assert.doesNotMatch(
-    html,
-    /tenantId|workspaceId|grantedScopes|scopes|installation|entitlement|approvalId|policyDecision|authority|token/,
-  );
-});
-
-test("PRE_DUIMP page keeps HITL and replay visibly unavailable without operational controls", () => {
-  const html = renderToStaticMarkup(<PreDuimpPage />);
-
-  assert.match(html, /Aprovação HITL persistida ainda não está habilitada neste ambiente/);
-  assert.match(html, /Replay e idempotência persistidos ainda estão em preparação/);
-  assert.doesNotMatch(html, /log\.duimp_context\.review/);
-  assert.equal((html.match(/type="submit"/g) ?? []).length, 1);
-});
-
-test("PRE_DUIMP submit path has a single-flight guard around its only POST", () => {
-  const pageSource = readFileSync(new URL("./pre-duimp.tsx", import.meta.url), "utf8");
-
-  assert.match(pageSource, /if \(submissionInFlightRef\.current\) return/);
-  assert.equal((pageSource.match(/apiCreatePreDuimpContext\(request\)/g) ?? []).length, 1);
-  assert.match(pageSource, /finally[\s\S]*submissionInFlightRef\.current = false/);
-});
-
-test("PRE_DUIMP page has labels, visible focus treatment and an aria-live result region", () => {
-  const html = renderToStaticMarkup(<PreDuimpPage />);
-
-  assert.match(html, /<label for="pre-duimp-record-id"/);
-  assert.match(html, /id="pre-duimp-record-id"/);
-  assert.match(html, /focus:ring-2/);
-  assert.match(html, /aria-live="polite"/);
-  assert.match(html, /aria-atomic="true"/);
-});
-
-test("PRE_DUIMP page uses responsive stacking without fixed pixel widths or a duplicate logo", () => {
-  const html = renderToStaticMarkup(<PreDuimpPage />);
-
-  assert.match(html, /lg:grid-cols-/);
-  assert.match(html, /min-w-0/);
-  assert.doesNotMatch(html, /w-\[\d/);
-  assert.doesNotMatch(html, /<img/);
-});
-
 test("official EIAH symbol preserves proportions and accessible naming", () => {
   const isolated = renderToStaticMarkup(<EiahBrandMark />);
   const accompanied = renderToStaticMarkup(<EiahBrandMark visibleName />);
@@ -210,10 +158,19 @@ test("PRE_DUIMP shell gate is server-authoritative and never hydrates capability
   const storeSource = readFileSync(new URL("../../../state/sessionStore.ts", import.meta.url), "utf8");
 
   assert.match(appSource, /isPreDuimpAccessAllowed/);
-  assert.match(appSource, /RequirePreDuimpAccess/);
+  assert.match(appSource, /preDuimpAllowed/);
   assert.match(appSource, /preDuimpAccess: \{ status: "loading" \}/);
   assert.match(appSource, /if \(!active\) return/);
   assert.match(appSource, /active = false/);
   assert.doesNotMatch(storeSource, /getItem\(["']pre.?duimp/i);
   assert.doesNotMatch(storeSource, /setItem\(["']pre.?duimp/i);
+});
+
+test("FD-LEGACY-CLOSURE-001: as rotas legadas de Logística/Pré-DUIMP só redirecionam; nenhuma página operacional é importada ou montada", () => {
+  const appSource = readFileSync(new URL("../../../App.tsx", import.meta.url), "utf8").replace(/\/\/.*$/gm, "");
+  assert.doesNotMatch(appSource, /pages\/app\/logistica\/(?:cockpit|pre-duimp)/);
+  assert.doesNotMatch(appSource, /RequirePreDuimpAccess|LogisticaCockpitPage|PreDuimpPage/);
+  for (const [path, entry] of [["/app/logistica", "cockpit"], ["/app/logistica/pre-duimp", "pre_duimp"], ["/app/logistica/*", "cockpit"]] as const) {
+    assert.match(appSource, new RegExp(`path="${path.replace(/[*/]/g, "\\$&")}"\\s+element=\\{<LegacyLogisticaRoute entry="${entry}" />\\}`), path);
+  }
 });

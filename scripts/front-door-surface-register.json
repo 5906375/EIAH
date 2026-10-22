@@ -1,0 +1,205 @@
+{
+  "version": "front-door-surface-register.v1",
+  "ruleBaselineDate": "2026-10-21",
+  "rule": "EIAH-FD-001",
+  "launcherFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "launcherConsumers": [
+    "apps/web/src/pages/app/agents/index.tsx"
+  ],
+  "frontDoorPage": "apps/web/src/pages/app/agents/index.tsx",
+  "frontDoorPageAllowedImports": [
+    "apps/web/src/components/chat/FrontDoorImobFixturePreviewPanel.tsx"
+  ],
+  "verticalFeatureDirs": [
+    "imob",
+    "logistica",
+    "workbench",
+    "legal",
+    "j360",
+    "radar",
+    "mkt",
+    "health",
+    "bpo_financeiro"
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "nature": "front_door",
+      "since": "2026-10-21",
+      "note": "Entrada: redireciona/landing do Front Door."
+    },
+    {
+      "path": "/app/chat",
+      "nature": "front_door",
+      "since": "2026-10-21",
+      "note": "Front Door: única superfície operacional (Chat Agent Launcher)."
+    },
+    {
+      "path": "/app/agents",
+      "nature": "front_door",
+      "since": "2026-10-21",
+      "note": "Redirecionamento legado para /app/chat."
+    },
+    {
+      "path": "/signup",
+      "nature": "identity",
+      "since": "2026-10-21",
+      "note": "Identidade/cadastro (Core)."
+    },
+    {
+      "path": "/access",
+      "nature": "identity",
+      "since": "2026-10-21",
+      "note": "Identidade/acesso (Core)."
+    },
+    {
+      "path": "/app/runs",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Lista/monitor de runs: acompanhamento de execuções pode ser operacional (a integrar) ou diagnóstico técnico — decisão do proprietário."
+    },
+    {
+      "path": "/app/billing",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Gestão financeira do tenant: não é administração técnica; classificar e integrar o que for operação de negócio."
+    },
+    {
+      "path": "/app/economy",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Economia/custos: classificar (operação de negócio × diagnóstico)."
+    },
+    {
+      "path": "/app/admin/aprovacoes",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Decisão humana de liberação de verticais (ADR-011): decisão humana pertence ao Front Door (EIAH-FD-001 §3); classificar e integrar."
+    },
+    {
+      "path": "/app/marketplace",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Catálogo/ativação de produtos; a ativação já ocorre na conversa (ADR-010 etapa F). Classificar o restante."
+    },
+    {
+      "path": "/app/marketplace/imob",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Marketplace IMOB: idem."
+    },
+    {
+      "path": "/self-service",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Autoatendimento: classificar (entrada pública × operação)."
+    },
+    {
+      "path": "/app/self-service",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Autoatendimento autenticado: classificar."
+    },
+    {
+      "path": "/self-service/:slug",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Autoatendimento por produto: classificar."
+    },
+    {
+      "path": "/profile",
+      "nature": "pending_classification",
+      "since": "2026-10-21",
+      "note": "Conta/perfil e gestão de workspace (membros/convites): identidade é Core; gestão operacional de membros a classificar."
+    },
+    {
+      "path": "/app/imob/chat",
+      "nature": "legacy_operational",
+      "since": "2026-10-21",
+      "note": "CHAT INDEPENDENTE da vertical IMOB (proibido pela EIAH-FD-001). Baseline temporária do ADR-010.",
+      "plan": "FD-SINGLE-ENTRY-001: cadastros, locações, contratos, documentos e consultas JÁ rodam no launcher; faltam B1 (conversas/threads/mensagens persistidas, interview state, telemetria do chat), B2 (busca de conhecimento), B3 (sugestão de CRM por anexo) e B6 (parâmetros autoprompt/caseId/threadId vindos de Marketplace, Billing, Runs, Self-service). Só redirecionar depois de fechar B1–B3 e B6; não excluir antes."
+    },
+    {
+      "path": "/app/imob/dashboard",
+      "nature": "legacy_operational",
+      "since": "2026-10-21",
+      "note": "Cockpit operacional IMOB.",
+      "plan": "FD-SINGLE-ENTRY-001: aprovações+ações, Central Operacional (casos, fila, aguardando, gargalos, download), funil/KPIs/equipe JÁ no cartão 'Gestão IMOB' do launcher; faltam B5 (hero/chips, Soluções rápidas, ThreadPanel, follow-ups, listas de imóveis/proprietários/parceiros com agregados, abrir caso na conversa com contexto) e B1 (telemetria do chat). Redirecionar só depois de B5."
+    },
+    {
+      "path": "/app/imob/properties",
+      "nature": "legacy_operational",
+      "since": "2026-10-21",
+      "note": "Cadastro/listagem de imóveis (operação de negócio).",
+      "plan": "Navigate para a seção 'imoveis' do dashboard. Cadastro/edição/arquivamento/consulta por formulário já no launcher; a listagem agregada depende de B5. Redirecionar junto com o dashboard."
+    },
+    {
+      "path": "/app/imob/processes",
+      "nature": "legacy_operational",
+      "since": "2026-10-21",
+      "note": "Processos IMOB (acompanhamento de processos).",
+      "plan": "Navigate para a seção 'processos' do dashboard. Central Operacional já no cartão de gestão do launcher; 'abrir processo na conversa com contexto do caso' depende de B5. Redirecionar junto com o dashboard."
+    },
+    {
+      "path": "/app/imob/partners",
+      "nature": "legacy_operational",
+      "since": "2026-10-21",
+      "note": "Parceiros IMOB.",
+      "plan": "Navigate para a seção 'parceiros' do dashboard. Proprietários: cadastro/edição/arquivamento no launcher; listagem agregada depende de B5. Redirecionar junto com o dashboard."
+    },
+    {
+      "path": "/app/logistica",
+      "nature": "legacy_redirected",
+      "since": "2026-10-21",
+      "note": "Redirecionamento incondicional ao Front Door (sem página, sem chave); só ?case= válido é preservado. A página de cockpit foi removida do código (equivalência comprovada por E2E).",
+      "plan": "Concluído: nenhuma interface operacional por esta URL (EIAH-FD-001).",
+      "wrapper": "LegacyLogisticaRoute",
+      "redirectTo": "/app/chat?domain=logistica[&case=<ref válida>]"
+    },
+    {
+      "path": "/app/logistica/pre-duimp",
+      "nature": "legacy_redirected",
+      "since": "2026-10-21",
+      "note": "Redirecionamento incondicional à entrada Pré-DUIMP da conversa; a página foi removida. A única capacidade existente (criar contexto shadow) vive no cartão do launcher; capacidades inexistentes (documentos, conferência, persistência, HITL, replay) são frente própria.",
+      "plan": "Concluído: nenhuma interface operacional por esta URL (EIAH-FD-001).",
+      "wrapper": "LegacyLogisticaRoute",
+      "redirectTo": "/app/chat?entry=pre_duimp"
+    },
+    {
+      "path": "/app/logistica/*",
+      "nature": "legacy_redirected",
+      "since": "2026-10-21",
+      "note": "Qualquer subcaminho legado de Logística redireciona ao Front Door; nenhuma URL sob /app/logistica renderiza interface.",
+      "wrapper": "LegacyLogisticaRoute",
+      "redirectTo": "/app/chat?domain=logistica",
+      "plan": "Concluído."
+    }
+  ],
+  "legacyOperationalComponents": [
+    "apps/web/src/features/imob/ImobChatWidgets.tsx",
+    "apps/web/src/features/imob/ImobContractIntakeDraftCard.tsx",
+    "apps/web/src/features/imob/ImobContractIntakeResultCard.tsx",
+    "apps/web/src/features/imob/ImobDashboardHero.tsx",
+    "apps/web/src/features/imob/ImobIntakeSummaryPanel.tsx",
+    "apps/web/src/features/imob/ImobKnowledgeViewer.tsx",
+    "apps/web/src/features/imob/ImobWorkbenchContextPanel.tsx",
+    "apps/web/src/features/imob/ImobWorkbenchShell.tsx",
+    "apps/web/src/features/imob/KnowledgeCard.tsx",
+    "apps/web/src/features/imob/ThreadPanel.tsx",
+    "apps/web/src/features/workbench/VerticalWorkbenchShell.tsx",
+    "apps/web/src/features/workbench/WorkbenchPanelCard.tsx",
+    "apps/web/src/features/workbench/vertical-chat/ImobSlotCollectionCard.tsx",
+    "apps/web/src/features/workbench/vertical-chat/LegalContextPanel.tsx",
+    "apps/web/src/features/workbench/vertical-chat/ReactiveContextPanel.tsx",
+    "apps/web/src/features/workbench/vertical-chat/VerticalSelectorBar.tsx"
+  ],
+  "launcherLinksToLegacyRoutes": [
+    "apps/web/src/components/agents/imobContextResolver.ts|/app/imob/chat",
+    "apps/web/src/components/agents/imobContextResolver.ts|/app/imob/dashboard",
+    "apps/web/src/components/agents/platformHelpResolver.ts|/app/imob/chat",
+    "apps/web/src/components/agents/platformHelpResolver.ts|/app/imob/dashboard",
+    "apps/web/src/features/imob/structured/types.ts|/app/imob/chat",
+    "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts|/app/imob/chat",
+    "apps/web/src/lib/api.ts|/app/imob/chat"
+  ]
+}

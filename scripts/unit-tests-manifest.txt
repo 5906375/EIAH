@@ -245,9 +245,7 @@ apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx
 apps/web/src/pages/app/marketplace/imob.test.ts
 apps/api/src/tests/logistica-context-access.test.ts
 apps/api/src/tests/session-context-logistica-access.mock.test.ts
-apps/web/src/pages/app/logistica/cockpit.test.tsx
 apps/web/src/components/agents/logisticaCaseContextEngine.test.ts
-apps/web/src/features/logistica/LogisticaFrontDoorContextPanel.test.tsx
 apps/api/src/tests/imob-turn-engine-no-db-import.test.ts
 apps/api/src/tests/agent-capability-vocabulary.test.ts
 apps/api/src/tests/chat-vertical-registry-logistica.test.ts
@@ -261,8 +259,12 @@ apps/web/src/features/logistica/LogisticaConversationJourney.test.tsx
 apps/web/src/features/logistica/OraculoHumanDecisionPanel.test.tsx
 apps/web/src/features/logistica/LogisticaPendingDecisionsPanel.test.tsx
 apps/web/src/components/agents/logisticaPendingNoticeEngine.test.ts
+apps/web/src/features/logistica/legacyCockpitRedirect.test.ts
+apps/web/src/features/logistica/logisticaChatOnly.structure.test.ts
 apps/web/src/components/agents/preDuimpConversationEngine.test.ts
+apps/web/src/components/agents/imobManagementConversationEngine.test.ts
 apps/web/src/components/agents/imobHistoryConversationEngine.test.ts
 apps/web/src/features/imob/persistence/imobPersistence.test.ts
+apps/web/src/components/agents/useImobAuthority.test.ts
 apps/api/src/tests/imob-history-access.unit.test.ts
 apps/web/src/features/logistica/PreDuimpConversationCard.test.tsx

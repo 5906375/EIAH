@@ -755,7 +755,7 @@ function launcherEnvironment(harness: ReturnType<typeof frontDoorHarness>, stora
     session: { ...access, activeDomain: "imob" }, effectiveWorkspaceId: access.workspaceId,
     activeAgentId: "EIAH", historyScope: "conversation", FALLBACK_AGENT: { id: "EIAH" }, launcherContext: undefined,
     skipHistoryPersistRef: { current: false }, runId: null, messages: [],
-    conversationGenerationRef: harness.conversationGenerationRef, setMessages: harness.setMessages,
+    conversationGenerationRef: harness.conversationGenerationRef, setMessages: harness.setMessages, imobPersistence: { startNew: () => undefined },
     threadKey: "", baseLedger: () => [],
     window: { sessionStorage: { getItem: (key: string) => storage.get(key), setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } },
   };

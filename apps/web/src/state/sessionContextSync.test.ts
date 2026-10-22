@@ -4,6 +4,7 @@ import test, { beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import type { SessionContextResponse } from "@/lib/api";
 import { getSession, updateSession } from "./sessionStore";
+import { resolveRouteTargetDomain } from "./routeDomain";
 import { syncSessionContext } from "./sessionContextSync";
 import * as sessionContextSync from "./sessionContextSync";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
@@ -189,6 +190,8 @@ test("callback canônico de RequireAuth descarta bootstrap atrasado após sync m
   let applied!: Promise<unknown>;
   const environment = {
     session: getSession(), location: { pathname: "/app/chat", search: "" }, updateSession,
+    // dependências do callback (EIAH-FD-ADR010-M3): resolução do domínio-alvo e a marca da última rota resolvida
+    resolveRouteTargetDomain, lastResolvedRoute: { current: null as string | null },
     beginSessionContextRequest: sessionContextSync.beginSessionContextRequest,
     loadPreDuimpSessionContext: () => { applied = new Promise((resolve) => { complete = resolve; }); return applied; },
   };
