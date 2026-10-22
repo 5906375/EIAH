@@ -49,6 +49,21 @@ export const imobWorkspaceAccessGate = asyncHandler(async (req: Request, res: Re
   }
   const permissions = await readActiveWorkspaceMembershipPermissions({ prisma: request.prisma, tenantId, workspaceId, userId });
   if (permissions && hasWorkspacePermission(permissions, IMOB_BASE_PERMISSION)) return next();
+  // Contrato de códigos (EIAH-GIT-INTEGRATION-004): vínculo ATIVO sem a permissão base ≠ ausência de vínculo ativo. Só a leitura que devolve
+  // permissões (vínculo ativo existente) chega aqui como "sem permissão"; ausência, revogação (já negada antes pela guarda de vínculo inativo)
+  // e erro de leitura devolvem `null` e seguem fail-closed como vínculo exigido.
+  if (permissions) {
+    return sendImobAccessDenied(res, {
+      req,
+      code: "IMOB_WORKSPACE_PERMISSION_FORBIDDEN",
+      reasonCode: "IMOB_PERMISSION_DENIED",
+      capability: "CENTRAL_OPERACIONAL",
+      tenantId,
+      workspaceId,
+      installationStatus: "active",
+      message: "Sua função atual não pode usar o IMOB neste workspace.",
+    });
+  }
   return sendImobAccessDenied(res, {
     req,
     code: "IMOB_WORKSPACE_MEMBERSHIP_REQUIRED",
