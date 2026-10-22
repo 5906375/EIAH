@@ -250,3 +250,5 @@ apps/web/src/components/agents/logisticaCaseContextEngine.test.ts
 apps/web/src/features/logistica/LogisticaFrontDoorContextPanel.test.tsx
 apps/api/src/tests/imob-turn-engine-no-db-import.test.ts
 apps/api/src/tests/agent-capability-vocabulary.test.ts
+apps/api/src/tests/workspace-switch-shadow.unit.test.ts
+apps/api/src/tests/workspace-bootstrap-shadow.unit.test.ts

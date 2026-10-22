@@ -1,4 +1,5 @@
 import { resolveLogisticaContextAccess } from "../services/logistica/control/logisticaContextAccess";
+import { observeWorkspaceSwitchShadow, type WorkspaceSwitchLegacyOutcome } from "../services/workspaceSwitchAuthorization";
 import type { Request, Response } from "express";
 import { Router } from "express";
 import crypto from "node:crypto";
@@ -424,8 +425,17 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
     });
   }
 
+  // G2 (modo sombra, desligado por padrão): só observa e registra; nunca altera a decisão nem a resposta desta rota.
+  const observeShadow = (target: unknown, legacy: WorkspaceSwitchLegacyOutcome) => observeWorkspaceSwitchShadow({
+    actor: { tenantId: currentToken.tenantId, workspaceId: currentToken.workspaceId, userId: currentToken.userId },
+    targetWorkspaceId: target,
+    legacy,
+    logger: req.logger as { warn?: (...args: unknown[]) => void } | undefined,
+  });
+
   const parsed = switchWorkspaceSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
+    await observeShadow((req.body as { workspaceId?: unknown } | undefined)?.workspaceId, { outcome: "rejected_payload" });
     return res.status(400).json({
       ok: false,
       error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
@@ -439,6 +449,7 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
   });
 
   if (!workspace || workspace.tenantId !== currentToken.tenantId) {
+    await observeShadow(targetWorkspaceId, { outcome: "forbidden_workspace" });
     return res.status(403).json({
       ok: false,
       error: { code: "WORKSPACE_FORBIDDEN", message: "Workspace not available for this tenant" },
@@ -460,6 +471,7 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
       tenantId: true,
       workspaceId: true,
       userId: true,
+      description: true,
     },
   });
 
@@ -481,6 +493,11 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
         userId: true,
       },
     }));
+
+  await observeShadow(targetWorkspaceId, {
+    outcome: "allowed",
+    tokenAction: !existing ? "created" : existing.description === "Workspace switch token" ? "reused_switch_token" : "reused_other_origin",
+  });
 
   const { name, options } = resolveSessionCookieOptions(req);
   res.cookie(name, record.token, options);
