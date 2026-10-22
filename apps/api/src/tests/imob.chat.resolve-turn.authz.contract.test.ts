@@ -441,9 +441,13 @@ test("R2: a negativa segue o status vivo da membership (sem cache) e não afeta 
   assert.ok(serialized(restored).includes(cases.allowed.id) || serialized(restored).includes(marker.allowed));
 });
 
-test("R3: token de serviço sem pessoa associada segue o contrato anterior (a guarda não o nega)", async () => {
+test("R3: token de serviço sem pessoa associada é negado pela autoridade de serviço do IMOB (403 IMOB_SERVICE_AUTHORITY_REQUIRED), não pela guarda de vínculo do P12", async () => {
+  // AUTHZ-IMOB-SERVICE-001 (C03): token sem `userId` não é "corretor" e não recebe o IMOB por ausência de usuário. A guarda de vínculo do P12
+  // continua não o negando por vínculo (não é `IMOB_WORKSPACE_MEMBERSHIP_INACTIVE`); quem nega, fail-closed, é a porta de autoridade de serviço.
   const response = await resolveTurn(serviceToken, { message: STATUS_MESSAGE });
-  assert.equal(response.status, 200);
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "IMOB_SERVICE_AUTHORITY_REQUIRED");
+  assert.notEqual(response.body?.error?.code, "IMOB_WORKSPACE_MEMBERSHIP_INACTIVE");
 });
 
 test("R4: falha ao consultar a membership é erro interno (500), nunca 403 nem 200", async () => {
