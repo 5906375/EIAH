@@ -786,6 +786,45 @@ export async function readWorkspaceManagementSummary(params: {
   };
 }
 
+/**
+ * AUTHZ-IMOB-HANDOFF-001 — permissões do usuário no workspace, SOMENTE se o vínculo estiver ATIVO. Estritamente leitura: sem DDL,
+ * sem bootstrap, sem promoção a founder, sem reativação. Ausência de vínculo, status diferente de `active` (inclusive revogado) ou
+ * erro de consulta ⇒ `null` (quem chama nega). É o caminho de leitura para decisões de handoff/registry; criar vínculo continua
+ * restrito aos fluxos explícitos (`ensureWorkspaceMembershipForUser`, convites) e ao legado fora do handoff.
+ */
+export async function readActiveWorkspaceMembership(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<{ roleKey: string; permissions: string[] } | null> {
+  const prisma = params.prisma ?? prismaGlobal;
+  try {
+    const rows = await prisma.$queryRaw<Array<{ role_key: string | null; permissions: unknown; status: string | null }>>`
+      SELECT role_key, permissions, status
+      FROM eiah_workspace_memberships
+      WHERE user_id = ${params.userId}
+        AND tenant_id = ${params.tenantId}
+        AND workspace_id = ${params.workspaceId}
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row || row.status !== "active") return null;
+    return { roleKey: normalizeWorkspaceRoleKey(row.role_key ?? "corretor"), permissions: safeArray(row.permissions) };
+  } catch {
+    return null;
+  }
+}
+
+export async function readActiveWorkspaceMembershipPermissions(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<string[] | null> {
+  return (await readActiveWorkspaceMembership(params))?.permissions ?? null;
+}
+
 export async function readWorkspaceResponsibleProfile(params: {
   prisma?: any;
   tenantId: string;

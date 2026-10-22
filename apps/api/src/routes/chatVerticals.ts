@@ -7,6 +7,7 @@ import {
   composeVerticalRegistry,
   projectVerticalRegistryForSurface,
   readVerticalRegistryFacts,
+  type VerticalRegistryFactsOptions,
 } from "../services/chat/workspaceVerticalRegistry";
 import { VERTICAL_CAPABILITY_MODES } from "../types/chatVerticalHandoffV2Contract";
 import type { PrismaClient } from "@repo/db";
@@ -17,6 +18,7 @@ import {
   verticalNotApprovedError,
 } from "../services/products/productActivation";
 import { readVerticalAccess } from "../services/products/verticalAccessApproval";
+import { OraculoPreparationRepository } from "../services/logistica/oraculo/preparationRepository";
 
 /**
  * Front door (`/app/chat`): verticais ativas do workspace, handoff para uma
@@ -29,6 +31,9 @@ chatVerticalsRouter.use("/chat/vertical-registry", enforceTenant);
 chatVerticalsRouter.use("/chat/vertical-handoff", enforceTenant);
 chatVerticalsRouter.use("/chat/vertical-activation", enforceTenant);
 
+/** Mesmo formato opaco que o cliente valida antes de enviar. */
+export const LOGISTICA_CASE_REF_PATTERN = /^[A-Za-z0-9_-]{8,64}$/;
+
 const handoffRequestSchema = z
   .object({
     verticalId: z.string().trim().min(1).max(80),
@@ -38,20 +43,41 @@ const handoffRequestSchema = z
       .object({
         conversationId: z.string().trim().min(1).max(120).optional(),
         threadId: z.string().trim().min(1).max(120).optional(),
+        /**
+         * Referência OPACA de um caso da Logística para retomar na conversa (FD-E2E-003). Só formato e tamanho; não é autorização:
+         * o servidor a resolve apenas no contexto autenticado, depois do handoff permitido, e ela nunca cria caso nem carrega dados.
+         */
+        caseRef: z.string().regex(LOGISTICA_CASE_REF_PATTERN).optional(),
       })
       .strict()
       .optional(),
   })
   .strict();
 
-async function composeForRequest(req: TenantAwareRequest) {
+/** Resultado aditivo do handoff de Logística quando o pedido trouxe `caseRef`: sem dados do caso e sem distinguir os motivos da recusa. */
+export type LogisticaHandoffCaseContext = { status: "resolved"; caseRef: string } | { status: "unavailable" };
+
+async function resolveLogisticaCaseRef(request: TenantAwareRequest, caseRef: string): Promise<LogisticaHandoffCaseContext> {
+  const { authContext, prisma } = request;
+  // Sem identidade autenticada ou sem o escopo do workspace não há como resolver: recusa (fail-closed).
+  if (!authContext?.userId || !prisma) return { status: "unavailable" };
+  try {
+    const found = await new OraculoPreparationRepository(prisma, authContext).get(caseRef);
+    return found ? { status: "resolved", caseRef } : { status: "unavailable" };
+  } catch {
+    // Inclui violação de integridade do registro: não resolve e não detalha.
+    return { status: "unavailable" };
+  }
+}
+
+async function composeForRequest(req: TenantAwareRequest, options: VerticalRegistryFactsOptions = {}) {
   const { authContext, prisma } = req;
   if (!authContext || !prisma) return null;
   const facts = await readVerticalRegistryFacts(prisma, {
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
     userId: authContext.userId ?? null,
-  });
+  }, options);
   return composeVerticalRegistry(facts);
 }
 
@@ -68,11 +94,22 @@ chatVerticalsRouter.post("/chat/vertical-handoff", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
   }
-  const composed = await composeForRequest(req as TenantAwareRequest);
+  // A permissão do IMOB só é lida quando o handoff é para o IMOB — do vínculo ATIVO existente, sem criar, reativar nem promover vínculo.
+  const composed = await composeForRequest(req as TenantAwareRequest, { resolveImobPermission: parsed.data.verticalId === "imob" });
   if (!composed) {
     return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
   }
-  const result = buildAndEvaluateVerticalHandoff(composed, parsed.data, `frontdoor-${crypto.randomUUID()}`);
+  // `caseRef` não pertence ao contrato `chat.vertical_handoff.v2` (refs estrito): sai do pedido antes da avaliação e só é
+  // resolvido depois de o handoff ter sido permitido pela governança, e apenas para a Logística.
+  const { caseRef, ...contractRefs } = parsed.data.refs ?? {};
+  const result = buildAndEvaluateVerticalHandoff(
+    composed,
+    { ...parsed.data, ...(parsed.data.refs ? { refs: contractRefs } : {}) },
+    `frontdoor-${crypto.randomUUID()}`,
+  );
+  if (result.ok && parsed.data.verticalId === "log" && caseRef) {
+    return res.json({ ok: true, data: { ...result, caseContext: await resolveLogisticaCaseRef(req as TenantAwareRequest, caseRef) } });
+  }
   // Bloqueio é resultado de governança, não erro: a conversa explica e oferece o caminho.
   return res.json({ ok: true, data: result });
 });

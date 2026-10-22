@@ -28,6 +28,16 @@ export const IMOB_FRONT_DOOR_CAPABILITIES: Array<{ id: string; allowedModes: Ver
   { id: "inventory.preview", allowedModes: ["read_only"] },
 ];
 
+/**
+ * Capacidades que a Logística & Comex anuncia no registry do front door: só a consulta de contexto. A jornada de preparação,
+ * evidências, conferência e decisão humana acontece na conversa (cartão `logisticaJourney`), mas NÃO é capacidade anunciada aqui;
+ * o cockpit é ferramenta opcional. Declarar não
+ * concede nada: o acesso continua dependendo de instalação, liberação, vínculo ativo e da política `log.context.read`.
+ */
+export const LOGISTICA_FRONT_DOOR_CAPABILITIES: Array<{ id: string; allowedModes: VerticalCapabilityMode[] }> = [
+  { id: "oraculo.context", allowedModes: ["read_only"] },
+];
+
 /** Passo 1: reusable access descriptor only. Existing composition/handoff is
  * unchanged; no runtime consumer uses the new resolver yet.
  */
@@ -72,13 +82,21 @@ function capabilitiesForUsage(usage: "full" | "read_only" | "blocked") {
     .filter((capability) => capability.allowedModes.length > 0);
 }
 
-export type VerticalGovernance = Record<string, { rbac: Decision; entitlement: Decision }>;
+/** `policy` é opcional: ausente = `not_required` (IMOB e core não têm política própria no handoff). */
+export type VerticalGovernance = Record<string, { rbac: Decision; entitlement: Decision; policy?: Decision }>;
+
+/**
+ * O IMOB está INSTALADO e HABILITADO no workspace? Mesma regra do registry de verticais (`status: "enabled"`): instalação ativa, direito de uso,
+ * agentes provisionados e liberação EIAH não bloqueada. Fonte única: o handoff e as APIs operacionais do IMOB (AUTHZ-IMOB-INSTALLATION-001) a reutilizam.
+ */
+export function isImobVerticalEnabled(imob: Pick<VerticalRegistryFacts["imob"], "installationStatus" | "entitled" | "agentsReady" | "usage">): boolean {
+  return imob.installationStatus === "active" && imob.entitled && imob.agentsReady && (imob.usage ?? "full") !== "blocked";
+}
 
 /** Composição pura (testável) do registry a partir dos fatos lidos do banco. */
 export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registry: VerticalRegistryV1; governance: VerticalGovernance } {
   const usage = facts.imob.usage ?? "full";
-  const imobEnabled =
-    facts.imob.installationStatus === "active" && facts.imob.entitled && facts.imob.agentsReady && usage !== "blocked";
+  const imobEnabled = isImobVerticalEnabled(facts.imob);
   const verticals: VerticalRegistryV1["verticals"] = [
     {
       id: "core",
@@ -103,12 +121,15 @@ export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registr
       rolloutStage: "installed_surface",
     });
   }
-  if (facts.logistica && facts.logistica.installationStatus !== "missing") {
+  const logistica = facts.logistica && facts.logistica.installationStatus !== "missing" ? facts.logistica : null;
+  if (logistica) {
     verticals.push({
       id: "log", label: "Logística & Comex",
-      status: facts.logistica.contextAllowed ? "enabled" : "disabled",
-      // Context metadata only; no operational handoff capability is installed.
-      capabilities: [], entitlement: { required: true, key: "LOGISTICA_ACTIVE_INSTALLATION" },
+      status: logistica.contextAllowed ? "enabled" : "disabled",
+      // A capacidade só é declarada com o contexto autorizado; negada, a entrada permanece idêntica à versão anterior
+      // (mesmo `registryVersion`, logo propostas de ativação pendentes continuam válidas).
+      capabilities: logistica.contextAllowed ? LOGISTICA_FRONT_DOOR_CAPABILITIES.map((capability) => ({ ...capability, allowedModes: [...capability.allowedModes] })) : [],
+      entitlement: { required: true, key: "LOGISTICA_ACTIVE_INSTALLATION" },
       rbac: { requiredRoles: [] }, policyGates: ["log.context.read"], rolloutStage: "context_only",
     });
   }
@@ -127,6 +148,15 @@ export function composeVerticalRegistry(facts: VerticalRegistryFacts): { registr
         rbac: facts.imob.userCanUse ? "allowed" : "denied",
         entitlement: facts.imob.entitled ? "allowed" : "denied",
       },
+      // Logística não usa papel: `contextAllowed` já resume instalação ativa, liberação, vínculo ativo e a política exata
+      // `log.context.read`, calculados no servidor (`resolveLogisticaContextAccess`). Sem entrada no registry, não há decisão.
+      ...(logistica ? {
+        log: {
+          rbac: "not_required" as const,
+          entitlement: logistica.contextAllowed ? "allowed" as const : "denied" as const,
+          policy: logistica.contextAllowed ? "allowed" as const : "denied" as const,
+        },
+      } : {}),
     },
   };
 }
@@ -181,7 +211,7 @@ export function buildAndEvaluateVerticalHandoff(
       registry: { decision: vertical ? "allowed" : "denied" },
       rbac: { decision: decisions.rbac },
       entitlement: { decision: decisions.entitlement },
-      policy: { decision: "not_required" },
+      policy: { decision: decisions.policy ?? "not_required" },
       hitl: { status: request.mode === "critical_action" ? "required" : "not_required" },
     },
     presentation: { source: "operational", variant: "chat_card" },
