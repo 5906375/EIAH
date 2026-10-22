@@ -34,7 +34,6 @@ import {
   type ImobWaitingOnBucket,
   type ImobRescueMetric,
   type ImobSpecialistLoadMetric,
-  type ImobReasonCode,
   type Run,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "@/features/imob/propertyTypes";
@@ -52,7 +51,7 @@ import {
 } from "@/features/imob/kpiRefreshState";
 import { ImobFunnelStepsChart } from "@/features/imob/charts/ImobFunnelStepsChart";
 import { ImobJourneyCostChart } from "@/features/imob/charts/ImobJourneyCostChart";
-import { ImobFunnelTeamSection } from "@/features/imob/funnel/ImobFunnelTeamSection";
+import { ImobFunnelTab } from "@/features/imob/funnel/ImobFunnelTab";
 import { ImobCycleTimePanel } from "@/features/imob/charts/ImobCycleTimePanel";
 import {
   buildImobCaseFallbackActions,
@@ -65,6 +64,7 @@ import {
 } from "@/features/imob/imobCommandCenterHelper";
 import { saveImobArtifactHtml, saveImobArtifactPdf } from "@/features/imob/imobArtifactExport";
 import { formatPct } from "@/lib/formatters";
+import { buildImobApprovalActionInput } from "@/features/imob/imobApprovalActions";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 
@@ -233,31 +233,6 @@ function buildApprovalContextHref(
   });
 }
 
-function buildApprovalDelegateTarget(item: ImobApprovalContextItem) {
-  if (item.waitingOn === "legal") return "juridico";
-  if (item.waitingOn === "finance") return "financeiro";
-  if (item.waitingOn === "broker") return "corretor";
-  if (item.waitingOn === "lead") return "comercial";
-  if (item.waitingOn === "owner") return "captacao";
-  return "imob-ops";
-}
-
-function buildApprovalEscalationTarget(item: ImobApprovalContextItem) {
-  if (item.reasonCode === "AUDIT_BLOCKER") return "governanca";
-  if (item.reasonCode === "FINANCIAL_BLOCKER") return "diretoria-financeira";
-  if (item.reasonCode === "DOCUMENT_BLOCKER") return "coordenacao-juridica";
-  if (item.reasonCode === "COMMERCIAL_PRIORITY") return "lider-comercial";
-  return "lider-operacional";
-}
-
-function reasonCodeLabel(value: ImobReasonCode) {
-  if (value === "COMMERCIAL_PRIORITY") return "prioridade comercial";
-  if (value === "FOLLOW_UP_DISCIPLINE") return "disciplina de follow-up";
-  if (value === "DOCUMENT_BLOCKER") return "bloqueio documental";
-  if (value === "FINANCIAL_BLOCKER") return "bloqueio financeiro";
-  return "bloqueio de auditoria/evidência";
-}
-
 function formatDashboardCaseLabel(item: ImobCase | null) {
   if (!item) return "Sem caso vinculado";
   const flowLabel = formatCaseFlowLabel(item.flow);
@@ -341,23 +316,7 @@ const ImobDashboardPage: React.FC = () => {
   ) => {
     try {
       setDashboardError(null);
-      const delegatedTo = action === "delegate" ? buildApprovalDelegateTarget(item) : undefined;
-      const escalationTarget = action === "escalate" ? buildApprovalEscalationTarget(item) : undefined;
-      const note = action === "approve"
-        ? `Aprovado via command center para ${reasonCodeLabel(item.reasonCode)}.`
-        : action === "delegate"
-          ? `Delegado via command center para ${delegatedTo}.`
-          : `Escalado via command center para ${escalationTarget}.`;
-
-      await apiPostImobApprovalAction({
-        caseId: item.caseId,
-        action,
-        reasonCode: item.reasonCode,
-        specialistId: item.specialistId,
-        delegatedTo,
-        escalationTarget,
-        note,
-      });
+      await apiPostImobApprovalAction(buildImobApprovalActionInput(item, action, "command center"));
 
       await reloadApprovalContext();
     } catch (error) {
@@ -991,119 +950,19 @@ const ImobDashboardPage: React.FC = () => {
       ) : null}
 
       {activeTab === "funil" ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface/40 px-4 py-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Janela analítica</p>
-              <p className="mt-1 text-sm text-foreground">O recorte abaixo vale para funil, custo por jornada e ciclo operacional.</p>
-            </div>
-            <div className="flex gap-1">
-              {([7, 15, 30] as const).map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => setKpiWindowDays(days)}
-                  className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] transition ${
-                    kpiWindowDays === days
-                      ? "border-accent/60 bg-accent/20 text-accent"
-                      : "border-white/15 bg-white/5 text-muted-foreground hover:border-white/30"
-                  }`}
-                >
-                  {days}d
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão global do funil</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {globalClosingPct != null ? formatPct(globalClosingPct) : shouldShowKpiPlaceholder(kpiRefreshState) ? "..." : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : `${kpiFunnel?.totals.closings ?? 0} fechamento(s) de ${kpiFunnel?.totals.cases ?? 0} caso(s)`}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão proposta → fechamento</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {kpiFunnel?.conversions.proposalToClosingPct != null ? formatPct(kpiFunnel?.conversions.proposalToClosingPct) : shouldShowKpiPlaceholder(kpiRefreshState) ? "..." : "—"}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : `${kpiFunnel?.totals.closings ?? 0} fechamento(s) de ${kpiFunnel?.totals.proposals ?? 0} proposta(s)`}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tempo médio até fechamento</p>
-              {shouldShowKpiPlaceholder(kpiRefreshState) ? (
-                <p className="mt-2 text-2xl font-semibold text-foreground">...</p>
-              ) : hasDurationCoverage ? (
-                <p className="mt-2 text-2xl font-semibold text-foreground">
-                  {`${kpiFunnel.averageDurationHours.toFixed(1)}h`}
-                </p>
-              ) : (
-                <p className="mt-2 text-sm font-semibold text-muted-foreground">Sem dados suficientes</p>
-              )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : hasDurationCoverage ? `${durationSampleSize} fechamento(s) medidos` : "Nenhum fechamento medido no recorte"}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pendências resolvidas em 48h</p>
-              {shouldShowKpiPlaceholder(kpiRefreshState) ? (
-                <p className="mt-2 text-2xl font-semibold text-foreground">...</p>
-              ) : hasResolutionCoverage ? (
-                <p className="mt-2 text-2xl font-semibold text-foreground">
-                  {formatPct(kpiFunnel?.docsResolved48hPct)}
-                </p>
-              ) : (
-                <p className="mt-2 text-sm font-semibold text-muted-foreground">Sem dados suficientes</p>
-              )}
-              <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : hasResolutionCoverage ? `${resolutionSampleSize} fechamento(s) medidos` : "Nenhum fechamento elegível no recorte"}
-              </p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Casos sem broker canônico</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">
-                {shouldShowKpiPlaceholder(performanceRefreshState) ? "..." : kpiPerformance?.unassigned?.cases ?? 0}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(performanceRefreshState)
-                  ? "Atualizando recorte..."
-                  : `${kpiPerformance?.unassigned?.label ?? "Pendência operacional"} • ${kpiWindowDays}d`}
-              </p>
-            </article>
-          </div>
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ImobFunnelStepsChart steps={kpiFunnel?.steps ?? []} loading={kpiLoading} windowDays={kpiWindowDays} />
-            <ImobJourneyCostChart
-              items={kpiFunnel?.costByJourney ?? []}
-              totalCostCents={totalImobRunCostCents}
-              costCoverage={kpiFunnel?.costCoverage ?? null}
-              loading={kpiLoading}
-            />
-          </div>
-          <ImobCycleTimePanel
-            docsResolved48hPct={kpiFunnel?.docsResolved48hPct ?? 0}
-            averageDurationHours={kpiFunnel?.averageDurationHours ?? null}
-            durationSampleSize={durationSampleSize}
-            resolutionSampleSize={resolutionSampleSize}
-            loading={kpiLoading}
-            windowDays={kpiWindowDays}
-          />
-          <ImobFunnelTeamSection
-            specialistLoad={specialistLoad}
-            rescueIndex={rescueIndex}
-            approvalContext={approvalContext}
-            kpiPerformance={kpiPerformance}
-            kpiLoading={kpiLoading}
-            kpiWindowDays={kpiWindowDays}
-            telemetryMetrics={telemetryMetrics}
-            buildApprovalHref={(item) => buildApprovalContextHref(conversationId, item)}
-            onApprovalAction={handleApprovalAction}
-          />
-        </div>
+        <ImobFunnelTab
+          kpiFunnel={kpiFunnel}
+          kpiPerformance={kpiPerformance}
+          kpiLoading={kpiLoading}
+          kpiWindowDays={kpiWindowDays}
+          onWindowChange={setKpiWindowDays}
+          specialistLoad={specialistLoad}
+          rescueIndex={rescueIndex}
+          approvalContext={approvalContext}
+          telemetryMetrics={telemetryMetrics}
+          buildApprovalHref={(item) => buildApprovalContextHref(conversationId, item)}
+          onApprovalAction={handleApprovalAction}
+        />
       ) : null}
 
       {activeTab === "casos" && !imobAccessGate ? (

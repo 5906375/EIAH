@@ -263,5 +263,6 @@ apps/web/src/features/logistica/LogisticaPendingDecisionsPanel.test.tsx
 apps/web/src/components/agents/logisticaPendingNoticeEngine.test.ts
 apps/web/src/components/agents/preDuimpConversationEngine.test.ts
 apps/web/src/components/agents/imobHistoryConversationEngine.test.ts
+apps/web/src/features/imob/persistence/imobPersistence.test.ts
 apps/api/src/tests/imob-history-access.unit.test.ts
 apps/web/src/features/logistica/PreDuimpConversationCard.test.tsx

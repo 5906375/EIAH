@@ -399,6 +399,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       void sendMessageText(item.prompt, { displayText: item.label });
       return;
     }
+    if (item.kind === "front_door") return; // o launcher trata (cartão na conversa); este host não tem o que fazer
     if (item.form === "owner_edit") openOwnerEditForm("edit");
     else if (item.form === "owner_archive") openOwnerEditForm("archive");
     else if (item.form === "property_edit") openPropertyEditForm("edit");

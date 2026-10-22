@@ -59,6 +59,8 @@ type ImobCommandCenterProps = {
   onRefresh: () => void;
   onDownloadArtifact: (type: "bundle" | "receipt", format: "pdf" | "html", caseId: string) => void | Promise<void>;
   conversationId?: string | null;
+  /** Destino do atalho "abrir caso" de cada linha. Padrão: o chat do IMOB; o Front Door passa `() => null` (a conversa já é o destino; sem link). */
+  buildCaseRoute?: (item: ImobCommandCenterCaseRow, conversationId: string | null | undefined) => string | null;
   receiptLabel?: string;
   riskLabel?: string;
 };
@@ -82,6 +84,7 @@ export function ImobCommandCenter({
   onRefresh,
   onDownloadArtifact,
   conversationId = null,
+  buildCaseRoute = caseChatRoute,
   receiptLabel = "Comprovante",
   riskLabel = "Risco operacional",
 }: ImobCommandCenterProps) {
@@ -198,7 +201,7 @@ export function ImobCommandCenter({
                 const hasConsolidatedCost = caseCostMap?.has(item.caseId) ?? false;
                 const costCents = caseCostMap?.get(item.caseId) ?? 0;
                 const costLabel = hasConsolidatedCost ? `${formatCents(costCents)} (${caseCostWindowDays}d)` : null;
-                const chatRoute = caseChatRoute(item, conversationId);
+                const chatRoute = buildCaseRoute(item, conversationId);
                 return (
                   <tr
                     key={item.processId}
