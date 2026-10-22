@@ -126,6 +126,10 @@ quem cria o tenant não recebe autoridade; não existe concessão inicial implí
 concessão responde `403 GRANTOR_AUTHORITY_REQUIRED` com `bootstrap.reasonCode = FIRST_AUTHORITY_SOURCE_NOT_RATIFIED`.
 Estabelecer essa fonte e ratificá-la é uma decisão humana pendente.
 
+**Atualização 2026-10-20:** a implementação de AUTHZ-ROOT-001 (autoridade raiz governada) está **congelada** por
+decisão do proprietário. Nenhuma nova autoridade comercial é concedida por essa decisão e a primeira autoridade
+continua BLOQUEADA. As condições de descongelamento constam de registro interno, não publicado.
+
 #### Habilitação comercial verificável (agentes governados)
 
 Agente **governado** = agente que declara capacidades transversais (hoje `MKT`; outros entram ao declarar). Para eles,
@@ -218,6 +222,24 @@ scopes administrativos ratificados:
 
 Este registro desbloqueia a implementação do hotfix, mas não fecha o
 P0-AUTHZ. Os handlers de Actions e Tools não são alterados por esta decisão.
+
+## Nota — decisão humana do caso da Logística (EIAH-FD-E2E-004, J17, 2026-10-21)
+
+A decisão humana sobre itens da preparação (campo dispensado, divergência, correspondência indeterminada) **não cria escopo nem
+autoridade nova**: reaproveita, sem alterá-los, `log.oraculo_preparation.write` (pedir) e `log.oraculo_preparation.content_review`
+(decidir), ambos políticas exatas do workspace. Regras adicionais, de domínio e não de política: o decisor é membro ativo **diferente**
+de quem pediu; só decide a base atual do caso; uma decisão por solicitação. Não há designação por usuário (a política é por workspace),
+portanto "responsável elegível" = membro ativo com a política do workspace. **Dependência aberta (D1–D4):** definir quem é o responsável
+elegível por designação e, se aprovado, um escopo próprio de decisão (proposta: `log.oraculo_preparation.decision`; a constante
+`ORACULO_DECISION_SCOPE` em `@eiah/contracts` é o ponto único de troca). A decisão registrada **não** autoriza execução, aceite da
+devolução, responsabilidade, custos nem transmissão externa.
+
+**Atualização FD-E2E-005 (2026-10-21) — caixa de pendências e elegibilidade provisória:** a caixa de pendências do Front Door
+(`GET /logistica/oraculo/preparations/decision-inbox`) lê só os casos do tenant/workspace autenticado e só lista "aguardando você" a quem
+passa na MESMA elegibilidade da decisão; ser membro ativo **não** é fonte de autoridade. Enquanto não houver designação legítima (D1–D4),
+a elegibilidade de decidir é **provisória e só vale em `NODE_ENV` `test`/`development`** (`provisionalDecisionEligibilityEnabled`): em
+produção/staging a política `content_review` sozinha não torna ninguém decisor — a caixa vem vazia com o motivo `not_designated`, a decisão
+é negada (`decision_not_designated`) e o pedido é bloqueado (`no_eligible_decider`). O alcance de `content_review` não foi ampliado.
 
 ## Nota — Histórico IMOB × autoridade para operar o IMOB (EIAH-GIT-INTEGRATION-004, 2026-10-22)
 

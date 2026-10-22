@@ -3,11 +3,13 @@ import {
   ORACULO_PREPARATION_CASE_TYPE, oraculoPreparationRecordV1Schema,
   oraculoPreparationWriteV1Schema, type OraculoPreparationRecordV1,
   type OraculoPreparationScope, type OraculoEvidenceLinkV1, type OraculoDocumentReviewRequestV1,
+  type OraculoDecisionInputV1, type OraculoDecisionRequestInputV1,
 } from "@eiah/contracts";
 import { Prisma, type PrismaClient } from "@repo/db";
 import { canonicalizeGovernedJsonV1 } from "../preDuimpGovernedCaseCanonicalization";
 import { assessEmptyReturnPreparation } from "./preparation";
 import { buildDocumentReview } from "./documentReview";
+import { buildDecision, buildDecisionRequest } from "./humanDecision";
 import { createPreparationEvidence, inspectPreparationEvidence, PreparationEvidenceError } from "./evidence";
 
 export class PreparationIntegrityError extends Error {}
@@ -67,6 +69,7 @@ export class OraculoPreparationRepository {
       evidences: current?.evidences ?? [],
       ...((operationReference ?? current?.operationReference) ? { operationReference: operationReference ?? current?.operationReference } : {}),
       ...(current?.contentReviews ? { contentReviews: current.contentReviews } : {}),
+      ...(current?.humanDecisions ? { humanDecisions: current.humanDecisions } : {}),
       createdAt: current?.createdAt ?? now.toISOString(), updatedAt: now.toISOString(),
       executionAllowed: false, authorizationState: "NOT_REQUESTED", externalTransmissionAllowed: false,
     });
@@ -97,6 +100,26 @@ export class OraculoPreparationRepository {
     const review = buildDocumentReview(current, evidence, input, actorRef);
     const value = oraculoPreparationRecordV1Schema.parse({ ...current, contentReviews: [...current.contentReviews ?? [], review], revision: current.revision + 1, updatedAt: review.reviewedAt });
     return this.commit(value, current, actorRef, "oraculo.preparation.document_reviewed");
+  }
+  /** J17: registra a solicitação de decisão humana, presa ao caso e à revisão atual; a autoridade/eligibilidade é conferida na rota. */
+  async requestDecision(caseId: string, input: OraculoDecisionRequestInputV1, actorRef: string) {
+    if (!actorRef.trim()) throw new Error("Authenticated actor required");
+    const current = await this.get(caseId);
+    if (!current) return null;
+    if (current.revision !== input.expectedRevision) throw new PreparationConflictError("Revision conflict");
+    const request = buildDecisionRequest(current, input, actorRef);
+    const value = oraculoPreparationRecordV1Schema.parse({ ...current, humanDecisions: [...current.humanDecisions ?? [], request], revision: current.revision + 1, updatedAt: request.requestedAt });
+    return this.commit(value, current, actorRef, "oraculo.preparation.decision_requested");
+  }
+  /** J17: registra a decisão explícita; rejeita revisão obsoleta, solicitação já decidida e decisor que pediu. */
+  async recordDecision(caseId: string, input: OraculoDecisionInputV1, actorRef: string) {
+    if (!actorRef.trim()) throw new Error("Authenticated actor required");
+    const current = await this.get(caseId);
+    if (!current) return null;
+    if (current.revision !== input.expectedRevision) throw new PreparationConflictError("Revision conflict");
+    const decision = buildDecision(current, input, actorRef);
+    const value = oraculoPreparationRecordV1Schema.parse({ ...current, humanDecisions: [...current.humanDecisions ?? [], decision], revision: current.revision + 1, updatedAt: decision.decidedAt });
+    return this.commit(value, current, actorRef, "oraculo.preparation.decision_recorded");
   }
   private async commit(value: OraculoPreparationRecordV1, current: OraculoPreparationRecordV1 | null, actorRef: string, transitionCode: string) {
     const now = new Date(value.updatedAt);

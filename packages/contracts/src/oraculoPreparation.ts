@@ -108,6 +108,58 @@ export type OraculoDocumentReviewRequestV1 = z.infer<typeof oraculoDocumentRevie
 export type OraculoDocumentCheckV1 = z.infer<typeof oraculoDocumentCheckV1Schema>;
 export type OraculoDocumentReviewV1 = z.infer<typeof oraculoDocumentReviewV1Schema>;
 export type OraculoDocumentReviewStateV1 = { review: OraculoDocumentReviewV1; state: "current" | "context_changed" | "file_unavailable" | "superseded" };
+/**
+ * FD-E2E-004 (J17) — decisão humana sobre itens que a preparação não pode resolver sozinha (campo dispensado, divergência ou
+ * correspondência indeterminada). Segue o padrão de `contentReviews`: eventos apendáveis NO registro versionado do caso (cada evento é uma
+ * nova revisão em `governed_case_revisions`), sem tabela, fila nem notificação. A decisão NÃO autoriza execução, aceite, responsabilidade,
+ * custos nem transmissão: é só o registro de que um responsável elegível, diferente de quem pediu, olhou a base exata e decidiu.
+ */
+export const ORACULO_DECISION_VALUES = ["approved", "rejected", "more_information"] as const;
+export const oraculoDecisionValueSchema = z.enum(ORACULO_DECISION_VALUES);
+/** A autoridade para decidir é a MESMA da conferência humana (`content_review`); um escopo próprio é proposta pendente de ratificação. */
+export const ORACULO_DECISION_SCOPE = "log.oraculo_preparation.content_review" as const;
+export const oraculoDecisionRequestInputV1Schema = z.object({ expectedRevision: z.number().int().positive(), note: text.optional() }).strict();
+export const oraculoDecisionInputV1Schema = z.object({
+  requestId: text,
+  expectedRevision: z.number().int().positive(),
+  decision: oraculoDecisionValueSchema,
+  note: text,
+  acknowledgedBasisRead: z.literal(true),
+}).strict();
+const sha256Hex = z.string().regex(/^[a-f0-9]{64}$/);
+export const oraculoDecisionRequestV1Schema = z.object({
+  schemaVersion: z.literal("oraculo.decision-request.v1"),
+  kind: z.literal("requested"),
+  id: text, caseId: text, tenantId: text, workspaceId: text,
+  basedOnRevision: z.number().int().positive(),
+  basisHash: sha256Hex,
+  triggers: z.array(text).min(1).max(20),
+  note: text.optional(),
+  requestedBy: text,
+  requestedAt: z.string().datetime(),
+  operationalAuthorization: z.literal(false),
+}).strict();
+export const oraculoDecisionRecordV1Schema = z.object({
+  schemaVersion: z.literal("oraculo.decision.v1"),
+  kind: z.literal("decided"),
+  id: text, requestId: text, caseId: text, tenantId: text, workspaceId: text,
+  basedOnRevision: z.number().int().positive(),
+  basisHash: sha256Hex,
+  decision: oraculoDecisionValueSchema,
+  note: text,
+  acknowledgedBasisRead: z.literal(true),
+  decidedBy: text,
+  decidedAt: z.string().datetime(),
+  operationalAuthorization: z.literal(false), executionAuthorization: z.literal(false), responsibilityClosure: z.literal(false), costClosure: z.literal(false),
+}).strict();
+export const oraculoHumanDecisionEventV1Schema = z.discriminatedUnion("kind", [oraculoDecisionRequestV1Schema, oraculoDecisionRecordV1Schema]);
+export type OraculoDecisionValue = (typeof ORACULO_DECISION_VALUES)[number];
+export type OraculoDecisionRequestInputV1 = z.infer<typeof oraculoDecisionRequestInputV1Schema>;
+export type OraculoDecisionInputV1 = z.infer<typeof oraculoDecisionInputV1Schema>;
+export type OraculoDecisionRequestV1 = z.infer<typeof oraculoDecisionRequestV1Schema>;
+export type OraculoDecisionRecordV1 = z.infer<typeof oraculoDecisionRecordV1Schema>;
+export type OraculoHumanDecisionEventV1 = z.infer<typeof oraculoHumanDecisionEventV1Schema>;
+
 export const oraculoPreparationRecordV1Schema = oraculoEmptyReturnPreparationV1Schema.extend({
   caseId: text,
   caseType: z.literal(ORACULO_PREPARATION_CASE_TYPE),
@@ -115,6 +167,8 @@ export const oraculoPreparationRecordV1Schema = oraculoEmptyReturnPreparationV1S
   lifecycle: z.literal("DISCOVERY"),
   operationReference: oraculoOperationReferenceV1Schema.optional(),
   contentReviews: z.array(oraculoDocumentReviewV1Schema).max(100).optional(),
+  // Idem: opcional sem default, para que snapshots históricos mantenham o hash canônico original.
+  humanDecisions: z.array(oraculoHumanDecisionEventV1Schema).max(100).optional(),
   // Optional without a default: historical snapshots keep their original canonical hash.
   evidences: z.array(oraculoEvidenceV1Schema).max(20).optional(),
   createdAt: z.string().datetime(),
