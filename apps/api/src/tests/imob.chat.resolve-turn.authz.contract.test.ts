@@ -2,6 +2,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
+import { cleanupImobInstallationForTest, installImobForTest } from "./support/imobInstallationFixture";
 
 // P12 — segurança do resolve-turn NORMAL do IMOB: permissão de etapa (com e sem caseId) e status HTTP das negativas.
 // Banco/Redis descartáveis (loopback); identidades e dados exclusivamente sintéticos.
@@ -206,6 +207,10 @@ before(async () => {
     `;
   }
 
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado no workspace; a fixture instala pelo serviço de ativação
+  // existente (só o workspace dos usuários do teste; os demais escopos são apenas dados que não devem ser alcançados).
+  await installImobForTest({ prisma: prismaGlobal, tenantId, workspaceId, userId: users.admin.id });
+
   // Dois casos no MESMO workspace em etapas distintas; o da etapa negada é o mais recente.
   const allowed = await createCase({ tenant: tenantId, workspace: workspaceId, stage: STAGE_ALLOWED, markerText: marker.allowed, threadId: cases.allowed.threadId });
   const denied = await createCase({ tenant: tenantId, workspace: workspaceId, stage: STAGE_DENIED, markerText: marker.denied, threadId: cases.denied.threadId });
@@ -240,6 +245,7 @@ before(async () => {
 after(async () => {
   if (!prismaGlobal) return;
   const tenants = [tenantId, otherTenantId];
+  await cleanupImobInstallationForTest(prismaGlobal, tenants);
   await prismaGlobal.$executeRaw`DELETE FROM memory_events WHERE tenant_id IN (${tenants[0]}, ${tenants[1]})`;
   await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId: { in: tenants } } });
   await prismaGlobal.$executeRawUnsafe("DELETE FROM eiah_workspace_memberships WHERE tenant_id = ANY($1)", tenants).catch(() => undefined);
