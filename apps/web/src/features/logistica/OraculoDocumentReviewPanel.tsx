@@ -51,7 +51,7 @@ export function OraculoDocumentReviewPanel({ current, editable, blocked, onRevie
     <h3 className="text-xl font-semibold">Conferência documental assistida</h3>
     <p>Leia o documento usando o download acima e registre os dados que encontrou. A comparação usa a referência declarada e salva no caso.</p>
     <p>Coincidência textual não comprova autenticidade do emissor, aceite da devolução ou encerramento de responsabilidade e cobranças.</p>
-    <button type="button" className="text-accent underline" disabled={busy || blocked} onClick={() => { setMessage(""); setRefresh((value) => value + 1); }}>Atualizar conferências</button>
+    <button type="button" className="inline-flex min-h-[36px] items-center text-accent underline" disabled={busy || blocked} onClick={() => { setMessage(""); setRefresh((value) => value + 1); }}>Atualizar conferências</button>
     {verifiedRevision === null ? <p role="status">Conferências ainda não verificadas nesta consulta.</p> : !items.length ? <p>Nenhuma conferência registrada.</p> : <div className="space-y-3">{items.map(({ review, state }) => <details key={review.id} className="rounded-lg border border-white/15 p-3" open={state !== "superseded"}>
       <summary><span className="break-words">{current.evidences?.find((item) => item.documentId === review.documentId)?.fileName ?? review.documentId}</span> · {stateLabels[state]} · {outcomeLabels[review.outcome]}</summary>
       <p className="break-all">Revisor: {review.reviewedBy} · {new Date(review.reviewedAt).toLocaleString("pt-BR")}</p>

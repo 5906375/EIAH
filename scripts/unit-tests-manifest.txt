@@ -257,6 +257,9 @@ apps/web/src/state/routeDomain.test.ts
 apps/api/src/tests/workspace-switch-shadow.unit.test.ts
 apps/api/src/tests/workspace-bootstrap-shadow.unit.test.ts
 apps/web/src/components/agents/logisticaConversationEngine.test.ts
+apps/web/src/features/logistica/LogisticaConversationJourney.test.tsx
+apps/web/src/features/logistica/OraculoHumanDecisionPanel.test.tsx
+apps/web/src/features/logistica/LogisticaPendingDecisionsPanel.test.tsx
 apps/web/src/components/agents/logisticaPendingNoticeEngine.test.ts
 apps/web/src/components/agents/preDuimpConversationEngine.test.ts
 apps/web/src/components/agents/imobHistoryConversationEngine.test.ts

@@ -1,13 +1,23 @@
 import React from "react";
 import { OraculoDocumentReviewPanel } from "./OraculoDocumentReviewPanel";
 import { OraculoEvidencePanel } from "./OraculoEvidencePanel";
-import type { OraculoEmptyReturnPreparationV1, OraculoPreparationRecordV1, OraculoOperationReferenceV1 } from "@eiah/contracts";
+import type { OraculoDecisionViewV1, OraculoEmptyReturnPreparationV1, OraculoPreparationRecordV1, OraculoOperationReferenceV1 } from "@eiah/contracts";
+import { OraculoHumanDecisionPanel } from "./OraculoHumanDecisionPanel";
 import { ApiError, apiGetOraculoPreparation, apiListOraculoPreparations, apiSaveOraculoPreparation, apiListOraculoPreparationRevisions } from "@/lib/api";
 
 type Context = OraculoEmptyReturnPreparationV1["context"];
 const empty = (): Context => ({ port: { status: "not_informed" }, depot: { status: "not_informed" }, flow: { status: "not_informed" } });
 const fields = [["port", "Porto"], ["depot", "Depósito"], ["flow", "Fluxo pretendido"]] as const;
 const statuses = { not_informed: "Não informado", to_confirm: "A confirmar", informed: "Informado", not_applicable: "Não se aplica — requer revisão" } as const;
+
+/**
+ * Campo inicial ao trocar a situação. "A confirmar" não leva valor: o contrato aceita `value` opcional, mas NÃO vazio — o valor inicial
+ * `""` fazia o servidor recusar (400) quem escolhia "A confirmar" e deixava o texto em branco (defeito demonstrado no E2E do Front Door).
+ */
+export function emptyFieldForStatus(status: Context["port"]["status"]): Context["port"] {
+  if (status === "not_informed" || status === "to_confirm") return { status };
+  return status === "not_applicable" ? { status, justification: "" } : { status, value: "" };
+}
 
 /** Mensagem para a abertura de um caso por referência explícita (`?case=`): o servidor decide; nada é selecionado sem sucesso. */
 export function openCaseFailureMessage(error: unknown) {
@@ -18,7 +28,7 @@ export function openCaseFailureMessage(error: unknown) {
   return "Não foi possível abrir o caso informado agora. Tente novamente.";
 }
 
-export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCaseChange }: { readOnly: boolean; initialCaseId?: string | null; onCaseChange?: (caseId: string | null) => void }) {
+export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCaseChange, onRecordChange, onInitialCaseFailed, onDecisionViewChange }: { readOnly: boolean; initialCaseId?: string | null; onCaseChange?: (caseId: string | null) => void; onRecordChange?: (record: OraculoPreparationRecordV1 | null) => void; onInitialCaseFailed?: () => void; onDecisionViewChange?: (view: OraculoDecisionViewV1 | null) => void }) {
   const [items, setItems] = React.useState<OraculoPreparationRecordV1[]>([]);
   const [current, setCurrent] = React.useState<OraculoPreparationRecordV1 | null>(null);
   const [context, setContext] = React.useState<Context>(empty);
@@ -45,6 +55,8 @@ export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCase
     return () => { active = false; controller.abort(); };
   }, [reload]);
   React.useEffect(() => { onCaseChange?.(current?.caseId ?? null); }, [current?.caseId]);
+  // Apresentação na conversa (M4): quem hospeda o painel recebe o registro atual para resolver etapas e pendências. Só leitura do estado.
+  React.useEffect(() => { onRecordChange?.(current); }, [current]);
   React.useEffect(() => {
     if (loading || !initialCaseId || appliedInitialCase.current === initialCaseId) return;
     appliedInitialCase.current = initialCaseId;
@@ -55,7 +67,7 @@ export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCase
       if (!alive.current || selected !== selection.current || response.data.caseId !== initialCaseId) return;
       select(response.data);
       setItems((previous) => [response.data, ...previous.filter((item) => item.caseId !== response.data.caseId)].slice(0, 100));
-    }).catch((error: unknown) => { if (alive.current && !controller.signal.aborted) setMessage(openCaseFailureMessage(error)); });
+    }).catch((error: unknown) => { if (alive.current && !controller.signal.aborted) { setMessage(openCaseFailureMessage(error)); onInitialCaseFailed?.(); } });
     return () => controller.abort();
   }, [loading, initialCaseId]);
   const editable = !readOnly && writeAllowed && !loading && !saving && !evidenceBusy;
@@ -105,7 +117,7 @@ export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCase
           <legend className="text-lg">{label} (opcional)</legend>
           <label className="block">Situação de {label}<select className="mt-1 block w-full rounded-lg border border-white/20 bg-surface p-3" value={field.status} onChange={(event) => {
             const status = event.target.value as Context[typeof key]["status"];
-            setContext((previous) => ({ ...previous, [key]: status === "not_informed" ? { status } : status === "not_applicable" ? { status, justification: "" } : { status, value: "" } }));
+            setContext((previous) => ({ ...previous, [key]: emptyFieldForStatus(status) }));
           }}>{Object.entries(statuses).map(([value, text]) => <option key={value} value={value}>{text}</option>)}</select></label>
           {field.status !== "not_informed" && <label className="block">{field.status === "not_applicable" ? `Justificativa — ${label}` : label}<input className="mt-1 block w-full rounded-lg border border-white/20 bg-surface p-3" maxLength={500} required={field.status !== "to_confirm"} value={field.status === "not_applicable" ? field.justification : field.value ?? ""} onChange={(event) => setContext((previous) => ({ ...previous, [key]: field.status === "not_applicable" ? { ...field, justification: event.target.value } : { ...field, value: event.target.value || undefined } }))} /></label>}
         </fieldset>; })}
@@ -126,9 +138,12 @@ export function OraculoPreparationPanel({ readOnly, initialCaseId = null, onCase
         <OraculoDocumentReviewPanel key={`review-${current.caseId}`} current={current} blocked={evidenceBusy} editable={!readOnly && writeAllowed && !loading && !saving && !dirty} onBusyChange={setEvidenceBusy} onReviewed={(value) => {
           selection.current++; setCurrent(value); setHistory(null); setItems((previous) => [value, ...previous.filter((item) => item.caseId !== value.caseId)].slice(0, 100));
         }} />
+        <OraculoHumanDecisionPanel key={`decision-${current.caseId}`} current={current} blocked={evidenceBusy} editable={!readOnly && writeAllowed && !loading && !saving && !dirty} onBusyChange={setEvidenceBusy} onViewChange={onDecisionViewChange} onChanged={(value) => {
+          selection.current++; setCurrent(value); setHistory(null); setItems((previous) => [value, ...previous.filter((item) => item.caseId !== value.caseId)].slice(0, 100));
+        }} />
       </>}
       {!current && <p>Salve a preparação para vincular documentos a este caso.</p>}
-      {current && <button type="button" className="text-accent underline" onClick={showHistory}>Consultar histórico</button>}
+      {current && <button type="button" className="inline-flex min-h-[36px] items-center text-accent underline" onClick={showHistory}>Consultar histórico</button>}
       {history && <ol className="space-y-3" aria-label="Histórico da preparação">{history.map((item) => <li key={item.revision} className="rounded-lg border border-white/15 p-3"><p>Revisão {item.revision} · {new Date(item.updatedAt).toLocaleString("pt-BR")}</p>{fields.map(([key, label]) => { const field = item.context[key]; return <p key={key} className="break-words">{label}: {statuses[field.status]}{field.status === "not_applicable" ? ` · ${field.justification}` : "value" in field && field.value ? ` · ${field.value}` : ""}</p>; })}<p>Documentos vinculados nesta revisão: {item.evidences?.length ?? 0}</p><p>Conferências documentais nesta revisão: {item.contentReviews?.length ?? 0}</p></li>)}</ol>}
     </>}
     {message && <p role="status">{message}</p>}

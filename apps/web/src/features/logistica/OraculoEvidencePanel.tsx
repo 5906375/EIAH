@@ -78,7 +78,7 @@ export function OraculoEvidencePanel({ current, editable, blocked = false, onLin
     <h3 className="text-xl font-semibold">Documentos e evidências</h3>
     <p>O arquivo é associado a este caso com histórico. Integridade do arquivo não comprova validade, aceite da devolução ou encerramento de cobranças.</p>
     <p>{current.contentReviews?.length ? "Há conferências registradas. Consulte sua situação abaixo; a validação operacional permanece pendente." : "Revisão do conteúdo e validação operacional: ainda não realizadas."}</p>
-    <button type="button" className="text-accent underline" disabled={busy} onClick={() => { setMessage(""); setRefresh((value) => value + 1); }}>Verificar documentos novamente</button>
+    <button type="button" className="inline-flex min-h-[36px] items-center text-accent underline" disabled={busy} onClick={() => { setMessage(""); setRefresh((value) => value + 1); }}>Verificar documentos novamente</button>
     {verifiedRevision === null ? <p role="status">Documentos ainda não verificados nesta consulta.</p> : checks.length === 0 ? <p>Nenhum documento vinculado.</p> : <ul className="space-y-4" aria-label="Documentos vinculados">{checks.map((check) => <li key={check.evidence.documentId} className="space-y-2 border-t border-white/15 pt-3">
       <p className="break-words font-semibold">{check.evidence.fileName}</p>
       <p>{ORACULO_EVIDENCE_LABELS[check.evidence.kind]} · {current.contentReviews?.some((review) => review.documentId === check.evidence.documentId) ? "Há conferência registrada — consultar abaixo" : "Conteúdo não revisado"}</p>
