@@ -218,3 +218,25 @@ scopes administrativos ratificados:
 
 Este registro desbloqueia a implementação do hotfix, mas não fecha o
 P0-AUTHZ. Os handlers de Actions e Tools não são alterados por esta decisão.
+
+## Nota — Histórico IMOB × autoridade para operar o IMOB (EIAH-GIT-INTEGRATION-004, 2026-10-22)
+
+O IMOB tem duas portas de autorização distintas. Ter acesso ao **histórico** de conversas não é ter autoridade para **operar** o IMOB.
+
+| | Histórico (`/chat/conversations*`, `/chat/telemetry*`) | Operação (CRM, `resolve-turn`, casos, owners, leads, imóveis, command center…) |
+|---|---|---|
+| Identidade | `userId` humano no token (sem ele: `403 IMOB_HISTORY_IDENTITY_REQUIRED`) | `userId` humano no token (sem ele: `403 IMOB_SERVICE_AUTHORITY_REQUIRED`) |
+| Vínculo | vínculo **ativo** no workspace (ausente: `403 IMOB_HISTORY_MEMBERSHIP_REQUIRED`) | vínculo **ativo** (ausente: `403 IMOB_WORKSPACE_MEMBERSHIP_REQUIRED`) |
+| Permissão `imob.chat.use` | **não exigida** | exigida (vínculo ativo sem ela: `403 IMOB_WORKSPACE_PERMISSION_FORBIDDEN`) |
+| Escopo do dado | só a conversa de que o usuário é **titular** (outra conversa: `404 CONVERSATION_NOT_FOUND`) | permissões por rota e por etapa (`imob.stage.*`) |
+| O que permite | criar conversas e registrar/ler mensagens, threads e entrevista da própria conversa | ler e alterar casos, owners, leads e imóveis; executar turnos do IMOB |
+
+Valem para as **duas** portas, antes de qualquer decisão acima e nesta ordem: revogação EIAH da vertical; instalação do IMOB habilitada no workspace
+(`403 ENTITLEMENT_MISSING`); e a guarda de vínculo revogado/inativo (`403 IMOB_WORKSPACE_MEMBERSHIP_INACTIVE`, sem criar, reativar nem promover vínculo).
+
+Estado verificado em banco descartável (sonda ad hoc, dados sintéticos): vínculo ativo **sem** `imob.chat.use` recebe `200` ao listar e `201` ao criar a própria
+conversa no histórico e `403 IMOB_WORKSPACE_PERMISSION_FORBIDDEN` nas rotas operacionais; vínculo revogado recebe `IMOB_WORKSPACE_MEMBERSHIP_INACTIVE` nas duas portas;
+as consultas não criam nem alteram vínculos.
+
+**Decisão pendente do owner (não alterada):** se o histórico também deve exigir `imob.chat.use`. Enquanto não houver nova autorização, o contrato acima é mantido
+e a tabela de códigos não é modificada. Isto não concede nem amplia permissão.
