@@ -5825,9 +5825,16 @@ export type ChatVerticalHandoffSurfaceV2 = {
   reasonCode: string;
 };
 
+/**
+ * Resultado aditivo do handoff de Logística quando o pedido levou `caseRef` (FD-E2E-003). Não traz dados do caso. `caseRef` é o que o
+ * próprio cliente enviou (no `unavailable` o servidor não o repete): serve só para a conversa saber QUAL referência foi recusada.
+ */
+export type ChatVerticalHandoffCaseContext = { status: "resolved" | "unavailable"; caseRef: string };
+
 export type ChatVerticalHandoffResult =
-  | { ok: true; handoff: ChatVerticalHandoffSurfaceV2 }
-  | { ok: false; reasonCode: string };
+  | { ok: true; handoff: ChatVerticalHandoffSurfaceV2; caseContext?: ChatVerticalHandoffCaseContext }
+  /** `verticalId` é acrescentado só no cliente, para as verticais que não são o IMOB (ausência = IMOB). */
+  | { ok: false; reasonCode: string; verticalId?: string };
 
 export async function apiGetChatVerticalRegistry() {
   return http<{ ok: true; data: ChatVerticalRegistrySurface }>(`/chat/vertical-registry`, { method: "GET" });
@@ -5837,7 +5844,7 @@ export async function apiRequestChatVerticalHandoff(body: {
   verticalId: string;
   capabilityId: string;
   mode: "read_only" | "requires_write" | "critical_action";
-  refs?: { conversationId?: string; threadId?: string };
+  refs?: { conversationId?: string; threadId?: string; caseRef?: string };
 }) {
   return http<{ ok: true; data: ChatVerticalHandoffResult }>(`/chat/vertical-handoff`, { method: "POST", body: JSON.stringify(body) });
 }
@@ -5892,6 +5899,18 @@ export async function apiListOraculoEvidence(caseId: string, signal?: AbortSigna
 
 export async function apiListOraculoDocumentReviews(caseId: string, signal?: AbortSignal) {
   return http<{ ok: true; data: { revision: number; items: import("@eiah/contracts").OraculoDocumentReviewStateV1[]; reviewAllowed: boolean; referenceOrigin: "user_declared"; operationalValidation: "not_performed" } }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/document-reviews`, { signal });
+}
+export async function apiGetOraculoDecisionInbox(signal?: AbortSignal) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoDecisionInboxV1 }>("/logistica/oraculo/preparations/decision-inbox", { signal });
+}
+export async function apiGetOraculoDecisions(caseId: string, signal?: AbortSignal) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoDecisionViewV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/decisions`, { signal });
+}
+export async function apiRequestOraculoDecision(caseId: string, input: import("@eiah/contracts").OraculoDecisionRequestInputV1) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/decision-requests`, { method: "POST", body: JSON.stringify(input) });
+}
+export async function apiRecordOraculoDecision(caseId: string, input: import("@eiah/contracts").OraculoDecisionInputV1) {
+  return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/decisions`, { method: "POST", body: JSON.stringify(input) });
 }
 export async function apiReviewOraculoDocument(caseId: string, input: import("@eiah/contracts").OraculoDocumentReviewRequestV1) {
   return http<{ ok: true; data: import("@eiah/contracts").OraculoPreparationRecordV1 }>(`/logistica/oraculo/preparations/${encodeURIComponent(caseId)}/document-reviews`, { method: "POST", body: JSON.stringify(input) });
