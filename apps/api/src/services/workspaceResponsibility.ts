@@ -156,8 +156,15 @@ function grantedExtraPermissions(requestedPermissions?: string[] | null) {
   return (requestedPermissions ?? []).filter((permission) => typeof permission === "string" && GRANTABLE_PERMISSIONS.has(permission.trim()));
 }
 
-export function canActivateProducts(profile: { selectedRoleKey?: string | null; permissions?: string[] | null } | null | undefined) {
+/** Só o vínculo `active` concede autoridade operacional; o papel gravado de um vínculo revogado/inativo é apenas histórico. */
+export function isActiveMembershipStatus(status: unknown) {
+  return String(status ?? "").trim().toLowerCase() === "active";
+}
+
+export function canActivateProducts(profile: { selectedRoleKey?: string | null; permissions?: string[] | null; membershipStatus?: string | null } | null | undefined) {
   if (!profile) return false;
+  // Quem informa o status do vínculo (todo perfil lido do banco) e não está ativo nunca ativa, nem pelo papel Founder.
+  if (profile.membershipStatus !== undefined && !isActiveMembershipStatus(profile.membershipStatus)) return false;
   if (profile.selectedRoleKey && normalizeWorkspaceRoleKey(profile.selectedRoleKey) === "founder") return true;
   return hasWorkspacePermission(profile.permissions, PRODUCT_ACTIVATION_PERMISSION);
 }
@@ -627,6 +634,11 @@ async function readCurrentMembership(params: {
     LIMIT 1
   `;
   if (rows[0]) {
+    // Vínculo não ativo: o papel gravado segue consultável (histórico), mas não concede permissão operacional alguma, não
+    // promove (AUTHZ-4b), não faz bootstrap e não reativa; o registro persistido não é alterado.
+    if (!isActiveMembershipStatus(rows[0].status)) {
+      return { role_key: rows[0].role_key, permissions: [] as string[], status: rows[0].status };
+    }
     return promoteSoleWorkspaceMemberIfNeeded({
       prisma,
       tenantId: params.tenantId,
@@ -771,6 +783,8 @@ export async function readWorkspaceManagementSummary(params: {
     ? `${identityName} (${selectedRoleLabel})`
     : identityName || selectedRoleLabel || "Responsável não definido";
   const permissions = safeArray((membershipRow as { permissions?: unknown } | null)?.permissions);
+  // O bootstrap (sem linha anterior) devolve o vínculo recém-criado, que nasce `active`; qualquer linha lida do banco traz o status.
+  const membershipStatus = typeof membershipRowAny?.status === "string" ? (membershipRowAny.status as string) : "active";
   const canManageMembers = permissions.includes("workspace.manage_members") || permissions.includes("workspace.manage_roles");
 
   return {
@@ -781,6 +795,8 @@ export async function readWorkspaceManagementSummary(params: {
     identityName,
     permissions,
     canManageMembers,
+    membershipStatus,
+    membershipActive: isActiveMembershipStatus(membershipStatus),
     members,
     invitations,
   };
@@ -840,6 +856,8 @@ export async function readWorkspaceResponsibleProfile(params: {
     identityName: summary.identityName,
     permissions: summary.permissions,
     canManageMembers: summary.canManageMembers,
+    membershipStatus: summary.membershipStatus,
+    membershipActive: summary.membershipActive,
   };
 }
 
@@ -856,10 +874,14 @@ async function readActorRoleAuthority(params: {
   workspaceId: string;
   userId: string;
 }) {
-  const membership = (await readCurrentMembership({ ...params, entryPoint: "actor_role_authority" })) as { role_key?: string; permissions?: unknown } | null;
+  const membership = (await readCurrentMembership({ ...params, entryPoint: "actor_role_authority" })) as { role_key?: string; permissions?: unknown; status?: string } | null;
   const permissions = safeArray(membership?.permissions);
   return {
-    canActivate: canActivateProducts({ selectedRoleKey: membership?.role_key ?? null, permissions }),
+    canActivate: canActivateProducts({
+      selectedRoleKey: membership?.role_key ?? null,
+      permissions,
+      membershipStatus: typeof membership?.status === "string" ? membership.status : "active",
+    }),
     canManageRoles: hasWorkspacePermission(permissions, WORKSPACE_ROLES_MANAGE_PERMISSION),
   };
 }
