@@ -5080,13 +5080,23 @@ export async function apiGetWorkspaceAgentAssignments(workspaceId: string) {
   });
 }
 
+/**
+ * Justificativa obrigatória das escritas financeiras (AUTHZ-FIN-1, proposta; ver docs/ops/billing-financial-authority-spec.md).
+ * A API só aceita a escrita de quem tem autoridade financeira DESIGNADA; esta tela apenas envia o pedido e mostra a resposta do servidor.
+ */
+export type FinancialWriteJustification = {
+  reason: string;
+  evidenceRef: string;
+  confirmed: true;
+};
+
 export async function apiPatchTenantWorkspaceGrant(
   workspaceId: string,
   body: {
     enabled?: boolean;
     localRunLimit?: number;
     localCostCentsLimit?: number;
-  }
+  } & FinancialWriteJustification
 ) {
   return http<{ ok: boolean; data: TenantBillingWorkspaceItem["grant"] }>(
     `/billing/tenant/workspaces/${encodeURIComponent(workspaceId)}/grant`,
@@ -5102,7 +5112,7 @@ export async function apiPatchTenantQuotas(body: {
   hardLimitPct?: number;
   monthlyRunsLimit?: number;
   monthlyCostCentsLimit?: number;
-}) {
+} & FinancialWriteJustification) {
   return http<{
     ok: boolean;
     data: {
@@ -5170,12 +5180,13 @@ export async function apiCreateTenantBillingAdjustment(body: {
   amountCents: number;
   workspaceId?: string;
   runId?: string;
-  currency?: string;
+  currency?: "BRL";
   description?: string;
-  requestId?: string;
+  /** Obrigatório: chave de idempotência do pedido (o mesmo `requestId` nunca duplica lançamento nem uso). */
+  requestId: string;
   provider?: string;
   model?: string;
-}) {
+} & FinancialWriteJustification) {
   return http<{
     ok: boolean;
     data: {
@@ -5194,6 +5205,52 @@ export async function apiCreateTenantBillingAdjustment(body: {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export type FinancialWriteFailure = {
+  /** `denied`: a pessoa não tem autoridade (ou o ajuste aguarda aprovação); `unavailable`: infraestrutura; `invalid`: dados; `other`. */
+  kind: "denied" | "approval_unavailable" | "unavailable" | "invalid" | "other";
+  code: string | null;
+  message: string;
+};
+
+/**
+ * Traduz a resposta do servidor numa mensagem clara, sem sugerir poder de autorização que o servidor não concedeu.
+ * Erros 403/503 das escritas financeiras nunca significam que algo foi alterado.
+ */
+export function describeFinancialWriteFailure(error: unknown): FinancialWriteFailure {
+  if (!(error instanceof ApiError)) {
+    return { kind: "other", code: null, message: error instanceof Error ? error.message : "Falha na operação financeira." };
+  }
+  const payload = error.body && typeof error.body === "object" ? (error.body as { error?: unknown }).error : undefined;
+  const code =
+    payload && typeof payload === "object" && typeof (payload as { code?: unknown }).code === "string"
+      ? (payload as { code: string }).code
+      : null;
+  if (code === "BILLING_ADJUSTMENT_APPROVAL_REQUIRED") {
+    return {
+      kind: "approval_unavailable",
+      code,
+      message: "Ajuste financeiro indisponível: ele exige aprovação por duas pessoas distintas, e esse mecanismo ainda não está habilitado. Nenhum pedido foi registrado e nada foi alterado.",
+    };
+  }
+  if (code === "BILLING_LIMIT_EXCEEDED") {
+    return { kind: "denied", code, message: "O valor excede o teto de ajuste da sua designação financeira. Nada foi alterado." };
+  }
+  if (error.status === 403 && code && code.startsWith("BILLING_")) {
+    return {
+      kind: "denied",
+      code,
+      message: "Você não tem autoridade financeira designada para esta operação. Peça a quem administra a autoridade financeira do tenant. Nada foi alterado.",
+    };
+  }
+  if (error.status === 503) {
+    return { kind: "unavailable", code, message: "O serviço financeiro está indisponível no momento. Nada foi alterado; tente novamente mais tarde." };
+  }
+  if (error.status === 400 && code === "INVALID_PAYLOAD") {
+    return { kind: "invalid", code, message: "Dados inválidos: informe o motivo, a referência de evidência e os valores corretamente." };
+  }
+  return { kind: "other", code, message: error.message };
 }
 
 export async function apiSimulatePlan(spec: PlanSpec) {

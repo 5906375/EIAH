@@ -188,6 +188,47 @@ estiverem abertos:
    e inertes para agentes governados.
 5. Fluxo "solicitar apreciação" para quem não tem autoridade (hoje aparece desabilitado).
 
+## Decisão AUTHZ-FIN-1 — autoridade financeira (PROPOSTA técnica; NÃO ratificada)
+
+| Campo | Valor |
+| --- | --- |
+| Origem | EIAH-GOV-BILLING-002/003 (autoridade financeira para escritas de cota e ajuste) |
+| Status | **Proposta técnica implementada em worktree de integração; ratificação formal PENDENTE** |
+| Referência | `AUTHZ-FIN-1/proposta` (provisória; não é registro de ratificação) |
+| Especificação | `docs/ops/billing-financial-authority-spec.md` |
+
+Esta seção NÃO é uma ratificação e não deve ser tratada como tal em nenhum registro ou evidência.
+
+### `billing.limits.manage`
+
+Autoriza uma pessoa **designada** a alterar a política de quotas do tenant e as concessões por workspace, nas rotas explicitamente protegidas:
+
+- `PATCH /api/billing/tenant/quotas`
+- `PATCH /api/billing/tenant/workspaces/:id/grant`
+
+### `billing.ledger.adjust`
+
+Autoriza uma pessoa **designada**, dentro de um teto obrigatório por lançamento, a participar de um ajuste de ledger:
+
+- `POST /api/billing/tenant/adjustment`
+
+A rota de ajuste permanece **negada por padrão** (`403 BILLING_ADJUSTMENT_APPROVAL_REQUIRED`) até a ratificação do mecanismo de aprovação por
+duas pessoas distintas. Não existe bypass por Founder, administrador, papel, token técnico ou sinalizador de ambiente.
+
+Regras comuns (fail-closed; falha ou dúvida = negar):
+
+- concessão padrão: **nenhuma**. A autoridade vive só na tabela `financial_authority_designation` (por tenant); papéis, permissões de membro,
+  `products.activate`, `actions.admin`, Founder, administrador por e-mail e `ADMIN_API_TOKEN` nunca a produzem;
+- pré-condições: pessoa identificada (`userId`; token técnico nunca exerce) e vínculo **ativo** no workspace do token;
+- designação `holder` ativa (não revogada, não expirada) lida a cada chamada, sem cache; `grantor` não exerce; designação de outro tenant não vale;
+- ajuste: o teto `limits.maxAdjustmentCents` é obrigatório na designação, sem valor padrão; moeda admitida: BRL;
+- corpo estrito com `reason`, `evidenceRef` e `confirmed: true`; efeito e evento de auditoria numa **única transação** (falha da auditoria desfaz o efeito);
+- replay do mesmo `requestId` não duplica lançamento nem uso;
+- nunca se grava token, JWT, senha ou credencial na auditoria. O `guardrail_audit_ledger` não é append-only nem encadeado; nada aqui afirma inviolabilidade.
+
+**Bootstrap da primeira autoridade: BLOQUEADO** (D1). Nenhuma designação é criada por esta implementação: sem designação, as três escritas
+respondem `403`. Concessão e revogação governadas de designações não fazem parte desta etapa.
+
 ## Scopes funcionais preexistentes
 
 Os scopes abaixo continuam com sua semântica anterior e não substituem os

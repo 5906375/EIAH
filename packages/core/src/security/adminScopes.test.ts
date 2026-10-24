@@ -7,8 +7,11 @@ import {
   ADMIN_SCOPES,
   COMMERCIAL_AUTHORITY_SCOPE_CATALOG,
   COMMERCIAL_AUTHORITY_SCOPES,
+  FINANCIAL_AUTHORITY_SCOPE_CATALOG,
+  FINANCIAL_AUTHORITY_SCOPES,
   isAdminScope,
   isCommercialAuthorityScope,
+  isFinancialAuthorityScope,
   isReservedAuthorityScopeName,
 } from "./adminScopes.js";
 
@@ -83,5 +86,34 @@ test("reserves every canonical scope name against Marketplace item names", () =>
   }
   for (const name of ["mkt", "marketplace", "marketplace.subscribe.extra", "", "   ", null, undefined, 42]) {
     assert.equal(isReservedAuthorityScopeName(name), false, String(name));
+  }
+});
+
+test("proposes the financial scopes as distinct, never-granted, NOT ratified, and reserves their names", () => {
+  assert.deepEqual(Object.values(FINANCIAL_AUTHORITY_SCOPES), ["billing.limits.manage", "billing.ledger.adjust"]);
+  for (const scope of Object.values(FINANCIAL_AUTHORITY_SCOPES)) {
+    assert.equal(isFinancialAuthorityScope(scope), true);
+    assert.equal(isAdminScope(scope), false);
+    assert.equal(isCommercialAuthorityScope(scope), false);
+    assert.equal(isReservedAuthorityScopeName(scope), true, scope);
+    assert.equal(isReservedAuthorityScopeName(`  ${scope.toUpperCase()}  `), true, scope);
+  }
+  assert.equal(isFinancialAuthorityScope("actions.admin"), false);
+  assert.equal(isFinancialAuthorityScope("billing.admin"), false);
+  assert.equal(isReservedAuthorityScopeName("billing"), false);
+
+  assert.equal(FINANCIAL_AUTHORITY_SCOPE_CATALOG.length, 2);
+  for (const definition of FINANCIAL_AUTHORITY_SCOPE_CATALOG) {
+    assert.equal(definition.status, "proposed_pending_ratification");
+    assert.equal(definition.formalRatification, "pending");
+    assert.equal(definition.defaultGrant, "none");
+    assert.equal(definition.decisionRef, "AUTHZ-FIN-1/proposta");
+    assert.equal("ratifiedAt" in definition, false, "nenhuma data de ratificação formal é afirmada");
+    assert.equal("approver" in definition, false);
+    assert.ok(definition.routes.length > 0);
+    assert.match(documentation, new RegExp(`\\\`${definition.scope}\\\``));
+    for (const route of definition.routes) {
+      assert.ok(documentation.includes(`\`${route}\``), `missing documented route: ${route}`);
+    }
   }
 });
