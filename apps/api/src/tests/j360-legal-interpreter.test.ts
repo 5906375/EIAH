@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { buildJ360LegalReport } from "../services/runAtivoUniversalAgent/interpreters/j360LegalInterpreter";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 test("buildJ360LegalReport normalizes legal analysis into structured report", () => {
   const report = buildJ360LegalReport({
@@ -280,6 +285,7 @@ test("buildJ360LegalReport marks ambiguous calculation basis as high risk with d
   assert.equal(report.riskMatrix[0]?.severity, "high");
   assert.match(report.riskMatrix[0]?.risk ?? "", /Base de cálculo/i);
   assert.equal(report.riskMatrix[0]?.evidenceRefs[0]?.document, "Política de Premiação Treviso.pdf");
+  assert.equal(report.riskMatrix[0]?.evidenceRefs[0]?.sourceStatus, "provided");
   assert.equal(report.riskMatrix[0]?.evidenceRefs[0]?.page, "1");
   assert.match(report.riskMatrix[0]?.evidenceRefs[0]?.section ?? "", /Base de cálculo/i);
   assert.match(report.riskMatrix[0]?.evidenceRefs[0]?.excerpt ?? "", /salário-base e faturamento/i);
@@ -291,4 +297,53 @@ test("buildJ360LegalReport marks ambiguous calculation basis as high risk with d
   assert.match(report.coverageMatrix[0]?.whatStillNeedsManualReview ?? "", /revisão jurídica humana/i);
   assert.equal(report.documentIdentity.documentName, "Política de Premiação Treviso.pdf");
   assert.equal(report.reportSections.find((section) => section.id === "riscos")?.status, "available");
+});
+
+test("buildJ360LegalReport marks evidenceRefs as not_provided when no real document is resolved", () => {
+  const report = buildJ360LegalReport({
+    outputText: `## Resumo executivo
+Documento utilizavel apenas com ajustes relevantes antes do uso interno.
+
+## Pontos de atencao juridicos
+- criterios de concessao ainda podem parecer ordinarios
+
+## Conclusao preliminar
+Aprovado com ressalvas e ajustes recomendados.
+`,
+    metadata: {},
+  });
+
+  assert.equal(report.riskMatrix.length >= 1, true);
+  for (const item of report.riskMatrix) {
+    for (const ref of item.evidenceRefs) {
+      assert.equal(ref.sourceStatus, "not_provided");
+      assert.equal(ref.document, null);
+    }
+  }
+  for (const item of report.fundamentos) {
+    for (const ref of item.evidenceRefs) {
+      assert.equal(ref.sourceStatus, "not_provided");
+      assert.equal(ref.document, null);
+    }
+  }
+});
+
+test("regression: fake document placeholder literal is not produced by any J-360 runtime file", () => {
+  const files = [
+    path.resolve(__dirname, "../services/runAtivoUniversalAgent/interpreters/j360LegalInterpreter.ts"),
+    path.resolve(__dirname, "../workers/runWorkerJ360Output.ts"),
+    path.resolve(__dirname, "../../../../packages/core/src/actions/reporting/j360LegalReportSchema.ts"),
+    path.resolve(__dirname, "../../../../packages/core/src/actions/reporting/j360LegalReportRenderer.ts"),
+    // Achado adicional em E0-A: terceiro renderer (fora do escopo original de 4 arquivos)
+    // que também exibia evidenceRefs.document sem checar proveniência.
+    path.resolve(__dirname, "../../../../apps/web/src/components/runs/RunViewer.tsx"),
+  ];
+  for (const file of files) {
+    const content = fs.readFileSync(file, "utf8");
+    assert.equal(
+      content.includes("Documento jurídico anexado"),
+      false,
+      `literal fictício de documento encontrado em ${file} — ausência de fonte não pode ser representada como presença`
+    );
+  }
 });
