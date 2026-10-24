@@ -32,9 +32,9 @@ export function canShowSubscribeControl(view: CommercialAuthorityView): boolean 
   return view.status === "holder";
 }
 
-/** Retorno aceito: somente o chat IMOB deste mesmo app (caminho relativo, sem protocolo nem host). */
+/** Retorno aceito: somente o chat IMOB ou o Front Door (/app/chat) deste mesmo app (caminho relativo, sem protocolo nem host). */
 export function safeImobReturnTo(value: string | null | undefined): string | null {
-  if (typeof value !== "string" || !value.startsWith("/app/imob/chat")) return null;
+  if (typeof value !== "string" || !(value.startsWith("/app/imob/chat") || /^\/app\/chat(?:[?#]|$)/.test(value))) return null;
   if (value.includes("//") || value.includes("\\") || /[\s<>"']/.test(value)) return null;
   return value;
 }

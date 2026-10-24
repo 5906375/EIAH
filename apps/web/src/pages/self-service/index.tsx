@@ -1080,7 +1080,7 @@ export default function SelfServiceIndexPage() {
               <p>O agente indicado não está disponível para consulta neste workspace.</p>
             )}
             {commercialRequest.returnTo ? (
-              <Link to={commercialRequest.returnTo} className="mt-2 inline-block text-xs underline text-accent">Voltar ao caso IMOB</Link>
+              <Link to={commercialRequest.returnTo} className="mt-2 inline-block text-xs underline text-accent">{commercialRequest.returnTo.startsWith("/app/chat") ? "Voltar à conversa" : "Voltar ao caso IMOB"}</Link>
             ) : null}
           </div>
         ) : null}

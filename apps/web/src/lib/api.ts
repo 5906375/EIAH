@@ -3464,6 +3464,20 @@ export async function apiResolveImobTurn(body: {
   });
 }
 
+/**
+ * P11: o Front Door pergunta ao IMOB, SOMENTE LEITURA, se o turno é uma necessidade/contratação transversal (`claimOnly`).
+ * `claimed:false` não grava nada e deixa o Front Door seguir com o seu fluxo normal.
+ */
+export async function apiClaimImobTurn(body: Parameters<typeof apiResolveImobTurn>[0]) {
+  return http<
+    | { ok: true; claimed: false; data: null; reasonCode?: string }
+    | { ok: true; claimed: true; data: ImobResolveTurnResponse }
+  >(`/imob/chat/resolve-turn`, {
+    method: "POST",
+    body: JSON.stringify({ ...body, claimOnly: true }),
+  });
+}
+
 export async function apiCancelImobPendingAction(
   caseId: string,
   body?: { actionId?: string | null; threadId?: string | null },

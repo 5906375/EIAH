@@ -132,8 +132,11 @@ function proposalTurn() {
 }
 
 function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,
-  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"> = {}) {
+  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"> = {},
+  // P11: por padrão a vertical NÃO reivindica o turno (os testes antigos seguem herméticos, sem rede).
+  claim: NonNullable<Parameters<typeof createImobFrontDoorForms>[0]["claimTurn"]> = async () => ({ ok: true, claimed: false, data: null })) {
   const { state, raw, getValues, getErrors } = fakeState();
+  const claimCalls: Parameters<typeof apiResolveImobTurn>[0][] = [];
   if (prepareForms) {
     // Executa o callback real do hook, com setters em memória, sem copiar a regra de prefill.
     const source = ts.createSourceFile("useImobFormState.ts", readFileSync(new URL("./useImobFormState.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
@@ -160,13 +163,14 @@ function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok
     patchStructured: (id, update) => { messages = messages.map((message) => message.id === id ? update(message) : message); },
     echoUser: (text) => echoed.push(text),
     resolveTurn: async (request) => { calls.push(JSON.parse(JSON.stringify(request))); return resolve(request); },
+    claimTurn: async (request) => { claimCalls.push(JSON.parse(JSON.stringify(request))); return claim(request); },
   });
   function fill(message: StructuredMessage, values: Record<string, string> = {}) {
     raw.setFormValuesByMessageId((previous: Record<string, Record<string, string>>) => ({
       ...previous, [message.id]: { propertyId: "4455", offerAmount: "100000", buyerName: "Maria", buyerPhone: "47999998888", contractType: "venda", ...values },
     }));
   }
-  return { ...adapter, imobForms: state, messages: () => messages, calls, echoed, fill, getValues, getErrors, raw,
+  return { ...adapter, imobForms: state, messages: () => messages, calls, claimCalls, echoed, fill, getValues, getErrors, raw,
     setMessages: (next: StructuredMessage[]) => { messages = next; }, conversationGenerationRef };
 }
 
@@ -1283,3 +1287,191 @@ for (const outcome of ["success", "transport_failure"]) {
   }
 }
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// P11 — o Front Door deixa a VERTICAL reivindicar o turno (somente leitura) e mostra o resultado na MESMA conversa.
+// O engine geral não tem regra de IMOB: só pergunta ao servidor. Sem reivindicação o fluxo do Front Door é idêntico.
+// ---------------------------------------------------------------------------------------------
+
+const mktCapability = {
+  need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
+  state: "habilitavel", authority: { status: "somente_consulta", reasonCode: "MEMBERSHIP_PERMISSION_MISSING" }, reasons: ["NOT_ENABLED_IN_WORKSPACE"],
+  provider: { agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", origin: "agent_registry", declaredCapabilities: ["Planejamento de campanha"] },
+  recipes: { status: "ok", items: [] }, enablement: null,
+  nextAction: { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe",
+    marketplaceItemId: "mkt-1", workspaceId: "workspace-test", detailsPath: "/self-service?marketplaceItem=mkt-1&workspaceId=workspace-test" },
+};
+function claimedMarketingTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.request_capability", threadLabel: "Anúncio",
+    conversationState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null },
+    caseContext: { ...caseContext, caseId: "case-batel", threadId: "thread-batel", flow: "listing.activate", stage: "listing", status: "running" },
+    presentation: { text: "Para divulgar este imóvel você pode contar com um especialista de Marketing.",
+      widget: { kind: "case_summary", title: "Resumo do negócio", journeyLabel: "Captação", stageLabel: "Anúncio", nextStep: "ativar anúncio", blocker: null,
+        recommendedActions: [{ id: "publish", label: "Publicar anúncio", autoprompt: "publicar anúncio deste caso" }], specialists: [], transversalCapabilities: [mktCapability] } },
+  } as unknown as ImobResolveTurnResponse;
+}
+
+test("P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const consumed = await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  assert.equal(consumed, true);
+  assert.deepEqual(harness.echoed, [], "o eco do usuário é do launcher; a vertical só acrescenta a resposta");
+  assert.equal(harness.calls.length, 0, "a reivindicação não passa pelo resolve-turn completo");
+  assert.equal(harness.claimCalls.length, 1);
+  assert.equal(harness.claimCalls[0].message, "Quero divulgar este apartamento do Batel.");
+  const message = harness.messages().at(-1)!;
+  assert.equal(message.caseContext?.caseId, "case-batel", "o caso fica na conversa para os próximos turnos");
+  assert.deepEqual((message.widget as { recommendedActions: unknown[] }).recommendedActions, [], "o Front Door não oferece ações de recomendação do caso");
+  assert.equal((message.widget as { transversalCapabilities: unknown[] }).transversalCapabilities.length, 1);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Especialistas transversais/);
+  assert.match(html, /Marketing GPS \(MKT\)/);
+  assert.match(html, /data-capability-authority="somente_consulta"/);
+  assert.match(html, /href="\/self-service\?marketplaceItem=mkt-1&(amp;)?workspaceId=workspace-test"/);
+  assert.doesNotMatch(html, /Publicar anúncio|<button/, "sem botões nem ações executáveis no Front Door");
+  // o próximo turno da conversa já leva o caso (preservado entre mensagens)
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId, "case-batel");
+  assert.equal(harness.claimCalls[1].threadId, "thread-batel");
+});
+
+test("P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal", async () => {
+  const unclaimed = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: false, data: null, reasonCode: "VERTICAL_ACCESS_PERMISSION_DENIED" }));
+  assert.equal(await unclaimed.consumeOperationalTurn("claim", "Como funciona o billing?"), false);
+  assert.deepEqual(unclaimed.messages(), []);
+  const failing = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => { throw new Error("HTTP 503"); });
+  assert.equal(await failing.consumeOperationalTurn("claim", "Quero divulgar este apartamento"), false);
+  assert.deepEqual(failing.messages(), [], "falha silenciosa: nenhuma mensagem de erro do IMOB é inventada");
+  assert.equal(failing.calls.length, 0);
+});
+
+test("P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam", async () => {
+  const claimed = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const decision = await sendFrontDoorTurn(claimed, "Quero divulgar este apartamento do Batel.", { activeDomain: "core" });
+  assert.equal(decision?.turnConsumed, true);
+  assert.equal(decision?.kind, "imob_operational_continuation");
+  assert.equal(claimed.claimCalls.length, 1);
+  assert.equal(claimed.messages().length, 1);
+  // sem reivindicação: decisão local normal (não consumida) e nenhuma mensagem do IMOB
+  const none = frontDoorHarness();
+  const local = await sendFrontDoorTurn(none, "Quero divulgar este apartamento do Batel.", { activeDomain: "core" });
+  assert.notEqual(local?.turnConsumed, true);
+  assert.equal(none.claimCalls.length, 1, "a vertical foi consultada e não reivindicou");
+  assert.deepEqual(none.messages(), []);
+  assert.equal(local?.kind, "contextual_fallback", "o fallback do Front Door segue exatamente como antes");
+  // pergunta de plataforma com resposta própria do Front Door (help) não consulta a vertical
+  const help = frontDoorHarness();
+  assert.equal((await sendFrontDoorTurn(help, "Posso ver o billing deste mês?", { activeDomain: "core" }))?.kind, "help_reply");
+  assert.equal(help.claimCalls.length, 0);
+  // protegidos: IMOB indisponível, agente selecionado (não é o EIAH unificado), pergunta exata do tutor, pedido operacional (handoff),
+  // e revisão de proposta pendente (FDC-03A) não chegam a consultar a vertical
+  const guarded = frontDoorHarness(async (request) => ({ ok: true, data: { ...resolveImobTurn({ ...request, threadState: request.threadState as never, access }), caseContext } as unknown as ImobResolveTurnResponse }));
+  await sendFrontDoorTurn(guarded, "Posso ver o billing deste mês?", { available: false });
+  await sendFrontDoorTurn(guarded, "Posso ver o billing deste mês?", { selectedAgent: "MKT" });
+  await sendFrontDoorTurn(guarded, "O que o EIAH pode fazer por mim?");
+  const operational = await sendFrontDoorTurn(guarded, "Quero cadastrar um imóvel");
+  assert.equal(operational?.kind, "vertical_handoff", "operações do IMOB seguem o handoff governado existente");
+  assert.equal(guarded.claimCalls.length, 0);
+  await guarded.forwardToImob("Gerar proposta");
+  assert.ok(guarded.getConversationState()?.operational, "revisão/coleta de proposta em andamento");
+  await sendFrontDoorTurn(guarded, "sim");
+  assert.equal(guarded.claimCalls.length, 0, "a revisão de proposta (FDC-03A) continua só com o fluxo de continuidade");
+});
+
+test("P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente", async () => {
+  const claims = frontDoorHarness(undefined, { current: 0 }, false, {}, async (request) => ({ ok: true, claimed: /marketing/i.test(request.message), ...(/marketing/i.test(request.message)
+    ? { data: claimedMarketingTurn() } : { data: null }) } as never));
+  const engagement = await sendFrontDoorTurn(claims, "Isso já contratou o Marketing?", { activeDomain: "core" });
+  assert.equal(engagement?.turnConsumed, true, "a conversa responde pela vertical, na mesma conversa");
+  assert.equal(claims.claimCalls.length, 1);
+  const legal = await sendFrontDoorTurn(claims, "Quero revisar um contrato de locação", { activeDomain: "core" });
+  assert.notEqual(legal?.turnConsumed, true, "contrato real segue o roteamento existente do Front Door");
+  assert.equal(claims.claimCalls.length, 1, "e nem consulta a vertical (resposta de contexto exata)");
+});
+
+test("P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')", async () => {
+  const savedSession = { ...getSession() };
+  try {
+    updateSession({ activeDomain: "imob" });
+    const { harness, ready } = reviewIntegrationHarness();
+    await ready();
+    assert.ok(harness.getConversationState()?.operational?.continuity?.pending, "há revisão pendente");
+    const claimsBefore = harness.claimCalls.length;
+    await sendFrontDoorTurn(harness, "Isso já contratou o Marketing?", { activeDomain: "imob" });
+    assert.equal(harness.claimCalls.length, claimsBefore, "a continuidade da revisão não é interceptada");
+  } finally {
+    updateSession(savedSession);
+  }
+});
+
+test("P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const decision = await resolveLauncherTurnDecision({
+    input: "Quero divulgar este apartamento do Batel.", trimmedInput: "Quero divulgar este apartamento do Batel.", routeIntent: detectLauncherRouteIntent("Quero divulgar este apartamento do Batel.", false),
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    accessContext: { ...access, entitlements: { IMOB_INSTALLED: true }, activeDomain: "core" },
+    imobOperationalContinuation: { threadState: harness.getConversationState(), available: false, consume: harness.consumeOperationalTurn },
+  });
+  assert.equal(decision?.turnConsumed, true);
+  assert.equal(harness.claimCalls.length, 1);
+  // sem o produto instalado (nem superfície), a vertical nem é consultada
+  const none = frontDoorHarness();
+  await resolveLauncherTurnDecision({
+    input: "Quero divulgar este apartamento do Batel.", trimmedInput: "Quero divulgar este apartamento do Batel.", routeIntent: "help",
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    accessContext: { ...access, entitlements: { IMOB_INSTALLED: false }, activeDomain: "core" },
+    imobOperationalContinuation: { threadState: none.getConversationState(), available: false, consume: none.consumeOperationalTurn },
+  });
+  assert.equal(none.claimCalls.length, 0);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P11-FIX — vínculo conversa↔caso FAIL-CLOSED no Front Door: o caso só existe se o SERVIDOR o devolveu (explícito); resposta sem caso
+// ou negada limpa o caso da conversa e o próximo turno NÃO reenvia um caseId antigo; o cartão sem caso é renderizado.
+// ---------------------------------------------------------------------------------------------
+
+const emptyConversationState = { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null };
+function claimedCaselessTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.request_capability", threadLabel: "IMOB", conversationState: emptyConversationState, caseContext: null,
+    presentation: { text: "Para divulgar um imóvel você pode contar com um especialista de Marketing. Ainda não vinculei esta conversa a nenhum imóvel ou caso: diga qual imóvel você quer divulgar.", blocks: [],
+      widget: { kind: "document_checklist", title: "Especialista de Marketing para divulgação", checklist: [], blocker: null, nextStep: null, specialists: [], transversalCapabilities: [mktCapability] } },
+  } as unknown as ImobResolveTurnResponse;
+}
+function claimedDeniedTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.case_denied", reasonCode: "CASE_NOT_IN_SCOPE", threadLabel: "IMOB", conversationState: emptyConversationState, caseContext: null,
+    presentation: { text: "Não encontrei esse caso neste workspace, então não vinculei nenhum imóvel nem usei outro caso no lugar. Diga qual imóvel ou caso você quer divulgar.", blocks: [] },
+  } as unknown as ImobResolveTurnResponse;
+}
+
+test("P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedCaselessTurn() }));
+  assert.equal(await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel."), true);
+  const message = harness.messages().at(-1)!;
+  assert.equal(message.caseContext, null);
+  assert.equal(harness.claimCalls[0].caseId ?? null, null);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Especialistas transversais/);
+  assert.match(html, /Marketing GPS \(MKT\)/);
+  assert.match(html, /Ainda não vinculei esta conversa a nenhum imóvel ou caso/);
+  assert.doesNotMatch(html, /imóvel deste caso|<button/);
+  // o turno seguinte continua sem caso: nada foi "lembrado"
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId ?? null, null);
+});
+
+test("P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)", async () => {
+  const sequence: ImobResolveTurnResponse[] = [claimedMarketingTurn(), claimedMarketingTurn(), claimedDeniedTurn(), claimedCaselessTurn()];
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: sequence.shift()! }));
+  await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  assert.equal(harness.messages().at(-1)!.caseContext?.caseId, "case-batel", "confirmado pelo servidor");
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId, "case-batel", "caso confirmado é reenviado");
+  await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  const denied = harness.messages().at(-1)!;
+  assert.equal(denied.caseContext, null, "negado: o caso não é herdado");
+  assert.match(denied.text, /Não encontrei esse caso neste workspace/);
+  assert.equal(denied.widget, undefined, "sem cartão nem dados na negativa");
+  await harness.consumeOperationalTurn("claim", "Quero divulgar meu apartamento.");
+  assert.equal(harness.claimCalls[3].caseId ?? null, null, "após a negativa o próximo turno não reenvia o caseId negado");
+});

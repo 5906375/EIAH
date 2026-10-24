@@ -176,9 +176,6 @@
     }
   ],
   "legacyOperationalComponents": [
-    "apps/web/src/features/imob/ImobChatWidgets.tsx",
-    "apps/web/src/features/imob/ImobContractIntakeDraftCard.tsx",
-    "apps/web/src/features/imob/ImobContractIntakeResultCard.tsx",
     "apps/web/src/features/imob/ImobDashboardHero.tsx",
     "apps/web/src/features/imob/ImobIntakeSummaryPanel.tsx",
     "apps/web/src/features/imob/ImobKnowledgeViewer.tsx",

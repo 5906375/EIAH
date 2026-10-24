@@ -291,6 +291,30 @@ test("P10 destino comercial: só o Self-service identificando item é aceito; re
   // fora do navegador não há retorno a acrescentar (nunca inventa caseId)
   assert.equal(withImobReturnTo("/self-service?marketplaceItem=x"), "/self-service?marketplaceItem=x");
   assert.equal(safeImobReturnTo("/app/imob/chat?caseId=case-1"), "/app/imob/chat?caseId=case-1");
+  // EIAH-FD-001: o componente (dentro do Front Door) só reconhece o Front Door; outra superfície informa o próprio retorno (a página hospedeira)
+  const realWindow = (globalThis as { window?: unknown }).window;
+  const at = (pathname: string, search = "") => { (globalThis as { window?: unknown }).window = { location: { pathname, search } }; };
+  try {
+    const details = "/self-service?marketplaceItem=x";
+    at("/app/chat", "?agent=EIAH");
+    assert.equal(withImobReturnTo(details), `${details}&returnTo=${encodeURIComponent("/app/chat?agent=EIAH")}`);
+    at("/app/chatter");
+    assert.equal(withImobReturnTo(details), details, "prefixo parecido não é o Front Door");
+    at("/app/imob/chat", "?caseId=case-1");
+    assert.equal(withImobReturnTo(details), details, "sem informe do hospedeiro, a rota legada não é reconhecida pelo componente");
+    assert.equal(
+      withImobReturnTo(details, "/app/imob/chat?caseId=case-1"),
+      `${details}&returnTo=${encodeURIComponent("/app/imob/chat?caseId=case-1")}`,
+      "o hospedeiro legado informa o seu retorno",
+    );
+  } finally {
+    if (realWindow === undefined) delete (globalThis as { window?: unknown }).window;
+    else (globalThis as { window?: unknown }).window = realWindow;
+  }
+  // P11: o Front Door (/app/chat) também é destino de retorno válido, só ele (nunca prefixos parecidos nem destinos externos)
+  assert.equal(safeImobReturnTo("/app/chat"), "/app/chat");
+  assert.equal(safeImobReturnTo("/app/chat?agent=EIAH"), "/app/chat?agent=EIAH");
+  for (const bad of ["/app/chatter", "/app/chat//x", "/app/chat/../billing", "//example.invalid/app/chat"]) assert.equal(safeImobReturnTo(bad), null, bad);
   for (const bad of ["https://example.invalid/app/imob/chat", "//example.invalid", "/app/imob/chat//x", "/app/marketplace", "/app/imob/chat?x=<a>", null, undefined]) {
     assert.equal(safeImobReturnTo(bad as never), null, String(bad));
   }

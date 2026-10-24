@@ -19,6 +19,8 @@ type WidgetAction = {
 type Props = {
   widget: ImobPresentationWidget;
   onAction: (action: WidgetAction) => void;
+  /** Retorno à conversa de origem informado pela página hospedeira (somente navegação). Sem ele, só o Front Door é reconhecido. */
+  returnTo?: string;
 };
 
 function formatPriorityCaseDetail(item: ImobCase) {
@@ -92,11 +94,14 @@ export function isSelfServiceDetailsPath(path: unknown): path is string {
   return typeof path === "string" && path.startsWith(SELF_SERVICE_DETAILS_PREFIX) && !path.includes("//") && !/[\s<>"']/.test(path);
 }
 
-/** Acrescenta o retorno ao caso IMOB atual (somente navegação; nunca vale como autoridade). */
-export function withImobReturnTo(path: string): string {
+/**
+ * Acrescenta o retorno à conversa atual (somente navegação; nunca vale como autoridade). Este componente vive dentro do Front Door e só
+ * reconhece o próprio Front Door como destino; uma página hospedeira de outra superfície informa o seu retorno em `hostReturnTo`.
+ */
+export function withImobReturnTo(path: string, hostReturnTo?: string): string {
   if (typeof window === "undefined") return path;
-  const here = `${window.location.pathname}${window.location.search}`;
-  return here.startsWith("/app/imob/chat") ? `${path}&returnTo=${encodeURIComponent(here)}` : path;
+  const here = hostReturnTo || `${window.location.pathname}${window.location.search}`;
+  return hostReturnTo || /^\/app\/chat(?:[?#]|$)/.test(here) ? `${path}&returnTo=${encodeURIComponent(here)}` : path;
 }
 
 /**
@@ -106,7 +111,7 @@ export function withImobReturnTo(path: string): string {
  * é um passo separado e a API reaplica a autoridade. Esta tela não contrata, não habilita e não solicita aprovação.
  * Habilitar um AGENTE não é convidar uma PESSOA para o workspace.
  */
-function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
+function renderTransversalCapabilities(items?: ImobTransversalCapability[], returnTo?: string) {
   if (!Array.isArray(items) || items.length === 0) return null;
   return (
     <div className="mt-3 space-y-2">
@@ -163,7 +168,7 @@ function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
                   <p key={condition} className="text-muted-foreground">{condition}</p>
                 ))}
                 {detailsHref ? (
-                  <a href={withImobReturnTo(detailsHref)} className="mt-2 inline-block underline text-foreground">Ver os detalhes comerciais de {agentId} no Self-service</a>
+                  <a href={withImobReturnTo(detailsHref, returnTo)} className="mt-2 inline-block underline text-foreground">Ver os detalhes comerciais de {agentId} no Self-service</a>
                 ) : null}
                 <p className="mt-1 text-muted-foreground">Você tem autoridade comercial neste workspace. Nada foi contratado: a assinatura é um passo separado, que só acontece com a sua confirmação no Self-service. Habilitar um agente não é convidar uma pessoa para o workspace.</p>
               </div>
@@ -172,7 +177,7 @@ function renderTransversalCapabilities(items?: ImobTransversalCapability[]) {
                 <p>Recomendação: este agente pode ser habilitado neste workspace, mas ainda não está contratado.</p>
                 <p className="mt-1">A decisão de contratar cabe a um responsável comercial autorizado deste workspace. Você pode consultar os detalhes, mas não contratar. Esta conversa não contrata nem habilita agentes.</p>
                 {detailsHref ? (
-                  <a href={withImobReturnTo(detailsHref)} className="mt-2 inline-block underline text-foreground">Ver os detalhes de {agentId} (somente consulta)</a>
+                  <a href={withImobReturnTo(detailsHref, returnTo)} className="mt-2 inline-block underline text-foreground">Ver os detalhes de {agentId} (somente consulta)</a>
                 ) : null}
               </div>
             ) : state === "habilitado" ? (
@@ -210,7 +215,7 @@ export function buildImobCommercialHomeWidget(params: {
   };
 }
 
-export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
+export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction, returnTo }) => {
   if (widget.kind === "commercial_home") {
     return (
       <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
@@ -311,7 +316,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
           </div>
         ) : null}
         {renderSpecialists(widget.specialists)}
-        {renderTransversalCapabilities(widget.transversalCapabilities)}
+        {renderTransversalCapabilities(widget.transversalCapabilities, returnTo)}
       </div>
     );
   }
@@ -351,7 +356,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
       {widget.blocker ? <p className="mt-3 text-xs text-rose-200">Bloqueio: {widget.blocker}</p> : null}
       {widget.nextStep ? <p className="mt-2 text-xs text-muted-foreground">Próximo passo: {widget.nextStep}</p> : null}
       {renderSpecialists(widget.specialists)}
-      {renderTransversalCapabilities(widget.transversalCapabilities)}
+      {renderTransversalCapabilities(widget.transversalCapabilities, returnTo)}
     </div>
   );
 };

@@ -625,7 +625,8 @@ test("transversal: o caminho operacional (helpers do resolvedor) apresenta o mes
 
 test("transversal: a rota liga a descoberta aos dois resolvedores e só consulta quando a necessidade se aplica", () => {
   const source = readFileSync(new URL("../routes/imob.ts", import.meta.url), "utf8");
-  assert.equal((source.match(/readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn/g) ?? []).length, 2);
+  // dois resolvedores do caso + a recomendação SEM caso da reivindicação do Front Door (P11); todos usam a mesma descoberta
+  assert.equal((source.match(/readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn/g) ?? []).length, 3);
   assert.match(source, /const needs = resolveImobTransversalNeeds\([\s\S]*?\);\s*if \(needs\.length === 0\) return \[\];/);
   assert.match(source, /discoverCapabilityNeeds\(\{\s*needs,\s*tenantId: params\.tenantId,\s*workspaceId: params\.workspaceId,/);
   assert.match(source, /actor: \{ userId: params\.userId \?\? null \}/, "a autoridade de contratação é avaliada para a pessoa do turno");
@@ -738,4 +739,95 @@ test("P10 texto das respostas: só descreve o estado apurado, nunca afirma contr
     }
   }
   assert.match(buildTransversalTurnText(turns[2] as never, { state: "habilitavel", provider: { name: "Marketing GPS", agentId: "MKT" } }), /^Esta conversa não contrata agentes\./);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P11: a MESMA etapa transversal do engine é a que o Front Door reivindica (`claimOnly`), sem duplicar o interpretador.
+// Vínculo com o caso FAIL-CLOSED: caso explícito e autorizado, ou recomendação sem caso; nunca "o caso mais recente".
+// ---------------------------------------------------------------------------------------------
+
+import { resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+
+const mktDiscovered = { need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign" }, state: "habilitavel", provider: { name: "Marketing GPS", agentId: "MKT" }, authority: { status: "somente_consulta" } };
+
+function stageHarness(consultResult: unknown = { mode: "consult", action: "crm.case.transversal.request_capability", presentation: { text: "ok" }, caseContext: { caseId: "case-1" } }) {
+  const consultCalls: any[] = [];
+  const capabilityCalls: any[] = [];
+  const input = {
+    prisma: {} as unknown, authContext: { tenantId: "t", workspaceId: "w", userId: "u" }, workspaceResponsibleLabel: "Corretor",
+    helpers: {
+      resolveImobOperationalConsult: async (params: unknown) => { consultCalls.push(params); return consultResult as never; },
+      applyCanonicalJourneyToResolvedData: (data: unknown) => data,
+      readTransversalCapabilities: async (params: unknown) => { capabilityCalls.push(params); return [mktDiscovered]; },
+    },
+  };
+  return { input, consultCalls, capabilityCalls };
+}
+const claimMessages = ["Quero divulgar este apartamento do Batel.", "Precisamos preparar uma campanha para esse imóvel.", "O Marketing pode ajudar a anunciar essa unidade?", "Isso já contratou o Marketing?"];
+
+test("P11 etapa transversal (claimOnly) SEM caso explícito: recomendação sem caso; o caso mais recente NUNCA é lido (nem se fosse o único)", async () => {
+  for (const message of claimMessages) {
+    const { input, consultCalls, capabilityCalls } = stageHarness();
+    // mesmo com um caseId "sugerido" e sem resolveCase confirmando, nada é vinculado
+    const stage = await resolveImobTransversalTurnStage({ ...input, message, caseId: "case-qualquer", threadState: null, claimOnly: true });
+    const data = stage?.data as any;
+    assert.match(String(data?.action), /^crm\.case\.transversal\.(request_capability|agent_engagement)$/, message);
+    assert.equal(stage?.caseContext, null, message);
+    assert.equal(data.caseContext, null);
+    assert.equal(consultCalls.length, 0, `${message}: o consultivo (que cairia no caso mais recente) não é chamado`);
+    assert.equal(capabilityCalls.length, 1);
+    assert.equal(capabilityCalls[0].caseContext, null);
+    assert.ok(capabilityCalls[0].turnNeeds.length > 0 && data.conversationState, "necessidade do turno + estado de conversa preservado");
+    assert.equal(data.presentation.widget.kind, "document_checklist");
+    assert.equal(data.presentation.widget.transversalCapabilities.length, 1);
+    assert.doesNotMatch(JSON.stringify(data), /case-1|case-qualquer|imóvel deste caso/, "nenhum caso afirmado nem exposto");
+    if (data.action.endsWith("request_capability")) assert.match(data.presentation.text, /Ainda não vinculei esta conversa a nenhum imóvel ou caso: diga qual imóvel/);
+  }
+  // sem a descoberta (falha/ausente) ainda não vincula nada e não inventa recomendação
+  const { input } = stageHarness();
+  const bare = await resolveImobTransversalTurnStage({ ...input, helpers: { ...input.helpers, readTransversalCapabilities: undefined }, message: claimMessages[0], caseId: null, threadState: null, claimOnly: true });
+  assert.equal((bare?.data as any).presentation.widget, undefined);
+  assert.match((bare?.data as any).presentation.text, /Não consegui verificar agora/);
+});
+
+test("P11 etapa transversal (claimOnly) COM caso explícito autorizado: lê só esse caso; negativa de escopo/etapa não lê nem substitui outro caso", async () => {
+  const bound = stageHarness();
+  const ok = await resolveImobTransversalTurnStage({ ...bound.input, message: claimMessages[0], caseId: "case-1", threadState: null, claimOnly: true, resolveCase: async () => ({ kind: "bound", caseId: "case-1" }) });
+  assert.equal((ok?.caseContext as { caseId?: string })?.caseId, "case-1");
+  assert.equal(bound.consultCalls.length, 1);
+  assert.equal(bound.consultCalls[0].caseId, "case-1", "o consultivo recebe EXATAMENTE o caso confirmado pelo servidor");
+  assert.equal(bound.capabilityCalls.length, 0, "a descoberta vem do consultivo do caso, sem leitura paralela");
+  for (const reasonCode of ["CASE_NOT_IN_SCOPE", "STAGE_DENIED"] as const) {
+    const denied = stageHarness();
+    const stage = await resolveImobTransversalTurnStage({ ...denied.input, message: claimMessages[0], caseId: "case-b", threadState: { operational: null } as never, claimOnly: true, resolveCase: async () => ({ kind: "denied", reasonCode }) });
+    const data = stage?.data as any;
+    assert.deepEqual([data.action, data.reasonCode, stage?.caseContext], ["crm.case.transversal.case_denied", reasonCode, null]);
+    assert.deepEqual([denied.consultCalls.length, denied.capabilityCalls.length], [0, 0], `${reasonCode}: nem caso nem descoberta`);
+    assert.equal(data.presentation.widget, undefined, "sem cartão e sem dados do caso negado");
+    assert.match(data.presentation.text, reasonCode === "STAGE_DENIED" ? /não pode operar a etapa deste caso/ : /Não encontrei esse caso neste workspace/);
+    assert.match(data.presentation.text, /nem usei outro|nem uso outro|não vinculei nenhum imóvel/);
+  }
+});
+
+test("P11 etapa transversal (claimOnly): convite e turnos alheios não são reivindicados e não resolvem caso nem autorização; autorização negada não lê nada", async () => {
+  for (const message of ["Preciso convidar alguém?", "Convidar uma pessoa para o workspace", "Como funciona o billing?", "Quero revisar um contrato de locação", "cadastrar imóvel", "Qual o status desse caso?", "Bom dia", "Quero divulgar"]) {
+    const { input, consultCalls, capabilityCalls } = stageHarness();
+    let asked = 0;
+    assert.equal(await resolveImobTransversalTurnStage({ ...input, message, caseId: null, threadState: null, claimOnly: true, authorize: async () => { asked += 1; return true; }, resolveCase: async () => { asked += 10; return { kind: "none" }; } }), null, message);
+    assert.deepEqual([consultCalls.length, capabilityCalls.length, asked], [0, 0, 0], message);
+  }
+  // sem claimOnly (chat do caso) o comportamento do P10 permanece: pergunta/orienta o convite
+  const normal = stageHarness();
+  const invite = await resolveImobTransversalTurnStage({ ...normal.input, message: "Preciso convidar alguém?", caseId: "case-1", threadState: null });
+  assert.match(String((invite?.data as any)?.action), /^crm\.turn\.(clarify_invite_referent|invite_person_guidance)$/);
+  // autorização negada: o vínculo do caso nem é resolvido
+  const denied = stageHarness();
+  let resolved = 0;
+  assert.equal(await resolveImobTransversalTurnStage({ ...denied.input, message: claimMessages[0], caseId: "case-1", threadState: null, claimOnly: true, authorize: async () => false, resolveCase: async () => { resolved += 1; return { kind: "none" }; } }), null);
+  assert.deepEqual([resolved, denied.consultCalls.length, denied.capabilityCalls.length], [0, 0, 0]);
+  // fluxo operacional em andamento: só o agente citado pelo nome interrompe
+  const pending = { operational: { flow: "property.create", status: "collecting", pendingFields: ["address"] } } as never;
+  const busy = stageHarness();
+  assert.equal(await resolveImobTransversalTurnStage({ ...busy.input, message: "Quero divulgar este apartamento do Batel.", caseId: null, threadState: pending, claimOnly: true }), null);
+  assert.notEqual(await resolveImobTransversalTurnStage({ ...busy.input, message: "O Marketing pode ajudar a anunciar essa unidade?", caseId: null, threadState: pending, claimOnly: true }), null);
 });

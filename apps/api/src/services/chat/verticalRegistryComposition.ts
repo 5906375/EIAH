@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { VerticalAccessContractV1 } from "../../types/verticalEntitlementGateContract";
+import { resolveVerticalAccess } from "../products/verticalAccessResolver";
 import {
   evaluateChatVerticalHandoffV2,
   projectChatVerticalHandoffV2ForSurface,
@@ -26,7 +27,11 @@ export const IMOB_FRONT_DOOR_CAPABILITIES: Array<{ id: string; allowedModes: Ver
   { id: "crm.forms", allowedModes: ["requires_write"] },
   { id: "knowledge.search", allowedModes: ["read_only"] },
   { id: "inventory.preview", allowedModes: ["read_only"] },
+  // P11: leitura do caso e das necessidades transversais (ex.: recomendação de Marketing) pelo Front Door, sem escrita.
+  { id: "crm.case.consult", allowedModes: ["read_only"] },
 ];
+
+export const IMOB_CASE_CONSULT_CAPABILITY = "crm.case.consult";
 
 /**
  * Capacidades que a Logística & Comex anuncia no registry do front door: só a consulta de contexto. A jornada de preparação,
@@ -221,4 +226,41 @@ export function buildAndEvaluateVerticalHandoff(
   const evaluation = evaluateChatVerticalHandoffV2(composed.registry, candidate);
   if (!evaluation.ok) return { ok: false, reasonCode: evaluation.reasonCode };
   return { ok: true, handoff: projectChatVerticalHandoffV2ForSurface(evaluation.handoff as ChatVerticalHandoffV2) };
+}
+
+/**
+ * Fatos do `vertical.access.v1` derivados dos MESMOS fatos de servidor que compõem o registry (nenhuma leitura nova).
+ * Instalação ausente vira `null`; sem usuário identificado a permissão já vem negada em `userCanUse`.
+ */
+export function buildImobVerticalAccessFacts(facts: VerticalRegistryFacts) {
+  return {
+    scope: facts.scope,
+    verticalId: "imob",
+    installation: facts.imob.installationStatus === "missing"
+      ? null
+      : { tenantId: facts.scope.tenantId, workspaceId: facts.scope.workspaceId, product: "IMOB", status: facts.imob.installationStatus },
+    workspacePermission: { key: IMOB_CHAT_PERMISSION, allowed: facts.imob.userCanUse },
+    stagePermission: null,
+    usage: facts.imob.usage ?? "full",
+  };
+}
+
+export type ImobFrontDoorCapabilityAccess = { allowed: boolean; reasonCode: string };
+
+/**
+ * Acesso somente leitura do Front Door a uma capability do IMOB (P11). Fail-closed: exige o handoff `chat.vertical_handoff.v2`
+ * E o `vertical.access.v1`, ambos sobre fatos do servidor. Não avalia autorização de actions nem concede nada.
+ */
+export function evaluateImobFrontDoorCapabilityAccess(
+  facts: VerticalRegistryFacts,
+  capabilityId: string,
+  handoffId: string,
+): ImobFrontDoorCapabilityAccess {
+  const composed = composeVerticalRegistry(facts);
+  const handoff = buildAndEvaluateVerticalHandoff(composed, { verticalId: "imob", capabilityId, mode: "read_only" }, handoffId);
+  if (!handoff.ok) return { allowed: false, reasonCode: handoff.reasonCode };
+  const access = resolveVerticalAccess([IMOB_VERTICAL_ACCESS_CONTRACT_V1], {
+    scope: facts.scope, verticalId: "imob", capabilityId, mode: "read_only",
+  }, buildImobVerticalAccessFacts(facts));
+  return { allowed: access.allowed, reasonCode: access.reasonCode };
 }

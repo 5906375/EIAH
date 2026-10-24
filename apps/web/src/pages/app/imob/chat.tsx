@@ -5614,6 +5614,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             <ImobChatWidgets
                               widget={message.widget}
                               onAction={(action) => handleWidgetAction(action, message.caseContext)}
+                              returnTo={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
                             />
                           ) : null}
 

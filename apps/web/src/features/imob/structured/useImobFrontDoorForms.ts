@@ -1,5 +1,5 @@
 import React from "react";
-import { apiResolveImobTurn } from "@/lib/api";
+import { apiClaimImobTurn, apiResolveImobTurn, type ImobPresentationWidget } from "@/lib/api";
 import { getSession } from "@/state/sessionStore";
 import { buildProposalFormContinuation, buildProposalTextContinuation, hasPendingProposalReview, isConversationalProposalForm } from "@/pages/app/imob/proposalForm";
 import { useImobFormState, type ImobFormState } from "./useImobFormState";
@@ -154,6 +154,7 @@ export function createImobFrontDoorForms(params: {
   patchStructured: (id: string, update: (message: StructuredMessage) => StructuredMessage) => void;
   echoUser: (text: string) => void;
   resolveTurn?: typeof apiResolveImobTurn;
+  claimTurn?: typeof apiClaimImobTurn;
   getConversationGeneration: () => number;
   /** Grava o texto do usuário no histórico persistido (uma vez por pedido). */
   persistUser?: (key: string, text: string) => void;
@@ -201,7 +202,13 @@ export function createImobFrontDoorForms(params: {
     });
   }
 
-  async function consumeOperationalTurn(action: "continue" | "cancel" | "release", text: string) {
+  /** O Front Door não executa nada de recomendação: ações de recomendação do resumo ficam no chat do caso. */
+  const frontDoorWidget = (widget: ImobPresentationWidget): ImobPresentationWidget =>
+    "recommendedActions" in widget ? { ...widget, recommendedActions: [] } : widget;
+
+  async function consumeOperationalTurn(action: "continue" | "cancel" | "release" | "claim", text: string): Promise<boolean | void> {
+    // P11: reivindicação somente leitura do turno pela vertical; sem contexto prévio também vale (a governança é do servidor).
+    if (action === "claim") return forwardToImob(text, { claim: true });
     const context = latestContext();
     if (!context) return;
     if (action !== "continue") {
@@ -228,7 +235,7 @@ export function createImobFrontDoorForms(params: {
     finally { imobForms.formSubmittingRef.current.delete(context.id); }
   }
 
-  async function forwardToImob(text: string, options?: { displayText?: string; continuityReplyRef?: string }, continuation?: {
+  async function forwardToImob(text: string, options?: { displayText?: string; continuityReplyRef?: string; claim?: boolean }, continuation?: {
     message: StructuredMessage;
     request: Extract<ReturnType<typeof buildProposalFormContinuation>, { ok: true }>["request"];
   }): Promise<boolean> {
@@ -255,7 +262,8 @@ export function createImobFrontDoorForms(params: {
     const resumedThread = context ? null : params.getResumedThread?.() ?? null;
     const thread = context?.thread ?? (resumedThread ? { id: resumedThread.threadId, label: resumedThread.label, status: resumedThread.status } : FRONT_DOOR_IMOB_THREAD);
     try {
-      const response = await resolveTurn({
+      const call = options?.claim ? (params.claimTurn ?? apiClaimImobTurn) : resolveTurn;
+      const response = await call({
         message: continuation?.request.message ?? buildProposalTextContinuation(text, context?.conversationState, requestContextRef).message,
         continuityContextRef: requestContextRef,
         threadId: thread.id,
@@ -265,7 +273,9 @@ export function createImobFrontDoorForms(params: {
         ...(options?.continuityReplyRef ? { continuityReplyRef: options.continuityReplyRef } : {}),
       });
       if (!response.ok) throw new Error("IMOB resolve-turn failed");
-      const turn = response.data;
+      // Reivindicação recusada (ou sem acesso): nada a mostrar; o Front Door segue com o fluxo dele.
+      if (options?.claim && !("claimed" in response && response.claimed === true)) return false;
+      const turn = response.data as NonNullable<typeof response.data>;
       const presentation = turn.presentation;
       // A thread sintética é apenas o bootstrap. O caseContext do servidor é autoritativo.
       const resolvedThread = { ...thread, id: turn.caseContext?.threadId || thread.id, label: turn.threadLabel || thread.label };
@@ -296,7 +306,10 @@ export function createImobFrontDoorForms(params: {
         form: supported && turn.mode !== "blocked" ? form : undefined,
         thread: resolvedThread,
         conversationState: turn.conversationState,
-        caseContext: turn.caseContext ?? (resolvedThread.id === thread.id ? context?.caseContext : null),
+        // Reivindicação: o caso só existe se o SERVIDOR o devolveu (vínculo explícito); nunca se herda um caso anterior, para que um
+        // caso negado, fora de escopo ou não confirmado não continue preso à conversa.
+        caseContext: options?.claim ? (turn.caseContext ?? null) : (turn.caseContext ?? (resolvedThread.id === thread.id ? context?.caseContext : null)),
+        ...(options?.claim && presentation.widget ? { widget: frontDoorWidget(presentation.widget) } : {}),
         ...(presentation.card ? { card: { type: "action" as const, title: presentation.card.title, lines: presentation.card.lines,
           ctas: presentation.card.ctas?.filter((cta) => Boolean(cta.href)), thread: resolvedThread } } : {}),
       };
@@ -305,6 +318,7 @@ export function createImobFrontDoorForms(params: {
       params.persistAssistant?.(reply);
       return accepted;
     } catch {
+      if (options?.claim) return false;
       if (!isCurrentConversation() || (context && latestContext()?.id !== context.id)
         || !isCurrentQuestion()) return false;
       appendStructured({ id: makeStructuredId("assistant"), role: "assistant", thread,

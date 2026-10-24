@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import test from "node:test";
 
 import {
@@ -29,17 +30,39 @@ const BEFORE_M2 = {
   imobInactiveNoLog: "vr1-49b06ddc4ade", logMissing: "vr1-224437542be9", logInstalledDenied: "vr1-00b9de2e1e7d",
   logInactiveDenied: "vr1-00b9de2e1e7d", imobActiveLogDenied: "vr1-e750ce0f46f3", logEnabled: "vr1-08c947248db7", imobActiveLogEnabled: "vr1-096f62eaa61c",
 } as const;
+// P11: a capacidade somente leitura `crm.case.consult` passou a integrar o IMOB; por isso mudam SÓ as versões de registries que contêm o IMOB.
+// Valores determinísticos; o vínculo com a causa é provado abaixo (sem `crm.case.consult` a versão volta ao valor BEFORE_M2).
+const AFTER_P11 = {
+  imobActiveNoLog: "vr1-e90cac192e70", imobReadOnlyNoLog: "vr1-d3593f787926",
+  imobInactiveNoLog: "vr1-e9773ba06cc5", imobActiveLogDenied: "vr1-417ac3359812",
+} as const;
 const version = (f: VerticalRegistryFacts) => composeVerticalRegistry(f).registry.registryVersion;
+const versionWithoutCaseConsult = (f: VerticalRegistryFacts) => {
+  const verticals = composeVerticalRegistry(f).registry.verticals.map((entry) =>
+    entry.id === "imob" ? { ...entry, capabilities: entry.capabilities.filter((capability) => capability.id !== "crm.case.consult") } : entry);
+  return `vr1-${crypto.createHash("sha256").update(JSON.stringify(verticals)).digest("hex").slice(0, 12)}`;
+};
 
-test("compatibilidade: propostas de ativação pendentes mantêm a versão quando a Logística não está autorizada", () => {
+test("compatibilidade: a Logística não autorizada não altera a versão; sem o IMOB no registry a versão segue a mesma de antes do M2", () => {
   assert.equal(version(facts(imobFacts())), BEFORE_M2.imobMissingNoLog);
-  assert.equal(version(facts(imobActive)), BEFORE_M2.imobActiveNoLog);
-  assert.equal(version(facts({ ...imobActive, usage: "read_only" })), BEFORE_M2.imobReadOnlyNoLog);
-  assert.equal(version(facts(imobFacts({ installationStatus: "inactive" }))), BEFORE_M2.imobInactiveNoLog);
   assert.equal(version(facts(imobFacts(), { installationStatus: "missing", contextAllowed: false })), BEFORE_M2.logMissing);
   assert.equal(version(facts(imobFacts(), { installationStatus: "active", contextAllowed: false })), BEFORE_M2.logInstalledDenied);
   assert.equal(version(facts(imobFacts(), { installationStatus: "inactive", contextAllowed: false })), BEFORE_M2.logInactiveDenied);
-  assert.equal(version(facts(imobActive, { installationStatus: "active", contextAllowed: false })), BEFORE_M2.imobActiveLogDenied);
+});
+
+test("P11: com o IMOB no registry a versão inclui `crm.case.consult` (valores fixados) e só essa capacidade a distingue da anterior", () => {
+  const cases: Array<[keyof typeof AFTER_P11, VerticalRegistryFacts]> = [
+    ["imobActiveNoLog", facts(imobActive)],
+    ["imobReadOnlyNoLog", facts({ ...imobActive, usage: "read_only" })],
+    ["imobInactiveNoLog", facts(imobFacts({ installationStatus: "inactive" }))],
+    ["imobActiveLogDenied", facts(imobActive, { installationStatus: "active", contextAllowed: false })],
+  ];
+  for (const [name, f] of cases) {
+    assert.equal(version(f), AFTER_P11[name], name);
+    assert.equal(version(f), version(f), `${name}: determinística`);
+    assert.notEqual(version(f), BEFORE_M2[name], `${name}: difere da versão anterior ao P11`);
+    assert.equal(versionWithoutCaseConsult(f), BEFORE_M2[name], `${name}: sem crm.case.consult volta exatamente à versão anterior`);
+  }
 });
 
 test("com o contexto da Logística autorizado a versão muda (rejeição fail-closed já existente na confirmação), e o estado é a causa", () => {

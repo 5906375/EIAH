@@ -832,10 +832,13 @@ describe("AUTHZ-SCOPE-1: autoridade comercial de contratação de agentes", () =
 
 describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT → autoridade → consulta", () => {
   const sx = `${suffix}-p10`;
-  const ids = { t: `tenant-p10-${sx}`, p: `tenant-p10-pub-${sx}`, w: `workspace-p10-${sx}` };
-  const users = { founder: `user-p10-founder-${sx}`, a: `user-p10-a-${sx}`, b: `user-p10-b-${sx}` };
-  const tokens = { founder: `tok-p10-founder-${sx}`, a: `tok-p10-a-${sx}`, b: `tok-p10-b-${sx}` };
+  const ids = { t: `tenant-p10-${sx}`, p: `tenant-p10-pub-${sx}`, w: `workspace-p10-${sx}`, w2: `workspace-p10-2-${sx}`, t2: `tenant-p10-2-${sx}`, w3: `workspace-p10-3-${sx}` };
+  const users = { founder: `user-p10-founder-${sx}`, a: `user-p10-a-${sx}`, b: `user-p10-b-${sx}`, c: `user-p10-c-${sx}` };
+  const tokens = { founder: `tok-p10-founder-${sx}`, a: `tok-p10-a-${sx}`, b: `tok-p10-b-${sx}`, c: `tok-p10-c-${sx}` };
   let caseId = "";
+  let caseBId = "";
+  let caseOtherWorkspaceId = "";
+  let caseOtherTenantId = "";
   let mktItemId = "";
   let setupBaseline = { assignments: 0, runs: 0 };
   const turn = (who: keyof typeof tokens, message: string, over: Record<string, unknown> = {}) =>
@@ -853,13 +856,17 @@ describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT 
   });
 
   before(async () => {
-    await prismaGlobal.tenant.createMany({ data: [ids.t, ids.p].map((id) => ({ id, name: id })) });
-    await prismaGlobal.workspace.create({ data: { id: ids.w, tenantId: ids.t, name: ids.w } });
+    await prismaGlobal.tenant.createMany({ data: [ids.t, ids.p, ids.t2].map((id) => ({ id, name: id })) });
+    await prismaGlobal.workspace.createMany({ data: [{ id: ids.w, tenantId: ids.t, name: ids.w }, { id: ids.w2, tenantId: ids.t, name: ids.w2 }, { id: ids.w3, tenantId: ids.t2, name: ids.w3 }] });
     await prismaGlobal.user.createMany({ data: Object.entries(users).map(([name, id]) => ({ id, tenantId: ids.t, email: `${name}-${sx}@example.com`, displayName: `P10 ${name}` })) });
     await prismaGlobal.apiToken.createMany({ data: Object.entries(users).map(([name, id]) => ({ token: tokens[name as keyof typeof tokens], tenantId: ids.t, workspaceId: ids.w, userId: id, description: `p10-${name}`, revoked: false })) });
     await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.founder, roleKey: "founder" });
     await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.a, roleKey: "corretor" });
     await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.b, roleKey: "gestor" });
+    // C: pode usar o IMOB, mas opera SOMENTE a etapa "proposal" (os casos do teste estão na etapa "listing")
+    await ensureWorkspaceMembershipForUser({ tenantId: ids.t, workspaceId: ids.w, userId: users.c, roleKey: "corretor" });
+    await prismaGlobal.$executeRawUnsafe(
+      `UPDATE eiah_workspace_memberships SET permissions = '["imob.chat.use","imob.stage.proposal"]'::jsonb WHERE user_id = $1 AND tenant_id = $2`, users.c, ids.t);
     await ensureVerticalAccessStore(prismaGlobal);
     await prismaGlobal.$executeRaw`
       INSERT INTO vertical_access_approvals (id, tenant_id, workspace_id, vertical, status, source, decided_by, decided_at)
@@ -881,6 +888,17 @@ describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT 
     const property = await prismaGlobal.imobProperty.create({ data: { tenantId: ids.t, workspaceId: ids.w, ownerId: owner.id, propertyType: "apartamento", goal: "venda", address: "Rua das Acácias, 120 (sintético)", city: "Curitiba", neighborhood: "Batel", bedrooms: 3, bathrooms: 2, areaM2: 98, garageSpots: 2, askingPriceCents: 85000000, description: "sintético", status: "active" } });
     const created = await prismaGlobal.imobCase.create({ data: { tenantId: ids.t, workspaceId: ids.w, flow: "listing.activate", stage: "listing", status: "running", ownerResponsible: "Ana (A)", nextStep: "ativar anúncio do imóvel", ownerId: owner.id, propertyId: property.id, blockers: [], pendingItems: [] } });
     caseId = created.id;
+    await prismaGlobal.imobCase.update({ where: { id: created.id }, data: { nextStep: "ativar anúncio do apartamento do Batel" } });
+    const propertyB = await prismaGlobal.imobProperty.create({ data: { tenantId: ids.t, workspaceId: ids.w, ownerId: owner.id, propertyType: "casa", goal: "venda", address: "Rua XV de Novembro, 45 (sintético)", city: "Curitiba", neighborhood: "Centro", bedrooms: 3, bathrooms: 2, areaM2: 90, garageSpots: 1, askingPriceCents: 70000000, description: "imóvel no Centro (sintético)", status: "active" } });
+    // o caso B é o MAIS RECENTE do workspace: qualquer fallback "caso mais recente" o escolheria
+    const createdB = await prismaGlobal.imobCase.create({ data: { tenantId: ids.t, workspaceId: ids.w, flow: "listing.activate", stage: "listing", status: "running", ownerResponsible: "Ana (A)", nextStep: "ativar anúncio do imóvel do Centro", ownerId: owner.id, propertyId: propertyB.id, blockers: [], pendingItems: [], updatedAt: new Date(Date.now() + 120_000) } });
+    caseBId = createdB.id;
+    for (const [key, tenantId, workspaceId, label] of [["ws", ids.t, ids.w2, "Ecoville"], ["tenant", ids.t2, ids.w3, "Agua Verde"]] as const) {
+      const o = await prismaGlobal.imobOwner.create({ data: { tenantId, workspaceId, name: "Outra (sintética)", personType: "person", status: "active", email: "outra@teste-local.invalid" } });
+      const pr = await prismaGlobal.imobProperty.create({ data: { tenantId, workspaceId, ownerId: o.id, propertyType: "cobertura", goal: "venda", address: "Endereço sintético 9", city: "Curitiba", neighborhood: label, bedrooms: 4, bathrooms: 3, areaM2: 200, garageSpots: 3, askingPriceCents: 150000000, description: `SEGREDO-${key}`, status: "active" } });
+      const c = await prismaGlobal.imobCase.create({ data: { tenantId, workspaceId, flow: "listing.activate", stage: "listing", status: "running", ownerResponsible: "Outra", nextStep: `SEGREDO-${key}-proximo-passo`, ownerId: o.id, propertyId: pr.id, blockers: [], pendingItems: [] } });
+      if (key === "ws") caseOtherWorkspaceId = c.id; else caseOtherTenantId = c.id;
+    }
     const base = await sideEffects();
     setupBaseline = { assignments: base.assignments, runs: base.runs };
   });
@@ -889,9 +907,9 @@ describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT 
     await prismaGlobal.$executeRawUnsafe("DELETE FROM eiah_agent_commercial_enablements WHERE tenant_id = $1", ids.t).catch(() => undefined);
     await prismaGlobal.$executeRawUnsafe("DELETE FROM eiah_commercial_authority_designations WHERE tenant_id = $1", ids.t).catch(() => undefined);
     await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
-    await prismaGlobal.imobCase.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
-    await prismaGlobal.imobProperty.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
-    await prismaGlobal.imobOwner.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
+    await prismaGlobal.imobCase.deleteMany({ where: { tenantId: { in: [ids.t, ids.t2] } } }).catch(() => undefined);
+    await prismaGlobal.imobProperty.deleteMany({ where: { tenantId: { in: [ids.t, ids.t2] } } }).catch(() => undefined);
+    await prismaGlobal.imobOwner.deleteMany({ where: { tenantId: { in: [ids.t, ids.t2] } } }).catch(() => undefined);
     await prismaGlobal.marketplaceItem.deleteMany({ where: { publisherId: ids.p } }).catch(() => undefined);
     await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId: ids.t } }).catch(() => undefined);
   });
@@ -1001,5 +1019,144 @@ describe("P10: Front Door → caso IMOB → necessidade de divulgação → MKT 
     assert.deepEqual({ assignments: before.assignments, runs: before.runs, enablements: before.enablements, delegations: before.delegations }, { assignments: setupBaseline.assignments, runs: setupBaseline.runs, enablements: 0, delegations: 0 }, "nenhuma habilitação, delegação, agente de workspace ou campanha novos");
     const everything = JSON.stringify(await prismaGlobal.guardrailAuditLedger.findMany({ where: { tenantId: ids.t } }));
     assert.equal(/password|senha|jwt|eyJ[A-Za-z0-9_-]{20,}/i.test(everything), false);
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // P11 — o Front Door reivindica o turno SOMENTE LEITURA (`claimOnly`). Acesso: handoff v2 + vertical.access.v1 (crm.case.consult);
+  // só roda a etapa transversal do P10. O que não é dela volta `claimed:false`, sem efeitos.
+  // -------------------------------------------------------------------------------------------
+  const claim = (who: keyof typeof tokens, message: string, over: Record<string, unknown> = {}) =>
+    request.post("/api/imob/chat/resolve-turn").set("Authorization", `Bearer ${tokens[who]}`).send({ message, claimOnly: true, ...over });
+  const claimNeeds = [
+    "Quero divulgar este apartamento do Batel.",
+    "Precisamos preparar uma campanha para esse imóvel.",
+    "O Marketing pode ajudar a anunciar essa unidade?",
+  ];
+
+  const forbiddenMarkers = /Centro|Batel|SEGREDO|Ecoville|Agua Verde|imóvel deste caso/;
+  const idsInPayload = (payload: unknown) => [caseId, caseBId, caseOtherWorkspaceId, caseOtherTenantId].filter((id) => JSON.stringify(payload).includes(id));
+
+  test("P11 vínculo explícito: com caseId autorizado a vertical responde SÓ sobre esse caso (nada do caso mais recente), com a autoridade de cada pessoa", async () => {
+    for (const message of claimNeeds) {
+      const asA = await claim("a", message, { caseId });
+      assert.equal(asA.status, 200, message);
+      assert.equal(asA.body.claimed, true, message);
+      assert.equal(asA.body.data.action, "crm.case.transversal.request_capability");
+      assert.equal(asA.body.data.caseContext.caseId, caseId, "o caso explícito é devolvido para a conversa");
+      assert.ok(asA.body.data.presentation.widget, "com caso explícito o resumo do caso aparece (o tipo depende da etapa atual do caso)");
+      assert.deepEqual(idsInPayload(asA.body.data), [caseId], "nenhum outro caso aparece na resposta");
+      assert.doesNotMatch(JSON.stringify(asA.body), /Centro|SEGREDO/, "nada do caso B (mais recente) nem de outro escopo");
+      const cardA = asA.body.data.presentation.widget.transversalCapabilities[0];
+      assert.deepEqual([cardA.provider.agentId, cardA.state, cardA.authority.status, cardA.nextAction.kind], ["MKT", "habilitavel", "somente_consulta", "request_approval"]);
+      assert.equal(cardA.nextAction.enabled, false);
+      const asB = await claim("b", message, { caseId });
+      assert.equal(asB.body.claimed, true);
+      const cardB = asB.body.data.presentation.widget.transversalCapabilities[0];
+      assert.deepEqual([cardB.authority.status, cardB.nextAction.kind, cardB.nextAction.marketplaceItemId], ["contratacao_autorizada", "open_commercial_details", mktItemId]);
+      assert.equal(cardB.nextAction.workspaceId, ids.w, "tenant e workspace vêm do token, nunca do corpo");
+      assert.match(String(asB.body.data.presentation.text), /ainda não foi contratado nem ativado/);
+    }
+    // três turnos encadeados com o caseId/estado devolvidos: o vínculo permanece no caso A
+    let state: unknown = undefined; let bound = caseId;
+    for (const message of claimNeeds) {
+      const res = await claim("a", message, { caseId: bound, ...(state ? { threadState: state } : {}) });
+      assert.equal(res.body.data.caseContext.caseId, caseId);
+      bound = res.body.data.caseContext.caseId; state = res.body.data.conversationState;
+    }
+  });
+
+  test("P11 sem caseId: recomendação de MKT SEM caso; o caso mais recente nunca é lido, mesmo havendo casos; nada é vinculado nem exposto", async () => {
+    for (const message of [...claimNeeds, "Quero divulgar meu apartamento.", "Isso já contratou o Marketing?"]) {
+      for (const who of ["a", "b"] as const) {
+        const res = await claim(who, message);
+        assert.equal(res.status, 200, message);
+        assert.equal(res.body.claimed, true, message);
+        assert.equal(res.body.data.caseContext, null, `${message}: nenhum caso vinculado`);
+        assert.deepEqual(idsInPayload(res.body), [], "nenhum identificador de caso na resposta");
+        assert.doesNotMatch(JSON.stringify(res.body), forbiddenMarkers, `${message}: nenhum dado de imóvel/caso`);
+        assert.equal(res.body.data.presentation.widget.kind, "document_checklist");
+        const card = res.body.data.presentation.widget.transversalCapabilities[0];
+        assert.equal(card.authority.status, who === "a" ? "somente_consulta" : "contratacao_autorizada", "a autoridade da pessoa continua sendo apresentada sem caso");
+        assert.equal(card.nextAction.workspaceId, ids.w);
+        if (res.body.data.action.endsWith("request_capability")) assert.match(res.body.data.presentation.text, /Ainda não vinculei esta conversa a nenhum imóvel ou caso: diga qual imóvel/);
+      }
+    }
+  });
+
+  test("P11 isolamento: caseId inexistente, de outro workspace ou de outro tenant é NEGADO sem fallback (nada do caso mais recente nem do outro escopo)", async () => {
+    for (const [label, foreign] of [["outro workspace (mesmo tenant)", caseOtherWorkspaceId], ["outro tenant", caseOtherTenantId], ["inexistente", "case-inexistente-0000"]] as const) {
+      for (const who of ["a", "b"] as const) {
+        const res = await claim(who, claimNeeds[0], { caseId: foreign });
+        assert.equal(res.status, 200, label);
+        assert.equal(res.body.claimed, true, "a negativa é APRESENTADA (não vira fallback nem fluxo genérico)");
+        assert.deepEqual([res.body.data.action, res.body.data.reasonCode, res.body.data.caseContext], ["crm.case.transversal.case_denied", "CASE_NOT_IN_SCOPE", null], label);
+        assert.equal(res.body.data.presentation.widget, undefined);
+        assert.deepEqual(idsInPayload(res.body), [], label);
+        assert.doesNotMatch(JSON.stringify(res.body), forbiddenMarkers, `${label}: nenhum dado de caso`);
+        assert.match(res.body.data.presentation.text, /Não encontrei esse caso neste workspace/);
+      }
+    }
+  });
+
+  test("P11 permissão de ETAPA: quem não opera a etapa do caso não recebe dados dele (nem por caseId explícito nem por fallback); sem caseId só há recomendação sem caso", async () => {
+    const denied = await claim("c", claimNeeds[0], { caseId });
+    assert.equal(denied.status, 200, "negativa limpa (sem o 500 da rota normal)");
+    assert.deepEqual([denied.body.claimed, denied.body.data.action, denied.body.data.reasonCode, denied.body.data.caseContext], [true, "crm.case.transversal.case_denied", "STAGE_DENIED", null]);
+    assert.doesNotMatch(JSON.stringify(denied.body), /Batel|Centro|SEGREDO/);
+    assert.equal(denied.body.data.presentation.widget, undefined);
+    const deniedB = await claim("c", claimNeeds[0], { caseId: caseBId });
+    assert.equal(deniedB.body.data.reasonCode, "STAGE_DENIED");
+    const caseless = await claim("c", claimNeeds[0]);
+    assert.equal(caseless.body.claimed, true);
+    assert.equal(caseless.body.data.caseContext, null);
+    assert.doesNotMatch(JSON.stringify(caseless.body), forbiddenMarkers, "o fallback ao 'mais recente' (que furava a permissão de etapa) não existe mais no claimOnly");
+    // controle: a usuária que opera a etapa continua recebendo o caso explícito
+    assert.equal((await claim("a", claimNeeds[0], { caseId })).body.data.caseContext.caseId, caseId);
+  });
+
+  test("P11 reivindicação: 'contratou o Marketing?' é consulta de ESTADO do agente; autoridade e identidade não vêm do corpo", async () => {
+    const res = await claim("a", "Isso já contratou o Marketing?");
+    assert.equal(res.body.claimed, true);
+    assert.equal(res.body.data.action, "crm.case.transversal.agent_engagement");
+    assert.match(String(res.body.data.presentation.text), /^Ainda não\./);
+    const forged = await request.post("/api/imob/chat/resolve-turn").set("Authorization", `Bearer ${tokens.a}`).set("x-user-id", users.b)
+      .send({ message: claimNeeds[0], claimOnly: true, authority: "contratacao_autorizada", userId: users.b, tenantId: "outro-tenant", workspaceId: "outro-workspace" });
+    assert.equal(forged.body.data.presentation.widget.transversalCapabilities[0].authority.status, "somente_consulta");
+    assert.equal(forged.body.data.presentation.widget.transversalCapabilities[0].nextAction.workspaceId, ids.w);
+  });
+
+  test("P11 reivindicação: plataforma, convite, contrato, cadastro e demais mensagens NÃO são reivindicados e não deixam efeito", async () => {
+    const before = await sideEffects();
+    const events = () => prismaGlobal.imobCaseEvent.count({ where: { tenantId: ids.t } });
+    const eventsBefore = await events();
+    for (const message of ["Como funciona o billing?", "Preciso convidar alguém?", "Quero revisar um contrato de locação", "cadastrar imóvel", "gerar contrato de locação", "Qual o status desse caso?", "Bom dia", "Quero divulgar"]) {
+      const res = await claim("a", message);
+      assert.equal(res.status, 200, message);
+      assert.deepEqual([res.body.ok, res.body.claimed, res.body.data], [true, false, null], message);
+    }
+    assert.deepEqual(await sideEffects(), before, "nenhuma escrita, execução, habilitação, delegação ou cobrança");
+    assert.equal(await events(), eventsBefore);
+  });
+
+  test("P11 acesso governado: liberação revogada não reivindica (gate de revogação do IMOB, fail-closed); restaurada, volta; escopo de outro tenant não vê o caso", async () => {
+    const setUsage = (status: string, mode: string | null) => prismaGlobal.$executeRawUnsafe(
+      "UPDATE vertical_access_approvals SET status = $1, revocation_mode = $2 WHERE tenant_id = $3 AND workspace_id = $4", status, mode, ids.t, ids.w);
+    try {
+      for (const mode of ["bloqueio_total", "somente_leitura"]) {
+        await setUsage("revogado", mode);
+        const revoked = await claim("a", claimNeeds[0]);
+        // o gate do IMOB (ADR-011 §2.5) já recusa o POST sob revogação; a avaliação do vertical.access.v1 (que PERMITIRIA a consulta em
+        // somente leitura) está coberta nos testes unitários. De qualquer forma nada é reivindicado.
+        assert.ok(revoked.status === 403 || revoked.body.claimed === false, `${mode}: não reivindica (status ${revoked.status})`);
+        assert.notEqual(revoked.body.claimed, true, mode);
+      }
+    } finally {
+      await setUsage("aprovado", null);
+    }
+    const restored = await claim("a", claimNeeds[0]);
+    assert.equal(restored.body.claimed, true);
+    // caseId de outro escopo nunca é usado (negado, ver o teste de isolamento)
+    const foreign = await claim("a", claimNeeds[0], { caseId: "case-de-outro-tenant" });
+    assert.equal(foreign.body.data?.reasonCode, "CASE_NOT_IN_SCOPE");
   });
 });

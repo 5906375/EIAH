@@ -82,7 +82,9 @@ import {
   resolveLegacyCrmFallbackDecision,
   type LegacyCrmFallbackDecision,
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
-import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
+import { resolveImobCrmTurnEngine, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
+import { evaluateImobFrontDoorCapabilityAccess, IMOB_CASE_CONSULT_CAPABILITY } from "../services/chat/verticalRegistryComposition";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
 import {
   buildImobPendingAction,
@@ -1708,6 +1710,51 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
   if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
     return;
+  }
+
+  // P11: o Front Door (/app/chat) reivindica o turno SOMENTE LEITURA. Acesso: handoff v2 + vertical.access.v1 sobre fatos do servidor
+  // (capability `crm.case.consult`); só roda a etapa transversal do P10 (nunca as etapas que gravam). O vínculo com o caso é
+  // FAIL-CLOSED e fica ANTES de qualquer resolução implícita de caso (por thread ou "mais recente"): só vale um `caseId` explícito,
+  // dentro do escopo do token e da etapa que a pessoa opera; sem `caseId` a recomendação é feita sem caso. Sem reivindicação, o Front
+  // Door segue o fluxo normal: `claimed:false`, sem telemetria e sem efeitos.
+  if (body.claimOnly === true) {
+    const explicitCaseId = asString(body.caseId);
+    let denied: string | null = null;
+    const claimedTurn = await resolveImobTransversalTurnStage({
+      prisma,
+      authContext,
+      workspaceResponsibleLabel: workspaceAccess.responsibleLabel,
+      helpers: {
+        resolveImobOperationalConsult,
+        applyCanonicalJourneyToResolvedData: imobCrmBusinessRead.applyCanonicalJourneyToResolvedData as (data: any, caseContext?: unknown) => any,
+        readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
+      },
+      message,
+      caseId: explicitCaseId,
+      threadState: asObject(body.threadState),
+      claimOnly: true,
+      authorize: async () => {
+        const access = evaluateImobFrontDoorCapabilityAccess(
+          await readVerticalRegistryFacts(prisma as never, { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId ?? null }, { resolveImobPermission: true }),
+          IMOB_CASE_CONSULT_CAPABILITY,
+          `frontdoor-claim-${crypto.randomUUID()}`,
+        );
+        if (!access.allowed) denied = access.reasonCode;
+        return access.allowed;
+      },
+      resolveCase: async () => {
+        if (!explicitCaseId) return { kind: "none" };
+        const scoped = await prisma.imobCase.findFirst({
+          where: { id: explicitCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+          select: { id: true, stage: true },
+        });
+        if (!scoped) return { kind: "denied", reasonCode: "CASE_NOT_IN_SCOPE" };
+        if (!canWorkspaceOperateImobStage(workspaceAccess.permissions, scoped.stage)) return { kind: "denied", reasonCode: "STAGE_DENIED" };
+        return { kind: "bound", caseId: scoped.id };
+      },
+    });
+    if (!claimedTurn) return res.json({ ok: true, claimed: false, data: null, ...(denied ? { reasonCode: denied } : {}) });
+    return res.json({ ok: true, claimed: true, data: { ...claimedTurn.data, caseContext: claimedTurn.caseContext ?? claimedTurn.data.caseContext ?? null } });
   }
 
   // Only the new conversational carrier reads the latest event; persistence and gates remain unchanged.

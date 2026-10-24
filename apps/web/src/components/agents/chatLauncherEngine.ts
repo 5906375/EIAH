@@ -2086,7 +2086,7 @@ export async function resolveLauncherNavigationDecision(params: {
   isUnifiedEiah: boolean;
   continuation?: {
     threadState?: ImobThreadConversationState | null;
-    consume: (action: "continue" | "cancel" | "release", input: string) => Promise<void>;
+    consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
   };
 }): Promise<LauncherLocalDecision | null> {
   // Entrada Pré-DUIMP (menu/redirecionamento legado): abre o cartão NA conversa; o acesso é decidido pelo servidor no cartão (fail-closed).
@@ -2110,6 +2110,11 @@ export async function resolveLauncherNavigationDecision(params: {
   };
 }
 
+/** Decisões locais do Front Door que são palpites genéricos (podem ceder a uma vertical); as demais são respostas exatas de plataforma. */
+const VERTICAL_CLAIMABLE_LOCAL_KINDS = new Set<string>([
+  "contextual_fallback", "clarification", "confidence", "orchestrator_guidance", "legal_context_entry", "legal_data_collection",
+]);
+
 export async function resolveLauncherTurnDecision(params: {
   input: string;
   trimmedInput: string;
@@ -2128,7 +2133,7 @@ export async function resolveLauncherTurnDecision(params: {
   imobOperationalContinuation?: {
     threadState?: ImobThreadConversationState | null;
     available: boolean;
-    consume: (action: "continue" | "cancel" | "release", input: string) => Promise<void>;
+    consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
   };
 }): Promise<LauncherLocalDecision | null> {
   // O contrato operacional do IMOB precede a classificação isolada do Front Door.
@@ -2345,6 +2350,21 @@ export async function resolveLauncherTurnDecision(params: {
     intentUnknown: params.intentUnknown,
     accessContext: params.accessContext,
   });
+  // P11: a vertical reivindica o turno (consulta SOMENTE LEITURA no servidor, com acesso governado) quando a resposta local do Front
+  // Door é apenas um palpite genérico (fallback, esclarecimento ou roteamento por palavra), nunca uma resposta exata de plataforma.
+  // Nenhuma regra de vertical vive aqui: o servidor decide se o turno é dele; sem reivindicação o fluxo segue igual.
+  // Não vale durante a revisão de proposta (FDC-03A).
+  const verticalClaim = params.imobOperationalContinuation;
+  // O produto instalado basta para perguntar (o servidor aplica registry/entitlement/permissão): a conversa pode estar ainda no EIAH.
+  if (verticalClaim && params.isUnifiedEiah && params.routeIntent !== "proposal"
+    && (verticalClaim.available || params.accessContext?.entitlements?.IMOB_INSTALLED === true)
+    && !hasPendingProposalReview(verticalClaim.threadState)
+    && (!localDecision || VERTICAL_CLAIMABLE_LOCAL_KINDS.has(localDecision.kind))) {
+    if (await verticalClaim.consume("claim", params.trimmedInput) === true) return {
+      kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+      launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow",
+    };
+  }
   if (localDecision && !localDecision.shouldCreateRun && localDecision.content) {
     return localDecision;
   }

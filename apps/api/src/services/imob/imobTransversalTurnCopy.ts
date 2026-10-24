@@ -16,7 +16,16 @@ function agentLabel(capability: DiscoveredLike) {
   return name ?? id ?? "Marketing";
 }
 
-export function buildTransversalTurnText(turn: TransversalTurn, capability: DiscoveredLike): string {
+/** P11: o vínculo com o caso é sempre explícito; sem ele a resposta não afirma imóvel algum. */
+export type CaseBindingDenialCode = "CASE_NOT_IN_SCOPE" | "STAGE_DENIED";
+
+export function buildCaseBindingDenialText(code: CaseBindingDenialCode): string {
+  return code === "STAGE_DENIED"
+    ? "Sua função atual não pode operar a etapa deste caso, então não mostro dados dele nem uso outro no lugar. Escolha outro caso ou peça a um responsável do workspace."
+    : "Não encontrei esse caso neste workspace, então não vinculei nenhum imóvel nem usei outro caso no lugar. Diga qual imóvel ou caso você quer divulgar.";
+}
+
+export function buildTransversalTurnText(turn: TransversalTurn, capability: DiscoveredLike, options: { caseBound?: boolean } = {}): string {
   const label = agentLabel(capability);
   const state = typeof capability?.state === "string" ? capability.state : "nao_verificado";
   const stateSentence = (() => {
@@ -39,6 +48,9 @@ export function buildTransversalTurnText(turn: TransversalTurn, capability: Disc
     return `Esta conversa não contrata agentes. ${stateSentence}`;
   }
   // request_capability: divulgação de um imóvel que já está no caso (não abre cadastro de novo imóvel)
+  if (options.caseBound === false) {
+    return `Para divulgar um imóvel você pode contar com um especialista de Marketing. ${stateSentence} Ainda não vinculei esta conversa a nenhum imóvel ou caso: diga qual imóvel você quer divulgar.`;
+  }
   return `Para divulgar este imóvel você pode contar com um especialista de Marketing. ${stateSentence} Nenhum cadastro novo será aberto: estou usando o imóvel deste caso.`;
 }
 

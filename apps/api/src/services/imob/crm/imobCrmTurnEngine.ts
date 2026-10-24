@@ -1,5 +1,5 @@
 import { interpretTransversalTurn } from "../imobTransversalTurn";
-import { buildInviteClarificationResolution, buildInviteGuidanceResolution } from "../imobTransversalTurnCopy";
+import { buildCaseBindingDenialText, buildInviteClarificationResolution, buildInviteGuidanceResolution, buildTransversalTurnText, type CaseBindingDenialCode } from "../imobTransversalTurnCopy";
 import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
 import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
 import { matchImobConversationalIntents, parseImobIntent } from "../imobIntentCatalog";
@@ -25,7 +25,7 @@ import type {
   ImobCrmTurnEntitlements,
 } from "./imobCrmAgentContract";
 import { ImobCrmRepository } from "./imobCrmRepository";
-import type { OperationalResolution, ThreadStateLike } from "./imobCrmOperationalResolverShared";
+import type { OperationalResolution, ResolverHelpers, ThreadStateLike } from "./imobCrmOperationalResolverShared";
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
 import { createEmptyImobCrmThreadState, parseImobCrmThreadState } from "./imobCrmTurnState";
@@ -1671,6 +1671,103 @@ function resolveImobProofSurfaceFromResolution(data: Record<string, unknown>): I
   };
 }
 
+/**
+ * Etapa de capacidades transversais (P10): interpreta o turno por PAPÉIS + contexto do caso (há caso vinculado?) e, quando é
+ * necessidade/contratação de agente ou convite, responde sem abrir cadastro nem contrato. Não intercepta enquanto há fluxo
+ * operacional em andamento, exceto quando o turno cita o agente pelo nome.
+ *
+ * P11 — `claimOnly` (reivindicação pelo Front Door, somente leitura): responde apenas capacidade/contratação de agente; o convite de
+ * pessoa continua sendo do próprio Front Door; nenhuma outra etapa do engine (que pode gravar) é executada. Devolve null quando
+ * o turno não é desta etapa, para o Front Door seguir com o seu fluxo normal.
+ *
+ * Vínculo com o caso FAIL-CLOSED (só em `claimOnly`): o caso é SEMPRE explícito (`resolveCase`). Sem `caseId` a resposta é uma
+ * recomendação sem caso (nunca "o caso mais recente", mesmo que seja o único); `caseId` fora do escopo ou de etapa não permitida
+ * é negado com texto próprio, sem ler nem vincular outro caso. O fluxo normal (sem `claimOnly`) não muda.
+ */
+export async function resolveImobTransversalTurnStage(input: {
+  prisma: unknown;
+  authContext: { tenantId: string; workspaceId: string; userId?: string | null };
+  workspaceResponsibleLabel: string;
+  helpers: Pick<ImobCrmTurnEngineHelpers, "resolveImobOperationalConsult" | "applyCanonicalJourneyToResolvedData"> & {
+    /** Descoberta de capacidades (somente leitura); usada na recomendação sem caso do `claimOnly`. */
+    readTransversalCapabilities?: ResolverHelpers["readTransversalCapabilities"];
+  };
+  message: string;
+  caseId: string | null;
+  threadState: ThreadStateLike | null | undefined;
+  claimOnly?: boolean;
+  /** Chamado só depois de o turno ser reconhecido como desta etapa e antes de qualquer leitura do caso: false => não reivindica. */
+  authorize?: () => Promise<boolean>;
+  /** `claimOnly`: resolve o vínculo explícito com o caso (escopo + etapa). Ausente => sem caso. */
+  resolveCase?: () => Promise<{ kind: "none" } | { kind: "bound"; caseId: string } | { kind: "denied"; reasonCode: CaseBindingDenialCode }>;
+}): Promise<{ data: Record<string, unknown>; caseContext: unknown } | null> {
+  const transversalTurn = interpretTransversalTurn({ message: input.message, caseBound: Boolean(input.caseId) });
+  if (!transversalTurn || (hasActivePendingOperationalFlow(input.threadState) && !transversalTurn.explicitAgent)) return null;
+  if (transversalTurn.operation === "clarify_invite_referent" || transversalTurn.operation === "invite_person") {
+    if (input.claimOnly) return null;
+    const resolution = transversalTurn.operation === "clarify_invite_referent"
+      ? buildInviteClarificationResolution({ threadState: input.threadState, caseBound: Boolean(input.caseId) })
+      : buildInviteGuidanceResolution({ threadState: input.threadState });
+    const data = applyResponsibleLabelToResolvedTurn(resolution as any, input.workspaceResponsibleLabel) as Record<string, unknown>;
+    return { data: input.helpers.applyCanonicalJourneyToResolvedData(data, null), caseContext: null };
+  }
+  if (input.authorize && !(await input.authorize())) return null;
+  let boundCaseId = input.caseId;
+  if (input.claimOnly) {
+    const binding = input.resolveCase ? await input.resolveCase() : ({ kind: "none" } as const);
+    const conversationState = input.threadState ?? { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null };
+    if (binding.kind === "denied") {
+      return {
+        data: { mode: "consult", action: "crm.case.transversal.case_denied", reasonCode: binding.reasonCode, threadLabel: "IMOB", conversationState,
+          caseContext: null, presentation: { text: buildCaseBindingDenialText(binding.reasonCode), blocks: [] } },
+        caseContext: null,
+      };
+    }
+    if (binding.kind === "none") {
+      // Sem caso explícito: a recomendação depende só do workspace e da pessoa; nada de caso é lido nem afirmado.
+      const capabilities = (await input.helpers.readTransversalCapabilities?.({
+        prisma: input.prisma,
+        tenantId: input.authContext.tenantId,
+        workspaceId: input.authContext.workspaceId,
+        userId: input.authContext.userId ?? null,
+        turnNeeds: transversalTurn.needs,
+        caseContext: null,
+        operational: null,
+      })) ?? [];
+      return {
+        data: { mode: "consult", action: `crm.case.transversal.${transversalTurn.operation}`, threadLabel: "IMOB", conversationState, caseContext: null,
+          presentation: {
+            text: buildTransversalTurnText(transversalTurn, (capabilities[0] ?? null) as Parameters<typeof buildTransversalTurnText>[1], { caseBound: false }),
+            blocks: [],
+            ...(capabilities.length > 0
+              ? { widget: { kind: "document_checklist", title: "Especialista de Marketing para divulgação", checklist: [], blocker: null, nextStep: null, specialists: [], transversalCapabilities: capabilities } }
+              : {}),
+          } },
+        caseContext: null,
+      };
+    }
+    boundCaseId = binding.caseId;
+  }
+  const transversalData = await input.helpers.resolveImobOperationalConsult({
+    prisma: input.prisma,
+    tenantId: input.authContext.tenantId,
+    workspaceId: input.authContext.workspaceId,
+    userId: input.authContext.userId ?? null,
+    message: input.message,
+    caseId: boundCaseId,
+    threadState: input.threadState,
+    transversalTurn,
+  });
+  if (!transversalData) return null;
+  const data = normalizeLeadQualifyResolution(
+    applyResponsibleLabelToResolvedTurn(transversalData, input.workspaceResponsibleLabel) as Record<string, unknown>,
+  );
+  return {
+    data: input.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
+    caseContext: data.caseContext ?? null,
+  };
+}
+
 export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) {
   const { asString } = params.helpers;
   const message = asString(params.body.message);
@@ -1830,38 +1927,17 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    // P10: capacidades transversais (divulgar, contratar agente) e convites. A interpretação combina PAPÉIS do turno com o
-    // contexto (há caso vinculado?); sem referente claro pergunta. Não intercepta enquanto há fluxo operacional em
-    // andamento (o usuário pode estar preenchendo outro passo), exceto quando cita o agente pelo nome.
-    const transversalTurn = interpretTransversalTurn({ message: effectiveMessage, caseBound: Boolean(turn.caseId) });
-    if (transversalTurn && (!hasActivePendingOperationalFlow(hydratedThreadState) || transversalTurn.explicitAgent)) {
-      if (transversalTurn.operation === "clarify_invite_referent" || transversalTurn.operation === "invite_person") {
-        const resolution = transversalTurn.operation === "clarify_invite_referent"
-          ? buildInviteClarificationResolution({ threadState: hydratedThreadState, caseBound: Boolean(turn.caseId) })
-          : buildInviteGuidanceResolution({ threadState: hydratedThreadState });
-        const data = applyResponsibleLabelToResolvedTurn(resolution as any, params.workspaceResponsibleLabel) as Record<string, unknown>;
-        return { data: params.helpers.applyCanonicalJourneyToResolvedData(data, null), caseContext: null };
-      }
-      const transversalData = await params.helpers.resolveImobOperationalConsult({
-        prisma: params.prisma,
-        tenantId: params.authContext.tenantId,
-        workspaceId: params.authContext.workspaceId,
-        userId: params.authContext.userId ?? null,
-        message: effectiveMessage,
-        caseId: turn.caseId,
-        threadState: hydratedThreadState,
-        transversalTurn,
-      });
-      if (transversalData) {
-        const data = normalizeLeadQualifyResolution(
-          applyResponsibleLabelToResolvedTurn(transversalData, params.workspaceResponsibleLabel) as Record<string, unknown>,
-        );
-        return {
-          data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
-          caseContext: data.caseContext ?? null,
-        };
-      }
-    }
+    // P10: capacidades transversais (divulgar, contratar agente) e convites; a etapa é a mesma que o Front Door reivindica (P11).
+    const transversalStage = await resolveImobTransversalTurnStage({
+      prisma: params.prisma,
+      authContext: params.authContext,
+      workspaceResponsibleLabel: params.workspaceResponsibleLabel,
+      helpers: params.helpers,
+      message: effectiveMessage,
+      caseId: turn.caseId ?? null,
+      threadState: hydratedThreadState,
+    });
+    if (transversalStage) return transversalStage;
 
     const updateData = await params.helpers.resolveImobOperationalUpdate({
       prisma: params.prisma,
