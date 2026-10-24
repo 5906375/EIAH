@@ -1,0 +1,7 @@
+[2026-10-17T11:00:00Z] captura BA-AUTO-daily-20261017T110000746Z-7c3750 kind=daily ids=[BA-01-git-core BA-02-worktrees-state BA-06-github-metadata] dry=0 force=0 | espaço(/mnt/c)=12314MB fila=2MB arquivo=230MB
+[2026-10-17T11:00:27Z] SKIP BA-01-git-core (fingerprint inalterado desde o último envio verificado)
+[2026-10-17T11:00:39Z] OK BA-02-worktrees-state | BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age | plain=103451673 B | age=103477219 B | destinatários=2 | entradas=2090
+[2026-10-17T11:00:52Z] OK BA-06-github-metadata | BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age | plain=316324 B | age=316686 B | destinatários=2 | entradas=13
+[2026-10-17T11:00:52Z] plano: BA-01-git-core:skip BA-02-worktrees-state:capture BA-06-github-metadata:capture
+[2026-10-17T11:00:52Z] OK BA-07-manifests | BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age | plain=27469 B | age=27767 B | destinatários=2 | entradas=40
+[2026-10-17T11:00:52Z] captura concluída: capturados=2 falhas=0 inconsistentes=0 ignorados=1 (código 0); fila=102MB

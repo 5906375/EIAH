@@ -1,0 +1,52 @@
+PASS página carrega e renderiza cartões da visão geral
+PASS app.js carregado (HTTP 200)
+PASS app.css carregado (HTTP 200)
+PASS /api/overview respondeu 200
+PASS script ativo (estado S existe e há atualização bem-sucedida)
+PASS botões de navegação têm cursor de clique
+PASS barra da fila respeita o percentual (CSP não bloqueia estilo)
+PASS clicar em Agenda mostra a agenda
+PASS clicar em Depende de você mostra a seção
+PASS clicar em Histórico mostra a tabela
+PASS histórico lista runs
+PASS histórico mostra total e fontes consultadas
+PASS busca por identificador filtra enquanto digita (sem precisar Enter/sair do campo)
+PASS botão Limpar restaura a lista completa
+PASS texto digitado e foco do campo sobrevivem à atualização automática (5 s)
+PASS filtro por perfil: a soma diário+semanal+manual iguala o total (cada clique altera o resultado)
+PASS filtro por estado altera o resultado
+PASS filtro de período (De 2099) zera os registros e informa 0
+PASS ordenação por data inverte a ordem
+PASS paginação: com 5 por página aparecem 2 páginas (6 runs)
+PASS clicar na linha abre o painel de detalhes do run
+PASS detalhes mostram horários em Brasília e UTC
+PASS detalhes mostram tamanhos, SHA-256 e recuperação
+PASS botão copiar do detalhe muda para 'copiado'
+PASS conteúdo copiado para a área de transferência é o valor mostrado
+PASS botão Fechar esconde o painel de detalhes
+PASS teclado: Enter em linha focada abre os detalhes
+PASS existe 'Verificar sessão AWS' (não clicado no modo real)
+PASS botão copiar do comando de login funciona
+PASS 390 px: sem rolagem horizontal da página
+PASS run CAPTURED mostra o botão 'Enviar este run ao S3'
+PASS botão abre o diálogo de preparação do plano
+PASS preparar plano mostra objetos, chaves e hash do plano
+PASS confirmar começa DESABILITADO
+PASS frase correta SEM sessão AWS válida mantém o botão desabilitado
+PASS verificar sessão (mock) marca a sessão como válida
+PASS frase errada mantém o botão desabilitado
+PASS frase correta + sessão válida habilita o botão
+PASS após confirmar abre o acompanhamento do upload
+PASS resultado final: VERIFICADO por download completo (mock)
+PASS após o upload o run aparece como verificado
+PASS sem erros/exceções no console do navegador
+PASS sem requisições bloqueadas ou falhas de rede
+PASS sem respostas HTTP >= 400 (exceto favicon)
+RESULTADO mock: 44 OK, 0 FALHA
+--- verificação do lado do servidor (fixture): PUTs=3 esperados=3 (1 run, 3 objetos; duplo clique não duplica)
+  1x backupsBA-AUTO-daily-20261017T135603378Z-fadc87--BA-01-git-core.tar.age
+  1x backupsBA-AUTO-daily-20261017T135603378Z-fadc87--BA-02-worktrees-state.tar.gz.age
+  1x backupsBA-AUTO-daily-20261017T135603378Z-fadc87--BA-07-manifests.tar.gz.age
+  BA-AUTO-daily-20261017T135601998Z-2ed7cd CAPTURED
+  BA-AUTO-daily-20261017T135603378Z-fadc87 UPLOADED_VERIFIED
+BROWSER_MOCK_EXIT=0 fixture=~/.eiah-aws/automation-tests/ba-20261017T135601Z

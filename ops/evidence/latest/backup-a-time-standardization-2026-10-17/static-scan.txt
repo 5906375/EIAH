@@ -1,0 +1,2 @@
+# varredura estática do painel (linhas de código) por operações de escrita/ação/AWS
+# (fim; achados esperados: nenhum)

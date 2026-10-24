@@ -1,0 +1,44 @@
+# conferência do run BA-AUTO-daily-20261017T110000746Z-7c3750 em 2026-10-17 08:05:45 -0300
+STATE=CAPTURED KIND=daily
+{
+  "run": "BA-AUTO-daily-20261017T110000746Z-7c3750",
+  "kind": "daily",
+  "captured": 2,
+  "failed": 0,
+  "skipped": 1,
+  "inconsistent": 0,
+  "at": "2026-10-17T11:00:52Z"
+}
+
+## receipts.tsv (id, plain_bytes, age_bytes, age_sha256, destinatarios)
+id	plain_bytes	age_bytes	age_sha256	destinatarios_header
+BA-02-worktrees-state	103451673	103477219	<SHA256_MASKED_08>	2
+BA-06-github-metadata	316324	316686	<SHA256_MASKED_09>	2
+BA-07-manifests	27469	27767	<SHA256_MASKED_10>	2
+
+## SHA-256 e tamanho dos .age em disco x recibo
+OK BA-02-worktrees-state bytes=103477219 sha256=<SHA256_MASKED_08>
+OK BA-06-github-metadata bytes=316686 sha256=<SHA256_MASKED_09>
+OK BA-07-manifests bytes=27767 sha256=<SHA256_MASKED_10>
+
+## destinatários age no cabeçalho (age-inspect)
+BA-02-worktrees-state.tar.gz.age: 2 X25519
+BA-06-github-metadata.tar.gz.age: 2 X25519
+BA-07-manifests.tar.gz.age: 2 X25519
+
+## ausência de upload
+ausente <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/api (nenhuma tentativa/recibo de envio)
+ausente <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/state (nenhuma tentativa/recibo de envio)
+uploaded.tsv: ausente
+menções a aws/s3/PutObject no journal+log do run: 2
+alertas locais: 0 arquivos
+
+## fila e limites (backup-a.sh status)
+BACKUP-A status @ 2026-10-17T11:05:46Z | home=<WSL_HOME>/.eiah-aws/backup-a-auto
+espaço livre /mnt/c: 12223 MB (mín 3000) | fila não enviada: 102 MB (máx 1500) | arquivo verificado local: 230 MB (máx 4000)
+  BA-AUTO-daily-20261016T175927631Z-67df70         DRYRUN             1 MB
+  BA-AUTO-daily-20261016T180030637Z-6e1982         UPLOADED_VERIFIED  229 MB
+  BA-AUTO-daily-20261016T204552349Z-65d1b9         UPLOADED_VERIFIED  1 MB
+  BA-AUTO-daily-20261017T110000746Z-7c3750         CAPTURED           100 MB
+  BA-AUTO-weekly-20261016T210030714Z-918c63        DRYRUN             1 MB
+último envio verificado: BA-AUTO-daily-20261016T180030637Z-6e1982 (13h atrás)

@@ -1,0 +1,10 @@
+# identidades AWS conferidas em 2026-10-17 09:53:36 -0300 (conta omitida)
+<IAM_PROFILE_OPERATOR_LOGIN>: …:user/<IAM_PROFILE_OPERATOR>
+<IAM_ROLE_WRITER>: …:assumed-role/<IAM_ROLE_WRITER_NAME>/<IAM_ROLE_WRITER>
+<IAM_ROLE_RESTORE>: …:assumed-role/<IAM_ROLE_RESTORE_NAME>/<IAM_ROLE_RESTORE>
+
+# pré-voo (registrado durante a execução; as chaves ainda não existiam)
+run STATE=CAPTURED KIND=daily, sem uploaded.tsv/state/
+HeadObject (role Restore) nas 3 chaves do plano: 404 Not Found em todas
+list-objects-v2 sob o prefixo do run: 0 objetos
+SHA-256 e tamanho dos 3 .age == receipts.tsv (conferidos 09:49 -03 e novamente pelo uploader antes do PutObject)

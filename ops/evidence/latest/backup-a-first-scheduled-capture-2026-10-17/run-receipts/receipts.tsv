@@ -1,0 +1,4 @@
+id	objeto	plain_bytes	plain_sha256	age_bytes	age_sha256	destinatarios_header	tar_rc	entradas	criado_utc
+BA-02-worktrees-state	BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age	103451673	<SHA256_MASKED_11>	103477219	<SHA256_MASKED_08>	2	0	2090	2026-10-17T11:00:39Z
+BA-06-github-metadata	BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age	316324	<SHA256_MASKED_12>	316686	<SHA256_MASKED_09>	2	0	13	2026-10-17T11:00:52Z
+BA-07-manifests	BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age	27469	<SHA256_MASKED_13>	27767	<SHA256_MASKED_10>	2	0	40	2026-10-17T11:00:52Z

@@ -1,0 +1,10 @@
+# STORAGE-02B.11-DEC-20261017-01 — sextas-feiras às 18:00 America/Sao_Paulo. Persistent=false: horários perdidos NÃO são recuperados.
+[Unit]
+Description=BACKUP-A captura semanal sexta 18:00 America/Sao_Paulo
+[Timer]
+OnCalendar=Fri *-*-* 18:00:00 America/Sao_Paulo
+Persistent=false
+AccuracySec=1s
+Unit=backup-a-capture@weekly.service
+[Install]
+WantedBy=timers.target

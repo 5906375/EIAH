@@ -1,0 +1,33 @@
+# equivalência de fuso — executado em 2026-10-17T12:58:41Z = 2026-10-17T09:58:41-03:00
+alvo: 2026-10-17T11:00:00Z = 2026-10-17T08:00:00-03:00
+
+## 1. GNU date + tzdata (ferramenta do sistema)
+epoch(11:00:00Z)=1792234800  epoch(08:00:00-03:00)=1792234800  IGUAIS
+11:00:00Z em America/Sao_Paulo => 2026-10-17T08:00:00-03:00 (-03)
+08:00:00-03:00 em UTC          => 2026-10-17T11:00:00Z
+
+## 2. Node.js Intl/ICU (biblioteca independente)
+Intl America/Sao_Paulo: 2026-10-17, 08:00:00 GMT-03:00
+getTime iguais: true 1792234800
+ICU 77.1 tzdata 2025b
+
+## 3. Python do sistema
+3.8.10
+(zoneinfo indisponível neste Python; conferência feita com date e Intl)
+
+## 4. tzdata e regra do fuso
+tzdata do sistema: 2025b-0ubuntu0.20.04.1
+/etc/localtime -> /usr/share/zoneinfo/America/Sao_Paulo
+/etc/timezone: America/Sao_Paulo
+sem horário de verão em 2026: 2026-01-15 12:00 => -0300 · 2026-07-15 12:00 => -0300 · 2026-12-17 12:00 => -0300
+
+## 5. cruzamento de TODOS os pares Brasília|UTC exibidos pelo painel (panel-sample-output.txt) com Intl
+OK  2026-10-17T08:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T11:00:00Z (UTC)
+OK  2026-10-17T08:00:52-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T11:00:52Z (UTC)
+OK  2026-10-17T09:52:40-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:52:40Z (UTC)
+OK  2026-10-17T09:52:42-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:52:42Z (UTC)
+OK  2026-10-17T09:57:59-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:57:59Z (UTC)
+OK  2026-10-18T08:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-18T11:00:00Z (UTC)
+OK  2026-10-23T18:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-23T21:00:00Z (UTC)
+pares=7 ok=7 falha=0
+exit_cruzamento=0

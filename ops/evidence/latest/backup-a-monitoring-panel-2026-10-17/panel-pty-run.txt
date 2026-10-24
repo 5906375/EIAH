@@ -1,0 +1,154 @@
+BACKUP-A — painel de acompanhamento (SOMENTE CONSULTA)
+Hora atual: 2026-10-17 08:13:25 -0300 · fuso do sistema: America/Sao_Paulo (esperado America/Sao_Paulo) · atualizado a cada 5s
+UPLOAD AO S3 MANUAL — iniciado pelo owner
+Windows e WSL precisam estar funcionando no horário; horários perdidos não são recuperados automaticamente.
+
+AGENDA (decisão STORAGE-02B.11-DEC-20261017-01): captura diária todos os dias às 08h · captura semanal sextas-feiras às 18h
+  timer daily: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: *-*-* 08:00:00 America/Sao_Paulo
+     último disparo : Sat 2026-10-17 08:00:00 -03
+     próxima execução: Sun 2026-10-18 08:00:00 -03
+  timer weekly: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: Fri *-*-* 18:00:00 America/Sao_Paulo
+     último disparo : nunca disparou desde que o timer foi carregado
+     próxima execução: Fri 2026-10-23 18:00:00 -03
+
+ÚLTIMA EXECUÇÃO DOS SERVIÇOS (systemd)
+  daily: início Sat 2026-10-17 08:00:00 -03 · fim Sat 2026-10-17 08:00:52 -03 · resultado=success · código=0
+  weekly: sem execução registrada pelo systemd (estado=inactive)
+  captura em andamento: nenhuma
+
+RUNS (CAPTURED = só local, NÃO enviado · UPLOADED_VERIFIED = enviado e verificado no S3)
+  CAPTURED              100 MB  BA-AUTO-daily-20261017T110000746Z-7c3750
+  UPLOADED_VERIFIED       1 MB  BA-AUTO-daily-20261016T204552349Z-65d1b9
+  UPLOADED_VERIFIED     229 MB  BA-AUTO-daily-20261016T180030637Z-6e1982
+
+ÚLTIMO BACKUP: BA-AUTO-daily-20261017T110000746Z-7c3750 · estado=CAPTURED
+  pasta (WSL)      : <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects
+  pasta (Windows)  : <WSL_UNC_HOME>\.eiah-aws\backup-a-auto\queue\BA-AUTO-daily-20261017T110000746Z-7c3750\objects
+  BA-02-worktrees-state  103477219 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age
+  BA-06-github-metadata  316686 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age
+  BA-07-manifests  27767 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age
+  recibos: <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/receipts.tsv  (SHA-256 não é recalculado aqui)
+
+FILA E ESPAÇO
+  fila aguardando envio : 102 MB de 1500 MB (limite BA_QUEUE_MAX_MB) · arquivo local já verificado: 230 MB de 4000 MB
+  Ao atingir 1500 MB de fila a captura é RECUSADA com código 77 (idem se o arquivo local verificado atingir 4000 MB ou o espaço livre ficar abaixo do piso de 3000 MB). Envie e acompanhe o crescimento.
+  espaço do sistema de arquivos da FILA (WSL, <WSL_HOME>/.eiah-aws/backup-a-auto): 183980 MB livres em / (sistema de arquivos /dev/sdd, 25% usado)
+  espaço livre no C: (/mnt/c)                          : 12052 MB livres (C:\, 98% usado)
+
+ALERTAS
+  alertas ativos: nenhum
+  alerts.log: vazio ou inexistente
+
+AMBIENTE
+  Linger=no (no = o gerenciador systemd do usuário pode parar sem sessão aberta) · Persistent: ver timers acima (no = horário perdido não é recuperado)
+  systemd --user: degraded (degraded = alguma unit de usuário falhou, ex.: pulseaudio) · units backup-a em falha: 0
+
+Atualizado em 2026-10-17 08:13:25 -0300 · Ctrl+C ou q para sair (não interrompe timers nem serviços)
+BACKUP-A — painel de acompanhamento (SOMENTE CONSULTA)
+Hora atual: 2026-10-17 08:13:30 -0300 · fuso do sistema: America/Sao_Paulo (esperado America/Sao_Paulo) · atualizado a cada 5s
+UPLOAD AO S3 MANUAL — iniciado pelo owner
+Windows e WSL precisam estar funcionando no horário; horários perdidos não são recuperados automaticamente.
+
+AGENDA (decisão STORAGE-02B.11-DEC-20261017-01): captura diária todos os dias às 08h · captura semanal sextas-feiras às 18h
+  timer daily: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: *-*-* 08:00:00 America/Sao_Paulo
+     último disparo : Sat 2026-10-17 08:00:00 -03
+     próxima execução: Sun 2026-10-18 08:00:00 -03
+  timer weekly: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: Fri *-*-* 18:00:00 America/Sao_Paulo
+     último disparo : nunca disparou desde que o timer foi carregado
+     próxima execução: Fri 2026-10-23 18:00:00 -03
+
+ÚLTIMA EXECUÇÃO DOS SERVIÇOS (systemd)
+  daily: início Sat 2026-10-17 08:00:00 -03 · fim Sat 2026-10-17 08:00:52 -03 · resultado=success · código=0
+  weekly: sem execução registrada pelo systemd (estado=inactive)
+  captura em andamento: nenhuma
+
+RUNS (CAPTURED = só local, NÃO enviado · UPLOADED_VERIFIED = enviado e verificado no S3)
+  CAPTURED              100 MB  BA-AUTO-daily-20261017T110000746Z-7c3750
+  UPLOADED_VERIFIED       1 MB  BA-AUTO-daily-20261016T204552349Z-65d1b9
+  UPLOADED_VERIFIED     229 MB  BA-AUTO-daily-20261016T180030637Z-6e1982
+
+ÚLTIMO BACKUP: BA-AUTO-daily-20261017T110000746Z-7c3750 · estado=CAPTURED
+  pasta (WSL)      : <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects
+  pasta (Windows)  : <WSL_UNC_HOME>\.eiah-aws\backup-a-auto\queue\BA-AUTO-daily-20261017T110000746Z-7c3750\objects
+  BA-02-worktrees-state  103477219 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age
+  BA-06-github-metadata  316686 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age
+  BA-07-manifests  27767 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age
+  recibos: <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/receipts.tsv  (SHA-256 não é recalculado aqui)
+
+FILA E ESPAÇO
+  fila aguardando envio : 102 MB de 1500 MB (limite BA_QUEUE_MAX_MB) · arquivo local já verificado: 230 MB de 4000 MB
+  Ao atingir 1500 MB de fila a captura é RECUSADA com código 77 (idem se o arquivo local verificado atingir 4000 MB ou o espaço livre ficar abaixo do piso de 3000 MB). Envie e acompanhe o crescimento.
+  espaço do sistema de arquivos da FILA (WSL, <WSL_HOME>/.eiah-aws/backup-a-auto): 183980 MB livres em / (sistema de arquivos /dev/sdd, 25% usado)
+  espaço livre no C: (/mnt/c)                          : 12052 MB livres (C:\, 98% usado)
+
+ALERTAS
+  alertas ativos: nenhum
+  alerts.log: vazio ou inexistente
+
+AMBIENTE
+  Linger=no (no = o gerenciador systemd do usuário pode parar sem sessão aberta) · Persistent: ver timers acima (no = horário perdido não é recuperado)
+  systemd --user: degraded (degraded = alguma unit de usuário falhou, ex.: pulseaudio) · units backup-a em falha: 0
+
+Atualizado em 2026-10-17 08:13:30 -0300 · Ctrl+C ou q para sair (não interrompe timers nem serviços)
+BACKUP-A — painel de acompanhamento (SOMENTE CONSULTA)
+Hora atual: 2026-10-17 08:13:35 -0300 · fuso do sistema: America/Sao_Paulo (esperado America/Sao_Paulo) · atualizado a cada 5s
+UPLOAD AO S3 MANUAL — iniciado pelo owner
+Windows e WSL precisam estar funcionando no horário; horários perdidos não são recuperados automaticamente.
+
+AGENDA (decisão STORAGE-02B.11-DEC-20261017-01): captura diária todos os dias às 08h · captura semanal sextas-feiras às 18h
+  timer daily: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: *-*-* 08:00:00 America/Sao_Paulo
+     último disparo : Sat 2026-10-17 08:00:00 -03
+     próxima execução: Sun 2026-10-18 08:00:00 -03
+  timer weekly: enabled=enabled active=active/waiting · Persistent=no
+     calendário real: Fri *-*-* 18:00:00 America/Sao_Paulo
+     último disparo : nunca disparou desde que o timer foi carregado
+     próxima execução: Fri 2026-10-23 18:00:00 -03
+
+ÚLTIMA EXECUÇÃO DOS SERVIÇOS (systemd)
+  daily: início Sat 2026-10-17 08:00:00 -03 · fim Sat 2026-10-17 08:00:52 -03 · resultado=success · código=0
+  weekly: sem execução registrada pelo systemd (estado=inactive)
+  captura em andamento: nenhuma
+
+RUNS (CAPTURED = só local, NÃO enviado · UPLOADED_VERIFIED = enviado e verificado no S3)
+  CAPTURED              100 MB  BA-AUTO-daily-20261017T110000746Z-7c3750
+  UPLOADED_VERIFIED       1 MB  BA-AUTO-daily-20261016T204552349Z-65d1b9
+  UPLOADED_VERIFIED     229 MB  BA-AUTO-daily-20261016T180030637Z-6e1982
+
+ÚLTIMO BACKUP: BA-AUTO-daily-20261017T110000746Z-7c3750 · estado=CAPTURED
+  pasta (WSL)      : <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects
+  pasta (Windows)  : <WSL_UNC_HOME>\.eiah-aws\backup-a-auto\queue\BA-AUTO-daily-20261017T110000746Z-7c3750\objects
+  BA-02-worktrees-state  103477219 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age
+  BA-06-github-metadata  316686 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age
+  BA-07-manifests  27767 B  tamanho confere com receipts.tsv
+      <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age
+  recibos: <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/receipts.tsv  (SHA-256 não é recalculado aqui)
+
+FILA E ESPAÇO
+  fila aguardando envio : 102 MB de 1500 MB (limite BA_QUEUE_MAX_MB) · arquivo local já verificado: 230 MB de 4000 MB
+  Ao atingir 1500 MB de fila a captura é RECUSADA com código 77 (idem se o arquivo local verificado atingir 4000 MB ou o espaço livre ficar abaixo do piso de 3000 MB). Envie e acompanhe o crescimento.
+  espaço do sistema de arquivos da FILA (WSL, <WSL_HOME>/.eiah-aws/backup-a-auto): 183980 MB livres em / (sistema de arquivos /dev/sdd, 25% usado)
+  espaço livre no C: (/mnt/c)                          : 12052 MB livres (C:\, 98% usado)
+
+ALERTAS
+  alertas ativos: nenhum
+  alerts.log: vazio ou inexistente
+
+AMBIENTE
+  Linger=no (no = o gerenciador systemd do usuário pode parar sem sessão aberta) · Persistent: ver timers acima (no = horário perdido não é recuperado)
+  systemd --user: degraded (degraded = alguma unit de usuário falhou, ex.: pulseaudio) · units backup-a em falha: 0
+
+Atualizado em 2026-10-17 08:13:35 -0300 · Ctrl+C ou q para sair (não interrompe timers nem serviços)
+
