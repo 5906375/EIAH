@@ -1004,6 +1004,7 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Regeneracao real do artefato P2 HIGH | `ops/evidence/latest/p2-high-global-coverage-regeneration-2026-07-02.md` | Prova por execucao real que `ops/evidence/latest/p2-high-global-coverage.json` passou a ser gerado por script, com `generatedAt` renovado, `coveredActions` alinhadas ao inventario HIGH atual e `uncoveredActions=[]`; e que os gates `check:p2-high-global-coverage` e `check:p2-evidence-recency` passam apos a regeneracao. |
+| Regeneracao real do artefato P2 HIGH (2026-10-26) | `ops/evidence/latest/p2-high-global-coverage-regeneration-2026-10-26.md` | Prova por execucao real que o artefato `ops/evidence/latest/p2-high-global-coverage.json` (reprovado no CI do PR #508 com `p2_evidence_too_old`, 42,37 dias) foi regenerado pelo script existente, sem edicao manual, com `generatedAt` `2026-10-26T18:33:35.229Z` (SHA-256 `a89eed0374589db91580dc31c9a66f61ee87d32c9d771ccca33518ace2400c5b`); que a unica diferenca do artefato e `generatedAt` (inventario de 5 acoes HIGH inalterado, `uncoveredActions=[]`); que o teste e2e global passou (1/1) e que `check:p2-high-global-coverage` e `check:p2-evidence-recency` passam. Escopo: inventario estatico do core (billing, finance, notifications); nao cobre staging nem outros dominios HIGH. |
 
 ## Audit criticality by content (2026-07-02)
 
