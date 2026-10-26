@@ -12,7 +12,7 @@ import { marketplaceRouter } from "../routes/marketplace";
 import { sessionRouter } from "../routes/session";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // Teste HTTP INTEGRADO (PostgreSQL real, dados sintéticos): jornada governada da LOGISTICA pelos canais existentes
 // (pedido -> decisão humana da plataforma -> ativação por Marketplace ou chat -> sessão). Exige banco dedicado local.
@@ -57,7 +57,7 @@ before(async () => {
   for (const [userId, roleKey, workspaceId] of [
     [owner, "founder", wsChat], [member, "corretor", wsChat], [admin, "corretor", wsChat],
     [owner, "founder", wsMarket], [admin, "corretor", wsMarket],
-  ] as const) await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+  ] as const) await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tokens.owner, tenantId, workspaceId: wsChat, userId: owner },
     { token: tokens.member, tenantId, workspaceId: wsChat, userId: member },

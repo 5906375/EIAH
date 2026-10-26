@@ -9,6 +9,7 @@ const identity = { tenantId: "tenant-a", workspaceId: "workspace-a", userId: "us
 const facts = (): LogisticaContextFacts => ({
   identity,
   activeMember: true,
+  memberPermissions: [LOGISTICA_CONTEXT_SCOPE],
   installation: { ...identity, product: "LOGISTICA", status: "active" },
   approval: { ...identity, vertical: "LOGISTICA", status: "aprovado", revocationMode: null },
   policy: { ...identity, scope: LOGISTICA_CONTEXT_SCOPE, allowed: true, reasonCode: "SCOPE_ALLOWED" },
@@ -65,4 +66,16 @@ test("inactive installation, non-literal active status, inactive membership and 
   assert.equal(evaluateLogisticaContextAccess(f).allowed, false);
   f.activeMember = true; f.identity = { ...identity, userId: null };
   assert.equal(evaluateLogisticaContextAccess(f).allowed, false);
+});
+
+test("S03: vínculo ativo sem a capacidade EXPLÍCITA de contexto nega, mesmo com instalação, liberação e política", () => {
+  for (const memberPermissions of [[], ["imob.chat.use"], ["log.oraculo_preparation.write", "log.oraculo_preparation.content_review"], ["*", "log.*", "log.context.*", "log.context.read "]]) {
+    const f = facts(); f.memberPermissions = memberPermissions;
+    const decision = evaluateLogisticaContextAccess(f);
+    assert.equal(decision.allowed, false, JSON.stringify(memberPermissions));
+    assert.equal(decision.reason, "membership_required");
+  }
+  const f = facts(); f.memberPermissions = [LOGISTICA_CONTEXT_SCOPE];
+  assert.equal(evaluateLogisticaContextAccess(f).allowed, true);
+  assert.equal(evaluateLogisticaContextAccess({ ...f, activeMember: false }).allowed, false, "a capacidade gravada não vale sem vínculo ativo");
 });

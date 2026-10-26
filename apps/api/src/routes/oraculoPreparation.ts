@@ -5,7 +5,7 @@ import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 import { prismaGlobal } from "@repo/db";
 import { asyncHandler, createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
-import { resolveLogisticaContextAccess } from "../services/logistica/control/logisticaContextAccess";
+import { hasLogisticaMemberCapability, resolveLogisticaContextAccess } from "../services/logistica/control/logisticaContextAccess";
 import { documentReviewBindingHash } from "../services/logistica/oraculo/documentReview";
 import { inspectPreparationEvidence, PreparationEvidenceError } from "../services/logistica/oraculo/evidence";
 import { OraculoPreparationRepository, PreparationConflictError, PreparationIntegrityError } from "../services/logistica/oraculo/preparationRepository";
@@ -19,7 +19,8 @@ oraculoPreparationRouter.use(base, asyncHandler(async (req: TenantAwareRequest, 
   const context = await resolveLogisticaContextAccess(prismaGlobal, req.authContext);
   if (!context.allowed) return res.status(403).json({ ok: false, error: { code: "ORACULO_CONTEXT_DENIED", reasonCode: "ORACULO_CONTEXT_DENIED", reason: context.reason } });
   const policy = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(req.authContext.tenantId, req.authContext.workspaceId, ORACULO_PREPARATION_WRITE_SCOPE);
-  const writeAllowed = context.usage === "full" && policy.allowed;
+  // Escrita = acesso ao contexto + uso integral + política exata do workspace + capacidade EXPLÍCITA de escrita no vínculo do próprio membro.
+  const writeAllowed = context.usage === "full" && policy.allowed && await hasLogisticaMemberCapability(prismaGlobal, req.authContext, ORACULO_PREPARATION_WRITE_SCOPE);
   if (req.method !== "GET" && !writeAllowed) return res.status(403).json({ ok: false, error: { code: "ORACULO_PREPARATION_WRITE_DENIED", reasonCode: "ORACULO_PREPARATION_WRITE_DENIED" } });
   res.locals.preparationWriteAllowed = writeAllowed;
   return next();
@@ -135,7 +136,7 @@ async function reviewAllowed(req: TenantAwareRequest, writeAllowed: boolean) {
   if (!writeAllowed) return false;
   const { tenantId, workspaceId } = req.authContext!;
   const policy = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(tenantId, workspaceId, ORACULO_CONTENT_REVIEW_SCOPE);
-  return policy.allowed;
+  return policy.allowed && await hasLogisticaMemberCapability(prismaGlobal, req.authContext!, ORACULO_CONTENT_REVIEW_SCOPE);
 }
 oraculoPreparationRouter.post(`${base}/:id/document-reviews`, async (req: TenantAwareRequest, res) => {
   if (!await reviewAllowed(req, res.locals.preparationWriteAllowed)) return res.status(403).json({ ok: false, error: { code: "ORACULO_PREPARATION_WRITE_DENIED", reasonCode: "ORACULO_PREPARATION_WRITE_DENIED", subreason: "content_review_policy_denied" } });
@@ -171,10 +172,11 @@ oraculoPreparationRouter.get(`${base}/:id/document-reviews`, async (req: TenantA
 async function decisionEligibility(req: TenantAwareRequest, writeAllowed: boolean) {
   const { tenantId, workspaceId, userId } = req.authContext!;
   const policy = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(tenantId, workspaceId, ORACULO_DECISION_SCOPE);
-  // Só leitura: nunca cria vínculo. Há decisor possível se existe OUTRO membro ativo e a política do workspace permite.
-  const others = await prismaGlobal.$queryRaw<Array<{ n: number }>>`SELECT count(*)::int AS n FROM eiah_workspace_memberships WHERE tenant_id=${tenantId} AND workspace_id=${workspaceId} AND status='active' AND user_id <> ${userId!}`;
+  // Só leitura: nunca cria vínculo. Há decisor possível se existe OUTRO membro ativo COM a capacidade explícita e a política do workspace permite.
+  const others = await prismaGlobal.$queryRaw<Array<{ n: number }>>`SELECT count(*)::int AS n FROM eiah_workspace_memberships WHERE tenant_id=${tenantId} AND workspace_id=${workspaceId} AND status='active' AND user_id <> ${userId!} AND permissions @> ${JSON.stringify([ORACULO_DECISION_SCOPE])}::jsonb`;
   // A política do workspace sozinha NÃO é designação: sem a elegibilidade provisória (só dev/test) ninguém é apresentado como decisor.
-  const designated = policy.allowed && provisionalDecisionEligibilityEnabled();
+  // A capacidade de decidir também precisa constar, de forma explícita, no vínculo de quem decide (e dos outros decisores possíveis, acima).
+  const designated = policy.allowed && await hasLogisticaMemberCapability(prismaGlobal, req.authContext!, ORACULO_DECISION_SCOPE) && provisionalDecisionEligibilityEnabled();
   const decideBlockedReason = !writeAllowed ? "read_only" as const : !policy.allowed ? "policy_absent" as const : !designated ? "not_designated" as const : null;
   return { policyAllowed: policy.allowed, deciderAvailable: designated && (others[0]?.n ?? 0) > 0, decideAllowed: writeAllowed && designated, decideBlockedReason };
 }

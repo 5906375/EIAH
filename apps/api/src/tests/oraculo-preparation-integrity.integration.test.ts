@@ -12,7 +12,7 @@ import { oraculoPreparationRouter } from "../routes/oraculoPreparation";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { canonicalizeGovernedJsonV1 } from "../services/logistica/preDuimpGovernedCaseCanonicalization";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // Persistência e integridade da preparação do Oráculo sobre o GovernedCase existente (PostgreSQL real, dados sintéticos).
 // Complementa logistica-core.integration.test.ts: aquele teste simula corrupção escrevendo valores que as constraints da
@@ -50,9 +50,9 @@ before(async () => {
     { id: owner, tenantId, email: `orc-owner-${id}@example.com` },
     { id: admin, tenantId, email: `orc-admin-${id}@example.com` },
   ] });
-  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId: owner, roleKey: "founder" });
-  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId: admin, roleKey: "corretor" });
-  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId: otherWorkspace, userId: owner, roleKey: "founder" });
+  await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId: owner, ...logisticaOwner() });
+  await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId: admin, ...logisticaOperator() });
+  await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId: otherWorkspace, userId: owner, ...logisticaOwner() });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tokens.owner, tenantId, workspaceId, userId: owner },
     { token: tokens.admin, tenantId, workspaceId, userId: admin },

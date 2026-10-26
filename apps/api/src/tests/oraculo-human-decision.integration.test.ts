@@ -11,7 +11,7 @@ import { chatVerticalsRouter } from "../routes/chatVerticals";
 import { oraculoPreparationRouter } from "../routes/oraculoPreparation";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // EIAH-FD-E2E-004 (J17) — decisão humana do caso, lado servidor (HTTP real + PostgreSQL descartável, dados sintéticos). A solicitação é um
 // evento do próprio registro versionado do caso (sem tabela/fila); a decisão exige membro ativo ≠ solicitante com a política exata do
@@ -59,7 +59,7 @@ before(async () => {
   for (const [userId, roleKey, tenantId, workspaceId] of [
     [U.ana, "founder", tenant1, wsA], [U.bruno, "corretor", tenant1, wsA], [U.carla, "corretor", tenant1, wsA], [U.admin, "corretor", tenant1, wsA],
     [U.b, "founder", tenant1, wsB], [U.admin, "corretor", tenant1, wsB],
-  ] as const) await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+  ] as const) await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tok.ana, tenantId: tenant1, workspaceId: wsA, userId: U.ana }, { token: tok.bruno, tenantId: tenant1, workspaceId: wsA, userId: U.bruno },
     { token: tok.carla, tenantId: tenant1, workspaceId: wsA, userId: U.carla }, { token: tok.outsider, tenantId: tenant1, workspaceId: wsA, userId: U.out },

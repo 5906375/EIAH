@@ -14,7 +14,7 @@ import { oraculoPreparationRouter } from "../routes/oraculoPreparation";
 import { uploadsRouter } from "../routes/uploads";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // Continuidade do caso entre Front Door e cockpit (E4-4), lado servidor: a referência `?case=` é só um ponteiro; quem decide
 // é o servidor (tenant/workspace/vínculo/instalação/liberação/política). HTTP real + PostgreSQL descartável + storage temporário.
@@ -66,7 +66,7 @@ before(async () => {
   ] });
   for (const [userId, roleKey, tenantId, workspaceId] of [
     [U.a, "founder", tenant1, wsA], [U.admin, "corretor", tenant1, wsA], [U.b, "founder", tenant1, wsB], [U.admin, "corretor", tenant1, wsB],
-  ] as const) await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+  ] as const) await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tok.a, tenantId: tenant1, workspaceId: wsA, userId: U.a }, { token: tok.b, tenantId: tenant1, workspaceId: wsB, userId: U.b },
     { token: tok.outsider, tenantId: tenant1, workspaceId: wsA, userId: U.out }, { token: tok.service, tenantId: tenant1, workspaceId: wsA },

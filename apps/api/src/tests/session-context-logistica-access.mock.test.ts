@@ -32,6 +32,8 @@ type Fixture = {
   rawFails?: boolean;
   tenantLookupFails?: boolean;
   auditFails?: boolean;
+  /** Permissões gravadas no vínculo ativo (S03). Padrão dos testes: a capacidade explícita de contexto. */
+  memberPermissions?: string[];
 };
 
 const fullyAllowed = (): Fixture => ({
@@ -84,7 +86,7 @@ before(() => {
   stub("$queryRaw", d, "$queryRaw", async (strings: TemplateStringsArray) => {
     const text = sqlText(strings);
     if (fx.rawFails) throw new Error("synthetic raw failure");
-    if (text.includes("eiah_workspace_memberships")) return fx.member ? [{ active: true }] : [];
+    if (text.includes("eiah_workspace_memberships")) return fx.member ? [{ permissions: fx.memberPermissions ?? ["log.context.read"] }] : [];
     if (text.includes("tenant_product_installations")) {
       const row = fx.installation;
       if (!row) return [];
@@ -169,6 +171,9 @@ const denied403: Array<[string, Fixture, string]> = [
   ["instalação de outro tenant/workspace (isolamento)", { ...fullyAllowed(), installation: { tenantId: "outro-tenant", status: "active" } }, "unavailable"],
   ["instalação de outro produto devolvida pela consulta", { ...fullyAllowed(), installation: { product: "IMOB", status: "active" } }, "unavailable"],
   ["workspace não autorizado: sem vínculo ativo do usuário", { ...fullyAllowed(), member: false }, "membership_required"],
+  ["vínculo ativo SEM a capacidade explícita de contexto (S03: vínculo implícito não basta)", { ...fullyAllowed(), memberPermissions: ["imob.chat.use"] }, "membership_required"],
+  ["vínculo ativo só com capacidade de escrita/revisão, sem a de contexto", { ...fullyAllowed(), memberPermissions: ["log.oraculo_preparation.write", "log.oraculo_preparation.content_review"] }, "membership_required"],
+  ["curingas não valem como capacidade explícita", { ...fullyAllowed(), memberPermissions: ["*", "log.*", "log.context.*"] }, "membership_required"],
   ["verticalAccess: sem liberação EIAH", { ...fullyAllowed(), approval: null }, "approval_required"],
   ["verticalAccess: liberação pendente", { ...fullyAllowed(), approval: { status: "pendente" } }, "approval_required"],
   ["verticalAccess: em análise", { ...fullyAllowed(), approval: { status: "em_analise" } }, "approval_required"],

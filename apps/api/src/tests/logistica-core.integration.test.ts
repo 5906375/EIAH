@@ -8,7 +8,7 @@ import express from "express";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
 import { LOGISTICA_CONTEXT_SCOPE } from "@eiah/contracts";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { marketplaceRouter } from "../routes/marketplace";
@@ -55,9 +55,11 @@ before(async () => {
     { id: admin, tenantId, email: `log-admin-${id}@example.com` },
   ] });
   for (const [userId, roleKey] of [[owner, "founder"], [member, "corretor"], [admin, "corretor"]]) {
-    await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+    await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   }
-  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId: otherWorkspace, userId: owner, roleKey: "founder" });
+  await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId: otherWorkspace, userId: owner, ...logisticaOwner() });
+  // O outro workspace tem dois membros ativos (a promoção do membro único não se aplica).
+  await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId: otherWorkspace, userId: member, ...logisticaOperator() });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tokens.owner, tenantId, workspaceId, userId: owner },
     { token: tokens.member, tenantId, workspaceId, userId: member },

@@ -13,6 +13,8 @@ import { sessionRouter } from "../routes/session";
 import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
 import { ensureWorkspaceMembershipForUser, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
+import { canAccessOraculoUploads } from "../services/logistica/control/oraculoUploadAccess";
+import { ensureLogisticaMember, logisticaOperator, logisticaReader } from "./support/logisticaMemberFixture";
 
 // EIAH-FD-ADR010-R1 — Matriz de autorização da LOGISTICA (PostgreSQL real, dados sintéticos).
 // Regra: consultar um registry ou contexto nunca cria autoridade; o acesso exige vínculo, instalação, liberação EIAH e política exata.
@@ -35,9 +37,11 @@ const wsNoApproval = `r1-noapp-${id}`; // instalada, sem liberação
 const wsNoInstall = `r1-noinst-${id}`; // sem instalação
 const wsImob = `r1-imob-${id}`;        // IMOB instalado (permissão do IMOB depende do perfil legado) + Logística liberada
 const wsOther = `r1-other-${id}`;      // workspace do outro tenant
+const wsFull2 = `r1-full2-${id}`;     // segundo workspace completo (instalado + liberado + políticas), sem vínculos de leitor/escritor
 const users = {
   owner: `owner-${id}`, member: `member-${id}`, unlinked: `unlinked-${id}`, bMember: `bmember-${id}`, other: `other-${id}`,
   imobUnlinked: `imobun-${id}`, noPolicy: `nopol-${id}`, noApproval: `noapp-${id}`, noInstall: `noinst-${id}`,
+  reader: `reader-${id}`, writeNoRead: `wnr-${id}`, writer: `writer-${id}`, revoked: `revoked-${id}`, unlinked2: `unlinked2-${id}`,
 };
 const tk = (name: string) => `syn-${name}-${id}`;
 const auth = (token: string) => `Bearer ${token}`;
@@ -50,6 +54,10 @@ const emptyContext = { context: { port: { status: "not_informed" }, depot: { sta
 
 const membership = async (userId: string, workspaceId: string) =>
   prismaGlobal.$queryRaw<Array<{ status: string; role_key: string }>>`SELECT status, role_key FROM eiah_workspace_memberships WHERE tenant_id=${tenantId} AND workspace_id=${workspaceId} AND user_id=${userId}`;
+const storedPermissions = async (userId: string, workspaceId: string) => {
+  const rows = await prismaGlobal.$queryRaw<Array<{ permissions: unknown }>>`SELECT permissions FROM eiah_workspace_memberships WHERE tenant_id=${tenantId} AND workspace_id=${workspaceId} AND user_id=${userId}`;
+  return Array.isArray(rows[0]?.permissions) ? (rows[0]!.permissions as string[]) : [];
+};
 const session = (token: string) => request.get("/api/session/context?domain=logistica").set("Authorization", auth(token));
 const handoffLog = (token: string) => request.post("/api/chat/vertical-handoff").set("Authorization", auth(token)).send({ verticalId: "log", capabilityId: "oraculo.context", mode: "read_only" });
 async function installAndApprove(workspaceId: string, opts: { install: boolean; approve: boolean }) {
@@ -66,19 +74,27 @@ before(async () => {
   await prismaGlobal.workspace.createMany({ data: [
     { id: wsFull, tenantId, name: "full" }, { id: wsNoPolicy, tenantId, name: "nopol" }, { id: wsNoApproval, tenantId, name: "noapp" },
     { id: wsNoInstall, tenantId, name: "noinst" }, { id: wsImob, tenantId, name: "imob" }, { id: wsOther, tenantId: otherTenantId, name: "other" },
+    { id: wsFull2, tenantId, name: "full2" },
   ] });
   await prismaGlobal.user.createMany({ data: Object.entries(users).map(([key, userId]) => ({ id: userId, tenantId: key === "other" ? otherTenantId : tenantId, email: `r1-${key}-${id}@example.com` })) });
   // vínculos EXPLÍCITOS (mesmo caminho do onboarding/convite): dono e membro de cada workspace relevante
-  for (const [userId, roleKey, workspaceId] of [
-    [users.owner, "founder", wsFull], [users.member, "corretor", wsFull], [users.bMember, "corretor", wsNoInstall],
-    [users.noPolicy, "corretor", wsNoPolicy], [users.noApproval, "corretor", wsNoApproval], [users.noInstall, "corretor", wsNoInstall],
-    [users.owner, "founder", wsImob], [users.other, "founder", wsOther],
-  ] as const) await ensureWorkspaceMembershipForUser({ tenantId: workspaceId === wsOther ? otherTenantId : tenantId, workspaceId, userId, roleKey });
+  // vínculos EXPLÍCITOS (mesmo caminho do onboarding/convite), COM a capacidade da Logística gravada no próprio vínculo (S03)
+  for (const [userId, grants, workspaceId] of [
+    [users.owner, logisticaOperator(), wsFull], [users.member, logisticaReader(), wsFull], [users.bMember, logisticaReader(), wsNoInstall],
+    [users.noPolicy, logisticaOperator(), wsNoPolicy], [users.noApproval, logisticaOperator(), wsNoApproval], [users.noInstall, logisticaOperator(), wsNoInstall],
+    [users.owner, logisticaOperator(), wsImob], [users.other, logisticaOperator(), wsOther],
+    [users.reader, logisticaReader(), wsFull], [users.writer, { roleKey: "logistica_escritor", permissions: [LOGISTICA_CONTEXT_SCOPE, ORACULO_PREPARATION_WRITE_SCOPE] }, wsFull],
+    [users.writeNoRead, { roleKey: "logistica_sem_contexto", permissions: [ORACULO_PREPARATION_WRITE_SCOPE, ORACULO_CONTENT_REVIEW_SCOPE] }, wsFull],
+    [users.revoked, logisticaOperator(), wsFull],
+  ] as const) await ensureLogisticaMember(prismaGlobal, { tenantId: workspaceId === wsOther ? otherTenantId : tenantId, workspaceId, userId, ...grants });
+  await prismaGlobal.$executeRaw`UPDATE eiah_workspace_memberships SET status='revoked' WHERE tenant_id=${tenantId} AND workspace_id=${wsFull} AND user_id=${users.revoked}`;
   const tokens: Array<[string, string, string, string]> = [
     ["owner", tenantId, wsFull, users.owner], ["member", tenantId, wsFull, users.member], ["unlinked", tenantId, wsFull, users.unlinked],
     ["bMember", tenantId, wsNoInstall, users.bMember], ["other", otherTenantId, wsOther, users.other],
     ["imobUnlinked", tenantId, wsImob, users.imobUnlinked], ["noPolicy", tenantId, wsNoPolicy, users.noPolicy],
     ["noApproval", tenantId, wsNoApproval, users.noApproval], ["noInstall", tenantId, wsNoInstall, users.noInstall],
+    ["reader", tenantId, wsFull, users.reader], ["readerOtherWs", tenantId, wsFull2, users.reader], ["writer", tenantId, wsFull, users.writer],
+    ["writeNoRead", tenantId, wsFull, users.writeNoRead], ["revoked", tenantId, wsFull, users.revoked], ["unlinked2", tenantId, wsFull, users.unlinked2],
   ];
   await prismaGlobal.apiToken.createMany({ data: tokens.map(([name, tId, workspaceId, userId]) => ({ token: tk(name), tenantId: tId, workspaceId, userId })) });
   await ensureVerticalAccessStore(prismaGlobal);
@@ -86,9 +102,10 @@ before(async () => {
   await installAndApprove(wsNoPolicy, { install: true, approve: true });
   await installAndApprove(wsNoApproval, { install: true, approve: false });
   await installAndApprove(wsImob, { install: true, approve: true });
+  await installAndApprove(wsFull2, { install: true, approve: true });
   await prismaGlobal.$executeRaw`INSERT INTO tenant_product_installations (id, tenant_id, workspace_id, product, status, activated_by_user_id) VALUES (${randomUUID()}, ${tenantId}, ${wsImob}, 'IMOB', 'active', ${users.owner})`;
   await grant(wsImob, LOGISTICA_CONTEXT_SCOPE);
-  for (const scope of [LOGISTICA_CONTEXT_SCOPE, ORACULO_PREPARATION_WRITE_SCOPE, ORACULO_CONTENT_REVIEW_SCOPE]) await grant(wsFull, scope);
+  for (const scope of [LOGISTICA_CONTEXT_SCOPE, ORACULO_PREPARATION_WRITE_SCOPE, ORACULO_CONTENT_REVIEW_SCOPE]) { await grant(wsFull, scope); await grant(wsFull2, scope); }
   const created = await request.post(base).set("Authorization", auth(tk("owner"))).send(emptyContext);
   assert.equal(created.status, 201, "o dono cria o caso (preparação)");
   caseId = created.body.data.caseId;
@@ -197,3 +214,76 @@ test("S09 — vínculo explícito válido consulta o caso dentro das suas polít
   await prismaGlobal.$executeRaw`UPDATE eiah_workspace_memberships SET status='active' WHERE tenant_id=${tenantId} AND workspace_id=${wsFull} AND user_id=${users.member}`;
 });
 
+// S03 — vínculo implícito (bootstrap legado) não comprova aprovação humana: sem capacidade gravada no próprio vínculo, a Logística é negada.
+test("S03 — vínculo criado implicitamente pelo comportamento legado do IMOB não concede a Logística por si só", async () => {
+  assert.deepEqual(await membership(users.unlinked, wsFull), []);
+  // qualquer rota legada que lê o perfil cria o vínculo: aqui o perfil, como faz `canUserActivateProducts` (ativação, billing, perfil, uploads…)
+  await readWorkspaceResponsibleProfile({ tenantId, workspaceId: wsFull, userId: users.unlinked });
+  assert.equal((await membership(users.unlinked, wsFull)).length, 1, "o vínculo legado foi criado");
+  const stored = await storedPermissions(users.unlinked, wsFull);
+  assert.ok(stored.length > 0 && stored.every((permission) => !permission.startsWith("log.")), `o vínculo implícito não carrega capacidade da Logística: ${JSON.stringify(stored)}`);
+  const ctx = await session(tk("unlinked"));
+  assert.equal(ctx.status, 403, "o vínculo implícito não basta");
+  assert.equal(ctx.body.error.capability.reason, "membership_required");
+  assert.equal((await request.get(`${base}/${caseId}`).set("Authorization", auth(tk("unlinked")))).status, 403, "o caso continua inacessível");
+  assert.equal((await request.get(base).set("Authorization", auth(tk("unlinked")))).status, 403);
+  assert.equal((await request.post(base).set("Authorization", auth(tk("unlinked"))).send(emptyContext)).status, 403, "e nada é escrito");
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.unlinked }, false), false, "nem uploads (leitura)");
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.unlinked }, true), false, "nem uploads (escrita)");
+});
+
+test("S10 — leitura e escrita são capacidades separadas: ler não escreve; escrever sem o contexto é negado; escrever não revisa", async () => {
+  const reader = tk("reader"), writer = tk("writer"), writeNoRead = tk("writeNoRead");
+  assert.equal((await session(reader)).status, 200);
+  assert.equal((await request.get(`${base}/${caseId}`).set("Authorization", auth(reader))).status, 200, "leitor lê o caso");
+  const readerWrite = await request.post(base).set("Authorization", auth(reader)).send(emptyContext);
+  assert.equal(readerWrite.status, 403, "a política do workspace permite escrever, mas o leitor não tem a capacidade de escrita");
+  assert.equal(readerWrite.body.error.code, "ORACULO_PREPARATION_WRITE_DENIED");
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.reader }, false), true);
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.reader }, true), false);
+  const noContext = await session(writeNoRead);
+  assert.equal(noContext.status, 403, "escrita/revisão sem a capacidade de contexto não abre a Logística");
+  assert.equal(noContext.body.error.capability.reason, "membership_required");
+  assert.equal((await request.get(base).set("Authorization", auth(writeNoRead))).status, 403);
+  assert.equal((await request.post(base).set("Authorization", auth(writeNoRead)).send(emptyContext)).status, 403);
+  assert.equal((await request.post(base).set("Authorization", auth(writer)).send(emptyContext)).status, 201, "quem tem contexto + escrita cria");
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.writer }, true), true);
+  const review = await request.post(`${base}/${caseId}/document-reviews`).set("Authorization", auth(writer)).send({});
+  assert.equal(review.status, 403, "escrever não é revisar o conteúdo");
+  assert.equal(review.body.error.subreason, "content_review_policy_denied");
+});
+
+test("S11 — vínculo revogado, mesmo com a capacidade ainda gravada, não acessa a Logística", async () => {
+  assert.deepEqual((await membership(users.revoked, wsFull)).map((row) => row.status), ["revoked"]);
+  assert.ok((await storedPermissions(users.revoked, wsFull)).includes(LOGISTICA_CONTEXT_SCOPE), "a capacidade segue gravada (histórico)");
+  const ctx = await session(tk("revoked"));
+  assert.equal(ctx.status, 403);
+  assert.equal(ctx.body.error.capability.reason, "membership_required");
+  assert.equal((await request.get(`${base}/${caseId}`).set("Authorization", auth(tk("revoked")))).status, 403);
+  assert.equal((await request.post(base).set("Authorization", auth(tk("revoked"))).send(emptyContext)).status, 403);
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.revoked }, false), false);
+  assert.deepEqual((await membership(users.revoked, wsFull)).map((row) => row.status), ["revoked"], "a negação não reativa o vínculo");
+});
+
+test("S12 — a capacidade pertence ao vínculo daquele workspace: não atravessa workspaces nem tenants", async () => {
+  // o mesmo usuário (leitor em wsFull) usa um token do wsFull2, que é completo (instalado, liberado, com política), mas onde ele não tem vínculo
+  assert.deepEqual(await membership(users.reader, wsFull2), []);
+  const other = await session(tk("readerOtherWs"));
+  assert.equal(other.status, 403);
+  assert.equal(other.body.error.capability.reason, "membership_required");
+  assert.deepEqual(await membership(users.reader, wsFull2), [], "a negação não criou vínculo no outro workspace");
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull2, userId: users.reader }, false), false);
+  // membro com todas as capacidades em OUTRO tenant não acessa o caso deste (S08 cobre rotas e cabeçalhos forjados); a identidade do outro tenant nega no resolvedor
+  assert.equal(await canAccessOraculoUploads(prismaGlobal as never, { tenantId, workspaceId: wsFull, userId: users.other }, false), false);
+});
+
+test("S13 — nenhuma leitura cria autoridade: registry, sessão, handoff e listas não criam vínculo nem capacidade", async () => {
+  assert.deepEqual(await membership(users.unlinked2, wsFull), []);
+  for (let i = 0; i < 2; i += 1) {
+    assert.equal((await request.get("/api/chat/vertical-registry").set("Authorization", auth(tk("unlinked2")))).status, 200);
+    assert.equal((await handoffLog(tk("unlinked2"))).body.data.ok, false);
+    assert.equal((await session(tk("unlinked2"))).status, 403);
+    assert.equal((await request.get(base).set("Authorization", auth(tk("unlinked2")))).status, 403);
+  }
+  assert.deepEqual(await membership(users.unlinked2, wsFull), [], "nenhum vínculo foi criado por leituras");
+});

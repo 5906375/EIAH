@@ -441,7 +441,11 @@ async function upsertWorkspaceMembership(params: {
   await ensureWorkspaceResponsibilityStore(prisma);
   const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
   const normalizedRoleKey = normalizeWorkspaceRoleKey(params.roleKey);
-  const fallbackRole = roleOptions.find((item) => item.key === normalizedRoleKey) ?? roleOptions[0] ?? { key: "corretor", label: "Corretor", defaultPermissions: sanitizePermissionsForRole("corretor") };
+  // Papel desconhecido é negado (WORKSPACE_ROLE_INVALID) antes de qualquer escrita; o vínculo existente, se houver, permanece como estava.
+  const fallbackRole = roleOptions.find((item) => item.key === normalizedRoleKey);
+  if (!fallbackRole) {
+    throw Object.assign(new Error("Workspace role is invalid"), { code: "WORKSPACE_ROLE_INVALID", status: 400 });
+  }
   const permissions = sanitizePermissionsForRole(fallbackRole.key, params.permissions?.length ? params.permissions : fallbackRole.defaultPermissions);
 
   await prisma.$executeRaw`
@@ -563,10 +567,17 @@ async function promoteSoleWorkspaceMemberIfNeeded(params: {
   // PERSISTIDO.
   // A promoção é UMA instrução condicional: trava os membros ativos (FOR UPDATE), exige que o único ativo seja o ator e NÃO toca em `status`.
   // Não cria vínculo, não reativa e não concede nada além do papel/permissões que o `upsert` já calculava para `founder`.
+  // AUTHZ-4b (autoridade expressa): a promoção só reescreve vínculos que ainda têm SOMENTE as permissões padrão do papel (o que o bootstrap
+  // grava). Qualquer permissão além do padrão (capacidade da Logística, products.activate, etapas do IMOB…) foi concedida de forma expressa:
+  // leitura nunca a sobrescreve nem a troca por outro papel.
+  const bootstrapDefaultPermissions = sanitizePermissionsForRole(currentRoleKey);
+  if (safeArray(params.membership.permissions).some((permission) => !bootstrapDefaultPermissions.includes(permission))) {
+    return params.membership;
+  }
   const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
-  const founderRole = roleOptions.find((item) => item.key === normalizeWorkspaceRoleKey("founder"))
-    ?? roleOptions[0]
-    ?? { key: "corretor", label: "Corretor", defaultPermissions: sanitizePermissionsForRole("corretor") };
+  // Sem o papel founder no catálogo não há promoção: nunca recai em outro papel.
+  const founderRole = roleOptions.find((item) => item.key === normalizeWorkspaceRoleKey("founder"));
+  if (!founderRole) return params.membership;
   const requestedPermissions = sanitizePermissionsForRole("founder");
   const promotedPermissions = sanitizePermissionsForRole(founderRole.key, requestedPermissions.length ? requestedPermissions : founderRole.defaultPermissions);
   const updated = await prisma.$queryRaw<Array<{ role_key: string; permissions: unknown; status: string }>>`
@@ -587,6 +598,7 @@ async function promoteSoleWorkspaceMemberIfNeeded(params: {
       AND m.workspace_id = ${params.workspaceId}
       AND m.user_id = ${params.userId}
       AND m.status = 'active'
+      AND m.permissions <@ ${JSON.stringify(bootstrapDefaultPermissions)}::jsonb
       AND (SELECT COUNT(*) FROM active_members) = 1
       AND EXISTS (SELECT 1 FROM active_members am WHERE am.user_id = m.user_id)
     RETURNING m.role_key, m.permissions, m.status

@@ -10,6 +10,8 @@ export type LogisticaContextFacts = {
   installation: Installation | null;
   approval: Approval | null;
   activeMember: boolean;
+  /** Permissões GRAVADAS no vínculo ativo do membro (exatas, sem curinga). Vazio quando não há vínculo ativo. */
+  memberPermissions: readonly string[];
   policy: ScopeDecision;
 };
 
@@ -19,6 +21,9 @@ export function evaluateLogisticaContextAccess(facts: LogisticaContextFacts): Lo
     ({ ...base, allowed: false, usage: "blocked", reason });
   const { identity, installation: i, approval: a, policy: p } = facts;
   if (!identity.userId || !facts.activeMember) return denied("membership_required");
+  // Vínculo ativo NÃO basta: o vínculo pode ter nascido do comportamento legado (bootstrap, leitura de perfil, papel padrão), que não
+  // comprova aprovação humana. A capacidade de contexto precisa constar, de forma exata, nas permissões gravadas do próprio vínculo.
+  if (!facts.memberPermissions.includes(LOGISTICA_CONTEXT_SCOPE)) return denied("membership_required");
   if (!i) return denied("installation_missing");
   if (i.tenantId !== identity.tenantId || i.workspaceId !== identity.workspaceId || i.product !== "LOGISTICA") return denied("unavailable");
   if (i.status !== "active") return denied("installation_inactive");
@@ -33,19 +38,39 @@ export function evaluateLogisticaContextAccess(facts: LogisticaContextFacts): Lo
   return { ...base, allowed: true, usage, reason: "available" };
 }
 
+/**
+ * Permissões gravadas no vínculo ATIVO da pessoa neste workspace (somente leitura: nunca cria, reativa nem promove vínculo).
+ * `null` = sem vínculo ativo (ou sem pessoa identificada). Erro de leitura propaga: quem chama nega (fail-closed).
+ */
+export async function readLogisticaMemberPermissions(prisma: PrismaClient, identity: Identity): Promise<string[] | null> {
+  if (!identity.userId) return null;
+  const rows = await prisma.$queryRaw<Array<{ permissions: unknown }>>`SELECT permissions FROM eiah_workspace_memberships WHERE tenant_id=${identity.tenantId} AND workspace_id=${identity.workspaceId} AND user_id=${identity.userId} AND status='active' LIMIT 1`;
+  if (!rows[0]) return null;
+  return Array.isArray(rows[0].permissions) ? (rows[0].permissions as unknown[]).filter((value): value is string => typeof value === "string") : [];
+}
+
+/** Capacidade EXPLÍCITA do membro para um escopo canônico da Logística (leitura e escrita são escopos distintos). Falha ⇒ nega. */
+export async function hasLogisticaMemberCapability(prisma: PrismaClient, identity: Identity, scope: string): Promise<boolean> {
+  try {
+    return (await readLogisticaMemberPermissions(prisma, identity))?.includes(scope) === true;
+  } catch {
+    return false;
+  }
+}
+
 /** Reuses canonical installation, approval and exact-workspace policy stores. */
 export async function resolveLogisticaContextAccess(prisma: PrismaClient, identity: Identity): Promise<LogisticaContextAccess> {
   try {
     const [{ readVerticalAccess }, { TenantPolicyStore }] = await Promise.all([
       import("../../products/verticalAccessApproval"), import("@eiah/core/policy/TenantPolicyStore"),
     ]);
-    const [installations, approval, members, policy] = await Promise.all([
+    const [installations, approval, memberPermissions, policy] = await Promise.all([
       prisma.$queryRaw<Installation[]>`SELECT tenant_id AS "tenantId", workspace_id AS "workspaceId", product, status FROM tenant_product_installations WHERE tenant_id=${identity.tenantId} AND workspace_id=${identity.workspaceId} AND product='LOGISTICA' LIMIT 1`,
       readVerticalAccess({ prisma, tenantId: identity.tenantId, workspaceId: identity.workspaceId, vertical: "LOGISTICA" }),
-      identity.userId ? prisma.$queryRaw<Array<{ active: boolean }>>`SELECT true AS active FROM eiah_workspace_memberships WHERE tenant_id=${identity.tenantId} AND workspace_id=${identity.workspaceId} AND user_id=${identity.userId} AND status='active' LIMIT 1` : Promise.resolve([]),
+      readLogisticaMemberPermissions(prisma, identity),
       TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(identity.tenantId, identity.workspaceId, LOGISTICA_CONTEXT_SCOPE),
     ]);
-    return evaluateLogisticaContextAccess({ identity, installation: installations[0] ?? null, approval, activeMember: members[0]?.active === true, policy });
+    return evaluateLogisticaContextAccess({ identity, installation: installations[0] ?? null, approval, activeMember: memberPermissions !== null, memberPermissions: memberPermissions ?? [], policy });
   } catch {
     return { allowed: false, mode: "context_only", usage: "blocked", reason: "unavailable", executionAllowed: false, externalTransmissionAllowed: false };
   }

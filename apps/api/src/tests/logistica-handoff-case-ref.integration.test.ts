@@ -12,7 +12,7 @@ import { sessionRouter } from "../routes/session";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { OraculoPreparationRepository } from "../services/logistica/oraculo/preparationRepository";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // EIAH-FD-E2E-003 — `refs.caseRef` opcional no handoff do Front Door (PostgreSQL real, dados sintéticos). A referência é opaca e NÃO é
 // autorização: só é resolvida depois do handoff `log` permitido, no tenant/workspace autenticado, sem criar caso, vínculo ou política.
@@ -57,7 +57,7 @@ before(async () => {
     { id: ownerX, tenantId: foreignTenant, email: `log-cr-ownerx-${id}@example.com` },
   ] });
   for (const [userId, roleKey, workspaceId, tenant] of [[owner, "founder", wsA, tenantId], [admin, "corretor", wsA, tenantId], [ownerB, "founder", wsB, tenantId], [ownerX, "founder", wsX, foreignTenant]] as const) {
-    await ensureWorkspaceMembershipForUser({ tenantId: tenant, workspaceId, userId, roleKey });
+    await ensureLogisticaMember(prismaGlobal, { tenantId: tenant, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   }
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tokens.owner, tenantId, workspaceId: wsA, userId: owner },

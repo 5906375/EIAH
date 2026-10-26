@@ -16,7 +16,7 @@ import { oraculoPreparationRouter } from "../routes/oraculoPreparation";
 import { uploadsRouter } from "../routes/uploads";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // Matriz de autorização de upload/download/evidência do contexto "oraculo-sc" (HTTP real + PostgreSQL descartável + storage temporário).
 // Princípio: pertencer ao workspace NÃO basta; exige identidade, vínculo ativo, produto LOGISTICA instalado, liberação EIAH,
@@ -99,7 +99,7 @@ before(async () => {
   ] });
   for (const [userId, roleKey, tenantId, workspaceId] of [
     [U.ownerA, "founder", tenant1, wsA], [U.admin, "corretor", tenant1, wsA], [U.ownerB, "founder", tenant1, wsB], [U.ownerC, "founder", tenant1, wsC], [U.admin, "corretor", tenant1, wsC],
-  ] as const) await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+  ] as const) await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   await prismaGlobal.apiToken.createMany({ data: [
     { token: tok.ownerA, tenantId: tenant1, workspaceId: wsA, userId: U.ownerA },
     { token: tok.outsiderA, tenantId: tenant1, workspaceId: wsA, userId: U.outsiderA }, // sem vínculo ativo no workspace A

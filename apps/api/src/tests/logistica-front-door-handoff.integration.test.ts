@@ -11,7 +11,7 @@ import { chatVerticalsRouter } from "../routes/chatVerticals";
 import { sessionRouter } from "../routes/session";
 import { verticalAccessRouter } from "../routes/verticalAccess";
 import { ensureVerticalAccessStore } from "../services/products/verticalAccessApproval";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureLogisticaMember, logisticaOperator, logisticaOwner } from "./support/logisticaMemberFixture";
 
 // EIAH-FD-ADR010-M2/M3 — Teste HTTP INTEGRADO (PostgreSQL real, dados sintéticos): o handoff `log`/`read_only` do Front Door só é
 // permitido com instalação, liberação EIAH, vínculo ATIVO e política exata; consultar o registry nunca cria vínculo.
@@ -55,7 +55,7 @@ before(async () => {
     { id: ownerB, tenantId, email: `log-fd-ownerb-${id}@example.com` },
   ] });
   for (const [userId, roleKey, workspaceId] of [[owner, "founder", wsA], [admin, "corretor", wsA], [ownerB, "founder", wsB]] as const) {
-    await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey });
+    await ensureLogisticaMember(prismaGlobal, { tenantId, workspaceId, userId, ...(roleKey === "founder" ? logisticaOwner() : logisticaOperator()) });
   }
   // `unlinked`: token válido do workspace A, mas nenhum vínculo.
   await prismaGlobal.apiToken.createMany({ data: [
