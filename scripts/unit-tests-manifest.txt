@@ -37,6 +37,7 @@ apps/api/src/tests/vertical-access-resolver.test.ts
 apps/api/src/tests/agent-chat-runtime-readiness.test.ts
 apps/api/src/tests/agents-public-view.contract.test.ts
 apps/api/src/tests/workspace-membership-revocation.contract.test.ts
+apps/api/src/tests/imob-crm-write-authorization.contract.test.ts
 apps/api/src/tests/billing.vertical-entitlement.contract.test.ts
 apps/api/src/tests/conversation-persistence-policy.test.ts
 apps/api/src/tests/eiah-help-imob-onboarding-docs.test.ts
