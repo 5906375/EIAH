@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "date": "2026-07-27",
-  "generatedAt": "2026-07-27T13:31:23.742Z",
+  "date": "2026-10-07",
+  "generatedAt": "2026-10-07T11:35:40.566Z",
   "scope": "P3-commission",
   "flow": [
     "commission settle request",
