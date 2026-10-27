@@ -1,4 +1,4 @@
-import type { ImobCaseContext, ImobPresentationForm, ImobThreadConversationState } from "@/lib/api";
+import type { ImobCaseContext, ImobPresentationForm, ImobPresentationWidget, ImobThreadConversationState } from "@/lib/api";
 
 /**
  * Mensagem mínima que os formulários estruturados do IMOB precisam para
@@ -37,6 +37,8 @@ export type StructuredMessage = {
   form?: ImobPresentationForm;
   thread?: StructuredThreadRef;
   card?: StructuredCard;
+  /** Apresentação estruturada devolvida pela vertical (ex.: cartão do especialista transversal). Só leitura. */
+  widget?: ImobPresentationWidget;
   quickReplies?: StructuredQuickReply[];
   /** Estado devolvido pelo resolver; continuidade conversacional, sem contrato paralelo. */
   conversationState?: ImobThreadConversationState;

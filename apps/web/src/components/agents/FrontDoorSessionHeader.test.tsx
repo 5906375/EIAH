@@ -12,6 +12,7 @@ import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { IMOB_ACTION_MENUS } from "@/features/imob/imobActionMenus";
 import { createLauncherPresentationSnapshot, resolveLauncherNavigationDecision } from "./chatLauncherEngine";
 import { attachVerticalHandoffToSnapshot, enrichLauncherDecisionWithVerticalHandoff } from "./verticalHandoffEngine";
+import { attachPreDuimpCardToSnapshot } from "./preDuimpConversationEngine";
 
 // Renderiza o bloco real do launcher isoladamente, sem inicializar hooks/rede.
 const launcherSource = ts.createSourceFile(
@@ -115,7 +116,7 @@ for (const change of ["none", "conversation", "user", "workspace", "agent", "new
       enrichLauncherDecisionWithVerticalHandoff: (decision: any, refs: any, _request: any, _sync: any, current: () => boolean) =>
         enrichLauncherDecisionWithVerticalHandoff(decision, refs, () => new Promise((resolve) => { finish = resolve; }),
           async () => { syncs += 1; }, current),
-      selectedCatalogAgent: null, createLauncherPresentationSnapshot, attachVerticalHandoffToSnapshot,
+      selectedCatalogAgent: null, createLauncherPresentationSnapshot, attachVerticalHandoffToSnapshot, attachPreDuimpCardToSnapshot,
       proposalMode: false, attachmentIntake: { enabled: false }, pushMessage: (message: any) => messages.push(message),
     };
     const effect = new Function(...Object.keys(dependencies), transpileReturn(navigationEffect!))(...Object.values(dependencies));
@@ -138,7 +139,7 @@ for (const change of ["none", "conversation", "user", "workspace", "agent", "new
     cleanup();
   });
 }
-const resolveSurface = new Function("session", "isImobSurfaceAvailable", "messages", "activeAgentId", transpileReturn(surfaceInitializer));
+const resolveSurface = new Function("session", "isImobSurfaceAvailable", "messages", "activeAgentId", "imobAuthorityAllowed", transpileReturn(surfaceInitializer));
 const renderSurface = new Function("React", "showImobSurface", "ImobActionMenuBar", "IMOB_ACTION_MENUS", "imobFrontDoor", transpileReturn(surfaceConditional));
 const availableSession: AppSessionState = {
   tenantId: "tenant-test", workspaceId: "workspace-test", preDuimpAccess: { status: "idle" },
@@ -148,8 +149,8 @@ const availableSession: AppSessionState = {
     rolloutStage: "operationalized", frontDoorSurface: "imob_chat", operationalHubSurface: "imob_dashboard",
     governanceHubSurface: "marketplace", investigationSurfaces: ["runs"], contextSpecRef: "vertical-context-imob.md" }],
 };
-function surfaceHtml(session: AppSessionState, messages: unknown[] = [], activeAgentId?: string) {
-  return renderToStaticMarkup(renderSurface(React, resolveSurface(session, isImobSurfaceAvailable, messages, activeAgentId),
+function surfaceHtml(session: AppSessionState, messages: unknown[] = [], activeAgentId?: string, imobAuthorityAllowed = true) {
+  return renderToStaticMarkup(renderSurface(React, resolveSurface(session, isImobSurfaceAvailable, messages, activeAgentId, imobAuthorityAllowed),
     ImobActionMenuBar, IMOB_ACTION_MENUS, { structuredForms: { handleActionMenuSelect: () => undefined } }));
 }
 
@@ -160,6 +161,11 @@ for (const agent of [undefined, "EIAH", "J_360"]) {
     assert.equal(surfaceHtml({ ...availableSession, activeDomain: "core" }, [], agent), "");
   });
 }
+
+test("AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão", () => {
+  assert.equal(surfaceHtml(availableSession, [], undefined, false), "");
+  assert.ok(surfaceHtml(availableSession, [], undefined, true).includes("Negócios"));
+});
 
 test("snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação", () => {
   const history = [{ presentationSnapshot: { verticalActivation: { status: "activated", verticalId: "imob" } } }];
@@ -175,7 +181,7 @@ test("handler real de Nova conversa limpa histórico e preserva domínio/superf�
   let messages: unknown[] = [{ presentationSnapshot: { verticalContext: "IMOB" } }];
   const removedKeys: string[] = [];
   const environment: Record<string, unknown> = {
-    session: before, updateSession, conversationGenerationRef: { current: 0 }, threadKey: "thread-test", baseLedger: () => [],
+    session: before, updateSession, conversationGenerationRef: { current: 0 }, imobPersistence: { startNew: () => undefined }, threadKey: "thread-test", baseLedger: () => [],
     setMessages: (next: unknown[]) => { messages = next; },
     window: { sessionStorage: { removeItem: (key: string) => removedKeys.push(key) } },
   };

@@ -1,0 +1,54 @@
+# estado systemd registrado em 2026-10-17 08:05:45 -0300
+$ date; cat /etc/timezone
+Sat Oct 17 08:05:45 -03 2026
+America/Sao_Paulo
+
+$ systemctl --user list-timers 'backup-a-*' --all
+NEXT                        LEFT        LAST                        PASSED   UNIT                          ACTIVATES                      
+Sun 2026-10-18 08:00:00 -03 23h left    Sat 2026-10-17 08:00:00 -03 5min ago backup-a-capture-daily.timer  backup-a-capture@daily.service 
+Fri 2026-10-23 18:00:00 -03 6 days left n/a                         n/a      backup-a-capture-weekly.timer backup-a-capture@weekly.service
+
+2 timers listed.
+
+$ systemctl --user show backup-a-capture-daily.timer
+TimersCalendar={ OnCalendar=*-*-* 08:00:00 America/Sao_Paulo ; next_elapse=Sun 2026-10-18 08:00:00 -03 }
+NextElapseUSecRealtime=Sun 2026-10-18 08:00:00 -03
+LastTriggerUSec=Sat 2026-10-17 08:00:00 -03
+Result=success
+Persistent=no
+ActiveState=active
+SubState=waiting
+ActiveEnterTimestamp=Sat 2026-10-17 07:50:42 -03
+
+$ systemctl --user show backup-a-capture-weekly.timer
+TimersCalendar={ OnCalendar=Fri *-*-* 18:00:00 America/Sao_Paulo ; next_elapse=Fri 2026-10-23 18:00:00 -03 }
+NextElapseUSecRealtime=Fri 2026-10-23 18:00:00 -03
+LastTriggerUSec=
+Result=success
+Persistent=no
+ActiveState=active
+SubState=waiting
+ActiveEnterTimestamp=Sat 2026-10-17 07:50:42 -03
+
+$ systemctl --user show backup-a-capture@daily.service
+Result=success
+ExecMainStartTimestamp=Sat 2026-10-17 08:00:00 -03
+ExecMainExitTimestamp=Sat 2026-10-17 08:00:52 -03
+ExecMainStatus=0
+TriggeredBy=backup-a-capture-daily.timer
+ActiveState=inactive
+SubState=dead
+InvocationID=246ff72b8dca441fba7ed8bfa80ca6d7
+
+$ systemctl --user show backup-a-capture@weekly.service (primeiro disparo pendente)
+Result=success
+ExecMainStartTimestamp=
+ActiveState=inactive
+
+$ systemctl --user list-unit-files 'backup-a*'
+UNIT FILE                     STATE   VENDOR PRESET
+backup-a-capture@.service     static  enabled      
+backup-a-capture-daily.timer  enabled enabled      
+backup-a-capture-weekly.timer enabled enabled      
+
+3 unit files listed.

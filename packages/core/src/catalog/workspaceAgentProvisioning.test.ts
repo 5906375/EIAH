@@ -9,7 +9,7 @@ import {
 } from "./workspaceAgentProvisioning";
 
 test("catalog version is explicit", () => {
-  assert.equal(WORKSPACE_AGENT_PROVISIONING_VERSION, 1);
+  assert.equal(WORKSPACE_AGENT_PROVISIONING_VERSION, 2);
 });
 
 test("front door provisions only the EIAH agent", () => {
@@ -32,8 +32,8 @@ test("product lookup is case-insensitive for approved products", () => {
   assert.equal(getProductProvisionedAgents(" imob "), getProductProvisionedAgents("IMOB"));
 });
 
-test("only IMOB has an approved map", () => {
-  assert.deepEqual(listProvisionableProducts(), ["IMOB"]);
+test("IMOB and context-only LOGISTICA have explicit maps", () => {
+  assert.deepEqual(listProvisionableProducts().sort(), ["IMOB", "LOGISTICA"]);
 });
 
 test("products without an approved map are rejected (fail-closed)", () => {

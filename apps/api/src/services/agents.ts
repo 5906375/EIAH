@@ -1,5 +1,7 @@
+import { readVerifiedEnablementKeys, type ActiveDelegationRef } from "./agentEnablement";
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { listRegisteredActions } from "@eiah/core";
+import { AGENT_CAPABILITY_DECLARATIONS, listCapabilityTurnVocabulary, type AgentCapabilityDeclaration } from "./agentCapabilityVocabulary";
 import {
   applyChatRuntimeGateToParticipation,
   buildChatRuntimeSnapshot,
@@ -22,6 +24,10 @@ import {
   pitchProfileThinking,
   riskAnalyzerProfile,
 } from "@eiah/core";
+
+// API pública preservada: estes símbolos continuam exportados por este módulo.
+export { listCapabilityTurnVocabulary };
+export type { AgentCapabilityDeclaration };
 
 /**
  * Estrutura de listagem de agentes com pricing e perfil.
@@ -310,17 +316,8 @@ export function hasCoreAgentProfile(agent: string) {
   return coreProfileForAgent(agent) !== null;
 }
 
-export type AgentCapabilityDeclaration = Readonly<{ domain: string; capability: string; label: string }>;
 
-/**
- * Declaração ESTRUTURADA das capacidades transversais que um agente oferece a outras verticais (domínio + capacidade).
- * É a chave da descoberta por necessidade estruturada: não depende de texto do usuário nem de lista de expressões.
- * Declarar aqui NÃO habilita nada: a disponibilidade operacional continua vindo do catálogo, da política do workspace,
- * da delegação e do estado de participação (`listAgents`). Chave = identificador normalizado do agente.
- */
-const AGENT_CAPABILITY_DECLARATIONS: Readonly<Record<string, readonly AgentCapabilityDeclaration[]>> = {
-  mkt: [{ domain: "marketing", capability: "campaign", label: "Planejamento de campanha de divulgação multicanal" }],
-};
+
 
 export function getAgentCapabilityDeclarations(agentId: string): AgentCapabilityDeclaration[] {
   if (typeof agentId !== "string") return [];
@@ -338,6 +335,41 @@ export function listAgentsDeclaringCapability(domain: string, capability: string
     .filter(([, declarations]) => declarations.some((entry) => entry.domain === wantedDomain && entry.capability === wantedCapability))
     .map(([key]) => CANONICAL_AGENT_BY_KEY.get(key) ?? key)
     .sort();
+}
+
+/**
+ * Agente "governado": declara capacidades transversais (domínio + capacidade). A habilitação de um agente governado só
+ * vale com a habilitação comercial verificável (`agentEnablement.ts`); política + delegação, sozinhas, não bastam.
+ */
+export function isCommerciallyGovernedAgent(agentIdOrKey: string): boolean {
+  return getAgentCapabilityDeclarations(agentIdOrKey).length > 0;
+}
+
+/**
+ * Remove de `keys` (chaves normalizadas) os agentes governados SEM habilitação comercial verificável vinculada a uma das
+ * delegações ativas. Falha de leitura = nenhum agente governado habilitado (fail-closed). Os demais agentes não mudam.
+ */
+async function withoutUnverifiedGovernedAgents(params: {
+  keys: Set<string>;
+  tenantId: string;
+  workspaceId: string;
+  activeDelegations: ReadonlyArray<ActiveDelegationRef>;
+  db: PrismaClient;
+}) {
+  const governed = [...params.keys].filter((key) => isCommerciallyGovernedAgent(key));
+  if (governed.length === 0) return params.keys;
+  let verified: Set<string>;
+  try {
+    verified = await readVerifiedEnablementKeys(params.db, {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      activeDelegations: params.activeDelegations,
+    });
+  } catch {
+    verified = new Set();
+  }
+  for (const key of governed) if (!verified.has(key)) params.keys.delete(key);
+  return params.keys;
 }
 
 function coreProfileForAgent(agent: string) {
@@ -1267,6 +1299,19 @@ export async function listAgents(
     if (!workspaceAllowedKeys.has(normalizedMarketplaceName)) continue;
     subscribedAgentKeys.add(normalizedMarketplaceName);
   }
+  await withoutUnverifiedGovernedAgents({
+    keys: subscribedAgentKeys,
+    tenantId,
+    workspaceId,
+    activeDelegations: activeDelegations.map((delegation) => ({
+      id: delegation.id,
+      marketplaceId: delegation.marketplaceId,
+      scope: delegation.scope,
+      trustMin: delegation.trustMin,
+      validUntil: delegation.validUntil,
+    })),
+    db,
+  });
 
   const profileMap = new Map<string, (typeof profiles)[number]>();
   for (const profile of profiles) {
@@ -1413,7 +1458,7 @@ export async function listAgents(
   return response;
 }
 
-async function isAgentAvailableInWorkspace(
+export async function isAgentAvailableInWorkspace(
   tenantId: string,
   workspaceId: string,
   agent: string,
@@ -1447,11 +1492,26 @@ async function isAgentAvailableInWorkspace(
     return false;
   }
 
-  return activeDelegations.some((delegation) => {
+  const matching = activeDelegations.some((delegation) => {
     const marketplace = delegation.marketplace;
     if (!marketplace || marketplace.type !== "agent") return false;
     return normalizeAgentKey(resolveAgentId(marketplace.name)) === normalizedCanonical;
   });
+  if (!matching) return false;
+  const kept = await withoutUnverifiedGovernedAgents({
+    keys: new Set([normalizedCanonical]),
+    tenantId,
+    workspaceId,
+    activeDelegations: activeDelegations.map((delegation) => ({
+      id: delegation.id,
+      marketplaceId: delegation.marketplaceId,
+      scope: delegation.scope,
+      trustMin: delegation.trustMin,
+      validUntil: delegation.validUntil,
+    })),
+    db,
+  });
+  return kept.has(normalizedCanonical);
 }
 
 /**

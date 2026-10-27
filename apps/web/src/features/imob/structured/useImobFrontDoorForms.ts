@@ -1,10 +1,11 @@
 import React from "react";
-import { apiResolveImobTurn } from "@/lib/api";
+import { apiClaimImobTurn, apiResolveImobTurn, type ImobPresentationWidget } from "@/lib/api";
 import { getSession } from "@/state/sessionStore";
 import { buildProposalFormContinuation, buildProposalTextContinuation, hasPendingProposalReview, isConversationalProposalForm } from "@/pages/app/imob/proposalForm";
 import { useImobFormState, type ImobFormState } from "./useImobFormState";
 import { createImobStructuredForms } from "./createImobStructuredForms";
 import { makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage } from "./types";
+import type { ImobConversationPersistence, PersistedTag, ResumedThread } from "../persistence/useImobConversationPersistence";
 
 /**
  * Formulários do IMOB dentro da conversa do front door (`/app/chat`,
@@ -22,6 +23,8 @@ export type FrontDoorMessageLike = {
   role: "user" | "assistant" | "system";
   content: string;
   imobStructured?: StructuredMessage;
+  /** Gravado no histórico persistido do IMOB (FD-IMOB-PERSISTENCE-001); evita gravar de novo ao restaurar. */
+  imobPersisted?: PersistedTag;
 };
 
 function toLauncherMessage<M extends FrontDoorMessageLike>(structured: StructuredMessage): M {
@@ -45,8 +48,12 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
   setMessages: React.Dispatch<React.SetStateAction<M[]>>;
   getConversationGeneration: () => number;
   getConversationScopeKey?: () => string;
+  /** Histórico persistido do IMOB (opcional): sem ele o comportamento é o anterior (sessão do launcher). */
+  persistence?: Pick<ImobConversationPersistence, "persistUser" | "persistAssistant" | "resumed">;
 }) {
   const { messages, setMessages, getConversationGeneration } = params;
+  const persistenceRef = React.useRef(params.persistence);
+  persistenceRef.current = params.persistence;
   const structuredMessages = React.useMemo(
     () => messages.flatMap((message) => (message.imobStructured ? [message.imobStructured] : [])),
     [messages],
@@ -126,6 +133,9 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
     appendStructured,
     patchStructured,
     echoUser: (text) => setMessages((prev) => [...prev, { id: makeStructuredId("user"), role: "user", content: text } as M]),
+    persistUser: (key, text) => persistenceRef.current?.persistUser(key, text),
+    persistAssistant: (message, meta) => persistenceRef.current?.persistAssistant(message, meta),
+    getResumedThread: () => persistenceRef.current?.resumed ?? null,
   });
 
   return { imobForms, structuredForms, forwardToImob, consumeOperationalTurn, getConversationState };
@@ -144,7 +154,14 @@ export function createImobFrontDoorForms(params: {
   patchStructured: (id: string, update: (message: StructuredMessage) => StructuredMessage) => void;
   echoUser: (text: string) => void;
   resolveTurn?: typeof apiResolveImobTurn;
+  claimTurn?: typeof apiClaimImobTurn;
   getConversationGeneration: () => number;
+  /** Grava o texto do usuário no histórico persistido (uma vez por pedido). */
+  persistUser?: (key: string, text: string) => void;
+  /** Grava no histórico persistido a resposta do IMOB / a confirmação (mesma regra do chat legado). */
+  persistAssistant?: (message: StructuredMessage, meta?: { intent?: string; action?: string }) => void;
+  /** Thread do histórico retomada pelo usuário (cartão "Histórico IMOB"): serve de contexto quando não há contexto vivo. */
+  getResumedThread?: () => ResumedThread | null;
 }) {
   const { imobForms, getMessages, appendStructured, patchStructured, echoUser } = params;
   const resolveTurn = params.resolveTurn ?? apiResolveImobTurn;
@@ -185,7 +202,13 @@ export function createImobFrontDoorForms(params: {
     });
   }
 
-  async function consumeOperationalTurn(action: "continue" | "cancel" | "release", text: string) {
+  /** O Front Door não executa nada de recomendação: ações de recomendação do resumo ficam no chat do caso. */
+  const frontDoorWidget = (widget: ImobPresentationWidget): ImobPresentationWidget =>
+    "recommendedActions" in widget ? { ...widget, recommendedActions: [] } : widget;
+
+  async function consumeOperationalTurn(action: "continue" | "cancel" | "release" | "claim", text: string): Promise<boolean | void> {
+    // P11: reivindicação somente leitura do turno pela vertical; sem contexto prévio também vale (a governança é do servidor).
+    if (action === "claim") return forwardToImob(text, { claim: true });
     const context = latestContext();
     if (!context) return;
     if (action !== "continue") {
@@ -212,7 +235,7 @@ export function createImobFrontDoorForms(params: {
     finally { imobForms.formSubmittingRef.current.delete(context.id); }
   }
 
-  async function forwardToImob(text: string, options?: { displayText?: string; continuityReplyRef?: string }, continuation?: {
+  async function forwardToImob(text: string, options?: { displayText?: string; continuityReplyRef?: string; claim?: boolean }, continuation?: {
     message: StructuredMessage;
     request: Extract<ReturnType<typeof buildProposalFormContinuation>, { ok: true }>["request"];
   }): Promise<boolean> {
@@ -220,6 +243,7 @@ export function createImobFrontDoorForms(params: {
     const context = continuation?.message ?? latestContext();
     const generation = params.getConversationGeneration();
     const requestId = ++requestSequence.current;
+    if (!continuation) params.persistUser?.(`user:${initialScopeKey ?? ""}:${generation}:${requestId}:${Date.now()}`, options?.displayText ?? text);
     const initialSession = getSession();
     const requestContextRef = getContinuityContextRef();
     const initialScope = params.getConversationScopeKey?.();
@@ -235,19 +259,23 @@ export function createImobFrontDoorForms(params: {
         && current.userId === initialSession.userId && current.tenantId === initialSession.tenantId && current.workspaceId === initialSession.workspaceId
         && current.activeDomain === initialSession.activeDomain && params.getConversationScopeKey?.() === initialScope;
     };
-    const thread = context?.thread ?? FRONT_DOOR_IMOB_THREAD;
+    const resumedThread = context ? null : params.getResumedThread?.() ?? null;
+    const thread = context?.thread ?? (resumedThread ? { id: resumedThread.threadId, label: resumedThread.label, status: resumedThread.status } : FRONT_DOOR_IMOB_THREAD);
     try {
-      const response = await resolveTurn({
+      const call = options?.claim ? (params.claimTurn ?? apiClaimImobTurn) : resolveTurn;
+      const response = await call({
         message: continuation?.request.message ?? buildProposalTextContinuation(text, context?.conversationState, requestContextRef).message,
         continuityContextRef: requestContextRef,
         threadId: thread.id,
         threadLabel: thread.label,
-        caseId: context?.caseContext?.caseId ?? null,
+        caseId: context?.caseContext?.caseId ?? resumedThread?.caseId ?? null,
         threadState: continuation?.request.threadState ?? context?.conversationState ?? null,
         ...(options?.continuityReplyRef ? { continuityReplyRef: options.continuityReplyRef } : {}),
       });
       if (!response.ok) throw new Error("IMOB resolve-turn failed");
-      const turn = response.data;
+      // Reivindicação recusada (ou sem acesso): nada a mostrar; o Front Door segue com o fluxo dele.
+      if (options?.claim && !("claimed" in response && response.claimed === true)) return false;
+      const turn = response.data as NonNullable<typeof response.data>;
       const presentation = turn.presentation;
       // A thread sintética é apenas o bootstrap. O caseContext do servidor é autoritativo.
       const resolvedThread = { ...thread, id: turn.caseContext?.threadId || thread.id, label: turn.threadLabel || thread.label };
@@ -270,7 +298,7 @@ export function createImobFrontDoorForms(params: {
       if (accepted && context && (continuation || context.conversationState?.operational?.flow === "proposal.create")) {
         patchStructured(context.id, (message) => ({ ...message, form: undefined }));
       }
-      appendStructured({
+      const reply: StructuredMessage = {
         id: makeStructuredId("assistant"), role: "assistant",
         text: unknownForm
           ? `${presentation.text}\nEste formulário ainda não pode ser enviado por esta conversa. Nenhum envio foi efetuado.`
@@ -278,12 +306,19 @@ export function createImobFrontDoorForms(params: {
         form: supported && turn.mode !== "blocked" ? form : undefined,
         thread: resolvedThread,
         conversationState: turn.conversationState,
-        caseContext: turn.caseContext ?? (resolvedThread.id === thread.id ? context?.caseContext : null),
+        // Reivindicação: o caso só existe se o SERVIDOR o devolveu (vínculo explícito); nunca se herda um caso anterior, para que um
+        // caso negado, fora de escopo ou não confirmado não continue preso à conversa.
+        caseContext: options?.claim ? (turn.caseContext ?? null) : (turn.caseContext ?? (resolvedThread.id === thread.id ? context?.caseContext : null)),
+        ...(options?.claim && presentation.widget ? { widget: frontDoorWidget(presentation.widget) } : {}),
         ...(presentation.card ? { card: { type: "action" as const, title: presentation.card.title, lines: presentation.card.lines,
           ctas: presentation.card.ctas?.filter((cta) => Boolean(cta.href)), thread: resolvedThread } } : {}),
-      });
+      };
+      appendStructured(reply);
+      // Resposta do servidor ao turno: vai ao histórico persistido (formulários locais e mensagens de erro não).
+      params.persistAssistant?.(reply);
       return accepted;
     } catch {
+      if (options?.claim) return false;
       if (!isCurrentConversation() || (context && latestContext()?.id !== context.id)
         || !isCurrentQuestion()) return false;
       appendStructured({ id: makeStructuredId("assistant"), role: "assistant", thread,
@@ -301,8 +336,8 @@ export function createImobFrontDoorForms(params: {
     appendMessage: appendStructured,
     updateMessage: (messageId, patch) => patchStructured(messageId, (message) => ({ ...message, ...patch })),
     patchMessage: patchStructured,
-    // A confirmação fica na conversa do front door (sessão do launcher); o cadastro já está gravado no IMOB.
-    persistMessage: () => undefined,
+    // O cadastro já está gravado no IMOB; a confirmação vai ao histórico persistido (nunca o conteúdo do formulário).
+    persistMessage: (message, meta) => params.persistAssistant?.(message, meta),
     sendText: (text, options) => forwardToImob(text, options),
     onFormClosed: (message) => {
       const context = latestContext();

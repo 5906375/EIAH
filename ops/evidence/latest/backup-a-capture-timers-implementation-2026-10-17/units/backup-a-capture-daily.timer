@@ -1,0 +1,10 @@
+# STORAGE-02B.11-DEC-20261017-01 — todos os dias às 08:00 America/Sao_Paulo. Persistent=false: horários perdidos NÃO são recuperados.
+[Unit]
+Description=BACKUP-A captura diária 08:00 America/Sao_Paulo
+[Timer]
+OnCalendar=*-*-* 08:00:00 America/Sao_Paulo
+Persistent=false
+AccuracySec=1s
+Unit=backup-a-capture@daily.service
+[Install]
+WantedBy=timers.target

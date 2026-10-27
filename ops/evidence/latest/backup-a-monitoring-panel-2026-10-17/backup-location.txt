@@ -1,0 +1,13 @@
+# localização dos 3 .age do run BA-AUTO-daily-20261017T110000746Z-7c3750 — 2026-10-17 08:15:12 -0300 (sem mover, copiar, decifrar ou enviar)
+distribuição WSL: Ubuntu
+pasta (WSL)    : <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects
+pasta (Windows): <WSL_UNC_HOME>\.eiah-aws\backup-a-auto\queue\BA-AUTO-daily-20261017T110000746Z-7c3750\objects
+recibos        : <WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/receipts.tsv  (Windows: <WSL_UNC_HOME>\.eiah-aws\backup-a-auto\queue\BA-AUTO-daily-20261017T110000746Z-7c3750\receipts.tsv)
+evidências     : ~/.eiah-aws/evidence/backupA-first-scheduled-capture-20261017/ e ops/evidence/latest/backup-a-first-scheduled-capture-2026-10-17/ (não são backups)
+
+<WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-02-worktrees-state.tar.gz.age
+   tamanho=103477219 recibo=103477219 CONFERE
+<WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age
+   tamanho=316686 recibo=316686 CONFERE
+<WSL_HOME>/.eiah-aws/backup-a-auto/queue/BA-AUTO-daily-20261017T110000746Z-7c3750/objects/BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age
+   tamanho=27767 recibo=27767 CONFERE

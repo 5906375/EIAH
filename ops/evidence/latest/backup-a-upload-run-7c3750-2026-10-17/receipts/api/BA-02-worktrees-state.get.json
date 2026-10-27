@@ -1,0 +1,12 @@
+{
+    "AcceptRanges": "bytes",
+    "LastModified": "2026-10-17T12:52:25+00:00",
+    "ContentLength": 103477219,
+    "ETag": "\"<ETAG_MASKED_01>\"",
+    "ChecksumSHA256": "<SHA256_B64_MASKED_08>",
+    "ChecksumType": "FULL_OBJECT",
+    "VersionId": "<S3_VERSION_ID>",
+    "ContentType": "binary/octet-stream",
+    "ServerSideEncryption": "AES256",
+    "Metadata": {}
+}

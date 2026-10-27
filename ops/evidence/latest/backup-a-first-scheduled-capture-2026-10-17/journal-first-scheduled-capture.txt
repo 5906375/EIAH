@@ -1,0 +1,14 @@
+# journal do usuário (systemd --user) 2026-10-17 07:50–08:01 -03, units dos timers e do serviço diário
+-- Logs begin at Mon 2026-09-07 03:44:59 -03, end at Sat 2026-10-17 08:00:52 -03. --
+Oct 17 07:50:42 MERLON systemd[1756]: Started BACKUP-A captura diária 08:00 America/Sao_Paulo.
+Oct 17 07:50:42 MERLON systemd[1756]: Started BACKUP-A captura semanal sexta 18:00 America/Sao_Paulo.
+Oct 17 08:00:00 MERLON systemd[1756]: Starting EIAH BACKUP-A captura daily (local, cifrada, sem AWS)...
+Oct 17 08:00:27 MERLON backup-a-run.sh[31723]: fontes=17 exclusoes=24
+Oct 17 08:00:27 MERLON backup-a-run.sh[32013]: [2026-10-17T11:00:27Z] SKIP BA-01-git-core (fingerprint inalterado desde o último envio verificado)
+Oct 17 08:00:52 MERLON backup-a-run.sh[33025]: [2026-10-17T11:00:52Z] OK BA-06-github-metadata | BA-AUTO-daily-20261017T110000746Z-7c3750--BA-06-github-metadata.tar.gz.age | plain=316324 B | age=316686 B | destinatários=2 | entradas=13
+Oct 17 08:00:52 MERLON backup-a-run.sh[33032]: [2026-10-17T11:00:52Z] plano: BA-01-git-core:skip BA-02-worktrees-state:capture BA-06-github-metadata:capture
+Oct 17 08:00:52 MERLON backup-a-run.sh[33077]: [2026-10-17T11:00:52Z] OK BA-07-manifests | BA-AUTO-daily-20261017T110000746Z-7c3750--BA-07-manifests.tar.gz.age | plain=27469 B | age=27767 B | destinatários=2 | entradas=40
+Oct 17 08:00:52 MERLON backup-a-run.sh[33108]: [2026-10-17T11:00:52Z] captura concluída: capturados=2 falhas=0 inconsistentes=0 ignorados=1 (código 0); fila=102MB
+Oct 17 08:00:52 MERLON systemd[1756]: backup-a-capture@daily.service: Succeeded.
+Oct 17 08:00:52 MERLON systemd[1756]: Finished EIAH BACKUP-A captura daily (local, cifrada, sem AWS).
+Oct 17 08:00:52 MERLON systemd[1756]: backup-a-capture@daily.service: Consumed 31.678s CPU time.

@@ -1,3 +1,5 @@
+import { describeChatTurnFailure } from "./chatFailureCopy";
+import { formatImobStageLabel } from "@/features/imob/imobCommandCenterHelper";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -1086,7 +1088,7 @@ function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): Messag
     title: "Próximas ações da jornada",
     lines: [
       `Jornada: ${formatCanonicalJourneyType(caseContext.canonical.journeyType)}`,
-      `Etapa atual: ${caseContext.stage}`,
+      `Etapa atual: ${formatImobStageLabel(caseContext.stage)}`,
       ...(caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
     ],
     ctas: mergeRecommendedActionCtas(undefined, caseContext),
@@ -3103,17 +3105,12 @@ const ImobChatPage: React.FC = () => {
         });
         await runExecutionFlow(executionPending);
       } catch (error) {
-        const message =
-          error instanceof ApiError
-            ? `${error.message} (${error.status})`
-            : error instanceof Error
-              ? error.message
-              : "Falha ao orquestrar mensagem";
+        const failure = describeChatTurnFailure(error, "turn", "Falha ao orquestrar mensagem");
         setState("blocked");
         const blockedMessage: ChatMessage = {
           id: makeId("assistant"),
           role: "assistant",
-          text: "Não consegui continuar essa solicitação agora.",
+          text: failure.text,
           thread: {
             id: operationThread.id,
             label: operationThread.label,
@@ -3127,10 +3124,10 @@ const ImobChatPage: React.FC = () => {
               label: operationThread.label,
               status: "blocked",
             },
-            lines: ["Identifiquei uma restrição de segurança para este passo."],
+            lines: failure.lines,
             risk: {
-              level: "high",
-              reason: message,
+              level: failure.level,
+              reason: failure.reason,
             },
           },
         };
@@ -3198,17 +3195,12 @@ const ImobChatPage: React.FC = () => {
         metadata: { intent: plan.intent, action: plan.action, source: "command-center" },
       });
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `${error.message} (${error.status})`
-          : error instanceof Error
-            ? error.message
-            : "Falha ao preparar ação direcionada";
+      const failure = describeChatTurnFailure(error, "directed", "Falha ao preparar ação direcionada");
       setState("blocked");
       const blockedMessage: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: "Não consegui preparar esta ação agora.",
+        text: failure.text,
         thread: {
           id: operationThread.id,
           label: operationThread.label,
@@ -3222,10 +3214,10 @@ const ImobChatPage: React.FC = () => {
             label: operationThread.label,
             status: "blocked",
           },
-          lines: ["Identifiquei uma restrição de segurança para este passo."],
+          lines: failure.lines,
           risk: {
-            level: "high",
-            reason: message,
+            level: failure.level,
+            reason: failure.reason,
           },
         },
       };
@@ -5622,6 +5614,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             <ImobChatWidgets
                               widget={message.widget}
                               onAction={(action) => handleWidgetAction(action, message.caseContext)}
+                              returnTo={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
                             />
                           ) : null}
 

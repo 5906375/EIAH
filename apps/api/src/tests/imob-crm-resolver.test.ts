@@ -314,8 +314,8 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.action, "crm.case.pipeline_status");
   assert.match(resolved?.presentation?.text ?? "", /Lead Merlo/);
   assert.match(resolved?.presentation?.text ?? "", /Fase:/);
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on:/);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando:/);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação:/);
   assert.match(resolved?.presentation?.text ?? "", /Specialist de apoio:/);
   assert.match(resolved?.presentation?.text ?? "", /não assume ownership do caso/i);
   assert.match(resolved?.presentation?.text ?? "", /Próximo movimento/);

@@ -7,6 +7,13 @@ import {
   type TenantAwareRequest,
 } from "../middlewares/enforceTenant";
 import { requireScope } from "../middlewares/requireScope";
+import { commercialPolicyViolation } from "../services/commercialPolicyGuard";
+import {
+  evaluateSubscriptionAuthority,
+  recordSubscriptionDecision,
+  SUBSCRIBE_FORBIDDEN_ERROR,
+  subscriptionAuthorityDeps,
+} from "../services/marketplaceSubscriptionAuthority";
 
 type ActionsRouterDependencies = Readonly<{
   prisma: typeof prismaGlobal;
@@ -168,6 +175,38 @@ export function createActionsRouter(
         res,
         "maxVersion must be a non-negative integer or null",
       );
+    }
+
+    // AUTHZ-SCOPE-1: conceder política de agente/autoridade comercial é decisão comercial, não ajuste administrativo.
+    const commercial = await commercialPolicyViolation(
+      dependencies.prisma as unknown as Parameters<typeof commercialPolicyViolation>[0],
+      actionName,
+      allowed,
+    );
+    if (commercial && commercial.kind !== "agent") {
+      return res.status(commercial.status).json({
+        ok: false,
+        error: { code: commercial.code, message: commercial.message },
+      });
+    }
+    if (commercial?.kind === "agent") {
+      // O efeito equivale a habilitar um agente: actions.admin (política de workspace) não é a decisão. Exige a PESSOA
+      // com autoridade comercial vigente, revalidada agora, e o registro prévio da decisão.
+      const actor = { tenantId, workspaceId, userId: request.authContext.userId ?? null, tokenId: request.authContext.tokenId ?? null };
+      const authority = await evaluateSubscriptionAuthority(actor, subscriptionAuthorityDeps.forClient(dependencies.prisma));
+      const target = { agentName: actionName, designationId: authority.designationId ?? null };
+      const auditClient = dependencies.prisma as unknown as Parameters<typeof recordSubscriptionDecision>[0]["prisma"];
+      if (!authority.allowed) {
+        await recordSubscriptionDecision({ prisma: auditClient, actor, outcome: "denied", reasonCode: authority.reasonCode, action: "actions.override.commercial", target });
+        return res.status(403).json({ ok: false, error: { ...SUBSCRIBE_FORBIDDEN_ERROR, reasonCode: authority.reasonCode } });
+      }
+      const recorded = await recordSubscriptionDecision({ prisma: auditClient, actor, outcome: "authorized", reasonCode: authority.reasonCode, action: "actions.override.commercial", target });
+      if (!recorded) {
+        return res.status(503).json({
+          ok: false,
+          error: { code: "COMMERCIAL_DECISION_RECORD_UNAVAILABLE", message: "Não foi possível registrar a decisão comercial. Nada foi alterado." },
+        });
+      }
     }
 
     const existing = await dependencies.prisma.tenantActionPolicy.findFirst({

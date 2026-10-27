@@ -98,6 +98,7 @@ model Tenant {
   workspaceAgentAssignments WorkspaceAgentAssignment[]
   runUsageBreakdowns        RunUsageBreakdown[]
   billingLedgerEntries      BillingLedger[]
+  financialAuthorityDesignations FinancialAuthorityDesignation[]
   invoices                  TenantInvoice[]
   helpdeskSessions          HelpdeskSession[]
   productInstallations      TenantProductInstallation[]
@@ -177,6 +178,7 @@ model User {
   connectorInstances              ConnectorInstance[]
   memberships                     TenantMembership[]
   walletIdentities                WalletIdentity[]
+  financialAuthorityDesignations  FinancialAuthorityDesignation[]
 
   @@index([tenantId, email])
   @@map("users")
@@ -825,6 +827,32 @@ model TenantBillingAccount {
 
   @@index([tenantId, status])
   @@map("tenant_billing_account")
+}
+
+/// AUTHZ-FIN-1 (proposta, BILLING-003): designação explícita de autoridade financeira por tenant. Nunca é criada por papel, convite ou bootstrap.
+model FinancialAuthorityDesignation {
+  id                   String    @id
+  tenantId             String    @map("tenant_id")
+  beneficiaryUserId    String    @map("beneficiary_user_id")
+  scope                String
+  authorityRole        String    @map("authority_role")
+  limits               Json      @default("{}")
+  grantedByUserId      String    @map("granted_by_user_id")
+  grantorDesignationId String?   @map("grantor_designation_id")
+  evidenceRef          String    @map("evidence_ref")
+  grantedAt            DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
+  validUntil           DateTime  @map("valid_until") @db.Timestamptz(3)
+  revokedAt            DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedByUserId      String?   @map("revoked_by_user_id")
+  revokeReason         String?   @map("revoke_reason")
+  grantAuditEventId    String?   @map("grant_audit_event_id")
+  revokeAuditEventId   String?   @map("revoke_audit_event_id")
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  beneficiary User   @relation(fields: [beneficiaryUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, beneficiaryUserId, scope], map: "financial_authority_designation_lookup_idx")
+  @@map("financial_authority_designation")
 }
 
 model TenantQuotaPolicy {

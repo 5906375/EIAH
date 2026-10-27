@@ -1,9 +1,12 @@
+import type { TransversalTurn } from "../imobTransversalTurn";
+import { buildTransversalTurnText } from "../imobTransversalTurnCopy";
 import {
   asPendingItems,
   ImobOperationalConsultContext,
   ImobOperationalResolverParams,
   OperationalResolution,
   ResolverHelpers,
+  scopedImobCases,
 } from "./imobCrmOperationalResolverShared";
 
 function extractCaseIdFromMessage(message: string): string | null {
@@ -48,6 +51,20 @@ async function readSpecialistAvailabilitySafely(helpers: ResolverHelpers, params
   }
 }
 
+/**
+ * Resposta a um turno transversal: o texto descreve só o que a descoberta apurou (ver `imobTransversalTurnCopy`) e a
+ * apresentação fica focada no cartão do especialista, sem repetir a leitura comercial do caso.
+ */
+function applyTransversalTurnPresentation(
+  presentation: Record<string, unknown>,
+  turn: TransversalTurn,
+  transversalCapabilities: unknown[] | null | undefined,
+) {
+  const first = Array.isArray(transversalCapabilities) ? (transversalCapabilities[0] as Parameters<typeof buildTransversalTurnText>[1]) : null;
+  const { card: _card, blocks: _blocks, ...rest } = presentation;
+  return { ...rest, text: buildTransversalTurnText(turn, first), blocks: [], suggestedNextAction: undefined };
+}
+
 async function readTransversalCapabilitiesSafely(helpers: ResolverHelpers, params: ImobOperationalResolverParams, caseContext: unknown) {
   if (typeof helpers.readTransversalCapabilities !== "function") return undefined;
   try {
@@ -55,6 +72,8 @@ async function readTransversalCapabilitiesSafely(helpers: ResolverHelpers, param
       prisma: params.prisma,
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
+      userId: params.userId ?? null,
+      turnNeeds: params.transversalTurn?.needs ?? null,
       caseContext,
       operational: (params.threadState as { operational?: unknown } | null | undefined)?.operational ?? null,
     });
@@ -78,11 +97,12 @@ export async function resolveImobCaseOperationalConsult(
       workspaceId: params.workspaceId,
       caseId: params.caseId,
       threadState: params.threadState,
+      canOperateStage: params.canOperateStage,
     });
   }
   if (context.businessReadIntent) {
     const item = params.caseId
-      ? await params.prisma.imobCase.findFirst({
+      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
           include: {
             owner: { select: { id: true, name: true } },
@@ -91,7 +111,7 @@ export async function resolveImobCaseOperationalConsult(
             _count: { select: { events: true } },
           },
         })
-      : await params.prisma.imobCase.findFirst({
+      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
           orderBy: { updatedAt: "desc" },
           include: {
@@ -150,19 +170,22 @@ export async function resolveImobCaseOperationalConsult(
     // Só chega aqui quando a apresentação será montada (o ramo de dedupe acima não consulta a disponibilidade).
     const specialistAvailability = await readSpecialistAvailabilitySafely(helpers, params);
     const transversalCapabilities = await readTransversalCapabilitiesSafely(helpers, params, caseContext);
+    const presentation = helpers.buildImobBusinessReadPresentation({
+      intent: context.businessReadIntent,
+      caseContext,
+      caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
+      specialistAvailability,
+      transversalCapabilities,
+    });
     return {
       mode: "consult",
-      action: `crm.case.${context.businessReadIntent}`,
+      action: params.transversalTurn ? `crm.case.transversal.${params.transversalTurn.operation}` : `crm.case.${context.businessReadIntent}`,
       threadLabel: helpers.formatImobCaseFlowLabel(item.flow),
       conversationState: updatedState,
       caseContext,
-      presentation: helpers.buildImobBusinessReadPresentation({
-        intent: context.businessReadIntent,
-        caseContext,
-        caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
-        specialistAvailability,
-        transversalCapabilities,
-      }),
+      presentation: params.transversalTurn
+        ? applyTransversalTurnPresentation(presentation as Record<string, unknown>, params.transversalTurn, transversalCapabilities)
+        : presentation,
     };
   }
   if (!(!context.asksLeadCases && context.wantsCase && (context.asksCurrentCase || context.asksCaseStatus || context.asksMissing || context.asksShow))) {
@@ -190,7 +213,7 @@ export async function resolveImobCaseOperationalConsult(
   }
 
   const item = scopedCaseId
-    ? await params.prisma.imobCase.findFirst({
+    ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
         where: { id: scopedCaseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
         include: {
           owner: { select: { id: true, name: true } },
@@ -199,7 +222,7 @@ export async function resolveImobCaseOperationalConsult(
           _count: { select: { events: true } },
         },
       })
-    : await params.prisma.imobCase.findFirst({
+    : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
         where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
         orderBy: { updatedAt: "desc" },
         include: {

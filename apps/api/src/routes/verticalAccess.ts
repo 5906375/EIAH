@@ -1,3 +1,4 @@
+import { activatableProductSchema } from "@eiah/contracts";
 import { z } from "zod";
 import { prismaGlobal, type PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
@@ -27,7 +28,7 @@ export const verticalAccessRouter = createGovernedRouter();
 verticalAccessRouter.use("/vertical-access", enforceTenant);
 verticalAccessRouter.use("/admin/vertical-approvals", enforceTenant);
 
-const verticalSchema = z.enum(["IMOB"]);
+const verticalSchema = activatableProductSchema;
 const requestSchema = z.object({ vertical: verticalSchema, channel: z.enum(["marketplace", "chat"]).optional() }).strict();
 const adminChannelSchema = z.enum(["tela", "chat"]).optional();
 const decisionSchema = z

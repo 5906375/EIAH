@@ -1,3 +1,5 @@
+import { resolveLogisticaContextAccess } from "../services/logistica/control/logisticaContextAccess";
+import { observeWorkspaceSwitchShadow, type WorkspaceSwitchLegacyOutcome } from "../services/workspaceSwitchAuthorization";
 import type { Request, Response } from "express";
 import { Router } from "express";
 import crypto from "node:crypto";
@@ -24,7 +26,7 @@ import { resolvePreDuimpAccessFromCanonicalSources } from "../services/logistica
 import { asyncHandler } from "../middlewares/asyncHandler";
 
 const sessionRouter = Router();
-const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
+const DOMAIN_ALLOWLIST = new Set(["core", "imob", "logistica"] as const);
 // Private legacy sets for observation only; not a platform entitlement catalog.
 const SESSION_IMOB_POLICY_ACTIONS = [
   "realestate.apply_adjustment",
@@ -85,12 +87,12 @@ function resolveTokenFromRequest(req: Request) {
   return bearer ?? resolvedCookieToken ?? bodyToken;
 }
 
-function resolveRequestedDomain(req: Request): "core" | "imob" {
+function resolveRequestedDomain(req: Request): "core" | "imob" | "logistica" {
   const queryDomain = typeof req.query.domain === "string" ? req.query.domain.trim().toLowerCase() : "";
   const headerDomain = (req.header("x-eiah-domain") ?? req.header("x-domain") ?? "").trim().toLowerCase();
   const candidate = queryDomain || headerDomain || "core";
-  if (DOMAIN_ALLOWLIST.has(candidate as "core" | "imob")) {
-    return candidate as "core" | "imob";
+  if (DOMAIN_ALLOWLIST.has(candidate as "core" | "imob" | "logistica")) {
+    return candidate as "core" | "imob" | "logistica";
   }
   return "core";
 }
@@ -134,9 +136,9 @@ function resolveSessionCookieOptions(req: Request) {
 
 async function resolveExperienceSnapshot(
   tokenRecord: Pick<SessionTokenRecord, "tenantId" | "workspaceId" | "userId">,
-  requestedDomain: "core" | "imob"
+  requestedDomain: "core" | "imob" | "logistica"
 ) {
-  const [realEstatePolicies, realEstateItems, productInstallations] = await Promise.all([
+  const [realEstatePolicies, realEstateItems, productInstallations, logisticaAccess] = await Promise.all([
     prismaGlobal.tenantActionPolicy.findMany({
       where: {
         tenantId: tokenRecord.tenantId,
@@ -164,6 +166,7 @@ async function resolveExperienceSnapshot(
           AND workspace_id = ${tokenRecord.workspaceId}
       `
       .catch(() => []),
+    resolveLogisticaContextAccess(prismaGlobal, tokenRecord),
   ]);
 
   const installationStatus = resolveImobInstallationStatus(productInstallations);
@@ -182,8 +185,9 @@ async function resolveExperienceSnapshot(
     BILLING_INSIGHTS_ADDON: true,
     IMOB_INSTALLED: hasImobInstallation,
   };
-  const activeDomain = requestedDomain;
-  const availableDomains: Array<"core" | "imob"> = entitlements.REAL_ESTATE_CORE ? ["core", "imob"] : ["core"];
+  const activeDomain = requestedDomain === "logistica" && !logisticaAccess.allowed ? "core" : requestedDomain;
+  const availableDomains: Array<"core" | "imob" | "logistica"> = entitlements.REAL_ESTATE_CORE ? ["core", "imob"] : ["core"];
+  if (logisticaAccess.allowed) availableDomains.push("logistica");
   const roles = tokenRecord.userId ? ["admin"] : ["service"];
   const experience = resolvePlatformExperience({
     roles,
@@ -196,6 +200,7 @@ async function resolveExperienceSnapshot(
   });
 
   return {
+    logisticaAccess,
     entitlementShadow: {
       installationActive: hasImobInstallation,
       sessionPolicyPresent,
@@ -319,6 +324,13 @@ sessionRouter.get("/session/context", asyncHandler(async (req: Request, res: Res
     // Shadow logging is best-effort and must never affect the HTTP decision.
   }
 
+  if (requestedDomain === "logistica" && !snapshot.logisticaAccess.allowed) {
+    await recordGuardrailAudit({ prisma: prismaGlobal, tenantId: tokenRecord.tenantId,
+      workspaceId: tokenRecord.workspaceId, eventType: "logistica.context.denied", severity: "warn",
+      message: "Contexto logístico negado", metadata: { reason: snapshot.logisticaAccess.reason, mode: "context_only" },
+    }).catch((error) => req.logger?.warn({ error }, "logistica.context.audit_failed"));
+    return res.status(403).json({ ok: false, error: { code: "FORBIDDEN", message: "Contexto logístico indisponível neste workspace.", capability: snapshot.logisticaAccess } });
+  }
   if (requestedDomain === "imob" && !snapshot.entitlements.REAL_ESTATE_CORE) {
     return sendImobAccessDenied(res, {
       req,
@@ -366,6 +378,7 @@ sessionRouter.get("/session/context", asyncHandler(async (req: Request, res: Res
       entitlements: snapshot.entitlements,
       capabilities: {
         preDuimpShadow: preDuimpAccess.capability,
+        logisticaContext: snapshot.logisticaAccess,
       },
       productInstallations: snapshot.productInstallations.map((entry) => ({
         product: entry.product,
@@ -373,6 +386,7 @@ sessionRouter.get("/session/context", asyncHandler(async (req: Request, res: Res
       })),
       verticals: resolveVerticalExperienceRegistry({
         installedProducts: snapshot.productInstallations,
+        logisticaAccess: snapshot.logisticaAccess,
       }),
       roles: snapshot.roles,
       experience: snapshot.experience,
@@ -411,8 +425,17 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
     });
   }
 
+  // G2 (modo sombra, desligado por padrão): só observa e registra; nunca altera a decisão nem a resposta desta rota.
+  const observeShadow = (target: unknown, legacy: WorkspaceSwitchLegacyOutcome) => observeWorkspaceSwitchShadow({
+    actor: { tenantId: currentToken.tenantId, workspaceId: currentToken.workspaceId, userId: currentToken.userId },
+    targetWorkspaceId: target,
+    legacy,
+    logger: req.logger as { warn?: (...args: unknown[]) => void } | undefined,
+  });
+
   const parsed = switchWorkspaceSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
+    await observeShadow((req.body as { workspaceId?: unknown } | undefined)?.workspaceId, { outcome: "rejected_payload" });
     return res.status(400).json({
       ok: false,
       error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
@@ -426,6 +449,7 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
   });
 
   if (!workspace || workspace.tenantId !== currentToken.tenantId) {
+    await observeShadow(targetWorkspaceId, { outcome: "forbidden_workspace" });
     return res.status(403).json({
       ok: false,
       error: { code: "WORKSPACE_FORBIDDEN", message: "Workspace not available for this tenant" },
@@ -447,6 +471,7 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
       tenantId: true,
       workspaceId: true,
       userId: true,
+      description: true,
     },
   });
 
@@ -468,6 +493,11 @@ sessionRouter.post("/session/workspace", async (req: Request, res: Response) => 
         userId: true,
       },
     }));
+
+  await observeShadow(targetWorkspaceId, {
+    outcome: "allowed",
+    tokenAction: !existing ? "created" : existing.description === "Workspace switch token" ? "reused_switch_token" : "reused_other_origin",
+  });
 
   const { name, options } = resolveSessionCookieOptions(req);
   res.cookie(name, record.token, options);

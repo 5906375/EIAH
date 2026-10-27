@@ -1,6 +1,8 @@
+import React from "react";
 import { ImobFormCard } from "./ImobFormCard";
 import type { ImobFrontDoorForms } from "./useImobFrontDoorForms";
 import type { StructuredMessage } from "./types";
+import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 
 /**
  * Parte do IMOB numa mensagem do front door: texto, formulário, card de
@@ -16,9 +18,16 @@ export function ImobFrontDoorPart({
   isLast: boolean;
 }) {
   const { imobForms, structuredForms } = frontDoor;
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  // O launcher só rola quando ele mesmo empilha a mensagem; a resposta da vertical chega depois (assíncrona). Quando a última
+  // mensagem traz um cartão de vertical, ela entra na área visível ao aparecer (inclusive ao restaurar a conversa).
+  React.useEffect(() => {
+    if (isLast && message.widget) rootRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="flex w-full flex-col gap-3 text-sm text-foreground">
+    <div ref={rootRef} className="flex w-full flex-col gap-3 text-sm text-foreground">
       {message.text ? <p className="whitespace-pre-line leading-relaxed">{message.text}</p> : null}
+      {message.widget ? <ImobChatWidgets widget={message.widget} onAction={() => undefined} /> : null}
       {message.card ? (
         <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs">
           <p className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">{message.card.title}</p>

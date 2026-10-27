@@ -1,0 +1,13 @@
+96e2a53eb032227db90e08b2e9a210cc845a334fff344a2d4c3ec6bf91df5504  ./DASHBOARD.md
+2586a67a8f8c439269e2965a4d23752bd0f5960650dc05aa254199710ba9da5f  ./source/app.css
+940d1409f273b3364f417d16d0aea0a4a2afcb51baedb35a9a87f8a7558fc4a5  ./source/app.js
+90998fc141c7bd446d86fa183d9f72c43c3a97afbbf4a7d6984045d36817618e  ./source/backup-a-dashboard.sh
+9f536e0cae776a59d16a537f96bcb599056a6f35f415f5f2656b27dd1e165b32  ./source/index.html
+6fb5c65da58709c77e663ef64a65c30488744f5c69fabb7d87cf4cfbdeb54abb  ./source/recovery-evidence.json
+d0d9f38f492c32a95ec09c4cf08928c0dfae5f875dedf5f066a4305c21dfdc87  ./source/server.py
+1d081ef01ffdb3161fed08a0c69f9f63a9234c8c3efa2d23b4853e4df760bda0  ./tests/dashboard-tests.log
+8022431f8b0087e6d3138439368b04641c673e750ae0d9fcaab20c013b99a722  ./tests/run-dashboard-tests.sh
+5d49e5bbb46355da992fe2a840b1f650f7960c1fb57f452c7c580d1c0ed64d99  ./tests/test_dashboard.py
+bac8c501ee9ca69c9fe43c379be305457e6ccb7b4b1df7e47a9c573978e5d4f2  ./validation/real-data-checks.txt
+546af23b2c9c464314a88bead010259ee886ccbdb3aa3c9d2595252f7b941bde  ./validation/real-state-after.txt
+546af23b2c9c464314a88bead010259ee886ccbdb3aa3c9d2595252f7b941bde  ./validation/real-state-before.txt

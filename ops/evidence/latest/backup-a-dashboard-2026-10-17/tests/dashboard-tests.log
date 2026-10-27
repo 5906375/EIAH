@@ -1,0 +1,26 @@
+test_01_bind_loopback_only (__main__.D) ... ok
+test_02_get_routes_no_aws_no_changes (__main__.D) ... ok
+test_03_host_origin_csrf (__main__.D) ... ok
+test_04_paths_and_run_ids (__main__.D) ... ok
+test_05_overview_matches_sources (__main__.D) ... ok
+test_06_time_equivalence (__main__.D) ... ok
+test_07_history_filters_and_detail (__main__.D) ... ok
+test_08_execute_requires_fresh_session (__main__.D) ... ok
+ok
+test_10_wrong_confirmation_and_unknown_plan (__main__.D) ... ok
+ok
+test_12_double_submit_single_upload (__main__.D) ... ok
+test_13_plan_changed_requires_new_review (__main__.D) ... ok
+ok
+ok
+ok
+ok
+ok
+ok
+test_18_real_aws_never_called (__main__.D) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 21.030s
+
+OK
+DASHBOARD_TESTS_EXIT=0 | fixture: ~/.eiah-aws/automation-tests/ba-20261017T132843Z

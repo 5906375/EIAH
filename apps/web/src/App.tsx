@@ -13,7 +13,7 @@ import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
-import PreDuimpPage from "./pages/app/logistica/pre-duimp";
+import { resolveLogisticaLegacyRedirect, type LogisticaLegacyEntry } from "@/features/logistica/legacyCockpitRedirect";
 import { EiahBrandMark } from "./components/brand/EiahBrandMark";
 import {
   getPreDuimpDirectAccessRedirect,
@@ -23,6 +23,7 @@ import {
 } from "./features/logistica/preDuimp";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { beginSessionContextRequest } from "./state/sessionContextSync";
+import { resolveRouteTargetDomain } from "./state/routeDomain";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 import { isImobInstalled } from "./lib/entitlements";
 
@@ -32,6 +33,8 @@ function NavigationLink({ to, label }: { to: string; label: string }) {
   if (to.includes("?")) {
     const [toPath, toSearch] = to.split("?", 2);
     active = location.pathname === toPath && location.search.includes(toSearch);
+  } else if (to === "/app/chat" && (["logistica", "imob"].includes(new URLSearchParams(location.search).get("domain") ?? "") || new URLSearchParams(location.search).get("entry") === "pre_duimp")) {
+    active = false; // nas entradas de IMOB/Logística/Pré-DUIMP quem fica ativo é o item da especialidade, não "Chat"
   } else {
     active = location.pathname === to || location.pathname.startsWith(`${to}/`);
   }
@@ -67,7 +70,12 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/chat", label: "Chat" },
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
-  { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
+  // FD-SINGLE-ENTRY-001: o menu seleciona a especialidade; a interface é a mesma conversa (o servidor decide o acesso no handoff).
+  { to: "/app/chat?domain=imob", label: "IMOB" },
+  // O Front Door é a entrada principal da Logística (preparação, pendências e decisão na conversa); o cockpit segue acessível, como ferramenta opcional.
+  { to: "/app/chat?domain=logistica", label: "Logística & Comex" },
+  // O Pré-DUIMP também abre NA conversa (cartão do launcher); o acesso continua sendo decidido pelo servidor.
+  { to: "/app/chat?entry=pre_duimp", label: "Pré-DUIMP", requiresPreDuimp: true }, // = PRE_DUIMP_FRONT_DOOR_HREF (teste estrutural)
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
 ];
@@ -169,23 +177,23 @@ function Layout({
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const location = useLocation();
+  const lastResolvedRoute = React.useRef<string | null>(null);
   React.useEffect(() => {
     if (!session.token) return;
     let active = true;
     const contextRequest = beginSessionContextRequest();
-    const targetDomain =
-      location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
-        ? "imob"
-        : session.activeDomain === "imob"
-          ? "imob"
-          : undefined;
+    const explicitDomain = new URLSearchParams(location.search).get("domain");
+    const routeKey = `${location.pathname}${location.search}`;
+    const routeChanged = lastResolvedRoute.current !== routeKey;
+    lastResolvedRoute.current = routeKey;
+    const targetDomain = resolveRouteTargetDomain({ explicitDomain, pathname: location.pathname, sessionDomain: session.activeDomain, routeChanged });
     updateSession({ preDuimpAccess: { status: "loading" } });
     void loadPreDuimpSessionContext((signal) => apiGetSessionContext(targetDomain, signal))
       .then(({ context: ctx, access, error }) => {
         if (!active) return;
         if (!contextRequest.isCurrent()) return;
         if (!ctx?.ok || !ctx.data) {
-          updateSession({ preDuimpAccess: access });
+          updateSession({ preDuimpAccess: access, ...(targetDomain === "logistica" ? { logisticaAccess: null, activeDomain: "core" as const, availableDomains: session.availableDomains?.filter((domain) => domain !== "logistica"), verticals: session.verticals?.map((vertical) => vertical.verticalId === "LOGISTICA" ? { ...vertical, enabled: false, frontDoorSurface: null } : vertical) } : {}) });
           if (
             targetDomain === "imob" &&
             error instanceof ApiError &&
@@ -213,6 +221,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           workspaceId: ctx.data.workspaceId,
           userId: ctx.data.userId ?? undefined,
           activeDomain: ctx.data.activeDomain,
+          logisticaAccess: ctx.data.capabilities?.logisticaContext ?? null,
           availableDomains: ctx.data.availableDomains,
           entitlements: ctx.data.entitlements,
           installedProducts: (ctx.data.productInstallations ?? []).map((entry) => entry.product),
@@ -239,23 +248,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     const next = `${location.pathname}${location.search}`;
     return <Navigate to={`/access?next=${encodeURIComponent(next)}`} replace />;
   }
-  return <>{children}</>;
-}
-
-function RequirePreDuimpAccess({ children }: { children: React.ReactNode }) {
-  const session = useSession();
-  if (
-    PRE_DUIMP_FRONTEND_ENABLED &&
-    (session.preDuimpAccess.status === "idle" || session.preDuimpAccess.status === "loading")
-  ) {
-    return null;
-  }
-  const redirect = getPreDuimpDirectAccessRedirect(
-    PRE_DUIMP_FRONTEND_ENABLED,
-    session.preDuimpAccess,
-  );
-
-  if (redirect) return <Navigate to={redirect} replace />;
   return <>{children}</>;
 }
 
@@ -306,6 +298,15 @@ function DefaultLanding() {
   }
 
   return <Navigate to={session.experience?.landingPath || "/app/chat"} replace />;
+}
+
+/**
+ * EIAH-FD-001 / FD-LEGACY-CLOSURE-001: as URLs legadas de Logística e Pré-DUIMP NÃO têm página: só redirecionam ao Front Door (sem chave,
+ * sem condição, sem nada montado antes). Só `?case=` válido é preservado; o servidor valida o caso ao abrir.
+ */
+function LegacyLogisticaRoute({ entry }: { entry: LogisticaLegacyEntry }) {
+  const location = useLocation();
+  return <Navigate to={resolveLogisticaLegacyRedirect({ search: location.search, entry })} replace />;
 }
 
 function LegacyAgentsRedirect() {
@@ -424,18 +425,9 @@ function AppRoutes() {
           </Layout>
         }
       />
-      <Route
-        path="/app/logistica/pre-duimp"
-        element={
-          <Layout>
-            <RequireAuth>
-              <RequirePreDuimpAccess>
-                <PreDuimpPage />
-              </RequirePreDuimpAccess>
-            </RequireAuth>
-          </Layout>
-        }
-      />
+      <Route path="/app/logistica" element={<LegacyLogisticaRoute entry="cockpit" />} />
+      <Route path="/app/logistica/pre-duimp" element={<LegacyLogisticaRoute entry="pre_duimp" />} />
+      <Route path="/app/logistica/*" element={<LegacyLogisticaRoute entry="cockpit" />} />
       <Route
         path="/app/imob/properties"
         element={

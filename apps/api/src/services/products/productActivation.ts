@@ -1,3 +1,5 @@
+import type { ActivatableProductId } from "@eiah/contracts";
+
 import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import { canActivateProducts, readWorkspaceResponsibleProfile } from "../workspaceResponsibility";
@@ -16,9 +18,10 @@ import {
  * ativação pelo chat do front door (ADR-010 etapa F).
  */
 
-export type ActivatableProduct = "IMOB";
+export type ActivatableProduct = ActivatableProductId;
 
 export const PRODUCT_RELEASED_ROUTES: Record<ActivatableProduct, string[]> = {
+  LOGISTICA: ["/app/chat?domain=logistica"],
   IMOB: ["/app/imob/chat", "/app/imob/properties", "/app/imob/processes", "/app/imob/partners"],
 };
 

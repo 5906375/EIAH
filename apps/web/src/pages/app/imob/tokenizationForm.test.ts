@@ -9,7 +9,8 @@ import {
 } from "./tokenizationForm";
 
 test("every menu offers 'Tokenização de ativos'", () => {
-  for (const menu of IMOB_ACTION_MENUS) {
+  // "Gestão" é leitura (painel na conversa): não tem ativo a tokenizar.
+  for (const menu of IMOB_ACTION_MENUS.filter((entry) => entry.id !== "management")) {
     assert.ok(menu.items.some((item) => item.label === "Tokenização de ativos"), menu.label);
   }
 });
