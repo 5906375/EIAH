@@ -1,0 +1,7 @@
+2026-10-17T08:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T11:00:00Z (UTC)
+2026-10-17T08:00:52-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T11:00:52Z (UTC)
+2026-10-17T09:52:40-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:52:40Z (UTC)
+2026-10-17T09:52:42-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:52:42Z (UTC)
+2026-10-17T09:57:59-03:00 (Brasília, America/Sao_Paulo) | 2026-10-17T12:57:59Z (UTC)
+2026-10-18T08:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-18T11:00:00Z (UTC)
+2026-10-23T18:00:00-03:00 (Brasília, America/Sao_Paulo) | 2026-10-23T21:00:00Z (UTC)

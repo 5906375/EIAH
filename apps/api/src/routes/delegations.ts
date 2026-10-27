@@ -4,12 +4,91 @@ import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
+  COMMERCIAL_LIMIT_ERROR,
+  evaluateSubscriptionAuthority,
+  recordSubscriptionDecision,
+  SUBSCRIBE_FORBIDDEN_ERROR,
+  subscriptionAuthorityDeps,
+  subscriptionLimitViolation,
+} from "../services/marketplaceSubscriptionAuthority";
+import {
   buildDelegationRenewalPolicyContract,
   buildDelegationRenewalPreview,
 } from "../types/delegationRenewalPolicyContract";
 
 export const delegationsRouter = createGovernedRouter();
 delegationsRouter.use(enforceTenant);
+
+/**
+ * AUTHZ-SCOPE-1: delegar um item do Marketplace ao PRÓPRIO tenant (ou a delegatária alterar os termos de uma
+ * delegação que recebeu) é contratar um agente por outro caminho. Exige a mesma autoridade humana de
+ * `POST /marketplace/:id/subscribe` e registra a decisão antes de qualquer efeito.
+ */
+async function requireContractingAuthority(
+  request: TenantAwareRequest,
+  res: import("express").Response,
+  params: { action: string; marketplaceItemId: string | null; scope?: string | null; trustMin?: number | null; validUntil?: string | null },
+) {
+  const actor = {
+    tenantId: request.authContext!.tenantId,
+    workspaceId: request.authContext!.workspaceId,
+    userId: request.authContext!.userId ?? null,
+    tokenId: request.authContext!.tokenId ?? null,
+  };
+  const authority = await evaluateSubscriptionAuthority(actor, subscriptionAuthorityDeps.forClient(request.prisma));
+  const target = {
+    marketplaceItemId: params.marketplaceItemId,
+    scope: params.scope ?? null,
+    trustMin: params.trustMin ?? null,
+    validUntil: params.validUntil ?? null,
+    designationId: authority.designationId ?? null,
+  };
+  if (!authority.allowed) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma!,
+      actor,
+      outcome: "denied",
+      reasonCode: authority.reasonCode,
+      action: params.action,
+      target,
+    });
+    res.status(403).json({ ok: false, error: { ...SUBSCRIBE_FORBIDDEN_ERROR, reasonCode: authority.reasonCode } });
+    return false;
+  }
+  // Os limites da designação (escopo de delegação e prazo) valem também por este caminho.
+  const limitViolation = subscriptionLimitViolation(authority, {
+    scope: String(params.scope ?? ""),
+    validUntil: new Date(String(params.validUntil ?? "")),
+  });
+  if (limitViolation) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma!,
+      actor,
+      outcome: "denied",
+      reasonCode: limitViolation,
+      action: params.action,
+      target,
+    });
+    res.status(403).json({ ok: false, error: { ...COMMERCIAL_LIMIT_ERROR, reasonCode: limitViolation } });
+    return false;
+  }
+  const recorded = await recordSubscriptionDecision({
+    prisma: request.prisma!,
+    actor,
+    outcome: "authorized",
+    reasonCode: authority.reasonCode,
+    action: params.action,
+    target,
+  });
+  if (!recorded) {
+    res.status(503).json({
+      ok: false,
+      error: { code: "SUBSCRIBE_DECISION_RECORD_UNAVAILABLE", message: "Não foi possível registrar a decisão de contratação. Nada foi alterado." },
+    });
+    return false;
+  }
+  return true;
+}
 
 const DelegationCreateSchema = z.object({
   delegateeId: z.string().min(1),
@@ -318,6 +397,17 @@ delegationsRouter.post("/delegations", async (req, res) => {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
+  if (parsed.data.marketplaceId && parsed.data.delegateeId === request.authContext.tenantId) {
+    const allowed = await requireContractingAuthority(request, res, {
+      action: "delegations.self_delegation",
+      marketplaceItemId: parsed.data.marketplaceId,
+      scope: parsed.data.scope,
+      trustMin: parsed.data.trustMin,
+      validUntil: parsed.data.validUntil,
+    });
+    if (!allowed) return;
+  }
+
   const validUntil = new Date(parsed.data.validUntil);
   const policyPayload = {
     delegatorId: request.authContext.tenantId,
@@ -375,6 +465,23 @@ delegationsRouter.patch("/delegations/:id", async (req, res) => {
       existing.delegateeId !== request.authContext.tenantId)
   ) {
     return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+  }
+
+  const changesTerms =
+    (parsed.data.marketplaceId !== undefined && parsed.data.marketplaceId !== existing.marketplaceId) ||
+    (parsed.data.scope !== undefined && parsed.data.scope !== existing.scope) ||
+    (parsed.data.trustMin !== undefined && parsed.data.trustMin !== existing.trustMin) ||
+    (parsed.data.validUntil !== undefined && new Date(parsed.data.validUntil).getTime() !== existing.validUntil.getTime());
+  if (changesTerms && existing.delegatorId !== request.authContext.tenantId) {
+    // A delegatária não altera sozinha os termos que recebeu; quem pode contratar pode.
+    const allowed = await requireContractingAuthority(request, res, {
+      action: "delegations.retarget",
+      marketplaceItemId: parsed.data.marketplaceId ?? existing.marketplaceId ?? null,
+      scope: parsed.data.scope ?? existing.scope,
+      trustMin: parsed.data.trustMin ?? existing.trustMin,
+      validUntil: parsed.data.validUntil ?? existing.validUntil.toISOString(),
+    });
+    if (!allowed) return;
   }
 
   const validUntil = parsed.data.validUntil ? new Date(parsed.data.validUntil) : existing.validUntil;

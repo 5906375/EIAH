@@ -66,6 +66,8 @@ assinatura digital ou verificação independente de identidade.
 
 - Administrador da plataforma EIAH = lista fixa de e-mails no servidor (`EIAH_PLATFORM_ADMIN_EMAILS`), começando por
   Carlos Alberto Merlo. Não é alterável pela interface e é independente do papel no tenant.
+  **Nota (2026-10-20):** esta regra por e-mail fica mantida só no ambiente de desenvolvimento controlado; a
+  decisão sobre uso em produção real depende de registro interno, não publicado.
 - Decide pela tela `/app/admin/aprovacoes` (fila ordenada pelo score) **e** pelo chat do front door, sempre com clique
   de confirmação explícito.
 - Observação obrigatória ao recusar, ao revogar e ao decidir contra a recomendação do agente.

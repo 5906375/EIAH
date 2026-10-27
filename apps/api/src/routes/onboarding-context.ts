@@ -70,6 +70,8 @@ async function resolveOnboardingRoleProfile(request: TenantAwareRequest) {
     userId,
   });
 
+  // Vínculo revogado/inativo mantém o papel gravado só como histórico: não vira perfil operacional de Founder/administrador.
+  if (!workspaceSummary.membershipActive) return "workspace_member" as const;
   const normalizedRoleKey = (workspaceSummary.selectedRoleKey ?? "").trim().toLowerCase();
   if (normalizedRoleKey === "founder" || normalizedRoleKey === "global_admin") {
     return "founder_global" as const;

@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ImobChatWidgets } from "./ImobChatWidgets";
+import { ImobChatWidgets, isSelfServiceDetailsPath, withImobReturnTo } from "./ImobChatWidgets";
+import { canShowSubscribeControl, parseCommercialDetailsRequest, resolveCommercialAuthorityView, safeImobReturnTo } from "../../pages/self-service/commercialContext";
 import type { ImobPresentationWidget, ImobTransversalCapability } from "@/lib/api";
 
 test("IMOB widgets render contextual specialists without changing widget structure", () => {
@@ -137,6 +138,7 @@ function capability(over: Partial<ImobTransversalCapability> = {}): ImobTransver
   return {
     need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
     state: "habilitavel",
+    authority: { status: "contratacao_autorizada", reasonCode: "AUTHORITY_GRANTED" },
     reasons: ["NOT_ENABLED_IN_WORKSPACE"],
     provider: {
       agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", origin: "agent_registry",
@@ -147,7 +149,7 @@ function capability(over: Partial<ImobTransversalCapability> = {}): ImobTransver
       marketplaceItemId: "mkt-MKT", visibility: "public",
       conditions: ["Assinatura governada pelo Marketplace (delegação e política do workspace).", "Confirmação humana explícita antes de habilitar."],
     },
-    nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", path: "/app/marketplace" },
+    nextAction: { kind: "open_commercial_details", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "mkt-MKT", workspaceId: "ws-1", path: "/self-service?marketplaceItem=mkt-MKT&workspaceId=ws-1" },
     ...over,
   };
 }
@@ -159,7 +161,7 @@ function renderTransversal(items: ImobTransversalCapability[], kind: "case_summa
   return renderToStaticMarkup(<ImobChatWidgets widget={widget} onAction={() => {}} />);
 }
 
-test("transversal card: habilitável mostra especialidade, agente, capacidades, modelos, condições e a ação de habilitar agente", () => {
+test("transversal card: habilitável com autoridade mostra especialidade, agente, capacidades, modelos, condições e o caminho de revisão", () => {
   const html = renderTransversal([capability()]);
   assert.match(html, /Especialistas transversais/);
   assert.match(html, /data-capability-state="habilitavel"/);
@@ -170,7 +172,12 @@ test("transversal card: habilitável mostra especialidade, agente, capacidades, 
   assert.match(html, /Modelos homologados neste workspace/);
   assert.match(html, /Campanha de lançamento/);
   assert.match(html, /Confirmação humana explícita antes de habilitar/);
-  assert.match(html, /<a href="\/app\/marketplace"[^>]*>Revisar e habilitar o agente no Marketplace<\/a>/);
+  assert.match(html, /data-capability-authority="contratacao_autorizada"/);
+  // o destino é o Self-service (assinatura de agente), identificando item e workspace; NÃO o catálogo de verticais
+  assert.match(html, /<a href="\/self-service\?marketplaceItem=mkt-MKT&(amp;)?workspaceId=ws-1"[^>]*>Ver os detalhes comerciais de MKT no Self-service<\/a>/);
+  assert.doesNotMatch(html, /href="\/app\/marketplace/);
+  assert.match(html, /Nada foi contratado/);
+  assert.match(html, /só acontece com a sua confirmação no Self-service/i);
   assert.match(html, /habilitar um agente não é convidar uma pessoa para o workspace/i);
   assert.doesNotMatch(html, />\s*Convidar/, "nenhuma ação de convite de pessoa");
   assert.doesNotMatch(html, /<button/, "apresentação apenas: nada é executado pelo cartão");
@@ -202,8 +209,10 @@ test("transversal card: payload incoerente falha fechado (estado desconhecido, a
   assert.doesNotMatch(forgedState, /<a /);
   const actionWithoutState = renderTransversal([capability({ state: "indisponivel" })]);
   assert.doesNotMatch(actionWithoutState, /<a /, "a ação só aparece para habilitável");
-  const foreignTarget = renderTransversal([capability({ nextAction: { kind: "enable_agent", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "x", path: "https://example.invalid/enable" } })]);
-  assert.doesNotMatch(foreignTarget, /<a |example\.invalid/);
+  for (const path of ["https://example.invalid/enable", "/app/marketplace", "//example.invalid/self-service?marketplaceItem=x", "/self-service?marketplaceItem=x<script>"]) {
+    const foreignTarget = renderTransversal([capability({ nextAction: { kind: "open_commercial_details", actionDomain: "agent_enablement", requiresHumanConfirmation: true, marketplaceItemId: "x", workspaceId: "ws-1", path } })]);
+    assert.doesNotMatch(foreignTarget, /<a |example\.invalid|<script>/, path);
+  }
   const noRecipes = renderTransversal([capability({ recipes: undefined as never, provider: null })]);
   assert.match(noRecipes, /data-capability-state="habilitavel"/);
 });
@@ -212,7 +221,8 @@ test("transversal card: modelos - lista vazia e não verificados são distintos;
   const empty = renderTransversal([capability({ recipes: { status: "ok", items: [] } })]);
   assert.match(empty, /Nenhum modelo homologado disponível para este workspace/);
   const unverified = renderTransversal([capability({ recipes: { status: "nao_verificado", items: [] } })]);
-  assert.match(unverified, /Modelos homologados: não verificados/);
+  assert.match(unverified, /Não foi possível consultar os modelos homologados agora\. Nenhum modelo está sendo tratado como homologado/);
+  assert.doesNotMatch(unverified, /Nenhum modelo homologado disponível/, "não verificado nunca se confunde com lista vazia");
   const many = renderTransversal([capability({ recipes: { status: "ok", items: Array.from({ length: 6 }, (_, i) => ({ id: `r${i}`, title: `Modelo ${i}`, summary: "s", tags: [], homologatedAt: null })) } })]);
   assert.equal((many.match(/Modelo \d/g) ?? []).length, 3);
 });
@@ -226,4 +236,108 @@ test("transversal card: coexiste com os apoios internos e aparece também no che
   assert.doesNotMatch(html, /Especialistas transversais/, "sem descoberta, nenhum cartão transversal");
   assert.match(html, /Apoios contextuais/);
   assert.equal(renderTransversal([]).includes("Especialistas transversais"), false);
+});
+
+test("transversal card: sem autoridade de contratação só há recomendação, sem link, botão ou pedido inexistente", () => {
+  const noAuthority = capability({
+    authority: { status: "somente_consulta", reasonCode: "MEMBERSHIP_PERMISSION_MISSING" },
+    nextAction: { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe", marketplaceItemId: "mkt-MKT", workspaceId: "ws-1", detailsPath: "/self-service?marketplaceItem=mkt-MKT&workspaceId=ws-1" },
+  });
+  const html = renderTransversal([noAuthority]);
+  assert.match(html, /data-capability-state="habilitavel"/);
+  assert.match(html, /data-capability-authority="somente_consulta"/);
+  assert.match(html, /Marketing GPS \(MKT\)/, "a recomendação continua visível");
+  assert.match(html, /Campanha de lançamento/, "modelos homologados continuam visíveis");
+  assert.match(html, /cabe a um responsável comercial autorizado deste workspace/i);
+  assert.match(html, /Você pode consultar os detalhes, mas não contratar/i);
+  assert.match(html, /não contrata nem habilita agentes/i);
+  // único link: consulta dos detalhes (Self-service), explicitamente "somente consulta"; nenhum botão, nenhum pedido inexistente
+  assert.equal((html.match(/<a /g) ?? []).length, 1);
+  assert.match(html, /Ver os detalhes de MKT \(somente consulta\)/);
+  assert.doesNotMatch(html, /<button/);
+  assert.doesNotMatch(html, /Revisar as condições|Solicitar|Contratar o|Assinar|Habilitar o agente/i);
+  // sem rota de detalhes confiável (ausente ou fora do Self-service) o cartão fica só com a recomendação
+  for (const detailsPath of [undefined, "/app/marketplace", "https://example.invalid/x", "/self-service?marketplaceItem=a b"]) {
+    const bare = renderTransversal([{ ...noAuthority, nextAction: { ...(noAuthority.nextAction as object), detailsPath } as never }]);
+    assert.doesNotMatch(bare, /<a |example\.invalid/, String(detailsPath));
+  }
+});
+
+test("transversal card: autoridade é soberana do servidor - ausente, desconhecida ou incoerente com a ação falha fechado", () => {
+  const withoutAuthority = renderTransversal([capability({ authority: undefined })]);
+  assert.match(withoutAuthority, /data-capability-authority="somente_consulta"/);
+  assert.doesNotMatch(withoutAuthority, /<a /, "habilitável sem autoridade informada não oferece caminho");
+  const unknown = renderTransversal([capability({ authority: { status: "autorizado-quase" as never, reasonCode: "X" } })]);
+  assert.doesNotMatch(unknown, /<a /);
+  // ação de revisão sem autoridade (payload forjado ou inconsistente): continua sem link
+  const forged = renderTransversal([capability({ authority: { status: "somente_consulta", reasonCode: "POLICY_NOT_GRANTED" } })]);
+  assert.doesNotMatch(forged, /Ver os detalhes comerciais/, "payload de contratação com autoridade negada não vira link de contratação");
+  // autoridade sem estado habilitável também não cria link
+  const wrongState = renderTransversal([capability({ state: "indisponivel" })]);
+  assert.doesNotMatch(wrongState, /<a /);
+  const unverifiedWithAuthority = renderTransversal([capability({ state: "nao_verificado", nextAction: { kind: "none", actionDomain: null } })]);
+  assert.doesNotMatch(unverifiedWithAuthority, /<a /);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P10-D/E: destino comercial (Self-service) e visão de autoridade; a URL nunca vale como permissão
+// ---------------------------------------------------------------------------------------------
+
+test("P10 destino comercial: só o Self-service identificando item é aceito; retorno só ao chat IMOB", () => {
+  assert.equal(isSelfServiceDetailsPath("/self-service?marketplaceItem=mkt-MKT&workspaceId=ws-1"), true);
+  for (const bad of ["/app/marketplace", "/self-service", "https://example.invalid/self-service?marketplaceItem=x", "//x/self-service?marketplaceItem=x", "/self-service?marketplaceItem=a b", undefined, 42]) {
+    assert.equal(isSelfServiceDetailsPath(bad), false, String(bad));
+  }
+  // fora do navegador não há retorno a acrescentar (nunca inventa caseId)
+  assert.equal(withImobReturnTo("/self-service?marketplaceItem=x"), "/self-service?marketplaceItem=x");
+  assert.equal(safeImobReturnTo("/app/imob/chat?caseId=case-1"), "/app/imob/chat?caseId=case-1");
+  // EIAH-FD-001: o componente (dentro do Front Door) só reconhece o Front Door; outra superfície informa o próprio retorno (a página hospedeira)
+  const realWindow = (globalThis as { window?: unknown }).window;
+  const at = (pathname: string, search = "") => { (globalThis as { window?: unknown }).window = { location: { pathname, search } }; };
+  try {
+    const details = "/self-service?marketplaceItem=x";
+    at("/app/chat", "?agent=EIAH");
+    assert.equal(withImobReturnTo(details), `${details}&returnTo=${encodeURIComponent("/app/chat?agent=EIAH")}`);
+    at("/app/chatter");
+    assert.equal(withImobReturnTo(details), details, "prefixo parecido não é o Front Door");
+    at("/app/imob/chat", "?caseId=case-1");
+    assert.equal(withImobReturnTo(details), details, "sem informe do hospedeiro, a rota legada não é reconhecida pelo componente");
+    assert.equal(
+      withImobReturnTo(details, "/app/imob/chat?caseId=case-1"),
+      `${details}&returnTo=${encodeURIComponent("/app/imob/chat?caseId=case-1")}`,
+      "o hospedeiro legado informa o seu retorno",
+    );
+  } finally {
+    if (realWindow === undefined) delete (globalThis as { window?: unknown }).window;
+    else (globalThis as { window?: unknown }).window = realWindow;
+  }
+  // P11: o Front Door (/app/chat) também é destino de retorno válido, só ele (nunca prefixos parecidos nem destinos externos)
+  assert.equal(safeImobReturnTo("/app/chat"), "/app/chat");
+  assert.equal(safeImobReturnTo("/app/chat?agent=EIAH"), "/app/chat?agent=EIAH");
+  for (const bad of ["/app/chatter", "/app/chat//x", "/app/chat/../billing", "//example.invalid/app/chat"]) assert.equal(safeImobReturnTo(bad), null, bad);
+  for (const bad of ["https://example.invalid/app/imob/chat", "//example.invalid", "/app/imob/chat//x", "/app/marketplace", "/app/imob/chat?x=<a>", null, undefined]) {
+    assert.equal(safeImobReturnTo(bad as never), null, String(bad));
+  }
+});
+
+test("P10 Self-service: o controle de contratar só existe para quem o SERVIDOR apurou como titular (fail-closed)", () => {
+  const holder = resolveCommercialAuthorityView({ ok: true, holder: { validUntil: null, limits: { allowedScopes: ["marketplace.subscribe"], maxValidityDays: 30 } }, grantor: null });
+  assert.equal(holder.status, "holder");
+  assert.equal(canShowSubscribeControl(holder), true);
+  const consult = resolveCommercialAuthorityView({ ok: true, holder: null, grantor: null });
+  assert.equal(consult.status, "consult_only");
+  for (const view of [consult, resolveCommercialAuthorityView(undefined), resolveCommercialAuthorityView({ ok: false }), resolveCommercialAuthorityView({ ok: true }), resolveCommercialAuthorityView({ ok: true, holder: "yes" }), { status: "loading" } as const]) {
+    assert.equal(canShowSubscribeControl(view), false);
+  }
+  assert.equal(resolveCommercialAuthorityView({ ok: true, holder: {} }).status, "holder", "a decisão é do servidor; limites ausentes não criam autoridade extra");
+});
+
+test("P10 Self-service: parâmetros da URL só destacam o item e o retorno; item inválido ou de outro workspace não destaca", () => {
+  assert.deepEqual(parseCommercialDetailsRequest("?marketplaceItem=mkt-MKT&workspaceId=ws-1&returnTo=%2Fapp%2Fimob%2Fchat%3FcaseId%3Dc1", "ws-1"), { itemId: "mkt-MKT", workspaceMismatch: false, returnTo: "/app/imob/chat?caseId=c1" });
+  assert.equal(parseCommercialDetailsRequest("?marketplaceItem=mkt-MKT&workspaceId=ws-OUTRO", "ws-1").workspaceMismatch, true);
+  assert.equal(parseCommercialDetailsRequest("?marketplaceItem=../../etc&workspaceId=ws-1", "ws-1").itemId, null);
+  assert.equal(parseCommercialDetailsRequest("?marketplaceItem=x&returnTo=https%3A%2F%2Fexample.invalid", "ws-1").returnTo, null);
+  // nenhum parâmetro de autoridade é lido: a view vem só da resposta do servidor
+  const forged = parseCommercialDetailsRequest("?marketplaceItem=x&authority=holder&canSubscribe=true", "ws-1");
+  assert.deepEqual(Object.keys(forged).sort(), ["itemId", "returnTo", "workspaceMismatch"]);
 });

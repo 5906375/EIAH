@@ -12,9 +12,21 @@ export type MessagePresentationSnapshot = {
   snapshotVersion: typeof PRESENTATION_SNAPSHOT_VERSION;
   compatibilityMode?: "snapshot" | "legacy_conservative";
   quickReplySource?: "backend_payload" | "agent_contract" | "frontend_copy" | "none";
-  verticalContext?: "IMOB" | "LEGAL" | null;
+  verticalContext?: "IMOB" | "LEGAL" | "LOGISTICA" | null;
   /** Handoff para vertical na mesma conversa, já avaliado no servidor (chat.vertical_handoff.v2). */
   verticalHandoff?: ChatVerticalHandoffResult | null;
+  /** Handoff de Logística permitido: esta mensagem abre a jornada de preparação na conversa (M4). Sinal de apresentação, não de autorização. */
+  logisticaJourney?: boolean | null;
+  /** FD-CHAT-ONLY-001: mensagem proativa com o cartão de pendências de decisão humana (J17). */
+  logisticaPendingDecisions?: boolean | null;
+  /** FD-PREDUIMP-001: abre o cartão do Pré-DUIMP (modo shadow) NA conversa. */
+  preDuimpCard?: boolean | null;
+  /** FD-SINGLE-ENTRY-001: abre o cartão "Gestão IMOB" (aprovações, prioridades, gargalos, funil, casos) NA conversa. */
+  imobManagementCard?: boolean | null;
+  /** FD-IMOB-PERSISTENCE-001: abre o cartão "Histórico IMOB" (conversas, threads, entrevista) NA conversa. */
+  imobHistoryCard?: boolean | null;
+  /** Veredito do servidor sobre a referência de caso enviada no handoff de Logística (sem dados do caso). */
+  logisticaCase?: { status: "resolved" | "unavailable"; caseRef: string } | null;
   /** Ativação de vertical pela conversa; "proposed" guarda a proposta que aguarda confirmação explícita. */
   verticalActivation?: VerticalActivationSnapshot | null;
   /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3); aguarda confirmação explícita. */

@@ -36,7 +36,8 @@ const tenantId = `tenant-imob-e2e-${suffix}`;
 const workspaceId = `ws-imob-e2e-${suffix}`;
 const workspaceIdB = `ws-imob-e2e-b-${suffix}`;
 const apiToken = `tok-imob-e2e-${suffix}`;
-// API token has NO userId so readImobWorkspaceAccessProfile grants full IMOB permissions
+const userId = `user-imob-e2e-${suffix}`;
+// AUTHZ-IMOB-SERVICE-001: token sem userId NÃO recebe mais o IMOB; o teste usa um humano com vínculo ATIVO explícito (onboarding pelo serviço existente).
 let request: ReturnType<typeof supertest>;
 
 // ─── Setup / teardown ────────────────────────────────────────────────────────
@@ -49,18 +50,26 @@ before(async () => {
   await prismaGlobal.tenant.create({ data: { id: tenantId, name: `E2E IMOB Tenant ${suffix}` } });
   await prismaGlobal.workspace.create({ data: { id: workspaceId, tenantId, name: `E2E WS A ${suffix}` } });
   await prismaGlobal.workspace.create({ data: { id: workspaceIdB, tenantId, name: `E2E WS B ${suffix}` } });
-  // No userId on this token — grants full IMOB permissions without workspace membership lookup
+  await prismaGlobal.user.create({ data: { id: userId, tenantId, email: `${userId}@example.com`, displayName: "IMOB E2E Tester" } });
   await prismaGlobal.apiToken.create({
-    data: { token: apiToken, tenantId, workspaceId, description: "imob-e2e-phase42", revoked: false },
+    data: { token: apiToken, tenantId, workspaceId, userId, description: "imob-e2e-phase42", revoked: false },
   });
+  const { installImobForTest } = await import("./support/imobInstallationFixture");
+  const { ensureWorkspaceMembershipForUser } = await import("../services/workspaceResponsibility.js");
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantId, workspaceId: workspaceId, userId: userId });
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [tenantId]);
   await prismaGlobal.memoryEvent.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobCase.deleteMany({ where: { tenantId } });
   await prismaGlobal.run.deleteMany({ where: { tenantId } });
   await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
+  await prismaGlobal.$executeRaw`DELETE FROM eiah_workspace_memberships WHERE tenant_id = ${tenantId}`;
+  await prismaGlobal.user.deleteMany({ where: { tenantId } });
   await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
   await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
   await closePrismaResources();

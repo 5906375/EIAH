@@ -56,6 +56,17 @@ import {
   enrichLauncherDecisionWithVerticalHandoff,
 } from "@/components/agents/verticalHandoffEngine";
 import { ChatVerticalHandoffCard } from "@/components/chat/ChatVerticalHandoffCard";
+import LogisticaConversationJourney from "@/features/logistica/LogisticaConversationJourney";
+import LogisticaPendingDecisionsPanel from "@/features/logistica/LogisticaPendingDecisionsPanel";
+import PreDuimpConversationCard from "@/features/logistica/PreDuimpConversationCard";
+import { attachPreDuimpCardToSnapshot } from "@/components/agents/preDuimpConversationEngine";
+import ImobManagementConversationCard from "@/features/imob/ImobManagementConversationCard";
+import ImobHistoryConversationCard from "@/features/imob/persistence/ImobHistoryConversationCard";
+import { useImobAuthority } from "@/components/agents/useImobAuthority";
+import { useImobConversationPersistence } from "@/features/imob/persistence/useImobConversationPersistence";
+import { attachImobHistoryCardToSnapshot } from "@/components/agents/imobHistoryConversationEngine";
+import { attachImobManagementCardToSnapshot } from "@/components/agents/imobManagementConversationEngine";
+import { attachLogisticaPendingToSnapshot, fetchLogisticaPendingNotice, hasLogisticaPendingMessage } from "@/components/agents/logisticaPendingNoticeEngine";
 import { enrichLauncherDecisionWithVerticalActivation } from "@/components/agents/verticalActivationEngine";
 import { attachFrontDoorAccessCardToSnapshot, maskAccessCreationInput } from "@/components/agents/frontDoorAccessEngine";
 import {
@@ -104,6 +115,8 @@ type ChatMessage = {
   presentationSnapshot?: MessagePresentationSnapshot;
   /** Parte do IMOB (formulário, confirmação) quando a conversa está no IMOB (ADR-010, etapa D). */
   imobStructured?: StructuredMessage;
+  /** Gravada no histórico persistido do IMOB (FD-IMOB-PERSISTENCE-001). */
+  imobPersisted?: { conversationId: string; messageId: string };
 };
 
 type ThreadSnapshot = {
@@ -358,6 +371,7 @@ export default function ChatAgentLauncher({
     topic?: string | null;
     planHint?: string | null;
     domainHint?: string | null;
+    entryHint?: string | null;
   };
 }) {
   const agents = useMemo(
@@ -388,6 +402,41 @@ export default function ChatAgentLauncher({
   const [conversationFinalizing, setConversationFinalizing] = useState(false);
   const [lastRouteIntent, setLastRouteIntent] = useState<"proposal" | "imob" | "playbook" | "help" | "orchestrator" | null>(null);
   const { items: catalogAgents } = useAgents();
+  // M4: a jornada de preparação de Logística fica na ÚLTIMA mensagem que a abriu (uma só instância por conversa); o engine define, aqui só se renderiza.
+  const lastLogisticaJourneyMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.presentationSnapshot?.logisticaJourney) return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
+  // FD-PREDUIMP-001: o cartão do Pré-DUIMP também fica numa só mensagem (a última que o abriu).
+  const lastPreDuimpMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.presentationSnapshot?.preDuimpCard) return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
+  // FD-IMOB-PERSISTENCE-001: o cartão "Histórico IMOB" também fica numa só mensagem (a última que o abriu).
+  const lastImobHistoryMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.presentationSnapshot?.imobHistoryCard) return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
+  // FD-SINGLE-ENTRY-001: o cartão "Gestão IMOB" também fica numa só mensagem (a última que o abriu).
+  const lastImobManagementMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.presentationSnapshot?.imobManagementCard) return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
+  // J17: o cartão de pendências também fica numa só mensagem (a última que o abriu).
+  const lastLogisticaPendingMessageId = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index]?.presentationSnapshot?.logisticaPendingDecisions) return messages[index]!.id;
+    }
+    return null;
+  }, [messages]);
   const selectedCatalogAgent = useMemo(
     () => (activeAgentId ? (catalogAgents.find((item) => String(item?.id ?? "") === activeAgentId) ?? null) : null),
     [catalogAgents, activeAgentId]
@@ -441,7 +490,9 @@ export default function ChatAgentLauncher({
     []
   );
   const session = useSession();
-  const showImobSurface = isImobSurfaceAvailable(session);
+  // AUTHZ-IMOB-HANDOFF-001: a superfície do IMOB só existe com a autoridade confirmada pelo Core (handoff somente leitura).
+  const imobAuthorityAllowed = useImobAuthority({ session, scope: `${session.tenantId ?? ""}:${session.workspaceId ?? ""}:${session.userId ?? ""}`, messages });
+  const showImobSurface = isImobSurfaceAvailable(session) && imobAuthorityAllowed;
   const effectiveWorkspaceId = workspaceId ?? session.workspaceId;
   const workspaceDisplayLabel = session.branding?.workspaceLabel?.trim() || effectiveWorkspaceId || "workspace atual";
   const { executeAgent } = useAgentExecution();
@@ -465,9 +516,15 @@ export default function ChatAgentLauncher({
     conversationGenerationRef.current += 1;
   }
   useEffect(() => () => { conversationGenerationRef.current += 1; }, []);
+  // FD-IMOB-PERSISTENCE-001: histórico persistido do IMOB (chat IMOB existente) hospedado por esta conversa; a API autoriza.
+  const imobPersistence = useImobConversationPersistence<ChatMessage>({
+    scopeKey: `${session.tenantId ?? ""}:${effectiveWorkspaceId ?? ""}:${session.userId ?? ""}`,
+    active: showImobSurface, messages, setMessages,
+  });
   const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({
     messages, setMessages, getConversationGeneration: () => conversationGenerationRef.current,
     getConversationScopeKey: () => activeAgentId ?? FALLBACK_AGENT.id,
+    persistence: imobPersistence,
   });
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&
@@ -1147,7 +1204,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = attachFrontDoorBillingToSnapshot(attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+      const localSnapshot = attachImobHistoryCardToSnapshot(attachImobManagementCardToSnapshot(attachPreDuimpCardToSnapshot(attachFrontDoorBillingToSnapshot(attachFrontDoorAccessCardToSnapshot(attachVerticalAccessNoticeToSnapshot(attachVerticalApprovalChatToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
         selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1167,7 +1224,7 @@ export default function ChatAgentLauncher({
         proposalMode,
         attachmentIntake,
         usedReplyInputs: [...usedQuickReplyKeys],
-      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision), turnDecision);
+      }), turnDecision), turnDecision), turnDecision.verticalAccessNotice), turnDecision), turnDecision), turnDecision), turnDecision), turnDecision);
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
         onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
@@ -1375,6 +1432,7 @@ export default function ChatAgentLauncher({
 
   const handleNewConversation = () => {
     conversationGenerationRef.current += 1;
+    imobPersistence.startNew();
     stopStreaming();
     setMessages([]);
     setRunId(null);
@@ -1604,23 +1662,24 @@ export default function ChatAgentLauncher({
         if (!isCurrent()) return;
         const decision = await resolveLauncherNavigationDecision({
           domainHint: launcherContext?.domainHint,
+          entryHint: launcherContext?.entryHint,
           isUnifiedEiah: isUnifiedEiahMode,
           continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
         });
         const resolved = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
         if (!isCurrent() || !resolved?.content) return;
-        const snapshot = attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
+        const snapshot = attachPreDuimpCardToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
           selectedAgent: selectedCatalogAgent, routeIntent: resolved.presentationRouteIntent,
           eiahMode: resolved.eiahMode, renderVariant: resolved.renderVariant,
           resolvedQuickReplies: resolved.resolvedQuickReplies,
           isHelpCenterMode: isUnifiedEiahMode, proposalMode, attachmentIntake,
-        }), resolved);
+        }), resolved), resolved);
         pushMessage({ id: `assistant-vertical-entry-${Date.now()}`, role: "assistant", content: resolved.content,
           status: "done", presentationSnapshot: snapshot });
       })();
     }, 0);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [threadKey, launcherContext?.domainHint, isUnifiedEiahMode, activeAgentId, session.token, session.userId]);
+  }, [threadKey, launcherContext?.domainHint, launcherContext?.entryHint, isUnifiedEiahMode, activeAgentId, session.token, session.userId]);
 
   // ADR-011 §2.4: avisos da liberação EIAH chegam como mensagem na conversa, uma vez por conversa.
   useEffect(() => {
@@ -1663,6 +1722,42 @@ export default function ChatAgentLauncher({
       active = false;
     };
     // Só ao abrir a conversa (ou trocar de conversa); a lista de mensagens não reabre avisos.
+  }, [threadKey, isUnifiedEiahMode, proposalMode]);
+
+  // FD-CHAT-ONLY-001: pendências de decisão humana (J17) chegam como mensagem da conversa, uma vez por conversa, só a quem tem algo a ver.
+  useEffect(() => {
+    if (!isUnifiedEiahMode || proposalMode) return;
+    let active = true;
+    void fetchLogisticaPendingNotice().then((notice) => {
+      if (!active || !notice) return;
+      setMessages((prev) => {
+        if (hasLogisticaPendingMessage(prev.map((message) => message.presentationSnapshot))) return prev;
+        return [
+          ...prev,
+          {
+            id: `assistant-logistica-pending-${Date.now()}`,
+            role: "assistant",
+            content: notice.content,
+            status: "done",
+            presentationSnapshot: attachLogisticaPendingToSnapshot(
+              createLauncherPresentationSnapshot({
+                selectedAgent: selectedCatalogAgent,
+                routeIntent: "help",
+                eiahMode: "help",
+                confidence: 0.9,
+                renderVariant: "simple_help",
+                resolvedQuickReplies: [],
+                isHelpCenterMode: isUnifiedEiahMode,
+                proposalMode,
+                attachmentIntake,
+              }),
+            ),
+          },
+        ];
+      });
+    });
+    return () => { active = false; };
+    // Só ao abrir a conversa (ou trocar de conversa), como os avisos da liberação.
   }, [threadKey, isUnifiedEiahMode, proposalMode]);
 
   const lastUserMessage = useMemo(
@@ -1761,7 +1856,7 @@ export default function ChatAgentLauncher({
   );
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-8 shadow-lg shadow-black/20">
+    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-2 shadow-lg shadow-black/20 sm:p-8">
       <div className="absolute -left-32 top-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" aria-hidden />
       <div className="absolute -right-10 top-40 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
@@ -1786,7 +1881,7 @@ export default function ChatAgentLauncher({
 
       <div className="relative z-10 grid gap-6">
         <div className="flex h-full flex-col gap-4">
-          <div className="glass-subtle flex-1 p-6">
+          <div className="glass-subtle flex-1 p-2 sm:p-6">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-muted-foreground">
                   Conversa ativa · {conversationDomainLabel(session.activeDomain)}
@@ -1816,7 +1911,8 @@ export default function ChatAgentLauncher({
 
             <div
               ref={scrollRef}
-              className="no-scrollbar h-[360px] overflow-y-auto rounded-3xl border border-white/5 bg-black/20 p-4"
+              data-testid="launcher-conversation-surface"
+              className={`no-scrollbar h-[62vh] min-h-[360px] overflow-y-auto rounded-3xl border border-white/5 bg-black/20 p-1.5 sm:p-4 ${lastLogisticaJourneyMessageId || lastLogisticaPendingMessageId || lastPreDuimpMessageId ? "sm:h-[70vh]" : "sm:h-[360px]"}`}
             >
               <div className="space-y-4">
                 {messages
@@ -1831,7 +1927,7 @@ export default function ChatAgentLauncher({
                           key={message.id}
                           className="flex w-full max-w-full animate-in flex-col gap-3 overflow-hidden fade-in slide-in-from-bottom-2"
                         >
-                          <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-4 shadow-xl backdrop-blur-md">
+                          <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-2.5 shadow-xl backdrop-blur-md sm:p-4">
                             {message.imobStructured ? (
                               <ImobFrontDoorPart
                                 message={message.imobStructured}
@@ -1898,6 +1994,31 @@ export default function ChatAgentLauncher({
 
                                   {messageSnapshot?.verticalHandoff ? (
                                     <ChatVerticalHandoffCard result={messageSnapshot.verticalHandoff} />
+                                  ) : null}
+
+                                  {/* M4: preparação de Logística & Comex dentro da conversa (acesso decidido pelo servidor). */}
+                                  {messageSnapshot?.logisticaJourney && message.id === lastLogisticaJourneyMessageId ? (
+                                    <LogisticaConversationJourney serverCase={messageSnapshot.logisticaCase ?? null} />
+                                  ) : null}
+
+                                  {/* FD-PREDUIMP-001: Pré-DUIMP (modo shadow) NA conversa; o acesso é decidido pelo servidor no cartão. */}
+                                  {messageSnapshot?.preDuimpCard && message.id === lastPreDuimpMessageId ? (
+                                    <PreDuimpConversationCard />
+                                  ) : null}
+
+                                  {/* FD-SINGLE-ENTRY-001: gestão do IMOB NA conversa; os dados e as ações são autorizados pela API do IMOB. */}
+                                  {messageSnapshot?.imobManagementCard && message.id === lastImobManagementMessageId ? (
+                                    <ImobManagementConversationCard />
+                                  ) : null}
+
+                                  {/* FD-IMOB-PERSISTENCE-001: histórico persistido do IMOB NA conversa; a API autoriza. */}
+                                  {messageSnapshot?.imobHistoryCard && message.id === lastImobHistoryMessageId ? (
+                                    <ImobHistoryConversationCard persistence={imobPersistence} />
+                                  ) : null}
+
+                                  {/* J17: pendências de decisão humana NA conversa (acesso e elegibilidade decididos pelo servidor). */}
+                                  {messageSnapshot?.logisticaPendingDecisions && message.id === lastLogisticaPendingMessageId ? (
+                                    <LogisticaPendingDecisionsPanel />
                                   ) : null}
 
                                   {/* ADR-011 §2.3: fila de liberações com botões por pedido, só na última mensagem. */}
@@ -2008,8 +2129,8 @@ export default function ChatAgentLauncher({
 
           </div>
 
-	          <div className="glass-subtle flex items-end gap-3 p-4">
-            <div className="flex-1 space-y-3">
+	          <div className="glass-subtle flex flex-wrap items-end gap-3 p-3 sm:p-4">
+            <div className="flex-1 basis-full space-y-3 sm:basis-0">
               {attachmentIntake.enabled ? (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -2110,7 +2231,10 @@ export default function ChatAgentLauncher({
               ) : null}
               {showImobSurface ? (
                 <div className="w-full">
-                  <ImobActionMenuBar menus={IMOB_ACTION_MENUS} onSelect={imobFrontDoor.structuredForms.handleActionMenuSelect} />
+                  <ImobActionMenuBar
+                    menus={IMOB_ACTION_MENUS}
+                    onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
+                  />
                 </div>
               ) : null}
               <textarea
@@ -2123,7 +2247,7 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleNewConversation}
-	              className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground transition hover:border-accent/40"
+	              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-muted-foreground transition hover:border-accent/40"
 	            >
 	              Nova conversa
 	            </button>
@@ -2131,7 +2255,7 @@ export default function ChatAgentLauncher({
 	              <button
                 type="button"
                 onClick={handleApprove}
-                className="rounded-full border border-accent/60 bg-accent/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:border-accent hover:bg-accent/30"
+                className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:border-accent hover:bg-accent/30"
               >
                 Aprovar
               </button>
@@ -2139,7 +2263,7 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleSend}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
             >
               {isUploadingAttachment ? "Enviando..." : "Enviar"}

@@ -1,0 +1,7 @@
+[
+  {"run": "BACKUP-A-20261016T111525Z", "object": "BA-07-manifests", "version_id": "<S3_VERSION_ID>",
+   "status": "decifrado no iPhone (AgePony) — SHA-256 do plaintext confere (declaração do owner; Claude Code não recalculou)",
+   "evidence": "~/.eiah-aws/evidence/storage-02b8-r1-validated-20261016/R1-VALIDATED.md",
+   "scope": "somente este objeto (BA-07 da captura manual G3/G5); não vale para BA-01..BA-06 nem para outros runs",
+   "source": "declaração do owner"}
+]

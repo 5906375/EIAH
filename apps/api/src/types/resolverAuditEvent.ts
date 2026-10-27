@@ -1,3 +1,4 @@
+import { sessionDomainSchema } from "@eiah/contracts";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { experienceSurfaceIdSchema, type ExperienceSurfaceId } from "./experienceSurfaceContract";
@@ -28,7 +29,7 @@ export const resolverAuditRoleSchema = z.enum([
   "service_operator",
 ]);
 
-export const resolverAuditActiveDomainSchema = z.enum(["core", "imob"]);
+export const resolverAuditActiveDomainSchema = sessionDomainSchema;
 
 export const ResolverAuditEventSchema = z.object({
   eventId: z.string().min(1),

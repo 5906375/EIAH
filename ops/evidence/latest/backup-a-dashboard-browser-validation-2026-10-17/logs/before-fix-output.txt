@@ -1,0 +1,17 @@
+# Saída do primeiro teste em navegador real (Edge/CDP) contra o código ANTERIOR à correção, transcrita da execução de 2026-10-17 ~10:4x -03.
+# O script abortou na 12ª verificação porque a aba "Histórico" nunca apareceu depois do clique real.
+PASS página carrega e renderiza cartões da visão geral
+PASS app.js carregado (HTTP 200)
+PASS app.css carregado (HTTP 200)
+PASS /api/overview respondeu 200
+PASS script ativo (estado S existe e há atualização bem-sucedida)
+PASS botões de navegação têm cursor de clique
+FAIL barra da fila respeita o percentual (CSP não bloqueia estilo)  -> largura da barra = 100% do trilho
+FAIL clicar em Agenda mostra a agenda
+FAIL clicar em Depende de você mostra a seção
+FAIL clicar em Histórico mostra a tabela
+FAIL histórico lista runs  -> linhas=0
+FAIL histórico mostra total e fontes consultadas  -> null
+(abortado: TypeError: Cannot read properties of null (reading 'textContent'))
+# Diagnóstico (script de depuração): elementFromPoint no centro do botão "Agenda" = DIV.modal#modal (overlay invisível por cima de toda a página);
+# clique real não mudou a visão (view=overview); clique programático (element.click()) mudou (view=agenda).

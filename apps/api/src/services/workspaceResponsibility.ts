@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prismaGlobal } from "@repo/db";
 import { runIdempotentDdl } from "./idempotentDdl";
+import { observeWorkspaceBootstrapShadow, type WorkspaceBootstrapEntryPoint } from "./workspaceBootstrapShadow";
 
 const DEFAULT_WORKSPACE_ROLE_LABELS = ["Founder", "Admin", "Gestor", "Desenvolvedor", "Corretor", "Assistente"] as const;
 // ADR-011 §2.7: todo convite (link para criar a senha) vale 72 horas e uma única vez.
@@ -155,8 +156,15 @@ function grantedExtraPermissions(requestedPermissions?: string[] | null) {
   return (requestedPermissions ?? []).filter((permission) => typeof permission === "string" && GRANTABLE_PERMISSIONS.has(permission.trim()));
 }
 
-export function canActivateProducts(profile: { selectedRoleKey?: string | null; permissions?: string[] | null } | null | undefined) {
+/** Só o vínculo `active` concede autoridade operacional; o papel gravado de um vínculo revogado/inativo é apenas histórico. */
+export function isActiveMembershipStatus(status: unknown) {
+  return String(status ?? "").trim().toLowerCase() === "active";
+}
+
+export function canActivateProducts(profile: { selectedRoleKey?: string | null; permissions?: string[] | null; membershipStatus?: string | null } | null | undefined) {
   if (!profile) return false;
+  // Quem informa o status do vínculo (todo perfil lido do banco) e não está ativo nunca ativa, nem pelo papel Founder.
+  if (profile.membershipStatus !== undefined && !isActiveMembershipStatus(profile.membershipStatus)) return false;
   if (profile.selectedRoleKey && normalizeWorkspaceRoleKey(profile.selectedRoleKey) === "founder") return true;
   return hasWorkspacePermission(profile.permissions, PRODUCT_ACTIVATION_PERMISSION);
 }
@@ -433,7 +441,11 @@ async function upsertWorkspaceMembership(params: {
   await ensureWorkspaceResponsibilityStore(prisma);
   const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
   const normalizedRoleKey = normalizeWorkspaceRoleKey(params.roleKey);
-  const fallbackRole = roleOptions.find((item) => item.key === normalizedRoleKey) ?? roleOptions[0] ?? { key: "corretor", label: "Corretor", defaultPermissions: sanitizePermissionsForRole("corretor") };
+  // Papel desconhecido é negado (WORKSPACE_ROLE_INVALID) antes de qualquer escrita; o vínculo existente, se houver, permanece como estava.
+  const fallbackRole = roleOptions.find((item) => item.key === normalizedRoleKey);
+  if (!fallbackRole) {
+    throw Object.assign(new Error("Workspace role is invalid"), { code: "WORKSPACE_ROLE_INVALID", status: 400 });
+  }
   const permissions = sanitizePermissionsForRole(fallbackRole.key, params.permissions?.length ? params.permissions : fallbackRole.defaultPermissions);
 
   await prisma.$executeRaw`
@@ -472,6 +484,7 @@ async function bootstrapWorkspaceMembership(params: {
   tenantId: string;
   workspaceId: string;
   userId: string;
+  entryPoint?: WorkspaceBootstrapEntryPoint;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
@@ -510,7 +523,7 @@ async function bootstrapWorkspaceMembership(params: {
     (profileRoleKey && roleOptions.some((item) => item.key === profileRoleKey) ? profileRoleKey : null) ??
     (roleOptions.some((item) => item.key === "corretor") ? "corretor" : roleOptions[0]?.key ?? "corretor");
 
-  return upsertWorkspaceMembership({
+  const bootstrapped = await upsertWorkspaceMembership({
     prisma,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
@@ -518,6 +531,23 @@ async function bootstrapWorkspaceMembership(params: {
     roleKey: fallbackRoleKey,
     permissions: sanitizePermissionsForRole(fallbackRoleKey),
   });
+  // G2.2: observação em modo sombra DEPOIS do efeito legado; nunca lança, nunca altera o retorno (desligada por padrão).
+  await observeWorkspaceBootstrapShadow({
+    input: {
+      observation: "membership_bootstrap",
+      entryPoint: params.entryPoint,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      roleKeys: roleOptions.map((item) => item.key),
+      workspaceHasMembers,
+      legacyRoleKey,
+      profileRoleKey,
+      assignedRoleKey: bootstrapped.roleKey,
+      assignedPermissions: bootstrapped.permissions,
+    },
+  });
+  return bootstrapped;
 }
 
 async function promoteSoleWorkspaceMemberIfNeeded(params: {
@@ -526,35 +556,75 @@ async function promoteSoleWorkspaceMemberIfNeeded(params: {
   workspaceId: string;
   userId: string;
   membership: { role_key?: string | null; permissions?: unknown; status?: string | null };
+  entryPoint?: WorkspaceBootstrapEntryPoint;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
   const currentRoleKey = normalizeWorkspaceRoleKey(params.membership.role_key ?? "corretor");
   if (["founder", "admin", "gestor", "desenvolvedor", "developer"].includes(currentRoleKey)) {
     return params.membership;
   }
-  const countRows = await prisma.$queryRaw<Array<{ total: bigint | number }>>`
-    SELECT COUNT(*)::bigint AS total
-    FROM eiah_workspace_memberships
-    WHERE tenant_id = ${params.tenantId}
-      AND workspace_id = ${params.workspaceId}
-      AND status = 'active'
-  `;
-  if (Number(countRows[0]?.total ?? 0) !== 1) {
+  // AUTHZ-4b: a promoção só vale para o ÚNICO membro ATIVO, e esse membro tem de ser o próprio ator com o vínculo `active` NO ESTADO
+  // PERSISTIDO.
+  // A promoção é UMA instrução condicional: trava os membros ativos (FOR UPDATE), exige que o único ativo seja o ator e NÃO toca em `status`.
+  // Não cria vínculo, não reativa e não concede nada além do papel/permissões que o `upsert` já calculava para `founder`.
+  // AUTHZ-4b (autoridade expressa): a promoção só reescreve vínculos que ainda têm SOMENTE as permissões padrão do papel (o que o bootstrap
+  // grava). Qualquer permissão além do padrão (capacidade da Logística, products.activate, etapas do IMOB…) foi concedida de forma expressa:
+  // leitura nunca a sobrescreve nem a troca por outro papel.
+  const bootstrapDefaultPermissions = sanitizePermissionsForRole(currentRoleKey);
+  if (safeArray(params.membership.permissions).some((permission) => !bootstrapDefaultPermissions.includes(permission))) {
     return params.membership;
   }
-  const promoted = await upsertWorkspaceMembership({
-    prisma,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    userId: params.userId,
-    roleKey: "founder",
-    permissions: sanitizePermissionsForRole("founder"),
-    status: params.membership.status ?? "active",
+  const roleOptions = await listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId });
+  // Sem o papel founder no catálogo não há promoção: nunca recai em outro papel.
+  const founderRole = roleOptions.find((item) => item.key === normalizeWorkspaceRoleKey("founder"));
+  if (!founderRole) return params.membership;
+  const requestedPermissions = sanitizePermissionsForRole("founder");
+  const promotedPermissions = sanitizePermissionsForRole(founderRole.key, requestedPermissions.length ? requestedPermissions : founderRole.defaultPermissions);
+  const updated = await prisma.$queryRaw<Array<{ role_key: string; permissions: unknown; status: string }>>`
+    WITH active_members AS (
+      SELECT user_id
+      FROM eiah_workspace_memberships
+      WHERE tenant_id = ${params.tenantId}
+        AND workspace_id = ${params.workspaceId}
+        AND status = 'active'
+      ORDER BY user_id
+      FOR UPDATE
+    )
+    UPDATE eiah_workspace_memberships AS m
+    SET role_key = ${founderRole.key},
+        permissions = ${JSON.stringify(promotedPermissions)}::jsonb,
+        updated_at = NOW()
+    WHERE m.tenant_id = ${params.tenantId}
+      AND m.workspace_id = ${params.workspaceId}
+      AND m.user_id = ${params.userId}
+      AND m.status = 'active'
+      AND m.permissions <@ ${JSON.stringify(bootstrapDefaultPermissions)}::jsonb
+      AND (SELECT COUNT(*) FROM active_members) = 1
+      AND EXISTS (SELECT 1 FROM active_members am WHERE am.user_id = m.user_id)
+    RETURNING m.role_key, m.permissions, m.status
+  `;
+  if (updated.length === 0) {
+    return params.membership;
+  }
+  const promoted = { roleKey: updated[0]!.role_key, permissions: safeArray(updated[0]!.permissions) };
+  // G2.2: observação em modo sombra DEPOIS do efeito legado; nunca lança, nunca altera o retorno (desligada por padrão).
+  await observeWorkspaceBootstrapShadow({
+    input: {
+      observation: "sole_member_promotion",
+      entryPoint: params.entryPoint,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      previousRoleKey: currentRoleKey,
+      promotedRoleKey: promoted.roleKey,
+      promotedPermissions: promoted.permissions,
+      activeMemberCount: 1,
+    },
   });
   return {
     role_key: promoted.roleKey,
     permissions: promoted.permissions,
-    status: params.membership.status ?? "active",
+    status: updated[0]!.status,
   };
 }
 
@@ -563,6 +633,7 @@ async function readCurrentMembership(params: {
   tenantId: string;
   workspaceId: string;
   userId: string;
+  entryPoint?: WorkspaceBootstrapEntryPoint;
 }) {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
@@ -575,12 +646,18 @@ async function readCurrentMembership(params: {
     LIMIT 1
   `;
   if (rows[0]) {
+    // Vínculo não ativo: o papel gravado segue consultável (histórico), mas não concede permissão operacional alguma, não
+    // promove (AUTHZ-4b), não faz bootstrap e não reativa; o registro persistido não é alterado.
+    if (!isActiveMembershipStatus(rows[0].status)) {
+      return { role_key: rows[0].role_key, permissions: [] as string[], status: rows[0].status };
+    }
     return promoteSoleWorkspaceMemberIfNeeded({
       prisma,
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
       userId: params.userId,
       membership: rows[0],
+      entryPoint: params.entryPoint,
     });
   }
   return bootstrapWorkspaceMembership(params);
@@ -694,12 +771,17 @@ export async function readWorkspaceManagementSummary(params: {
 }) {
   const prisma = params.prisma ?? prismaGlobal;
   await ensureWorkspaceResponsibilityStore(prisma);
-  const [user, membershipRow, roleOptions, members, invitations] = await Promise.all([
+  // PROFILE-RACE-001: `readCurrentMembership` pode GRAVAR (criar/promover o vínculo do ator). As leituras que refletem o vínculo
+  // (lista de membros) só começam depois que seus efeitos terminam; antes, `members[]` saía obsoleto na mesma resposta.
+  // Só ordena a leitura: não muda a criação de vínculo, a promoção nem as permissões.
+  const [user, membershipRow] = await Promise.all([
     prisma.user.findUnique({
       where: { id: params.userId },
       select: { id: true, email: true, displayName: true },
     }),
-    readCurrentMembership(params),
+    readCurrentMembership({ ...params, entryPoint: "management_summary" }),
+  ]);
+  const [roleOptions, members, invitations] = await Promise.all([
     listWorkspaceRoleOptions({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId }),
     listWorkspaceMembers({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId, currentUserId: params.userId }),
     listWorkspaceInvitations({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId }),
@@ -713,6 +795,8 @@ export async function readWorkspaceManagementSummary(params: {
     ? `${identityName} (${selectedRoleLabel})`
     : identityName || selectedRoleLabel || "Responsável não definido";
   const permissions = safeArray((membershipRow as { permissions?: unknown } | null)?.permissions);
+  // O bootstrap (sem linha anterior) devolve o vínculo recém-criado, que nasce `active`; qualquer linha lida do banco traz o status.
+  const membershipStatus = typeof membershipRowAny?.status === "string" ? (membershipRowAny.status as string) : "active";
   const canManageMembers = permissions.includes("workspace.manage_members") || permissions.includes("workspace.manage_roles");
 
   return {
@@ -723,9 +807,50 @@ export async function readWorkspaceManagementSummary(params: {
     identityName,
     permissions,
     canManageMembers,
+    membershipStatus,
+    membershipActive: isActiveMembershipStatus(membershipStatus),
     members,
     invitations,
   };
+}
+
+/**
+ * AUTHZ-IMOB-HANDOFF-001 — permissões do usuário no workspace, SOMENTE se o vínculo estiver ATIVO. Estritamente leitura: sem DDL,
+ * sem bootstrap, sem promoção a founder, sem reativação. Ausência de vínculo, status diferente de `active` (inclusive revogado) ou
+ * erro de consulta ⇒ `null` (quem chama nega). É o caminho de leitura para decisões de handoff/registry; criar vínculo continua
+ * restrito aos fluxos explícitos (`ensureWorkspaceMembershipForUser`, convites) e ao legado fora do handoff.
+ */
+export async function readActiveWorkspaceMembership(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<{ roleKey: string; permissions: string[] } | null> {
+  const prisma = params.prisma ?? prismaGlobal;
+  try {
+    const rows = await prisma.$queryRaw<Array<{ role_key: string | null; permissions: unknown; status: string | null }>>`
+      SELECT role_key, permissions, status
+      FROM eiah_workspace_memberships
+      WHERE user_id = ${params.userId}
+        AND tenant_id = ${params.tenantId}
+        AND workspace_id = ${params.workspaceId}
+      LIMIT 1
+    `;
+    const row = rows[0];
+    if (!row || row.status !== "active") return null;
+    return { roleKey: normalizeWorkspaceRoleKey(row.role_key ?? "corretor"), permissions: safeArray(row.permissions) };
+  } catch {
+    return null;
+  }
+}
+
+export async function readActiveWorkspaceMembershipPermissions(params: {
+  prisma?: any;
+  tenantId: string;
+  workspaceId: string;
+  userId: string;
+}): Promise<string[] | null> {
+  return (await readActiveWorkspaceMembership(params))?.permissions ?? null;
 }
 
 export async function readWorkspaceResponsibleProfile(params: {
@@ -743,6 +868,8 @@ export async function readWorkspaceResponsibleProfile(params: {
     identityName: summary.identityName,
     permissions: summary.permissions,
     canManageMembers: summary.canManageMembers,
+    membershipStatus: summary.membershipStatus,
+    membershipActive: summary.membershipActive,
   };
 }
 
@@ -759,10 +886,14 @@ async function readActorRoleAuthority(params: {
   workspaceId: string;
   userId: string;
 }) {
-  const membership = (await readCurrentMembership(params)) as { role_key?: string; permissions?: unknown } | null;
+  const membership = (await readCurrentMembership({ ...params, entryPoint: "actor_role_authority" })) as { role_key?: string; permissions?: unknown; status?: string } | null;
   const permissions = safeArray(membership?.permissions);
   return {
-    canActivate: canActivateProducts({ selectedRoleKey: membership?.role_key ?? null, permissions }),
+    canActivate: canActivateProducts({
+      selectedRoleKey: membership?.role_key ?? null,
+      permissions,
+      membershipStatus: typeof membership?.status === "string" ? membership.status : "active",
+    }),
     canManageRoles: hasWorkspacePermission(permissions, WORKSPACE_ROLES_MANAGE_PERMISSION),
   };
 }

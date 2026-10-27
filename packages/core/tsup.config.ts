@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/policy/TenantPolicyStore.ts",
+    "src/events/redisPublisher.ts",
     "src/queue/*.ts",
     "src/llm/*.ts",
     "src/logging/*.ts",

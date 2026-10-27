@@ -880,6 +880,11 @@ const AgentsPage: React.FC = () => {
     // `vertical` is a navigation intent for the engine; legacy `domain` remains compatible.
     return (params.get("vertical") ?? params.get("domain"))?.trim().toLowerCase() ?? null;
   }, [location.search]);
+  // Intenção de entrada (menu Pré-DUIMP / redirecionamento legado): SÓ o valor allowlisted é transportado; nada mais da URL vira intenção.
+  const launcherEntryHint = useMemo(() => {
+    const value = new URLSearchParams(location.search).get("entry")?.trim().toLowerCase();
+    return value === "pre_duimp" ? value : null;
+  }, [location.search]);
   const showImobFixturePreview = useMemo(
     () => shouldRenderImobPilot2FixturePreview(location.search),
     [location.search]
@@ -1022,7 +1027,7 @@ const AgentsPage: React.FC = () => {
 
   return (
     <>
-      <div className="glass-panel p-8">
+      <div className="glass-panel p-3 sm:p-8">
         <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
           <div className="space-y-2">
             <div className="mt-6" id="chat-agent-launcher">
@@ -1046,6 +1051,7 @@ const AgentsPage: React.FC = () => {
                   topic: launcherTopic,
                   planHint: launcherPlanHint,
                   domainHint: launcherDomainHint,
+                  entryHint: launcherEntryHint,
                 }}
               />
             </div>

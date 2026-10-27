@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { installImobForTest } from "./support/imobInstallationFixture";
 import { createUploadedDocument } from "../services/uploads";
 
 let request: ReturnType<typeof supertest>;
@@ -39,6 +41,8 @@ before(async () => {
       revoked: false,
     },
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  await ensureWorkspaceMembershipForUser({ tenantId: entitledTenantId, workspaceId: entitledWorkspaceId, userId: entitledUserId, roleKey: "corretor" });
   await prismaGlobal.tenantActionPolicy.create({
     data: {
       tenantId: entitledTenantId,
@@ -74,9 +78,14 @@ before(async () => {
       revoked: false,
     },
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  await ensureWorkspaceMembershipForUser({ tenantId: blockedTenantId, workspaceId: blockedWorkspaceId, userId: blockedUserId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: entitledTenantId, workspaceId: entitledWorkspaceId, userId: entitledUserId });
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [entitledTenantId]);
   await prismaGlobal.uploadedDocument.deleteMany({
     where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
   });

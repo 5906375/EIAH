@@ -1,0 +1,25 @@
+# conferência com dados reais — 2026-10-17T13:33:20Z = 2026-10-17T10:33:20-03:00 (America/Sao_Paulo). Somente GET; nenhuma chamada AWS.
+
+## bind
+LISTEN     0          5                   127.0.0.1:8765          0.0.0.0:*     
+(somente 127.0.0.1; nenhum 0.0.0.0/[::])
+
+## overview x fontes locais
+OK    timer daily: enabled=enabled active=active/waiting Persistent=no calendário=*-*-* 08:00:00 America/Sao_Paulo
+OK    timer daily: próxima 2026-10-18T08:00:00-03:00 | 2026-10-18T11:00:00Z
+      último disparo: 2026-10-17T08:00:00-03:00 | 2026-10-17T11:00:00Z
+OK    timer weekly: enabled=enabled active=active/waiting Persistent=no calendário=Fri *-*-* 18:00:00 America/Sao_Paulo
+OK    timer weekly: próxima 2026-10-23T18:00:00-03:00 | 2026-10-23T21:00:00Z
+      último disparo: None | None
+      serviço daily inactive/dead success 0 2026-10-17T08:00:00-03:00 -> 2026-10-17T08:00:52-03:00
+      serviço weekly inactive/dead success 0 None -> None
+OK    limites: fila=1500 MB arquivo=4000 MB
+      fila 2 MB (pendente 0 , outros 2 ) | verificado local 330 MB | runs {'UPLOADED_VERIFIED': 3, 'DRYRUN': 2, 'MANUAL': 1} | total 6
+OK    C: livre 14090 MB (df 14090 MB)
+      fila/WSL livre 183954 MB em /
+      sessão AWS: sessão NÃO verificada nesta execução do dashboard
+      relógio: NÃO COMPROVADA no yes
+      fontes: [('fila BACKUP-A (automação)', 5), ('capturas manuais (G3)', 1)] {'systemd': {'ok': True}, 'clock': {'ok': True}, 'alerts': {'ok': True}, 'disk_queue_fs': {'ok': True}, 'disk_c_drive': {'ok': True}, 'queue': {'ok': True, 'error': None}}
+
+## status oficial (backup-a.sh status) para comparação de volumes
+espaço livre /mnt/c: 14090 MB (mín 3000) | fila não enviada: 2 MB (máx 1500) | arquivo verificado local: 330 MB (máx 4000)

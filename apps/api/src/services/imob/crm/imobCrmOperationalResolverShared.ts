@@ -1,3 +1,5 @@
+import type { TransversalTurn } from "../imobTransversalTurn";
+
 export type JsonObject = Record<string, unknown>;
 
 /** Permissão de etapa do IMOB (`canWorkspaceOperateImobStage` já aplicada às permissões da pessoa do turno). */
@@ -216,6 +218,8 @@ export type ImobOperationalResolverParams = {
   threadState: ThreadStateLike;
   /** P12: permissão de ETAPA da pessoa do turno; toda leitura de caso (explícita ou "o mais recente") só vale em etapa permitida. */
   canOperateStage?: ImobStageGate;
+  /** Interpretação estruturada do turno (P10): quando presente, a leitura do caso responde à necessidade transversal. */
+  transversalTurn?: TransversalTurn | null;
 };
 
 export type ResolverHelpers = {
@@ -273,7 +277,7 @@ export type ResolverHelpers = {
    * Descoberta somente leitura das capacidades transversais que o caso declara (domínio + capacidade). Ausente ou com
    * falha => nenhum cartão transversal é apresentado.
    */
-  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
+  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; userId?: string | null; turnNeeds?: ReadonlyArray<{ domain: string; capability: string; label?: string }> | null; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
   isBulkPropertyOnboardingQuestion: (normalized: string) => boolean;
   buildBulkPropertyOnboardingConsult: (params: { threadState: ThreadStateLike }) => OperationalResolution;
   isImobRecentRegistrationReadRequest: (normalized: string) => boolean;

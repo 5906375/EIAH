@@ -279,7 +279,7 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.equal(resolved?.action, "crm.case.pipeline_status");
   assert.match(resolved?.presentation?.text ?? "", /Lead Merlo/i);
   assert.match(resolved?.presentation?.text ?? "", /Fase:/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação:/i);
   assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /principal risco agora/i);
   assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /home office|mudança por trabalho/i);
   assert.match(resolved?.presentation?.caseBrief?.phaseObjective ?? "", /qualificar|confirmar/i);
@@ -321,7 +321,7 @@ test("IMOB copiloto responde blocker real com leitura operacional", async () => 
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.match(resolved?.presentation?.text ?? "", /Bloqueio principal:/i);
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on:/i);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando:/i);
   assert.match(resolved?.presentation?.text ?? "", /Para destravar:/i);
   assert.equal(resolved?.presentation?.commercialMemory?.objections?.[0]?.key, "documentation");
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "document_pending");
@@ -340,7 +340,7 @@ test("IMOB copiloto responde prioridade da fila como próximo movimento do caso"
 
   assert.equal(resolved?.action, "crm.case.next_best_action");
   assert.match(resolved?.presentation?.text ?? "", /Melhor ação agora:/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação:/i);
   assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /melhor ação agora/i);
   assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);

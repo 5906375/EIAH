@@ -26,6 +26,8 @@ export type ImobLocalFormKind =
 
 export type ImobActionMenuItem =
   | { id: string; label: string; kind: "prompt"; prompt: string }
+  /** Pedido tratado pelo próprio Front Door (cartão na conversa), não pelo resolvedor do IMOB. */
+  | { id: string; label: string; kind: "front_door"; prompt: string }
   | { id: string; label: string; kind: "local"; form: ImobLocalFormKind };
 
 export type ImobActionMenu = {
@@ -35,6 +37,14 @@ export type ImobActionMenu = {
 };
 
 export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
+  {
+    id: "management",
+    label: "Gestão",
+    items: [
+      { id: "management-panel", label: "Painel de gestão", kind: "front_door", prompt: "ver painel de gestão do IMOB" },
+      { id: "management-history", label: "Histórico de conversas", kind: "front_door", prompt: "ver histórico do IMOB" },
+    ],
+  },
   {
     id: "owners",
     label: "Proprietários",

@@ -46,7 +46,7 @@ type ResolverParams = {
   /** Disponibilidade real dos especialistas de apoio; ausente ou com falha => "unverified" (fail-closed). */
   readBackingSpecialistAvailability?: (params: { prisma: unknown; tenantId: string; workspaceId: string }) => Promise<Record<string, unknown> | null | undefined>;
   /** Descoberta somente leitura de capacidades transversais do caso; ausente ou com falha => nenhum cartão. */
-  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
+  readTransversalCapabilities?: (params: { prisma: unknown; tenantId: string; workspaceId: string; userId?: string | null; caseContext: unknown; operational: unknown }) => Promise<unknown[] | null | undefined>;
   /** P12: permissão de etapa da pessoa do turno (leitura do caso, explícita ou "o mais recente", só em etapa permitida). */
   canOperateStage?: ImobStageGate;
 };
@@ -2002,6 +2002,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
           prisma: params.prisma,
           tenantId: params.tenantId,
           workspaceId: params.workspaceId,
+          userId: params.userId ?? null,
           caseContext,
           operational: asObject(params.threadState)?.operational ?? null,
         });
