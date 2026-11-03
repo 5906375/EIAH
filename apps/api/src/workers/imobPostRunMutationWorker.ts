@@ -776,3 +776,12 @@ export function startImobPostRunMutationWorker() {
     );
   });
 }
+
+/** Para de buscar jobs novos e aguarda os jobs ativos terminarem (BullMQ `Worker.close`). */
+export async function stopImobPostRunMutationWorker() {
+  const current = imobMutationWorkerInstance;
+  imobMutationWorkerInstance = null;
+  if (!current) return;
+  await current.close();
+  workerLogger.info({ queue: IMOB_RUN_COMPLETED_QUEUE_NAME }, "imob-worker.stopped");
+}

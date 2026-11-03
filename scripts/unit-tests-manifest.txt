@@ -270,3 +270,4 @@ apps/web/src/features/imob/persistence/imobPersistence.test.ts
 apps/web/src/components/agents/useImobAuthority.test.ts
 apps/api/src/tests/imob-history-access.unit.test.ts
 apps/web/src/features/logistica/PreDuimpConversationCard.test.tsx
+apps/api/src/tests/graceful-shutdown.unit.test.ts

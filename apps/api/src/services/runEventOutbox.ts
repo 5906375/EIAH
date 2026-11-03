@@ -61,15 +61,23 @@ type OutboxEvent = {
   workspaceId: string;
 };
 
+let outboxRedis: Redis | null = null;
+let outboxTimer: NodeJS.Timeout | null = null;
+let outboxStopped = false;
+const outboxPollsInFlight = new Set<Promise<void>>();
+
 export async function startRunEventOutboxProcessor() {
   if (!shouldUseOutbox()) return;
   if (!redisUrl) return;
 
   const redis = createRedisClient();
   if (!redis) return;
+  outboxStopped = false;
+  outboxRedis = redis;
 
   await waitForRedisReady(redis);
   await ensureGroupWithRetry(redis);
+  if (outboxStopped) return;
 
   const poll = async () => {
     try {
@@ -117,5 +125,27 @@ export async function startRunEventOutboxProcessor() {
     }
   };
 
-  setInterval(poll, 1000);
+  outboxTimer = setInterval(() => {
+    const inFlight = poll();
+    outboxPollsInFlight.add(inFlight);
+    void inFlight.finally(() => outboxPollsInFlight.delete(inFlight));
+  }, 1000);
+}
+
+/** Para o polling, aguarda as leituras em andamento (XREADGROUP BLOCK ≤ 1s) e fecha o cliente Redis. */
+export async function stopRunEventOutboxProcessor() {
+  outboxStopped = true;
+  if (outboxTimer) {
+    clearInterval(outboxTimer);
+    outboxTimer = null;
+  }
+  await Promise.allSettled([...outboxPollsInFlight]);
+  const current = outboxRedis;
+  outboxRedis = null;
+  if (!current) return;
+  try {
+    await current.quit();
+  } catch {
+    current.disconnect();
+  }
 }
