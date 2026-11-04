@@ -303,3 +303,18 @@ as consultas não criam nem alteram vínculos.
 
 **Decisão pendente do owner (não alterada):** se o histórico também deve exigir `imob.chat.use`. Enquanto não houver nova autorização, o contrato acima é mantido
 e a tabela de códigos não é modificada. Isto não concede nem amplia permissão.
+
+## Nota — consulta do Oráculo a fontes de dados (PROPOSTA, não ratificada, 2026-11-03)
+
+O acesso de contexto da Logística (`log.context.read`) declara `externalTransmissionAllowed: false`. Consultar uma fonte de dados externa
+envia parâmetros para fora; por isso **não** é coberto por ele e exige, cumulativamente (negação por padrão):
+
+| Escopo (proposto) | Finalidade | Avaliação |
+| --- | --- | --- |
+| `log.oraculo_source.query` | Porta geral: o Oráculo pode **pedir** consulta a fontes de dados | política exata do workspace (`TenantActionPolicy`) + capacidade explícita no vínculo do membro + contexto da vertical com uso **integral** |
+| `log.oraculo_source.<fonte>` (prefixo `log.oraculo_source.`) | Política referenciada por uma **conexão** (`accessPolicyRef`): quem pode usar aquela conexão | mesma avaliação exata; uma conexão **não** pode referenciar escopo fora do prefixo |
+
+**Esta nota não concede nada e não ratifica nada.** A constante `ORACULO_SOURCE_QUERY_SCOPE` (`@eiah/contracts`) é o ponto único de troca.
+Dependência aberta: segundo o registro anterior do projeto (R1-B; não reverificado ao escrever esta nota), não existe caminho governado para conceder capacidades `log.*` a membros; até lá, o comportamento é negar. Estado
+técnico da fonte (`active`), condição de uso e autorização continuam conceitos separados: fonte ativa ou conexão habilitada **não** autoriza.
+Detalhes: `docs/ops/oraculo-source-query-link.md`.
