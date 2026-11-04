@@ -8,12 +8,40 @@ export const J360LegalDecisionSchema = z.enum([
 
 export const J360LegalRiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 
-export const J360LegalEvidenceRefSchema = z.object({
-  document: z.string().min(1),
-  page: z.string().nullable(),
-  section: z.string().nullable(),
-  excerpt: z.string().nullable().default(null),
-});
+// sourceStatus é o único sinal de proveniência introduzido nesta frente (E0-A):
+// "provided" = o produtor confirmou um documento/fonte concreto;
+// "not_provided" = o produtor confirmou explicitamente a ausência de documento;
+// "unknown" = payload legado ou origem que não pode ser determinada com segurança.
+// Não significa fonte validada, vigente ou citação verificada — apenas que existe (ou não)
+// um documento concreto por trás do valor de `document`. Estados de verificação
+// (verified/unverified/stale/conflicting) pertencem a uma frente futura de provenance.
+export const J360LegalEvidenceSourceStatusSchema = z.enum(["provided", "not_provided", "unknown"]);
+
+export const J360LegalEvidenceRefSchema = z
+  .object({
+    document: z.string().min(1).nullable(),
+    sourceStatus: J360LegalEvidenceSourceStatusSchema.optional(),
+    page: z.string().nullable(),
+    section: z.string().nullable(),
+    excerpt: z.string().nullable().default(null),
+  })
+  .transform((evidenceRef) => {
+    if (evidenceRef.sourceStatus !== undefined) {
+      return evidenceRef as typeof evidenceRef & {
+        sourceStatus: z.infer<typeof J360LegalEvidenceSourceStatusSchema>;
+      };
+    }
+
+    // O default de leitura precisa estar disponível aos renderers, mas não pode
+    // virar write-back. Uma propriedade não enumerável é lida normalmente em
+    // runtime e é omitida por JSON.stringify/Object spread.
+    return Object.defineProperty(evidenceRef, "sourceStatus", {
+      value: "unknown" as const,
+      enumerable: false,
+      configurable: true,
+      writable: false,
+    }) as typeof evidenceRef & { sourceStatus: "unknown" };
+  });
 
 export const J360LegalRiskMatrixItemSchema = z.object({
   risk: z.string().min(1),
@@ -24,7 +52,7 @@ export const J360LegalRiskMatrixItemSchema = z.object({
   evidenceRefs: z
     .array(J360LegalEvidenceRefSchema)
     .min(1)
-    .default([{ document: "Documento jurídico anexado", page: null, section: null }]),
+    .default([{ document: null, page: null, section: null, excerpt: null }]),
 });
 
 export const J360LegalCoverageMatrixItemSchema = z.object({

@@ -457,7 +457,8 @@ function buildEvidenceRefs(params: {
   documentEvidence?: ExtractedPdfDocument | null;
 }) {
   const documents = extractSupportingDocumentNames(params.metadata);
-  const primaryDocument = documents[0] ?? params.documentEvidence?.document ?? "Documento jurídico anexado";
+  const primaryDocument = documents[0] ?? params.documentEvidence?.document ?? null;
+  const sourceStatus: EvidenceRef["sourceStatus"] = primaryDocument ? "provided" : "not_provided";
   const hints = extractEvidenceHints(params.item);
   const matchedEvidence = resolveDocumentMatch(params.item, params.documentEvidence, params.recipeOrchestration);
   const section = hints.section ?? matchedEvidence?.section ?? inferRelatedClause(params.item, params.recipeOrchestration);
@@ -465,6 +466,7 @@ function buildEvidenceRefs(params: {
   return [
     {
       document: primaryDocument,
+      sourceStatus,
       page: hints.page ?? (matchedEvidence ? String(matchedEvidence.page) : null),
       section,
       excerpt: matchedEvidence?.excerpt ?? null,
@@ -701,9 +703,10 @@ function buildCoverageMatrix(params: {
       ]);
       if (matchedRisk) {
         const evidence = matchedRisk.evidenceRefs[0];
-        const evidenceLabel = evidence
-          ? `${evidence.document}${evidence.page ? `, p. ${evidence.page}` : ""}${evidence.section ? `, ${evidence.section}` : ""}`
-          : null;
+        const evidenceLabel =
+          evidence && evidence.sourceStatus === "provided" && evidence.document
+            ? `${evidence.document}${evidence.page ? `, p. ${evidence.page}` : ""}${evidence.section ? `, ${evidence.section}` : ""}`
+            : null;
         return [
           `Risco identificado: ${matchedRisk.risk}.`,
           `Impacto consolidado: ${matchedRisk.impact}`,
@@ -910,16 +913,19 @@ function buildFundamentos(params: {
     const matchedRisks = params.riskMatrix.filter((item) => classifyStepCategory(item.risk) === category);
     const evidenceRefs = dedupeStrings(
       matchedRisks.flatMap((item) =>
-        item.evidenceRefs.map((ref) => `${ref.document}|${ref.page ?? ""}|${ref.section ?? ""}|${ref.excerpt ?? ""}`)
+        item.evidenceRefs.map(
+          (ref) => `${ref.document ?? ""}|${ref.sourceStatus}|${ref.page ?? ""}|${ref.section ?? ""}|${ref.excerpt ?? ""}`
+        )
       )
     ).map((serialized) => {
-      const [document, page, section, excerpt] = serialized.split("|");
+      const [document, sourceStatus, page, section, excerpt] = serialized.split("|");
       return {
-        document,
+        document: document || null,
+        sourceStatus: sourceStatus === "provided" ? "provided" : "not_provided",
         page: page || null,
         section: section || null,
         excerpt: excerpt || null,
-      };
+      } satisfies EvidenceRef;
     });
     const analysisParts = [
       step.objective,
