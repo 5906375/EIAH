@@ -115,6 +115,7 @@ import {
 } from "./imobCrmSchemas";
 import { sendImobAccessDenied } from "../services/imob/imobAccessGate";
 import { imobInstallationGate } from "../services/imob/imobInstallationGate";
+import { resolveMissingImobCaseBinding } from "../services/imob/crm/imobCrmOperationalCase";
 import { imobWorkspaceAccessGate } from "../services/imob/imobWorkspaceAccessGate";
 import { imobRevocationGate } from "../services/imob/imobRevocationGate";
 import { imobMembershipGate } from "../services/imob/imobMembershipGate";
@@ -1757,6 +1758,15 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     return res.json({ ok: true, claimed: true, data: { ...claimedTurn.data, caseContext: claimedTurn.caseContext ?? claimedTurn.data.caseContext ?? null } });
   }
 
+  // Access gates have run; require explicit binding before case hydration or directed dispatch.
+  const missingCaseBinding = !requestedCaseId ? resolveMissingImobCaseBinding(
+    { caseId: requestedCaseId, actionId: requestedActionId, message },
+    { normalizeImobRouteText, resolveImobBusinessReadIntent: imobCrmBusinessRead.resolveImobBusinessReadIntent,
+      isBulkPropertyOnboardingQuestion: imobCrmBusinessRead.isBulkPropertyOnboardingQuestion,
+      isImobRecentRegistrationReadRequest: imobCrmBusinessRead.isImobRecentRegistrationReadRequest },
+  ) : null;
+  if (missingCaseBinding) return res.json({ ok: true, data: missingCaseBinding });
+
   // Only the new conversational carrier reads the latest event; persistence and gates remain unchanged.
   const observesReview = Object.hasOwn(body, "continuityReplyRef")
     || Object.hasOwn(asObject(asObject(body.threadState)?.operational) ?? {}, "continuity");
@@ -1773,13 +1783,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
         where: { id: requestedCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
         select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
       })
-    : requestedThreadId
-      ? await prisma.imobCase.findFirst({
-          where: { threadId: requestedThreadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
-          orderBy: { updatedAt: "desc" },
-          select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
-        })
-      : null;
+    : null;
   if (
     existingScopedCase &&
     !ensureImobStagePermission(
@@ -1827,7 +1831,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       },
     });
   }
-  const effectiveCaseId = requestedCaseId ?? asString(existingScopedCase?.id);
+  const effectiveCaseId = requestedCaseId;
   const effectiveThreadId = requestedThreadId ?? asString(existingScopedCase?.threadId) ?? (effectiveCaseId ? `case:${effectiveCaseId}` : null);
   const _parsedPendingAction = parseImobPendingAction(asObject(existingScopedCase?.metadata)?.pendingAction);
   // Bug 2 mitigation: only treat awaiting_confirmation as active; confirmed/cancelled/expired are stale.

@@ -1,4 +1,5 @@
 import type { TransversalTurn } from "../imobTransversalTurn";
+import { IMOB_CASE_BINDING_POLICY, type ImobCaseContextMissingResolution } from "./imobCrmAgentContract";
 import { buildTransversalTurnText } from "../imobTransversalTurnCopy";
 import {
   asPendingItems,
@@ -9,27 +10,52 @@ import {
   scopedImobCases,
 } from "./imobCrmOperationalResolverShared";
 
-function extractCaseIdFromMessage(message: string): string | null {
-  if (typeof message !== "string" || message.trim().length === 0) return null;
-  const byLabelMatch = message.match(/(?:caso|case|processo)\s*(?:id)?\s*[:#-]?\s*([a-z0-9][a-z0-9-]{2,})/i);
-  if (byLabelMatch?.[1]) {
-    const candidate = byLabelMatch[1].toLowerCase();
-    if (["mais", "recente", "atual", "aberto", "disponivel", "disponível", "ultimo", "último"].includes(candidate)) return null;
-    return byLabelMatch[1];
+export function buildImobCaseContextMissingResolution(action: string): ImobCaseContextMissingResolution {
+  return {
+    mode: "blocked",
+    action,
+    caseContext: null,
+    presentation: {
+      text: "Escolha explicitamente o caso IMOB antes de continuar esta operação.",
+      suggestedNextAction: "Abra o caso desejado e retome a operação com sua referência.",
+      metadata: { reasonCode: IMOB_CASE_BINDING_POLICY.missingReasonCode },
+    },
+  };
+}
+
+/** Authenticated route preflight, before hydration or directed dispatch.
+ * Uses the existing business/registration classifiers and case lookup vocabulary.
+ */
+export function resolveMissingImobCaseBinding(
+  input: { caseId?: string | null; actionId?: string | null; message: string },
+  helpers: Pick<ResolverHelpers, "normalizeImobRouteText" | "resolveImobBusinessReadIntent"
+    | "isBulkPropertyOnboardingQuestion" | "isImobRecentRegistrationReadRequest">,
+): ImobCaseContextMissingResolution | null {
+  if (input.caseId?.trim()) return null;
+  if (input.actionId) return buildImobCaseContextMissingResolution("crm.action.blocked");
+  const normalized = helpers.normalizeImobRouteText(input.message);
+  if (helpers.isBulkPropertyOnboardingQuestion(normalized)) return null;
+  if (helpers.isImobRecentRegistrationReadRequest(normalized)) {
+    return buildImobCaseContextMissingResolution("crm.case.recent_registration");
   }
-  return null;
+  const intent = helpers.resolveImobBusinessReadIntent(input.message);
+  if (intent) return buildImobCaseContextMissingResolution(`crm.case.${intent}`);
+  const asksLeadCases = normalized.includes("casos do lead");
+  const asksCase = normalized.includes("caso");
+  const asksRead = ["mostrar", "ver", "consultar", "quais", "abrir", "status", "o que falta",
+    "pendencia", "pendência", "nesse caso", "desse caso", "deste caso", "caso recente", "caso mais recente", "ultimo caso", "último caso"]
+    .some((term) => normalized.includes(term));
+  return !asksLeadCases && asksCase && asksRead
+    ? buildImobCaseContextMissingResolution("crm.case.lookup") : null;
 }
 
 function buildChatSafeCaseLookupText(params: {
-  scopedCaseId: string | null;
   flow: string | null | undefined;
   pendingItems: string[];
   nextStep?: string | null;
   blocker?: string | null;
 }, helpers: ResolverHelpers) {
-  const summary = params.scopedCaseId
-    ? `Caso ${helpers.formatImobCaseFlowLabel(params.flow ?? "case.review")} localizado.`
-    : `Usei o caso IMOB mais recente para esta leitura: ${helpers.formatImobCaseFlowLabel(params.flow ?? "case.review")}.`;
+  const summary = `Caso ${helpers.formatImobCaseFlowLabel(params.flow ?? "case.review")} localizado.`;
   const hints = [
     params.pendingItems.length > 0 ? "Há pendências operacionais em aberto." : null,
     params.blocker ? "Existe um bloqueio ativo neste atendimento." : null,
@@ -91,6 +117,7 @@ export async function resolveImobCaseOperationalConsult(
     return helpers.buildBulkPropertyOnboardingConsult({ threadState: params.threadState });
   }
   if (helpers.isImobRecentRegistrationReadRequest(context.normalized)) {
+    if (!params.caseId?.trim()) return buildImobCaseContextMissingResolution("crm.case.recent_registration");
     return helpers.buildImobRecentRegistrationConsult({
       prisma: params.prisma,
       tenantId: params.tenantId,
@@ -101,19 +128,9 @@ export async function resolveImobCaseOperationalConsult(
     });
   }
   if (context.businessReadIntent) {
-    const item = params.caseId
-      ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
+    if (!params.caseId?.trim()) return buildImobCaseContextMissingResolution(`crm.case.${context.businessReadIntent}`);
+    const item = await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
           where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
-          include: {
-            owner: { select: { id: true, name: true } },
-            property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
-            lead: { select: { id: true, name: true, phone: true, email: true } },
-            _count: { select: { events: true } },
-          },
-        })
-      : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
-          where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
-          orderBy: { updatedAt: "desc" },
           include: {
             owner: { select: { id: true, name: true } },
             property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
@@ -173,7 +190,7 @@ export async function resolveImobCaseOperationalConsult(
     const presentation = helpers.buildImobBusinessReadPresentation({
       intent: context.businessReadIntent,
       caseContext,
-      caseSelectionNote: params.caseId ? null : "Usei o caso IMOB mais recente deste workspace para esta leitura.",
+      caseSelectionNote: null,
       specialistAvailability,
       transversalCapabilities,
     });
@@ -192,39 +209,11 @@ export async function resolveImobCaseOperationalConsult(
     return null;
   }
 
-  const activeOperational = helpers.asObject(params.threadState)?.operational;
-  const hasActiveOperationalCase = Boolean(helpers.asString(helpers.asObject(activeOperational)?.flow));
-  const scopedCaseId = params.caseId ?? extractCaseIdFromMessage(params.message);
-  if (!scopedCaseId && !context.asksCurrentCase && !context.asksCaseStatus && !context.asksMissing && !hasActiveOperationalCase) {
-    return {
-      mode: "consult",
-      action: "crm.case.lookup",
-      threadLabel: "Caso",
-      conversationState: params.threadState ?? helpers.createEmptyThreadState(),
-      presentation: {
-        text: "Qual caso você quer consultar?",
-        suggestedNextAction: "Digite `consultar caso <código do caso>` para eu abrir no chat.",
-        card: {
-          title: "Consultar caso",
-          lines: ["Informe o código do caso para abrir os detalhes deste atendimento."],
-        },
-      },
-    };
-  }
+  const scopedCaseId = params.caseId;
+  if (!scopedCaseId?.trim()) return buildImobCaseContextMissingResolution("crm.case.lookup");
 
-  const item = scopedCaseId
-    ? await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
+  const item = await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
         where: { id: scopedCaseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
-        include: {
-          owner: { select: { id: true, name: true } },
-          property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
-          lead: { select: { id: true, name: true, phone: true, email: true } },
-          _count: { select: { events: true } },
-        },
-      })
-    : await scopedImobCases(params.prisma, params.canOperateStage).findFirst({
-        where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
-        orderBy: { updatedAt: "desc" },
         include: {
           owner: { select: { id: true, name: true } },
           property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
@@ -257,7 +246,6 @@ export async function resolveImobCaseOperationalConsult(
     caseContext: helpers.buildCaseContextFromRecord(item),
     presentation: {
       text: buildChatSafeCaseLookupText({
-        scopedCaseId,
         flow: item.flow,
         pendingItems: asPendingItems(item.pendingItems),
         nextStep: item.nextStep,
