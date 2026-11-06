@@ -1,0 +1,717 @@
+{
+  "date": "2026-10-14",
+  "status": "parcial",
+  "publication": "local_only_not_published",
+  "originalVerdict": "P11_ISOLATED_COMMIT_VALIDATED",
+  "originalVerdictScope": "directed tests of local commit e4575b0 (parent 88bb3a2, 17 files) against baseline 88bb3a2 in isolated temporary worktrees; historical; NOT re-executed against origin/main; the original README itself states it did not run the 213-file suite nor CI",
+  "requirementsMatrix": {
+    "header": [
+      "Req.",
+      "Prova (arquivo → teste)",
+      "Resultado"
+    ],
+    "rows": [
+      [
+        "A. caso explícito autorizado mantém o vínculo",
+        "integração → \"P11 vínculo explícito…\" (3 turnos encadeados, só o caso A, autoridade por pessoa); bridge → \"COM caso explícito autorizado\"; forms → \"caso explícito confirmado pelo servidor fica na conversa\"",
+        "PASS"
+      ],
+      [
+        "B. sem `caseId` não seleciona o caso mais recente",
+        "integração → \"P11 sem caseId: recomendação de MKT SEM caso…\" (existem casos A e B; B mais recente; `caseContext` nulo, sem marcadores); bridge → \"SEM caso explícito… NUNCA é lido (nem se fosse o único)\"",
+        "PASS"
+      ],
+      [
+        "C. solicitação ambígua não vincula caso arbitrário",
+        "integração (mesmo teste: \"Quero divulgar meu apartamento.\", \"campanha para esse imóvel\", \"contratou o Marketing?\")",
+        "PASS"
+      ],
+      [
+        "D. conversa e retorno do Self-service preservam só contexto confirmado",
+        "forms → \"resposta SEM caso renderiza… não grava caso\" e \"…uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)\"; widgets → `safeImobReturnTo` (/app/chat)",
+        "PASS"
+      ],
+      [
+        "E. inexistente/outro tenant/outro workspace sem fallback",
+        "integração → \"P11 isolamento…\" (`CASE_NOT_IN_SCOPE`, sem dados, sem ids, sem marcadores SEGREDO); acesso governado/revogação",
+        "PASS"
+      ],
+      [
+        "F. etapa não autorizada impede dados do caso",
+        "integração → \"P11 permissão de ETAPA\" (`STAGE_DENIED` com 200 limpo; sem caseId só recomendação sem caso; controle: quem opera a etapa recebe o caso)",
+        "PASS"
+      ],
+      [
+        "G. billing, convite, cadastro e contrato não interceptados",
+        "integração → \"plataforma, convite, contrato, cadastro e demais mensagens NÃO são reivindicados e não deixam efeito\"; bridge → \"convite e turnos alheios…\"; forms → \"engine… casos protegidos nunca consultam\" e \"+ FDC-03A\"",
+        "PASS"
+      ],
+      [
+        "MKT sem caso continua possível",
+        "integração (sem caseId: cartão MKT com autoridade da pessoa: Ana `somente_consulta`, Bruno `contratacao_autorizada`)",
+        "PASS"
+      ],
+      [
+        "`actionAuthorization: not_evaluated` ≠ autorização",
+        "`vertical-access-resolver` (decisão sempre `not_evaluated`); estático: o campo só é declarado no resolvedor, nenhuma condição o consome, `evaluateImobFrontDoorCapabilityAccess` devolve só `{allowed, reasonCode}`; o ramo `claimOnly` só lê",
+        "PASS"
+      ],
+      [
+        "Sem mutações comerciais",
+        "integração (side effects iguais antes/depois) e DB global ao fim: 0 habilitações governadas, 0 billing_ledger, 0 invoices, 0 agent_installs, 0 execuções operacionais",
+        "PASS"
+      ]
+    ],
+    "tally": {
+      "PASS": 10
+    }
+  },
+  "comparisonTable": {
+    "header": [
+      "arquivo",
+      "baseline (pass/fail)",
+      "alvo (pass/fail)",
+      "testes adicionados pelo P11",
+      "classificação"
+    ],
+    "rows": [
+      [
+        "imob-specialist-bridge.test.ts",
+        "25/0",
+        "28/0",
+        "+3",
+        "sem falhas"
+      ],
+      [
+        "vertical-access-resolver.test.ts",
+        "16/0",
+        "20/0",
+        "+4",
+        "sem falhas"
+      ],
+      [
+        "chat-vertical-registry.test.ts",
+        "5/0",
+        "5/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "chat-vertical-imob-handoff.test.ts",
+        "13/0",
+        "13/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "vertical-access-revocation.test.ts",
+        "5/0",
+        "5/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "agents-public-view.contract.test.ts",
+        "37/0",
+        "37/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "imob-copilot-conversation.test.ts",
+        "16/2",
+        "16/2",
+        "+0",
+        "falhas PREEXISTENTES idênticas (não são regressão)"
+      ],
+      [
+        "imob-crm-resolver.test.ts",
+        "39/5",
+        "39/5",
+        "+0",
+        "falhas PREEXISTENTES idênticas (não são regressão)"
+      ],
+      [
+        "imob-owner-blocker-consult.test.ts",
+        "2/2",
+        "2/2",
+        "+0",
+        "falhas PREEXISTENTES idênticas (não são regressão)"
+      ],
+      [
+        "createImobStructuredForms.test.ts",
+        "118/0",
+        "126/0",
+        "+8",
+        "sem falhas"
+      ],
+      [
+        "chatLauncherEngine.test.ts",
+        "112/0",
+        "112/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "verticalHandoffEngine.test.ts",
+        "30/0",
+        "30/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "frontDoorAccessEngine.test.ts",
+        "3/0",
+        "3/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "frontDoorBillingEngine.test.ts",
+        "6/0",
+        "6/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "FrontDoorSessionHeader.test.tsx",
+        "23/0",
+        "23/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "verticalActivationEngine.test.ts",
+        "15/0",
+        "15/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "ImobChatWidgets.test.tsx",
+        "16/0",
+        "16/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "imobCommandCenterHelper.test.ts",
+        "14/0",
+        "14/0",
+        "+0",
+        "sem falhas"
+      ],
+      [
+        "marketplace.installations.activate.test.ts",
+        "25/0",
+        "32/0",
+        "+7",
+        "sem falhas"
+      ]
+    ]
+  },
+  "comparisonNotes": [
+    "Total adicionado pelo P11: 22 testes (3 bridge, 4 access-resolver, 7 integração HTTP+PG, 8 Front Door web); 0 testes preexistentes removidos ou renomeados (ver logs/tests_added_by_p11.json).",
+    "Falhas preexistentes (mesmos testes no baseline e no alvo): imob-copilot-conversation 2, imob-crm-resolver 5, imob-owner-blocker-consult 2 — fora do P11.",
+    "- API: alvo 430, baseline 430, novos 0, removidos 0",
+    "- Web: alvo 62, baseline 62, novos 0, removidos 0",
+    "Não é typecheck global aprovado: são os mesmos erros preexistentes nos dois commits (API 430, web 62).",
+    "imob-copilot-conversation falhas: base=2 alvo=2 mesmos testes=SIM",
+    "imob-crm-resolver falhas: base=5 alvo=5 mesmos testes=SIM",
+    "imob-owner-blocker-consult falhas: base=2 alvo=2 mesmos testes=SIM"
+  ],
+  "summaries": {
+    "summary_target_unit.txt": [
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/imob-specialist-bridge.test.ts",
+        "rc": 0,
+        "pass": 28,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/vertical-access-resolver.test.ts",
+        "rc": 0,
+        "pass": 20,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/chat-vertical-registry.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/chat-vertical-imob-handoff.test.ts",
+        "rc": 0,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/vertical-access-revocation.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/agents-public-view.contract.test.ts",
+        "rc": 0,
+        "pass": 37,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/imob-copilot-conversation.test.ts",
+        "rc": 1,
+        "pass": 16,
+        "fail": 2,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/imob-crm-resolver.test.ts",
+        "rc": 1,
+        "pass": 39,
+        "fail": 5,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/imob-owner-blocker-consult.test.ts",
+        "rc": 1,
+        "pass": 2,
+        "fail": 2,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+        "rc": 0,
+        "pass": 126,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/chatLauncherEngine.test.ts",
+        "rc": 0,
+        "pass": 112,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/verticalHandoffEngine.test.ts",
+        "rc": 0,
+        "pass": 30,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/frontDoorAccessEngine.test.ts",
+        "rc": 0,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/frontDoorBillingEngine.test.ts",
+        "rc": 0,
+        "pass": 6,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx",
+        "rc": 0,
+        "pass": 23,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/components/agents/verticalActivationEngine.test.ts",
+        "rc": 0,
+        "pass": 15,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/features/imob/ImobChatWidgets.test.tsx",
+        "rc": 0,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "target",
+        "file": "apps/web/src/features/imob/imobCommandCenterHelper.test.ts",
+        "rc": 0,
+        "pass": 14,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      }
+    ],
+    "summary_base_unit.txt": [
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/imob-specialist-bridge.test.ts",
+        "rc": 0,
+        "pass": 25,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/vertical-access-resolver.test.ts",
+        "rc": 0,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/chat-vertical-registry.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/chat-vertical-imob-handoff.test.ts",
+        "rc": 0,
+        "pass": 13,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/vertical-access-revocation.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/agents-public-view.contract.test.ts",
+        "rc": 0,
+        "pass": 37,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/imob-copilot-conversation.test.ts",
+        "rc": 1,
+        "pass": 16,
+        "fail": 2,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/imob-crm-resolver.test.ts",
+        "rc": 1,
+        "pass": 39,
+        "fail": 5,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/imob-owner-blocker-consult.test.ts",
+        "rc": 1,
+        "pass": 2,
+        "fail": 2,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+        "rc": 0,
+        "pass": 118,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/chatLauncherEngine.test.ts",
+        "rc": 0,
+        "pass": 112,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/verticalHandoffEngine.test.ts",
+        "rc": 0,
+        "pass": 30,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/frontDoorAccessEngine.test.ts",
+        "rc": 0,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/frontDoorBillingEngine.test.ts",
+        "rc": 0,
+        "pass": 6,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx",
+        "rc": 0,
+        "pass": 23,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/components/agents/verticalActivationEngine.test.ts",
+        "rc": 0,
+        "pass": 15,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/features/imob/ImobChatWidgets.test.tsx",
+        "rc": 0,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      },
+      {
+        "side": "base",
+        "file": "apps/web/src/features/imob/imobCommandCenterHelper.test.ts",
+        "rc": 0,
+        "pass": 14,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      }
+    ],
+    "summary_target_int.txt": [
+      {
+        "side": "target",
+        "file": "apps/api/src/tests/marketplace.installations.activate.test.ts",
+        "rc": 0,
+        "pass": 32,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      }
+    ],
+    "summary_base_int.txt": [
+      {
+        "side": "base",
+        "file": "apps/api/src/tests/marketplace.installations.activate.test.ts",
+        "rc": 0,
+        "pass": 25,
+        "fail": 0,
+        "skipped": 0,
+        "netguard_block": 0
+      }
+    ]
+  },
+  "testsAddedByP11": {
+    "total_adicionados": 22,
+    "total_ausentes_no_alvo": 0,
+    "detalhe": [
+      {
+        "arquivo": "imob-specialist-bridge.test.ts.tap",
+        "adicionados_pelo_P11": [
+          "P11 etapa transversal (claimOnly) SEM caso explícito: recomendação sem caso; o caso mais recente NUNCA é lido (nem se fosse o único)",
+          "P11 etapa transversal (claimOnly) COM caso explícito autorizado: lê só esse caso; negativa de escopo/etapa não lê nem substitui outro caso",
+          "P11 etapa transversal (claimOnly): convite e turnos alheios não são reivindicados e não resolvem caso nem autorização; autorização negada não lê nada"
+        ],
+        "ausentes_no_alvo": []
+      },
+      {
+        "arquivo": "marketplace.installations.activate.test.ts.tap",
+        "adicionados_pelo_P11": [
+          "P11 vínculo explícito: com caseId autorizado a vertical responde SÓ sobre esse caso (nada do caso mais recente), com a autoridade de cada pessoa",
+          "P11 sem caseId: recomendação de MKT SEM caso; o caso mais recente nunca é lido, mesmo havendo casos; nada é vinculado nem exposto",
+          "P11 isolamento: caseId inexistente, de outro workspace ou de outro tenant é NEGADO sem fallback (nada do caso mais recente nem do outro escopo)",
+          "P11 permissão de ETAPA: quem não opera a etapa do caso não recebe dados dele (nem por caseId explícito nem por fallback); sem caseId só há recomendação sem caso",
+          "P11 reivindicação: 'contratou o Marketing?' é consulta de ESTADO do agente; autoridade e identidade não vêm do corpo",
+          "P11 reivindicação: plataforma, convite, contrato, cadastro e demais mensagens NÃO são reivindicados e não deixam efeito",
+          "P11 acesso governado: liberação revogada não reivindica (gate de revogação do IMOB, fail-closed); restaurada, volta; escopo de outro tenant não vê o caso"
+        ],
+        "ausentes_no_alvo": []
+      },
+      {
+        "arquivo": "vertical-access-resolver.test.ts.tap",
+        "adicionados_pelo_P11": [
+          "P11 crm.case.consult: capability somente leitura declarada uma única vez e usada pelo registry e pelo contrato de acesso",
+          "P11 acesso do Front Door: nega fail-closed sem instalação ativa, sem permissão, sem direito de uso, sem agentes ou com uso bloqueado",
+          "P11 acesso do Front Door: liberação somente leitura MANTÉM a consulta (e continua negando escrita)",
+          "P11 fatos do vertical.access.v1: derivados dos fatos do registry, sem inventar instalação nem permissão"
+        ],
+        "ausentes_no_alvo": []
+      },
+      {
+        "arquivo": "features_imob_structured_createImobStructuredForms.test.ts.tap",
+        "adicionados_pelo_P11": [
+          "P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações",
+          "P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal",
+          "P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam",
+          "P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente",
+          "P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')",
+          "P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado",
+          "P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa",
+          "P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)"
+        ],
+        "ausentes_no_alvo": []
+      }
+    ]
+  },
+  "preexistingNormalRoutePendingItems": [
+    "== pendências preexistentes da rota NORMAL resolve-turn: continuam presentes e NÃO foram corrigidas (evidência estática no commit sob teste)",
+    "1) fallback 'caso mais recente' no consultivo normal (imobCrmOperationalCase.ts) — arquivo alterado entre baseline e alvo? linhas de diff: 0 (0 = intacto)",
+    "114:          orderBy: { updatedAt: \"desc\" },",
+    "225:        orderBy: { updatedAt: \"desc\" },",
+    "2) permissão de etapa só para o caso explícito + helper que dá 500 (sem req) na rota normal:",
+    "1460:function ensureImobStagePermission(",
+    "1747:    !ensureImobStagePermission(",
+    "2021:  if (!ensureImobStagePermission(res, workspaceAccess.permissions, caseItem.stage, `Sua função atual não pode operar a etapa ${caseItem.stage} neste workspace.`)) {",
+    "1428:    tenantId: req?.authContext?.tenantId ?? \"\",",
+    "3) o diff do P11 em routes/imob.ts só ACRESCENTA (linhas removidas):",
+    "48\t1\tapps/api/src/routes/imob.ts",
+    "-import { resolveImobCrmTurnEngine } from \"../services/imob/crm/imobCrmTurnEngine\";",
+    "4) comportamento medido no gate anterior (p11-fix-case-binding-validation): Carla (só etapa proposal) na rota normal sem caseId = 200 com o caso B; com caseId = 500"
+  ],
+  "cleanlinessAndNoMutation": [
+    "== limpeza dos worktrees temporários antes da remoção (2026-10-14T13:37:55Z)",
+    "[gt] HEAD=e4575b0 rastreados_modificados=0 indice=0 nao_rastreados_fora_de_links_e_midia=0",
+    "[gb] HEAD=88bb3a2 rastreados_modificados=0 indice=0 nao_rastreados_fora_de_links_e_midia=0",
+    "netguard BLOCK acumulado: 0 (último log); por execução: ver tests_matrix_*.txt (todas 0)",
+    "mutações comerciais (DB global ao fim): enablements=0 billing_ledger=0 tenant_invoices=0 agent_installs=0 runs_operacionais=0",
+    "actionAuthorization: declarado só em verticalAccessResolver.ts (tipo + literal 'not_evaluated'); nenhuma condição de autorização o consome; evaluateImobFrontDoorCapabilityAccess devolve só {allowed, reasonCode}; o ramo claimOnly executa apenas leitura (testes de integração comprovam 0 escrita/execução/habilitação/delegação/cobrança)"
+  ],
+  "notDemonstrated": [
+    "global typecheck approval (same pre-existing errors in both commits: API 430, web 62)",
+    "execution against origin/main or the current IMOB integration branch",
+    "GitHub Actions / CI run",
+    "production or staging deployment",
+    "resolution of the 9 pre-existing test failures (identical in baseline and target)"
+  ],
+  "originalEvidenceSha256": {
+    "README.md": "0ca689d38714a05b8235d364457d9ea15546b2be9c9a3a739204a6b422839b96",
+    "cleanliness_and_no_mutation_proof.txt": "24b62043b4059e5c6ccf4bff02a500174da36936b5947dd485effaec6274d0a6",
+    "comparison_target_vs_baseline.md": "2b8ff84ea8b45affa262a25a1d74f8dca02b03021a9caed6caf31c12ecacff93",
+    "git_state_0_before.txt": "20bb2c290b111f2dc322a46610c0599bb4931f5ffb0a8897754564a916d42bd9",
+    "git_state_1_after.txt": "e3416bb8143e1bd6d29a739da6c60e0fa12869b39a54a8c060ab4df0671668c0",
+    "isolation_code_proof.txt": "00303ec56e32598b12db6655020ab90062e92de2f4cb6e7e72237eb8e77a230f",
+    "isolation_services_proof.txt": "fb91106ea165034f46949fd6fa5c11f227390358254e6f6d86b74c460cf59673",
+    "logs/base__apps_api_src_tests_agents-public-view.contract.test.ts.tap": "3c25d00fa171a0f63eeb82bd9ac465266ddcbd90513d3b8d85bebde62f6af5a5",
+    "logs/base__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap": "3eb5b9cc765401ce4183a0b86a27b13bf8858e5499d438c56614655e6af4cfb3",
+    "logs/base__apps_api_src_tests_chat-vertical-registry.test.ts.tap": "bdd8566ca57ddd5e340b5e3ce2e80df83d1ccc8ef561124e4c2815dfcde99a19",
+    "logs/base__apps_api_src_tests_imob-copilot-conversation.test.ts.tap": "f95dbf242b12f9fa40d6e0470f33b2c775ec7f7e0bb20f352ffa5bc3ad580e13",
+    "logs/base__apps_api_src_tests_imob-crm-resolver.test.ts.tap": "ce997fba36bad3958aee7701f38fb15fda34e40cdf6483efee8e10196a9d4f3d",
+    "logs/base__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap": "d805a049df13ee2da54f31a4fb85c2bde94e812e0c4ebebec130a8d21bedde0e",
+    "logs/base__apps_api_src_tests_imob-specialist-bridge.test.ts.tap": "fa4818ab8cb9402bae87f63afa5d4ac3894a024939505f06815007e07dd6f459",
+    "logs/base__apps_api_src_tests_marketplace.installations.activate.test.ts.tap": "a7cd596736a5675827d3f4dea31c169c70176fc044c47483e80c947ce4338458",
+    "logs/base__apps_api_src_tests_vertical-access-resolver.test.ts.tap": "fd25216eae12f3efe0ed6618863d93fb04194560f02f3fecb6034f532f51a4a3",
+    "logs/base__apps_api_src_tests_vertical-access-revocation.test.ts.tap": "43f595ab3fb75d9beca8bf083eb0220baa1bfd0f2be32e050c4760ed67d28032",
+    "logs/base__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap": "5f811b939b9fc7416191bcd1cffcbda432cfe339e921a74b3e8f6e4e97670790",
+    "logs/base__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap": "bbb67bc5fcfbd17630e08ef1727984052aec699fc3aa01f60a9becb0a6656fe3",
+    "logs/base__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap": "5c41eaceae8e0b464759cec368d7b60c1186d48cf992be448ab78c6632659a90",
+    "logs/base__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap": "1377cda9a7855ab705e472e52846baecb41991ad4afe3b18d03d305dd5fef0ea",
+    "logs/base__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap": "e722419822529ddfcb81a8b4c94ed86e0bede689e2776bc07cca8482e35e459f",
+    "logs/base__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap": "14e108312f533fdbd16f45b0998e33d9fd88557ba3ec7b9cf1f52c008381f213",
+    "logs/base__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap": "c177294bf8f49c79ac6e771925717d2c98d9893db29c4a30f29ed7b66127b0e3",
+    "logs/base__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap": "596a0007ec88ae3c472f2f00b7eda931b88f077242b0ae26f8b84b92db8e8f63",
+    "logs/base__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap": "e4c8bae809ed55005ad641b21f0ff8740edfd6513066c840628f6dbc122d2b02",
+    "logs/summary_base_int.txt": "1366f40aa46a315b7f68666b1989a22bc4ec6380695645dbd4f1a9f745fdc109",
+    "logs/summary_base_unit.txt": "897031cadd79d90f5fb13174c14e70d6a1b70319ae366bc5b66a9cbaba39ff1a",
+    "logs/summary_target_int.txt": "6797492445a165237d8137dc6dff3fa4c60034ee431f978d157517e6bf21898a",
+    "logs/summary_target_unit.txt": "0b4bf67365a2e31ca9a8a648460055b6635c48b80b9272c3c3877965ee5d167b",
+    "logs/target__apps_api_src_tests_agents-public-view.contract.test.ts.tap": "da94d2df57536d5e578d5f27dc100862a2da66ae862f04845561bbbc1917a398",
+    "logs/target__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap": "750202b9b686f16008942a193c1c8007f52ecd73ed77849b9b45150aac33f776",
+    "logs/target__apps_api_src_tests_chat-vertical-registry.test.ts.tap": "7bdc31a10243f8317ac3ed877cb75b567030caaed7c762df4d98801fff06106c",
+    "logs/target__apps_api_src_tests_imob-copilot-conversation.test.ts.tap": "378a4b98ff592e39bad1f5c4f945a65ff818af75dcde47b362c21a38d46d22fe",
+    "logs/target__apps_api_src_tests_imob-crm-resolver.test.ts.tap": "503943de39a49cfbea95373499eaa02458e4619cb0d58738c3262ed65bfaaba5",
+    "logs/target__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap": "83646c0f3653eeb94549f8295301044a3cf7f84c797629a1734249c62ccf85e8",
+    "logs/target__apps_api_src_tests_imob-specialist-bridge.test.ts.tap": "e92284ad3e215b2840b80c0c40e649396d0aa1557cabe3d399c4e880f170ca8d",
+    "logs/target__apps_api_src_tests_marketplace.installations.activate.test.ts.tap": "b8cf8e1eedcd9fd932a50399bb1bfa5d25ed6b389d35a6e2fad4a5c6c81d9d03",
+    "logs/target__apps_api_src_tests_vertical-access-resolver.test.ts.tap": "1cc508bc1ee6df35cd0754befd3405005186439898486c5ecdd8b09749bac6c2",
+    "logs/target__apps_api_src_tests_vertical-access-revocation.test.ts.tap": "85ff998fd6d8beb5bc41363773dbf2d2547ea3a4bd46459ec4f284050d5aefcd",
+    "logs/target__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap": "dbd8c799e6f97de4ae08b2ddbe5131c1c76e900e134dfbd62ebd9280cd300d58",
+    "logs/target__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap": "bc13121fa21ae0b8b0add2cc238c1a0a425b9c0690e0489a40a2f9810d8f2d0e",
+    "logs/target__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap": "c35f08708587f9d8cbd9b02dc8146beed0ede1c3c4aadfaf643b5b0e7febc50b",
+    "logs/target__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap": "3f5bde05a6bdf08a48006b3bdc3c2f50c6cb8ac0b5e2148e855cc98d7fc3cedc",
+    "logs/target__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap": "0c06401ab8d4d10335acdca71acf2ec104938e6273b016261b35a70df2173391",
+    "logs/target__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap": "19a66cf73ace40c4f5ca22978459872a8f63b0b0037262d54e4f5fea84c0dfca",
+    "logs/target__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap": "a95cedaf05b478ab38e3ffff43c9995d0eb19cc140f075b96298a96589b1f762",
+    "logs/target__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap": "d447dd16a4e2c7220cdcc5f7bd28050fb6f1acc534ec28d945966f145522c134",
+    "logs/target__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap": "e04f283a000c7062208686f0979c4eb8304948741d36ff25dacfca8070d7a517",
+    "logs/tests_added_by_p11.json": "3e903d3e79f3bfe576440a0641e8e8c337b4163be67c2d2cfff4b5abd230d29a",
+    "logs/tsc_gb_api.txt": "e43495dd043ead1596daf45140a20fe9af04d9393b30a94325e114220928eaaa",
+    "logs/tsc_gb_web.txt": "f7e7153dd9121499dde9e0e0e7e16b3b6484b7f403287bab04278eab97d06cce",
+    "logs/tsc_gt_api.txt": "4b3cdcc4d21f568b2c5ed74eb07b842b0b1525e3c732df5ad80966823b95e90a",
+    "logs/tsc_gt_web.txt": "f7e7153dd9121499dde9e0e0e7e16b3b6484b7f403287bab04278eab97d06cce",
+    "pendencias_preexistentes.txt": "dbe153a9036c84df944f0921766da4c973848a48d7a50fd0c72e8f23499ebba0",
+    "tests_matrix_baseline.txt": "3ee13ba6e3f44a96343f29ccb11e84e258deda15df87ac11969f5170981fc42e",
+    "tests_matrix_target.txt": "4eb463f140defee8e1a1b48557b60d497c10fd21a8de1dde1741ae54da474d44"
+  },
+  "redaction": "tables and counters copied with markers; raw tests_matrix_*, tsc_*, git_state_* and isolation proofs omitted; no user, tenant, workspace or request records copied"
+}

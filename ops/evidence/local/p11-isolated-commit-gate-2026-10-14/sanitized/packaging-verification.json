@@ -1,0 +1,424 @@
+{
+  "sourceFolder": "ops/evidence/local/p11-isolated-commit-gate-2026-10-14",
+  "branch": "feat/p11-front-door-transversal-orchestration",
+  "headAtPackaging": "e4575b033d35ecdc7572ccd93107f671d0526e24",
+  "packagedOn": "2026-11-06",
+  "originalFileCount": 58,
+  "originalsUnmodifiedByPackaging": true,
+  "originalsCheckMethod": "size and mtime of every original compared before and after writing; no hash of the originals was recomputed (hashes come from the existing MANIFEST.sha256)",
+  "sanitizedFiles": {
+    "comparison_target_vs_baseline.md": {
+      "sha256": "f7bbab0f4df252006392e8332a35740fa7844f8beeeaf95644d6a50f7dac72c7",
+      "bytes": 2661,
+      "lines": 36
+    },
+    "target-tests.tap": {
+      "sha256": "649c9015a72ba28f6ca9ebf004380092a7142dbfc03bf83762e187972fbb61de",
+      "bytes": 258585,
+      "lines": 4403
+    },
+    "baseline-tests.tap": {
+      "sha256": "10ff0504365d56893031776c64452a74dc50ad3236aefdf4bc4b58e8d764cf3e",
+      "bytes": 226489,
+      "lines": 4089
+    },
+    "results.json": {
+      "sha256": "ed9bfc2db447f066ee7b7b038dcffca0b95d2b846f279c185d05c1a01650d52c",
+      "bytes": 30021,
+      "lines": 717
+    },
+    "README.md": {
+      "sha256": "c78f1c72cf7002408e663e38fcaa21cdb5414eaa4b637b2c2127eec7d9b6fa47",
+      "bytes": 10224,
+      "lines": 75
+    }
+  },
+  "derivedFrom": {
+    "comparison_target_vs_baseline.md": [
+      {
+        "original": "comparison_target_vs_baseline.md",
+        "sha256FromExistingManifest": "2b8ff84ea8b45affa262a25a1d74f8dca02b03021a9caed6caf31c12ecacff93"
+      }
+    ],
+    "target-tests.tap": [
+      {
+        "original": "logs/target__apps_api_src_tests_agents-public-view.contract.test.ts.tap",
+        "sha256FromExistingManifest": "da94d2df57536d5e578d5f27dc100862a2da66ae862f04845561bbbc1917a398"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap",
+        "sha256FromExistingManifest": "750202b9b686f16008942a193c1c8007f52ecd73ed77849b9b45150aac33f776"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_chat-vertical-registry.test.ts.tap",
+        "sha256FromExistingManifest": "7bdc31a10243f8317ac3ed877cb75b567030caaed7c762df4d98801fff06106c"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_imob-copilot-conversation.test.ts.tap",
+        "sha256FromExistingManifest": "378a4b98ff592e39bad1f5c4f945a65ff818af75dcde47b362c21a38d46d22fe"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_imob-crm-resolver.test.ts.tap",
+        "sha256FromExistingManifest": "503943de39a49cfbea95373499eaa02458e4619cb0d58738c3262ed65bfaaba5"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap",
+        "sha256FromExistingManifest": "83646c0f3653eeb94549f8295301044a3cf7f84c797629a1734249c62ccf85e8"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_imob-specialist-bridge.test.ts.tap",
+        "sha256FromExistingManifest": "e92284ad3e215b2840b80c0c40e649396d0aa1557cabe3d399c4e880f170ca8d"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_marketplace.installations.activate.test.ts.tap",
+        "sha256FromExistingManifest": "b8cf8e1eedcd9fd932a50399bb1bfa5d25ed6b389d35a6e2fad4a5c6c81d9d03"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_vertical-access-resolver.test.ts.tap",
+        "sha256FromExistingManifest": "1cc508bc1ee6df35cd0754befd3405005186439898486c5ecdd8b09749bac6c2"
+      },
+      {
+        "original": "logs/target__apps_api_src_tests_vertical-access-revocation.test.ts.tap",
+        "sha256FromExistingManifest": "85ff998fd6d8beb5bc41363773dbf2d2547ea3a4bd46459ec4f284050d5aefcd"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap",
+        "sha256FromExistingManifest": "dbd8c799e6f97de4ae08b2ddbe5131c1c76e900e134dfbd62ebd9280cd300d58"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap",
+        "sha256FromExistingManifest": "bc13121fa21ae0b8b0add2cc238c1a0a425b9c0690e0489a40a2f9810d8f2d0e"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap",
+        "sha256FromExistingManifest": "c35f08708587f9d8cbd9b02dc8146beed0ede1c3c4aadfaf643b5b0e7febc50b"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap",
+        "sha256FromExistingManifest": "3f5bde05a6bdf08a48006b3bdc3c2f50c6cb8ac0b5e2148e855cc98d7fc3cedc"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap",
+        "sha256FromExistingManifest": "0c06401ab8d4d10335acdca71acf2ec104938e6273b016261b35a70df2173391"
+      },
+      {
+        "original": "logs/target__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap",
+        "sha256FromExistingManifest": "19a66cf73ace40c4f5ca22978459872a8f63b0b0037262d54e4f5fea84c0dfca"
+      },
+      {
+        "original": "logs/target__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap",
+        "sha256FromExistingManifest": "a95cedaf05b478ab38e3ffff43c9995d0eb19cc140f075b96298a96589b1f762"
+      },
+      {
+        "original": "logs/target__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap",
+        "sha256FromExistingManifest": "d447dd16a4e2c7220cdcc5f7bd28050fb6f1acc534ec28d945966f145522c134"
+      },
+      {
+        "original": "logs/target__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap",
+        "sha256FromExistingManifest": "e04f283a000c7062208686f0979c4eb8304948741d36ff25dacfca8070d7a517"
+      }
+    ],
+    "baseline-tests.tap": [
+      {
+        "original": "logs/base__apps_api_src_tests_agents-public-view.contract.test.ts.tap",
+        "sha256FromExistingManifest": "3c25d00fa171a0f63eeb82bd9ac465266ddcbd90513d3b8d85bebde62f6af5a5"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap",
+        "sha256FromExistingManifest": "3eb5b9cc765401ce4183a0b86a27b13bf8858e5499d438c56614655e6af4cfb3"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_chat-vertical-registry.test.ts.tap",
+        "sha256FromExistingManifest": "bdd8566ca57ddd5e340b5e3ce2e80df83d1ccc8ef561124e4c2815dfcde99a19"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_imob-copilot-conversation.test.ts.tap",
+        "sha256FromExistingManifest": "f95dbf242b12f9fa40d6e0470f33b2c775ec7f7e0bb20f352ffa5bc3ad580e13"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_imob-crm-resolver.test.ts.tap",
+        "sha256FromExistingManifest": "ce997fba36bad3958aee7701f38fb15fda34e40cdf6483efee8e10196a9d4f3d"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap",
+        "sha256FromExistingManifest": "d805a049df13ee2da54f31a4fb85c2bde94e812e0c4ebebec130a8d21bedde0e"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_imob-specialist-bridge.test.ts.tap",
+        "sha256FromExistingManifest": "fa4818ab8cb9402bae87f63afa5d4ac3894a024939505f06815007e07dd6f459"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_marketplace.installations.activate.test.ts.tap",
+        "sha256FromExistingManifest": "a7cd596736a5675827d3f4dea31c169c70176fc044c47483e80c947ce4338458"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_vertical-access-resolver.test.ts.tap",
+        "sha256FromExistingManifest": "fd25216eae12f3efe0ed6618863d93fb04194560f02f3fecb6034f532f51a4a3"
+      },
+      {
+        "original": "logs/base__apps_api_src_tests_vertical-access-revocation.test.ts.tap",
+        "sha256FromExistingManifest": "43f595ab3fb75d9beca8bf083eb0220baa1bfd0f2be32e050c4760ed67d28032"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap",
+        "sha256FromExistingManifest": "5f811b939b9fc7416191bcd1cffcbda432cfe339e921a74b3e8f6e4e97670790"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap",
+        "sha256FromExistingManifest": "bbb67bc5fcfbd17630e08ef1727984052aec699fc3aa01f60a9becb0a6656fe3"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap",
+        "sha256FromExistingManifest": "5c41eaceae8e0b464759cec368d7b60c1186d48cf992be448ab78c6632659a90"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap",
+        "sha256FromExistingManifest": "1377cda9a7855ab705e472e52846baecb41991ad4afe3b18d03d305dd5fef0ea"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap",
+        "sha256FromExistingManifest": "e722419822529ddfcb81a8b4c94ed86e0bede689e2776bc07cca8482e35e459f"
+      },
+      {
+        "original": "logs/base__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap",
+        "sha256FromExistingManifest": "14e108312f533fdbd16f45b0998e33d9fd88557ba3ec7b9cf1f52c008381f213"
+      },
+      {
+        "original": "logs/base__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap",
+        "sha256FromExistingManifest": "c177294bf8f49c79ac6e771925717d2c98d9893db29c4a30f29ed7b66127b0e3"
+      },
+      {
+        "original": "logs/base__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap",
+        "sha256FromExistingManifest": "596a0007ec88ae3c472f2f00b7eda931b88f077242b0ae26f8b84b92db8e8f63"
+      },
+      {
+        "original": "logs/base__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap",
+        "sha256FromExistingManifest": "e4c8bae809ed55005ad641b21f0ff8740edfd6513066c840628f6dbc122d2b02"
+      }
+    ],
+    "results.json": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "0ca689d38714a05b8235d364457d9ea15546b2be9c9a3a739204a6b422839b96"
+      },
+      {
+        "original": "comparison_target_vs_baseline.md",
+        "sha256FromExistingManifest": "2b8ff84ea8b45affa262a25a1d74f8dca02b03021a9caed6caf31c12ecacff93"
+      },
+      {
+        "original": "summary_target_unit.txt",
+        "sha256FromExistingManifest": "0b4bf67365a2e31ca9a8a648460055b6635c48b80b9272c3c3877965ee5d167b"
+      },
+      {
+        "original": "summary_base_unit.txt",
+        "sha256FromExistingManifest": "897031cadd79d90f5fb13174c14e70d6a1b70319ae366bc5b66a9cbaba39ff1a"
+      },
+      {
+        "original": "summary_target_int.txt",
+        "sha256FromExistingManifest": "6797492445a165237d8137dc6dff3fa4c60034ee431f978d157517e6bf21898a"
+      },
+      {
+        "original": "summary_base_int.txt",
+        "sha256FromExistingManifest": "1366f40aa46a315b7f68666b1989a22bc4ec6380695645dbd4f1a9f745fdc109"
+      },
+      {
+        "original": "tests_added_by_p11.json",
+        "sha256FromExistingManifest": "3e903d3e79f3bfe576440a0641e8e8c337b4163be67c2d2cfff4b5abd230d29a"
+      },
+      {
+        "original": "pendencias_preexistentes.txt",
+        "sha256FromExistingManifest": "dbe153a9036c84df944f0921766da4c973848a48d7a50fd0c72e8f23499ebba0"
+      },
+      {
+        "original": "cleanliness_and_no_mutation_proof.txt",
+        "sha256FromExistingManifest": "24b62043b4059e5c6ccf4bff02a500174da36936b5947dd485effaec6274d0a6"
+      },
+      {
+        "original": "MANIFEST.sha256",
+        "sha256FromExistingManifest": null
+      }
+    ],
+    "README.md": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "0ca689d38714a05b8235d364457d9ea15546b2be9c9a3a739204a6b422839b96"
+      },
+      {
+        "original": "comparison_target_vs_baseline.md",
+        "sha256FromExistingManifest": "2b8ff84ea8b45affa262a25a1d74f8dca02b03021a9caed6caf31c12ecacff93"
+      }
+    ]
+  },
+  "scrubbing": {
+    "rules": [
+      "p11_worktree_abs",
+      "builder_worktree_abs",
+      "other_worktree_abs",
+      "home_abs",
+      "tilde_p11",
+      "tilde_projects",
+      "mnt_path",
+      "tmp_path",
+      "windows_user_path",
+      "os_user",
+      "db_url",
+      "redis_url",
+      "bearer",
+      "test_token",
+      "cuid",
+      "email_nonsynthetic"
+    ],
+    "replacementsApplied": {
+      "builder_worktree_abs": 28
+    }
+  },
+  "residualScan": {
+    "patterns": [
+      "abs_home",
+      "os_user",
+      "mnt",
+      "tmp",
+      "windows_path",
+      "db_url",
+      "email",
+      "bearer",
+      "token_literal",
+      "cuid_like",
+      "password_word",
+      "secret_word"
+    ],
+    "findings": [],
+    "totalFindings": 0,
+    "note": "scan over the generated sanitized files before writing; findings are listed for human review, not auto-removed"
+  },
+  "exclusionsAndRepresentation": {
+    "git-state-snapshots": {
+      "reason": "estado Git bruto omitido: caminhos locais e estado de branches",
+      "count": 2,
+      "originals": [
+        "git_state_0_before.txt",
+        "git_state_1_after.txt"
+      ]
+    },
+    "isolation-and-cleanliness-proofs": {
+      "reason": "provas de isolamento/limpeza omitidas: dados de infraestrutura local",
+      "count": 2,
+      "originals": [
+        "isolation_code_proof.txt",
+        "isolation_services_proof.txt"
+      ]
+    },
+    "original-readme": {
+      "reason": "README original substituído pela cópia sanitizada embutida no README desta pasta",
+      "count": 1,
+      "originals": [
+        "README.md"
+      ]
+    },
+    "other-raw": {
+      "reason": "não publicado; preservado apenas como original bruto fora do repositório",
+      "count": 2,
+      "originals": [
+        "tests_matrix_baseline.txt",
+        "tests_matrix_target.txt"
+      ]
+    },
+    "raw-manifest": {
+      "reason": "MANIFEST.sha256 bruto não copiado; seus hashes foram carregados em results.json",
+      "count": 1,
+      "originals": [
+        "MANIFEST.sha256"
+      ]
+    },
+    "tap-logs": {
+      "reason": "representados pelas cópias sanitizadas concatenadas",
+      "count": 38,
+      "originals": [
+        "logs/base__apps_api_src_tests_agents-public-view.contract.test.ts.tap",
+        "logs/base__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap",
+        "logs/base__apps_api_src_tests_chat-vertical-registry.test.ts.tap",
+        "logs/base__apps_api_src_tests_imob-copilot-conversation.test.ts.tap",
+        "logs/base__apps_api_src_tests_imob-crm-resolver.test.ts.tap",
+        "logs/base__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap",
+        "logs/base__apps_api_src_tests_imob-specialist-bridge.test.ts.tap",
+        "logs/base__apps_api_src_tests_marketplace.installations.activate.test.ts.tap",
+        "logs/base__apps_api_src_tests_vertical-access-resolver.test.ts.tap",
+        "logs/base__apps_api_src_tests_vertical-access-revocation.test.ts.tap",
+        "logs/base__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap",
+        "logs/base__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap",
+        "logs/base__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap",
+        "logs/base__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap",
+        "logs/base__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap",
+        "logs/base__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap",
+        "logs/base__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap",
+        "logs/base__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap",
+        "logs/base__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap",
+        "logs/target__apps_api_src_tests_agents-public-view.contract.test.ts.tap",
+        "logs/target__apps_api_src_tests_chat-vertical-imob-handoff.test.ts.tap",
+        "logs/target__apps_api_src_tests_chat-vertical-registry.test.ts.tap",
+        "logs/target__apps_api_src_tests_imob-copilot-conversation.test.ts.tap",
+        "logs/target__apps_api_src_tests_imob-crm-resolver.test.ts.tap",
+        "logs/target__apps_api_src_tests_imob-owner-blocker-consult.test.ts.tap",
+        "logs/target__apps_api_src_tests_imob-specialist-bridge.test.ts.tap",
+        "logs/target__apps_api_src_tests_marketplace.installations.activate.test.ts.tap",
+        "logs/target__apps_api_src_tests_vertical-access-resolver.test.ts.tap",
+        "logs/target__apps_api_src_tests_vertical-access-revocation.test.ts.tap",
+        "logs/target__apps_web_src_components_agents_FrontDoorSessionHeader.test.tsx.tap",
+        "logs/target__apps_web_src_components_agents_chatLauncherEngine.test.ts.tap",
+        "logs/target__apps_web_src_components_agents_frontDoorAccessEngine.test.ts.tap",
+        "logs/target__apps_web_src_components_agents_frontDoorBillingEngine.test.ts.tap",
+        "logs/target__apps_web_src_components_agents_verticalActivationEngine.test.ts.tap",
+        "logs/target__apps_web_src_components_agents_verticalHandoffEngine.test.ts.tap",
+        "logs/target__apps_web_src_features_imob_ImobChatWidgets.test.tsx.tap",
+        "logs/target__apps_web_src_features_imob_imobCommandCenterHelper.test.ts.tap",
+        "logs/target__apps_web_src_features_imob_structured_createImobStructuredForms.test.ts.tap"
+      ]
+    },
+    "typecheck-raw-output": {
+      "reason": "saída bruta de typecheck omitida: caminhos locais; contagens agregadas em results.json quando existiam",
+      "count": 4,
+      "originals": [
+        "logs/tsc_gb_api.txt",
+        "logs/tsc_gb_web.txt",
+        "logs/tsc_gt_api.txt",
+        "logs/tsc_gt_web.txt"
+      ]
+    },
+    "used-in-sanitized": {
+      "reason": "conteúdo agregado ou copiado (sanitizado) em arquivos desta pasta",
+      "count": 8,
+      "originals": [
+        "cleanliness_and_no_mutation_proof.txt",
+        "comparison_target_vs_baseline.md",
+        "logs/summary_base_int.txt",
+        "logs/summary_base_unit.txt",
+        "logs/summary_target_int.txt",
+        "logs/summary_target_unit.txt",
+        "logs/tests_added_by_p11.json",
+        "pendencias_preexistentes.txt"
+      ]
+    }
+  },
+  "notDone": [
+    "no git add/commit/push",
+    "originals not removed, moved, edited or hidden",
+    "tests not re-executed",
+    "no hash of originals recomputed"
+  ],
+  "postProcessing": [
+    {
+      "file": "baseline-tests.tap",
+      "operation": "removed trailing spaces/tabs from line ends (mechanical; text, order, verdicts and counts unchanged)",
+      "linesChanged": 44,
+      "date": "2026-11-06",
+      "reason": "git diff --cached --check (trailing whitespace)"
+    },
+    {
+      "file": "target-tests.tap",
+      "operation": "removed trailing spaces/tabs from line ends (mechanical; text, order, verdicts and counts unchanged)",
+      "linesChanged": 68,
+      "date": "2026-11-06",
+      "reason": "git diff --cached --check (trailing whitespace)"
+    }
+  ]
+}
