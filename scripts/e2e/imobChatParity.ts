@@ -142,6 +142,8 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
   const unit = `Kit ${tag} ${STAMP}`;
   const shot = (name: string) => page.screenshot({ path: path.join(ARTIFACTS, `${tag}-${name}.png`), fullPage: true }).catch(() => undefined);
   let stop = false;
+  // caseId da locação criada NESTA jornada (resposta de POST /imob/rentals); o histórico do imóvel é validado por ele.
+  let createdRentalCaseId = "";
   const step = async (name: string, fn: () => Promise<void>) => {
     if (stop) {
       results.push({ surface, step: name, ok: false, error: "não executado (passo anterior falhou)" });
@@ -203,7 +205,16 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     await field(page, "Salvar locação", "Fim do contrato").fill("31/03/2026");
     await field(page, "Salvar locação", "Aluguel mensal (R$)").fill("900,00");
     await field(page, "Salvar locação", "Dia do vencimento").fill("10");
+    const leaseCreated = page.waitForResponse(
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/imob/rentals"),
+      { timeout: 30000 },
+    );
     await formWith(page, "Salvar locação").getByRole("button", { name: "Salvar locação", exact: true }).click();
+    const leaseResponse = await leaseCreated;
+    if (leaseResponse.status() !== 201) throw new Error(`POST /imob/rentals → ${leaseResponse.status()}`);
+    const leaseBody = (await leaseResponse.json().catch(() => null)) as { data?: { caseId?: unknown } } | null;
+    if (typeof leaseBody?.data?.caseId !== "string" || !leaseBody.data.caseId) throw new Error("resposta da criação da locação sem caseId");
+    createdRentalCaseId = leaseBody.data.caseId;
     await formWith(page, "Gerar minuta").waitFor({ timeout: 30000 });
     await page.waitForFunction((name) => [...document.querySelectorAll("input")].some((input) => input.value === name), ownerName, { timeout: 20000 });
     if ((await field(page, "Gerar minuta", "Locatário (nome)").inputValue()) !== `Inquilino ${tag}`) throw new Error("locatário não veio da locação");
@@ -219,8 +230,10 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     const properties = await api<{ data: { items: Array<{ id: string; metadata?: { externalPropertyRef?: string } }> } }>(session, "GET", "/imob/properties");
     const property = properties.data.items.find((item) => item.metadata?.externalPropertyRef === unit);
     if (!property) throw new Error("imóvel não encontrado");
-    const history = await api<{ data: { items: Array<{ status: string }> } }>(session, "GET", `/imob/rentals/history?propertyId=${property.id}`);
-    if (history.data.items.length !== 1 || history.data.items[0].status !== "closed") throw new Error("locação não ficou encerrada no histórico");
+    const history = await api<{ data: { items: Array<{ caseId: string; status: string }> } }>(session, "GET", `/imob/rentals/history?propertyId=${property.id}`);
+    const created = history.data.items.find((item) => item.caseId === createdRentalCaseId);
+    if (!created) throw new Error("locação criada nesta jornada não encontrada no histórico do imóvel");
+    if (created.status !== "closed") throw new Error(`locação criada nesta jornada encontrada no histórico, mas com status "${created.status}" (esperado "closed")`);
   });
   await step("nenhuma run criada", async () => {
     if (runs.length) throw new Error(`${runs.length} run(s) criada(s)`);
