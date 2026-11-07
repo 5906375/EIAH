@@ -1,3 +1,4 @@
+import { parseImobUnits } from "@eiah/contracts";
 import { parseProposalContinuity } from "./crm/imobProposalReviewContinuity";
 import {
   createEmptyImobSlots,
@@ -654,6 +655,12 @@ function hasExplicitOwnerCreateRequest(message: string) {
   return wantsCreate && hasOwner;
 }
 
+/** Só quando a frase cita mais de uma unidade; uma única unidade segue o fluxo histórico. */
+function extractMultiUnitLabels(message: string) {
+  const { units } = parseImobUnits(message);
+  return units.length >= 2 ? units.map((unit) => unit.label) : null;
+}
+
 function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
   const validation = validateImobInput({ rawInput: message, scope: "property.create" });
   const normalizedAddress = validation.normalized.address
@@ -688,6 +695,7 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
     address: normalizedAddress ?? extractAddress(message) ?? previous?.address ?? null,
     ownerNameHint: extractOwnerNameHint(message) ?? previous?.ownerNameHint ?? null,
+    unitLabels: extractMultiUnitLabels(message) ?? previous?.unitLabels ?? null,
     origin: previous?.origin ?? null,
   };
 }

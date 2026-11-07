@@ -606,7 +606,8 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerId")?.optionsSource, "imob_owners");
   assert.deepEqual(
     result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
-    ["propertyType", "goal", "city", "address"],
+    // Destinação é opcional (vazio = ainda não informada); só tipo, cidade e endereço são obrigatórios.
+    ["propertyType", "city", "address"],
   );
 });
 
@@ -1396,11 +1397,16 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
     [
-      "propertyId", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
+      "propertyId", "leaseState", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
       "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
       "guaranteeType", "guaranteeAmount", "iptu", "condominio", "condominioAmount",
+      "endedOn", "closeReason",
     ],
   );
+  // Situação da locação tem padrão "vigente"; encerrada exige saída e motivo (validado no cliente e na API).
+  const leaseState = result.presentation.form?.fields.find((field) => field.name === "leaseState");
+  assert.equal(leaseState?.value, "vigente");
+  assert.deepEqual(leaseState?.options?.map((option) => option.value), ["vigente", "encerrada"]);
   const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");
   assert.equal(propertyField?.optionsSource, "imob_properties");
   assert.equal(propertyField?.required, true);

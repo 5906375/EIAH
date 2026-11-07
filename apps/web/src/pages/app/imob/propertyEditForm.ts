@@ -1,3 +1,4 @@
+import { IMOB_ASSET_DESTINATION_OPTIONS, normalizeImobAssetDestination } from "@eiah/contracts";
 import type { ImobPresentationForm, ImobPropertyUpdateRequest } from "@/lib/api";
 import { IMOB_PROPERTY_TYPE_OPTIONS } from "@/features/imob/propertyTypes";
 import { buildPropertyCreateRequest, findDuplicateProperty } from "./propertyCreateForm";
@@ -14,11 +15,7 @@ export function isPropertyEditForm(form: Pick<ImobPresentationForm, "submitTarge
   return form?.submitTarget === PROPERTY_EDIT_SUBMIT_TARGET;
 }
 
-const PROPERTY_GOAL_OPTIONS = [
-  { value: "venda", label: "Venda" },
-  { value: "locacao", label: "Locação" },
-  { value: "aluguel_por_temporada", label: "Aluguel por temporada" },
-];
+const PROPERTY_DESTINATION_OPTIONS = IMOB_ASSET_DESTINATION_OPTIONS.map((option) => ({ value: option.value, label: option.label }));
 
 const propertyPicker = {
   name: "propertyId",
@@ -66,7 +63,15 @@ export function buildPropertyEditForm(mode: "edit" | "archive" = "edit"): ImobPr
           group: option.category === "residential" ? "Residencial" : "Comercial",
         })),
       },
-      { name: "goal", label: "Finalidade", type: "select", required: true, value: "", options: PROPERTY_GOAL_OPTIONS },
+      {
+        name: "goal",
+        label: "Destinação",
+        type: "select",
+        placeholder: "Manter como está",
+        value: "",
+        options: PROPERTY_DESTINATION_OPTIONS,
+        helperText: "Em branco mantém a destinação atual; \"Sem destinação definida\" é uma escolha explícita.",
+      },
       { name: "unitLabel", label: "Identificação da unidade", type: "text", placeholder: "Ex.: Kitnet 01", value: "" },
       {
         name: "ownerId",
@@ -132,7 +137,7 @@ export function propertyToEditValues(property: PropertyRecord): Record<string, s
   return {
     propertyId: property.id,
     propertyType: property.propertyType ?? "",
-    goal: property.goal ?? "",
+    goal: normalizeImobAssetDestination(property.goal) ?? "",
     unitLabel: typeof metadata.externalPropertyRef === "string" ? metadata.externalPropertyRef : "",
     ownerId: property.ownerId ?? "",
     occupancy: typeof occupancy === "string" ? occupancy : "",
@@ -178,7 +183,7 @@ export function buildPropertyUpdateRequest(values: Record<string, string>, prope
     request: {
       ownerId: built.request.ownerId ?? null,
       propertyType: built.request.propertyType,
-      goal: built.request.goal,
+      ...(built.request.goal ? { goal: built.request.goal } : {}),
       address: built.request.address,
       city: built.request.city,
       neighborhood: built.request.neighborhood,

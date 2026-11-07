@@ -253,6 +253,8 @@ export type ImobPropertyDraft = {
   address: string | null;
   /** Nome do proprietário citado na frase ("… no proprietário Carlos"); o cliente escolhe o cadastro existente. */
   ownerNameHint?: string | null;
+  /** Unidades interpretadas da frase ("kitnets 101 a 105 e salas 01 e 02"); só quando há mais de uma. */
+  unitLabels?: string[] | null;
   origin?: {
     source: string;
     sourceId: string;

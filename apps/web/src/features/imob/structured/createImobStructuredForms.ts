@@ -1,8 +1,10 @@
+import { formatImobUnitList, resolveImobAssetNextSteps, type ImobAssetNextAction, type ImobAssetNextSteps } from "@eiah/contracts";
 import {
   ApiError,
   apiArchiveImobOwner,
   apiArchiveImobProperty,
   apiCloseImobRentalLease,
+  apiCreateImobAssetDeal,
   apiCreateImobCase,
   apiCreateImobOwner,
   apiCreateImobProperty,
@@ -51,11 +53,25 @@ import {
   ownerToEditValues,
 } from "@/pages/app/imob/ownerEditForm";
 import {
+  assetDealKindOf,
+  buildAssetDealConfirmationText,
+  buildAssetDealForm,
+  buildAssetDealRequest,
+  describeAssetDealError,
+  isAssetDealForm,
+} from "@/pages/app/imob/assetDealForm";
+import {
   OCCUPANCY_LABELS,
+  buildPropertyBatchConfirmationText,
+  buildPropertyBatchForm,
+  buildPropertyBatchRequests,
   buildPropertyCreateConfirmationText,
-  buildPropertyCreateRequest,
   findDuplicateProperty,
+  isPropertyBatchForm,
   isPropertyCreateForm,
+  planPropertyCreate,
+  toPropertyBatchBaseValues,
+  type PropertyBatchItem,
 } from "@/pages/app/imob/propertyCreateForm";
 import {
   buildPropertyEditForm,
@@ -110,7 +126,7 @@ import {
   type TokenizationSubject,
 } from "@/pages/app/imob/tokenizationForm";
 import type { ImobFormState } from "./useImobFormState";
-import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage } from "./types";
+import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage, type StructuredQuickReply } from "./types";
 
 /**
  * Abrir, pré-preencher e salvar os formulários estruturados do IMOB
@@ -158,7 +174,9 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
     if (formSubmittingRef.current.has(message.id)) return;
     const leaseValues = resolveFormValuesForMessage(message);
-    const built = buildRentalLeaseRequest(leaseValues);
+    const now = new Date();
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const built = buildRentalLeaseRequest(leaseValues, todayIso);
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -173,19 +191,26 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       clearThreadOperationalState(message);
       const leasePropertyId = response.data.propertyId;
       const documentsNote = await attachInlineDocuments(message, leaseValues, leasePropertyId);
-      const openContractNow = contractAfterLeaseRef.current === leasePropertyId;
+      const historical = response.data.historical === true;
+      // Locação encerrada não ocupa o imóvel nem abre contrato: segue para o histórico.
+      const openContractNow = !historical && contractAfterLeaseRef.current === leasePropertyId;
       contractAfterLeaseRef.current = null;
       const confirmation: StructuredMessage = {
         id: makeStructuredId("assistant"),
         role: "assistant",
         text: [buildRentalLeaseConfirmationText(response.data), documentsNote].filter(Boolean).join(" "),
         thread: message.thread,
-        ...(openContractNow
-          ? {}
-          : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
+        ...(historical
+          ? { quickReplies: [{ id: "next-history", label: "Ver histórico", onSelect: () => openRentalLifecycleForm("rental_history", leasePropertyId) }] }
+          : openContractNow
+            ? {}
+            : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
       };
       appendMessage(confirmation);
-      void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+      void persistMessage(confirmation, {
+        intent: historical ? "rental.lease.registered_historical" : "rental.lease.registered",
+        action: "imob.rentals.create",
+      });
       if (openContractNow) openRentalContractForm(leasePropertyId);
     } catch (error) {
       const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
@@ -194,7 +219,13 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       const errors: Record<string, string> =
         code === "RENTAL_LEASE_ALREADY_ACTIVE"
           ? { propertyId: "Este imóvel já tem uma locação ativa." }
-          : code === "INVALID_TENANT_DOCUMENT"
+          : code === "RENTAL_LEASE_ALREADY_REGISTERED"
+            ? { _form: "Esta locação encerrada já está registrada neste imóvel (mesmo início). Nada foi gravado." }
+            : code === "ENDED_BEFORE_START"
+              ? { endedOn: "A saída não pode ser antes do início da locação." }
+              : code === "ENDED_IN_FUTURE"
+                ? { endedOn: "A data de saída não pode ser futura." }
+                : code === "INVALID_TENANT_DOCUMENT"
             ? { tenantDocument: "CPF inválido: confira os dígitos." }
             : code === "PROPERTY_NOT_FOUND"
               ? { propertyId: "Imóvel não encontrado neste workspace. Atualize a lista e tente de novo." }
@@ -204,6 +235,37 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
     } finally {
       formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  /** Próximos passos orientados pela destinação (regra no contrato; aqui só vira chip). Nunca abre nada sozinho. */
+  function nextStepReplies(steps: ImobAssetNextSteps | null, propertyId: string | null): StructuredQuickReply[] {
+    return (steps?.actions ?? []).map((action: ImobAssetNextAction) => ({
+      id: `next-${action.intent}`,
+      label: action.label,
+      onSelect: () => runAssetNextAction(action.intent, propertyId),
+    }));
+  }
+
+  function runAssetNextAction(intent: ImobAssetNextAction["intent"], propertyId: string | null) {
+    const id = propertyId ?? undefined;
+    switch (intent) {
+      case "lease_register_current":
+        return startRentalLeaseFor(id);
+      case "lease_register_historical":
+        return startRentalLeaseFor(id, { historical: true });
+      // Nova locação: abre o formulário de locação (imóvel preservado quando conhecido). O contrato só é
+      // oferecido depois que a locação é criada, pelo fluxo existente de confirmação.
+      case "lease_start_new":
+        return startRentalLeaseFor(id);
+      case "sale_register_existing":
+        return openAssetDealForm("venda", id);
+      case "sale_start_new":
+        return openAssetDealForm("venda", id, "em_andamento");
+      case "exchange_register_existing":
+        return openAssetDealForm("permuta", id);
+      case "exchange_start_new":
+        return openAssetDealForm("permuta", id, "em_andamento");
     }
   }
 
@@ -223,12 +285,38 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
-    const built = buildPropertyCreateRequest(values);
-    if (built.ok && !checkInlineDocuments(message, values)) return;
-    if (!built.ok) {
-      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+    const plan = planPropertyCreate(values);
+    if (!plan.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: plan.errors }));
       return;
     }
+
+    // Várias unidades: nada é gravado aqui. Abre a confirmação do lote (destinação geral/individual, editar, remover, adicionar).
+    if (plan.mode === "batch") {
+      if ((formFilesRef.current[message.id] ?? []).length > 0) {
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { _form: "Para várias unidades, anexe os documentos depois, em cada imóvel. Retire os arquivos para continuar." },
+        }));
+        return;
+      }
+      const batchId = makeStructuredId("assistant");
+      // Valores do formulário original acompanham a confirmação (prefixo `base:`); nada vai à API ainda.
+      setFormValuesByMessageId((prev) => ({ ...prev, [batchId]: toPropertyBatchBaseValues(values) }));
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      updateMessageById(message.id, { form: undefined });
+      appendMessage({
+        id: batchId,
+        role: "assistant",
+        text: `Identifiquei ${plan.units.length} unidades. Confirme o lote antes de gravar: nada foi cadastrado ainda.`,
+        form: buildPropertyBatchForm(plan.units, values, plan.duplicatesInInput, batchId),
+        thread: message.thread,
+      });
+      return;
+    }
+
+    const built = plan;
+    if (!checkInlineDocuments(message, values)) return;
 
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
@@ -249,6 +337,9 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       const documentsNote = await attachInlineDocuments(message, values, created.id);
       const [label] = buildImobPropertyOptions([created]).map((option) => option.label);
       const occupancy = typeof values.occupancy === "string" ? values.occupancy.trim() : "";
+      const unitName = typeof built.request.metadata.externalPropertyRef === "string" ? built.request.metadata.externalPropertyRef : null;
+      // Destinação escolhida → próximos passos já resolvidos pelo contrato. Sem destinação informada, nada é sugerido.
+      const steps = resolveImobAssetNextSteps(built.request.goal, unitName ?? label ?? null);
       const confirmation: StructuredMessage = {
         id: makeStructuredId("assistant"),
         role: "assistant",
@@ -258,17 +349,13 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
             ownerName: created.owner?.name ?? null,
             occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
           }),
+          steps?.message,
           documentsNote,
         ].filter(Boolean).join(" "),
         thread: message.thread,
-        // Próximo passo segue a finalidade escolhida no formulário (temporada ainda não tem contrato);
-        // com proprietário, dá para seguir cadastrando a carteira dele.
+        // Com proprietário, dá para seguir cadastrando a carteira dele.
         quickReplies: [
-          ...(built.request.goal === "locacao"
-            ? [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }]
-            : built.request.goal === "venda"
-              ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(created.id) }]
-              : []),
+          ...nextStepReplies(steps, created.id),
           ...(created.ownerId && created.owner?.name
             ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created.owner.name}`, onSelect: () => startPropertyCreateFor(created.ownerId as string) }]
             : []),
@@ -286,6 +373,163 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
             ? { _form: "Algum campo foi recusado pelo servidor. Confira os valores e tente de novo. Nada foi gravado." }
             : { _form: `Não foi possível salvar o imóvel agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` };
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  /**
+   * Confirmação do lote: pré-valida tudo (nomes, repetições, destinações, imóveis já cadastrados) e só então grava,
+   * uma unidade por vez. Se algo falhar no meio, o que já entrou fica e o formulário volta só com as pendentes.
+   */
+  async function handlePropertyBatchFormAction(message: StructuredMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Cadastro em lote cancelado. Nada foi gravado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const existing = await apiListImobProperties();
+      const built = buildPropertyBatchRequests(values, existing.data.items ?? []);
+      if (!built.ok) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+        return;
+      }
+
+      const created: Array<PropertyBatchItem & { id: string; ownerName: string | null; ownerId: string | null }> = [];
+      let failure: unknown = null;
+      for (const item of built.items) {
+        try {
+          const response = await apiCreateImobProperty(item.request);
+          created.push({ ...item, id: response.data.id, ownerName: response.data.owner?.name ?? null, ownerId: response.data.ownerId ?? null });
+        } catch (error) {
+          failure = error;
+          break; // as demais não são tentadas: a mesma causa (permissão, rede) tende a se repetir
+        }
+      }
+      const createdKeys = new Set(created.map((item) => `${item.field}:${item.label}`));
+      const pending = built.items.filter((item) => !createdKeys.has(`${item.field}:${item.label}`));
+      const place = [built.items[0]?.request.address, built.items[0]?.request.city].filter(Boolean).join(", ") || null;
+
+      if (created.length > 0) {
+        const confirmation: StructuredMessage = {
+          id: makeStructuredId("assistant"),
+          role: "assistant",
+          text: buildPropertyBatchConfirmationText({ created, failed: pending, place, ownerName: created[0]?.ownerName ?? null }),
+          thread: message.thread,
+          quickReplies: created[0]?.ownerId && created[0]?.ownerName
+            ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created[0].ownerName}`, onSelect: () => startPropertyCreateFor(created[0].ownerId as string) }]
+            : [],
+        };
+        appendMessage(confirmation);
+        void persistMessage(confirmation, { intent: "property.batch_registered", action: "imob.properties.create" });
+        // Próximos passos por destinação: um grupo por destinação escolhida; unidade única leva o imóvel, lote deixa escolher.
+        const groups = new Map<string, typeof created>();
+        for (const item of created) {
+          if (!item.destination) continue;
+          groups.set(item.destination, [...(groups.get(item.destination) ?? []), item]);
+        }
+        for (const [destination, items] of groups) {
+          const steps = resolveImobAssetNextSteps(destination, items[0].label, { unitCount: items.length });
+          if (!steps) continue;
+          appendMessage({
+            id: makeStructuredId("assistant"),
+            role: "assistant",
+            text: items.length > 1 ? `${steps.message} (${items.map((item) => item.label).join(", ")})` : steps.message,
+            thread: message.thread,
+            quickReplies: nextStepReplies(steps, items.length === 1 ? items[0].id : null),
+          });
+        }
+      }
+
+      if (pending.length === 0) {
+        updateMessageById(message.id, { form: undefined });
+        clearThreadOperationalState(message);
+        return;
+      }
+
+      // Falha no meio: devolve ao formulário só as pendentes (linhas já gravadas ficam vazias = removidas do lote).
+      setFormValuesByMessageId((prev) => {
+        const current = { ...(prev[message.id] ?? {}) };
+        for (const item of created) if (item.field.startsWith("unit_")) current[item.field] = "";
+        const pendingExtras = pending.filter((item) => item.field === "extraUnits");
+        current.extraUnits = formatImobUnitList(pendingExtras);
+        return { ...prev, [message.id]: current };
+      });
+      const status = failure instanceof ApiError ? failure.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          _form: `${created.length > 0 ? `${created.length} unidade(s) já gravada(s). ` : "Nada foi gravado. "}Não foi possível cadastrar ${pending.length} unidade(s)${status ? ` (HTTP ${status})` : ""}. Revise e confirme de novo para tentar só as pendentes.`,
+        },
+      }));
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: { _form: `Não foi possível validar o lote agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  function openAssetDealForm(kind: "venda" | "permuta", propertyId?: string, state?: "em_andamento" | "concluida") {
+    const threadId = host.activeThreadId ?? makeStructuredId("thread");
+    const messageId = makeStructuredId("assistant");
+    if (propertyId || state) {
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { ...(propertyId ? { propertyId } : {}), ...(state ? { state } : {}) } }));
+    }
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: kind === "venda" ? "Escolha o imóvel e informe a situação da venda." : "Escolha o imóvel oferecido e informe a situação da permuta.",
+      form: buildAssetDealForm(kind),
+      thread: { id: threadId, label: kind === "venda" ? "Venda" : "Permuta", status: "active" },
+    });
+  }
+
+  async function handleAssetDealFormAction(message: StructuredMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Nenhum negócio foi registrado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const kind = assetDealKindOf(message.form);
+    const values = resolveFormValuesForMessage(message);
+    const built = buildAssetDealRequest(kind, values);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const response = await apiCreateImobAssetDeal(built.request);
+      updateMessageById(message.id, { form: undefined });
+      const done: StructuredMessage = {
+        id: makeStructuredId("assistant"),
+        role: "assistant",
+        text: buildAssetDealConfirmationText(response.data),
+        thread: message.thread,
+        quickReplies: kind === "venda" && response.data.state === "em_andamento"
+          ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(response.data.propertyId) }]
+          : [],
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: `${kind === "venda" ? "sale" : "exchange"}.deal.registered`, action: "imob.deals.create" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: describeAssetDealError(status, body?.error?.code) } }));
     } finally {
       formSubmittingRef.current.delete(message.id);
     }
@@ -412,6 +656,12 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       openRentalContractForm();
     } else if (item.form === "contract_sale") {
       openSaleContractForm();
+    } else if (item.form === "deal_sale") {
+      openAssetDealForm("venda");
+    } else if (item.form === "deal_exchange") {
+      openAssetDealForm("permuta");
+    } else if (item.form === "rental_historical") {
+      startRentalLeaseFor(undefined, { historical: true });
     } else if (item.form === "rental_edit" || item.form === "rental_close" || item.form === "rental_history") {
       openRentalLifecycleForm(item.form);
     }
@@ -635,9 +885,12 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
   }
 
   /** Nova locação para o mesmo imóvel, com o formulário de cadastro que já existe. */
-  function startRentalLeaseFor(propertyId: string) {
-    pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
-    void sendMessageText("cadastrar locatário", { displayText: "Cadastrar locação" });
+  function startRentalLeaseFor(propertyId?: string, options?: { historical?: boolean }) {
+    pendingFormPrefillRef.current = {
+      submitTarget: "imob.rentals.create",
+      values: { ...(propertyId ? { propertyId } : {}), ...(options?.historical ? { leaseState: "encerrada" } : {}) },
+    };
+    void sendMessageText("cadastrar locatário", { displayText: options?.historical ? "Registrar locação encerrada" : "Cadastrar locação" });
   }
 
   function openSaleContractForm(propertyId?: string) {
@@ -1208,6 +1461,14 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       await handleSaleContractFormAction(message, actionId);
       return true;
     }
+    if (isPropertyBatchForm(form)) {
+      await handlePropertyBatchFormAction(message, actionId);
+      return true;
+    }
+    if (isAssetDealForm(form)) {
+      await handleAssetDealFormAction(message, actionId);
+      return true;
+    }
     if (actionId === "archive") return true;
     if (isOwnerCreateForm(form)) {
       await handleOwnerCreateFormAction(message, actionId);
@@ -1241,6 +1502,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     handleSelectChange,
     openRentalContractForm,
     openSaleContractForm,
+    openAssetDealForm,
     openDocumentAttachForm,
     openRentalLifecycleForm,
     startPropertyCreateFor,

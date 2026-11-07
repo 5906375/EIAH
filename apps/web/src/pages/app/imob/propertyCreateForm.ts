@@ -1,16 +1,31 @@
+import {
+  IMOB_ASSET_DESTINATION_OPTIONS,
+  normalizeImobAssetDestination,
+  parseImobUnits,
+} from "@eiah/contracts";
 import type { ImobPresentationForm, ImobPresentationFormFieldOption, ImobPropertyCreateRequest } from "@/lib/api";
 
 /**
  * Formulário "Cadastrar imóvel" do chat IMOB, enviado de forma estruturada
  * direto para `POST /imob/properties`: não dispara execução de agente e os
  * campos não viram texto de conversa.
+ *
+ * Várias unidades no mesmo endereço (ex.: "Kitnets 101 a 105 e Salas 01 e 02")
+ * passam por uma confirmação do lote ANTES de gravar: destinação geral
+ * opcional, destinação individual por unidade, edição/remoção/adição e
+ * pré-validação. A interpretação das unidades vive em `@eiah/contracts`.
  */
 
 export const PROPERTY_CREATE_SUBMIT_TARGET = "imob.properties.create";
+export const PROPERTY_BATCH_SUBMIT_TARGET = "imob.properties.batch";
 export const PROPERTY_CREATE_SOURCE = "imob_chat_property_form_v1";
 
 export function isPropertyCreateForm(form: Pick<ImobPresentationForm, "submitTarget"> | null | undefined) {
   return form?.submitTarget === PROPERTY_CREATE_SUBMIT_TARGET;
+}
+
+export function isPropertyBatchForm(form: Pick<ImobPresentationForm, "submitTarget"> | null | undefined) {
+  return form?.submitTarget === PROPERTY_BATCH_SUBMIT_TARGET;
 }
 
 const clean = (value: string | undefined) => (value ?? "").trim();
@@ -34,12 +49,21 @@ export type PropertyCreateFormResult =
   | { ok: true; request: ImobPropertyCreateRequest }
   | { ok: false; errors: Record<string, string> };
 
+/**
+ * Uma unidade. Destinação é opcional: vazio = ainda não informada (nada é gravado);
+ * "Sem destinação definida" é escolha explícita. Várias unidades na identificação
+ * não cabem aqui — o cadastro em lote (`planPropertyCreate`) cuida delas.
+ */
 export function buildPropertyCreateRequest(values: Record<string, string>): PropertyCreateFormResult {
   const errors: Record<string, string> = {};
   const propertyType = clean(values.propertyType);
   if (!propertyType) errors.propertyType = "Selecione o tipo do imóvel.";
-  const goal = clean(values.goal);
-  if (!goal) errors.goal = "Selecione a finalidade.";
+  const goalRaw = clean(values.goal);
+  const goal = goalRaw ? normalizeImobAssetDestination(goalRaw) : null;
+  if (goalRaw && !goal) errors.goal = "Destinação inválida.";
+  if (parseImobUnits(values.unitLabel).units.length >= 2) {
+    errors.unitLabel = "Informe uma única unidade neste cadastro. Para várias, use o cadastro em lote (ex.: Kitnets 101 a 105).";
+  }
   const city = clean(values.city);
   if (!city) errors.city = "Informe a cidade.";
   const address = clean(values.address);
@@ -71,7 +95,7 @@ export function buildPropertyCreateRequest(values: Record<string, string>): Prop
     request: {
       ...(ownerId ? { ownerId } : {}),
       propertyType,
-      goal,
+      ...(goal ? { goal } : {}),
       city,
       address,
       neighborhood: clean(values.neighborhood) || null,
@@ -152,4 +176,225 @@ export function matchOptionByName(options: ImobPresentationFormFieldOption[], hi
   if (candidates.length === 1) return candidates[0].value;
   const exact = candidates.filter((option) => nameTokens(option.label).join(" ") === wanted.join(" "));
   return exact.length === 1 ? exact[0].value : null;
+}
+
+// ---------------------------------------------------------------------------
+// Cadastro em lote (várias unidades no mesmo endereço)
+// ---------------------------------------------------------------------------
+
+export type PropertyCreatePlan =
+  | { ok: true; mode: "single"; request: ImobPropertyCreateRequest }
+  | { ok: true; mode: "batch"; units: string[]; duplicatesInInput: string[] }
+  | { ok: false; errors: Record<string, string> };
+
+/** Uma unidade grava direto; duas ou mais abrem a confirmação do lote (nada é gravado antes dela). */
+export function planPropertyCreate(values: Record<string, string>): PropertyCreatePlan {
+  const parsed = parseImobUnits(values.unitLabel);
+  if (parsed.invalidRanges.length > 0) {
+    return {
+      ok: false,
+      errors: { unitLabel: `Faixa inválida: ${parsed.invalidRanges.join("; ")}. Use do menor para o maior (ex.: Kitnets 101 a 105).` },
+    };
+  }
+  if (parsed.units.length >= 2) {
+    // Valida os campos comuns uma vez, com a primeira unidade como amostra.
+    const probe = buildPropertyCreateRequest({ ...values, unitLabel: parsed.units[0].label });
+    if (!probe.ok) return probe;
+    return { ok: true, mode: "batch", units: parsed.units.map((unit) => unit.label), duplicatesInInput: parsed.duplicates };
+  }
+  const single = buildPropertyCreateRequest(values);
+  return single.ok ? { ok: true, mode: "single", request: single.request } : single;
+}
+
+/** Valores do formulário original guardados (com este prefixo) junto aos valores da confirmação do lote. */
+export const PROPERTY_BATCH_BASE_PREFIX = "base:";
+
+export const PROPERTY_BATCH_UNIT_FIELD = (index: number) => `unit_${index}`;
+export const PROPERTY_BATCH_DESTINATION_FIELD = (index: number) => `dest_${index}`;
+const MAX_UNIT_LABEL_LENGTH = 80;
+
+const destinationOptions = IMOB_ASSET_DESTINATION_OPTIONS.map((option) => ({ value: option.value, label: option.label }));
+
+export function propertyBatchBaseValues(values: Record<string, string>) {
+  return Object.fromEntries(
+    Object.entries(values)
+      .filter(([key]) => key.startsWith(PROPERTY_BATCH_BASE_PREFIX))
+      .map(([key, value]) => [key.slice(PROPERTY_BATCH_BASE_PREFIX.length), value]),
+  );
+}
+
+export function toPropertyBatchBaseValues(values: Record<string, string>) {
+  return Object.fromEntries(Object.entries(values).map(([key, value]) => [`${PROPERTY_BATCH_BASE_PREFIX}${key}`, value]));
+}
+
+/** Confirmação do lote: destinação geral opcional, destinação por unidade, editar/remover/adicionar. */
+export function buildPropertyBatchForm(
+  units: string[],
+  base: Record<string, string>,
+  duplicatesInInput: string[] = [],
+  batchId = "",
+): ImobPresentationForm {
+  const place = [clean(base.address), clean(base.city)].filter(Boolean).join(" — ");
+  const general = normalizeImobAssetDestination(base.goal) ?? "";
+  return {
+    entity: "imovel_lote",
+    // `action` único por lote: o preenchimento por histórico de formulários iguais nunca reaproveita linhas de outro lote.
+    action: `create_batch:${batchId}`,
+    submitTarget: PROPERTY_BATCH_SUBMIT_TARGET,
+    label: `Confirmar ${units.length} unidades`,
+    description:
+      "Revise antes de gravar: nada foi cadastrado ainda. Edite o nome de uma unidade, apague para removê-la, adicione outras ou defina a destinação — para todas ou unidade por unidade.",
+    infoLines: [
+      place ? `Endereço: ${place}` : "",
+      duplicatesInInput.length > 0 ? `Repetidas na sua frase e mantidas uma vez: ${duplicatesInInput.join(", ")}.` : "",
+    ].filter(Boolean),
+    fields: [
+      {
+        name: "generalDestination",
+        label: "Destinação para todas as unidades (opcional)",
+        type: "select",
+        placeholder: "Definir depois",
+        value: general,
+        options: destinationOptions,
+        helperText: "Vale para as unidades sem destinação própria abaixo.",
+      },
+      ...units.flatMap((label, index) => [
+        {
+          name: PROPERTY_BATCH_UNIT_FIELD(index),
+          label: `Unidade ${index + 1}`,
+          type: "text" as const,
+          maxLength: MAX_UNIT_LABEL_LENGTH,
+          value: label,
+          ...(index === 0 ? { helperText: "Apague o nome para remover a unidade deste lote." } : {}),
+        },
+        {
+          name: PROPERTY_BATCH_DESTINATION_FIELD(index),
+          label: `Destinação da unidade ${index + 1}`,
+          type: "select" as const,
+          placeholder: "Usar a destinação de todas",
+          value: "",
+          options: destinationOptions,
+        },
+      ]),
+      {
+        name: "extraUnits",
+        label: "Adicionar unidades",
+        type: "text" as const,
+        placeholder: "Ex.: Kitnets 106 a 108",
+        value: "",
+        helperText: "Entram no lote com a destinação de todas.",
+      },
+    ],
+    actions: [
+      { id: "cancel", label: "Cancelar", kind: "secondary" },
+      { id: "submit", label: "Confirmar e cadastrar", kind: "primary" },
+    ],
+  };
+}
+
+/** `field`: de onde veio a unidade (`unit_N` ou `extraUnits`), para devolver só as pendentes ao formulário. */
+export type PropertyBatchItem = { field: string; label: string; destination: string | null; request: ImobPropertyCreateRequest };
+export type PropertyBatchResult =
+  | { ok: true; items: PropertyBatchItem[] }
+  | { ok: false; errors: Record<string, string> };
+
+/**
+ * Pré-validação completa do lote, sem tocar na API de escrita: nomes, repetições
+ * (no lote e contra imóveis já cadastrados), destinações e campos comuns.
+ * Qualquer erro bloqueia o lote inteiro — nada é gravado parcialmente por erro de entrada.
+ */
+export function buildPropertyBatchRequests(
+  values: Record<string, string>,
+  existing: Array<{ id: string; status?: string | null; address?: string | null; city?: string | null; metadata?: unknown }>,
+): PropertyBatchResult {
+  const errors: Record<string, string> = {};
+  const base = propertyBatchBaseValues(values);
+
+  const generalRaw = clean(values.generalDestination);
+  const general = generalRaw ? normalizeImobAssetDestination(generalRaw) : null;
+  if (generalRaw && !general) errors.generalDestination = "Destinação inválida.";
+
+  const entries: Array<{ field: string; label: string; destinationField: string | null; destinationRaw: string }> = [];
+  const rowIndexes = Object.keys(values)
+    .map((key) => /^unit_(\d+)$/.exec(key))
+    .flatMap((match) => (match ? [Number(match[1])] : []))
+    .sort((a, b) => a - b);
+  for (const index of rowIndexes) {
+    const label = clean(values[PROPERTY_BATCH_UNIT_FIELD(index)]);
+    if (!label) continue; // apagado = removido do lote
+    entries.push({
+      field: PROPERTY_BATCH_UNIT_FIELD(index),
+      label,
+      destinationField: PROPERTY_BATCH_DESTINATION_FIELD(index),
+      destinationRaw: clean(values[PROPERTY_BATCH_DESTINATION_FIELD(index)]),
+    });
+  }
+  const extras = parseImobUnits(values.extraUnits);
+  if (extras.invalidRanges.length > 0) {
+    errors.extraUnits = `Faixa inválida: ${extras.invalidRanges.join("; ")}. Use do menor para o maior.`;
+  } else if (clean(values.extraUnits) && extras.units.length === 0) {
+    errors.extraUnits = "Não identifiquei unidades neste texto. Use, por exemplo, Kitnets 106 a 108.";
+  }
+  for (const unit of extras.units) {
+    entries.push({ field: "extraUnits", label: unit.label, destinationField: null, destinationRaw: "" });
+  }
+
+  if (entries.length === 0) errors._form = "Nenhuma unidade para cadastrar. Adicione ao menos uma ou cancele.";
+
+  const seen = new Set<string>();
+  const items: PropertyBatchItem[] = [];
+  for (const entry of entries) {
+    if (entry.label.length > MAX_UNIT_LABEL_LENGTH) {
+      errors[entry.field] = `Nome muito longo (máx. ${MAX_UNIT_LABEL_LENGTH} caracteres).`;
+      continue;
+    }
+    const key = normalizeKey(entry.label);
+    if (seen.has(key)) {
+      errors[entry.field] = `“${entry.label}” aparece mais de uma vez neste lote. Remova a repetida.`;
+      continue;
+    }
+    seen.add(key);
+
+    let destination = general;
+    if (entry.destinationRaw) {
+      destination = normalizeImobAssetDestination(entry.destinationRaw);
+      if (!destination && entry.destinationField) {
+        errors[entry.destinationField] = "Destinação inválida.";
+        continue;
+      }
+    }
+    const built = buildPropertyCreateRequest({ ...base, unitLabel: entry.label, goal: destination ?? "" });
+    if (!built.ok) {
+      errors[entry.field] = built.errors.unitLabel ?? errors[entry.field] ?? "Dados comuns do imóvel inválidos; cancele e refaça o cadastro.";
+      continue;
+    }
+    if (findDuplicateProperty(built.request, existing)) {
+      errors[entry.field] = `Já existe um imóvel com este endereço e a unidade “${entry.label}”. Remova-a do lote.`;
+      continue;
+    }
+    items.push({ field: entry.field, label: entry.label, destination, request: built.request });
+  }
+
+  return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, items };
+}
+
+/** Resultado do lote: só o que foi gravado e o que falhou; nunca desfaz o que já entrou. */
+export function buildPropertyBatchConfirmationText(params: {
+  created: Array<{ label: string }>;
+  failed: Array<{ label: string }>;
+  place?: string | null;
+  ownerName?: string | null;
+}) {
+  const names = (items: Array<{ label: string }>) => items.map((item) => item.label).join(", ");
+  return [
+    params.created.length > 0
+      ? `${params.created.length} ${params.created.length === 1 ? "imóvel cadastrado" : "imóveis cadastrados"}${params.place ? ` em ${params.place}` : ""}: ${names(params.created)}.`
+      : "Nenhum imóvel foi cadastrado.",
+    params.ownerName ? `Proprietário: ${params.ownerName}.` : null,
+    params.failed.length > 0
+      ? `Não foi possível cadastrar: ${names(params.failed)}. Os demais já estão gravados; o formulário segue aberto só com as pendentes.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

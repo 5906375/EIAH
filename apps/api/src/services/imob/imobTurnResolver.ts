@@ -41,7 +41,10 @@ import {
   hasMeaningfulSearchFilters,
   normalizeImobText,
 } from "./imobConversationState";
-import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./crm/imobCrmPropertyGoals";
+import {
+  IMOB_CRM_PROPERTY_DESTINATION_OPTIONS,
+  normalizeImobCrmPropertyDestination,
+} from "./crm/imobCrmPropertyGoals";
 import { IMOB_CRM_PROPERTY_TYPE_OPTIONS, normalizeImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import { mapLeadNextActionToNextStep } from "./crm/imobLeadQualifyRuntime";
 import { judgeMarketScanPolicy } from "./marketScan/marketScanPolicyJudge";
@@ -1151,10 +1154,13 @@ function buildPropertyCreateForm(propertyDraft?: {
   city?: string | null;
   address?: string | null;
   ownerNameHint?: string | null;
+  unitLabels?: string[] | null;
 } | null) {
   const normalizedPropertyType = normalizeImobCrmPropertyType(propertyDraft?.propertyType ?? null) ?? null;
-  const normalizedGoal = normalizeImobCrmPropertyGoal(propertyDraft?.goal ?? null) ?? null;
-  const goalLabel = IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === normalizedGoal)?.label ?? null;
+  const normalizedGoal = normalizeImobCrmPropertyDestination(propertyDraft?.goal ?? null) ?? null;
+  const goalLabel = IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.find((option) => option.value === normalizedGoal)?.label ?? null;
+  const draftUnitLabels = (propertyDraft?.unitLabels ?? []).filter((label) => typeof label === "string" && label.trim());
+  const hasMultipleUnits = draftUnitLabels.length >= 2;
   const inheritedContext = [
     goalLabel ? goalLabel.toLowerCase() : null,
     propertyDraft?.city?.trim() ? propertyDraft.city.trim() : null,
@@ -1184,24 +1190,29 @@ function buildPropertyCreateForm(propertyDraft?: {
         })),
       },
       {
+        // Destinação inicial do ativo: orienta a próxima etapa, não é estado permanente.
+        // Vazio = ainda não informada; "Sem destinação definida" é escolha explícita.
         name: "goal",
-        label: "Finalidade",
+        label: hasMultipleUnits ? "Destinação inicial (para todas as unidades)" : "Destinação inicial",
         type: "select" as const,
-        required: true,
-        placeholder: "",
+        required: false,
+        placeholder: "Definir depois",
         value: normalizedGoal ?? "",
-        options: IMOB_CRM_PROPERTY_GOAL_OPTIONS.map((option) => ({
+        options: IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.map((option) => ({
           value: option.value,
           label: option.label,
         })),
+        ...(hasMultipleUnits ? { helperText: "Você pode aplicar uma destinação a todas as unidades ou ajustar individualmente antes de confirmar." } : {}),
       },
       {
         name: "unitLabel",
-        label: "Identificação da unidade",
+        label: hasMultipleUnits ? "Unidades deste endereço" : "Identificação da unidade",
         type: "text" as const,
-        placeholder: "Ex.: Kitnet 01, Sala 02, Apto 301",
-        value: "",
-        helperText: "Como você chama esta unidade; aparece nas listas e na locação.",
+        placeholder: "Ex.: Kitnet 01, Sala 02, Apto 301 — ou várias: Kitnets 101 a 105 e Salas 01 e 02",
+        value: hasMultipleUnits ? draftUnitLabels.join(", ") : "",
+        helperText: hasMultipleUnits
+          ? `Identifiquei ${draftUnitLabels.length} unidades; você confirma, edita ou remove antes de gravar.`
+          : "Como você chama esta unidade; aparece nas listas e na locação. Para várias unidades no mesmo endereço, liste ou use faixas (Kitnets 101 a 105).",
       },
       {
         name: "ownerId",
@@ -1406,7 +1417,7 @@ export function buildRentalLeaseCreateForm(leadDraft?: {
     action: "create",
     submitTarget: "imob.rentals.create" as const,
     label: "Cadastrar locação",
-    description: "Locação vigente: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios; o que ficar em branco vira pendência.",
+    description: "Locação vigente ou já encerrada: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios (e, se encerrada, a data de saída e o motivo); o que ficar em branco vira pendência.",
     fields: [
       {
         name: "propertyId",
@@ -1418,6 +1429,17 @@ export function buildRentalLeaseCreateForm(leadDraft?: {
         optionsSource: "imob_properties" as const,
         options: [],
         helperText: "Só aparecem imóveis já cadastrados neste workspace.",
+      },
+      {
+        name: "leaseState",
+        label: "Situação da locação",
+        type: "select" as const,
+        value: "vigente",
+        options: [
+          { value: "vigente", label: "Vigente (o inquilino está no imóvel)" },
+          { value: "encerrada", label: "Encerrada (já terminou — vai direto para o histórico)" },
+        ],
+        helperText: "Locação encerrada não ocupa o imóvel e exige a data de saída e o motivo abaixo.",
       },
       { name: "tenantName", label: "Nome do inquilino", type: "text" as const, required: true, placeholder: "Nome completo ou razão social", value: leadDraft?.leadName ?? "" },
       { name: "tenantDocument", label: "CPF ou CNPJ do inquilino", type: "text" as const, placeholder: "000.000.000-00", inputMode: "numeric" as const, maxLength: 18, value: "" },
@@ -1465,6 +1487,22 @@ export function buildRentalLeaseCreateForm(leadDraft?: {
       { name: "iptu", label: "IPTU", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
       { name: "condominio", label: "Condomínio", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
       { name: "condominioAmount", label: "Valor do condomínio (R$/mês)", type: "text" as const, placeholder: "350,00", inputMode: "numeric" as const, value: "" },
+      { name: "endedOn", label: "Data de saída (só se encerrada)", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      {
+        name: "closeReason",
+        label: "Motivo do encerramento (só se encerrada)",
+        type: "select" as const,
+        placeholder: "Selecione",
+        value: "",
+        options: [
+          { value: "fim_contrato", label: "Fim do contrato" },
+          { value: "rescisao_locatario", label: "Rescisão pelo inquilino" },
+          { value: "rescisao_locador", label: "Rescisão pelo proprietário" },
+          { value: "inadimplencia", label: "Inadimplência" },
+          { value: "venda_imovel", label: "Venda do imóvel" },
+          { value: "outro", label: "Outro" },
+        ],
+      },
     ],
     actions: [
       { id: "cancel" as const, label: "Cancelar", kind: "secondary" as const },
@@ -2148,7 +2186,7 @@ function buildOperationalCollectingText(params: {
       if (!hasPending) return "Posso iniciar o cadastro do imóvel agora.";
       const contextParts = [
         operationalState.propertyDraft?.goal
-          ? (IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === operationalState.propertyDraft?.goal)?.label ?? null)
+          ? (IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.find((option) => option.value === operationalState.propertyDraft?.goal)?.label ?? null)
           : null,
         operationalState.propertyDraft?.city ?? null,
       ].filter(Boolean);

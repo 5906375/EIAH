@@ -2852,6 +2852,7 @@ export type ImobPresentationForm = {
     | "imob.owners.create"
     | "imob.owners.update"
     | "imob.properties.create"
+    | "imob.properties.batch"
     | "imob.properties.update"
     | "imob.rentals.create"
     | "imob.tokenization.interest"
@@ -2860,7 +2861,8 @@ export type ImobPresentationForm = {
     | "imob.contracts.sale"
     | "imob.rentals.update"
     | "imob.rentals.close"
-    | "imob.rentals.history";
+    | "imob.rentals.history"
+    | "imob.deals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3545,7 +3547,8 @@ export async function apiArchiveImobOwner(ownerId: string) {
 export type ImobPropertyCreateRequest = {
   ownerId?: string;
   propertyType: string;
-  goal: string;
+  /** Destinação inicial do ativo; ausente = ainda não informada (≠ "sem_destinacao"). */
+  goal?: string;
   address: string;
   city: string;
   neighborhood: string | null;
@@ -3560,7 +3563,8 @@ export type ImobPropertyCreateRequest = {
 export type ImobPropertyUpdateRequest = {
   ownerId: string | null;
   propertyType: string;
-  goal: string;
+  /** Ausente = destinação inalterada. */
+  goal?: string;
   address: string;
   city: string;
   neighborhood: string | null;
@@ -3611,6 +3615,8 @@ export type ImobRentalLeaseCreateRequest = {
   iptu: ImobRentalChargePayer;
   condominio: ImobRentalChargePayer;
   condominioAmountCents: number | null;
+  /** Presente = locação histórica (já encerrada): nasce no histórico e não ocupa o imóvel. */
+  closure?: { endedOn: string; reason: ImobRentalCloseReason; notes?: string | null };
 };
 
 export type ImobRentalLeaseCreateResponse = {
@@ -3620,6 +3626,7 @@ export type ImobRentalLeaseCreateResponse = {
   tenantName: string;
   tenantDocumentMasked: string | null;
   pendingItems: string[];
+  historical?: boolean;
 };
 
 export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateRequest) {
@@ -3673,6 +3680,42 @@ export async function apiCloseImobRentalLease(body: { propertyId: string; endedO
 export async function apiGetImobRentalHistory(propertyId: string) {
   const qs = new URLSearchParams({ propertyId });
   return http<{ ok: true; data: { propertyId: string; items: ImobRentalHistoryItem[] } }>(`/imob/rentals/history?${qs.toString()}`, { method: "GET" });
+}
+
+export type ImobAssetDealCreateRequest = {
+  propertyId: string;
+  kind: "venda" | "permuta";
+  state: "em_andamento" | "concluida";
+  askingPriceCents?: number | null;
+  counterpartyName?: string | null;
+  receivedAssetDescription?: string | null;
+  receivedValueCents?: number | null;
+  tornaCents?: number | null;
+  notes?: string | null;
+};
+
+export type ImobAssetDealCreateResponse = {
+  caseId: string;
+  propertyId: string;
+  propertyLabel: string;
+  kind: "venda" | "permuta";
+  state: "em_andamento" | "concluida";
+  askingPriceCents: number | null;
+  propertyProjection: "applied" | "kept_in_deal_only" | "not_applicable";
+};
+
+export async function apiCreateImobAssetDeal(body: ImobAssetDealCreateRequest) {
+  return http<{ ok: true; data: ImobAssetDealCreateResponse }>(`/imob/deals`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiCompleteImobAssetDeal(body: { caseId: string; notes?: string | null }) {
+  return http<{ ok: true; data: { caseId: string; kind: "venda" | "permuta"; propertyId: string | null } }>(`/imob/deals/complete`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function apiListImobProperties() {

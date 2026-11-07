@@ -38,6 +38,11 @@ export type RentalLeaseInput = {
   condominio: ChargePayer;
   condominioAmountCents?: number | null;
   notes?: string | null;
+  /**
+   * Presente = locação histórica (já encerrada): nasce encerrada, sem passar por
+   * "ativa" e sem marcar o imóvel como locado.
+   */
+  closure?: { endedOn: string; reason: RentalCloseReason; notes?: string | null } | null;
 };
 
 export function isValidCpf(value: string) {
@@ -113,9 +118,17 @@ export function buildRentalLeaseMetadata(input: RentalLeaseInput, stableAgreemen
 export class ImobRentalLeaseService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async registerLease(scope: Scope, input: RentalLeaseInput) {
+  async registerLease(scope: Scope, input: RentalLeaseInput, today = new Date().toISOString().slice(0, 10)) {
     if (input.tenantDocument && input.tenantDocument.length === 11 && !isValidCpf(input.tenantDocument)) {
       return { status: "invalid_document" as const };
+    }
+    if (input.closure) {
+      const invalid = validateRentalLeaseClose(
+        { propertyId: input.propertyId, endedOn: input.closure.endedOn, reason: input.closure.reason },
+        input.startDate ?? null,
+        today,
+      );
+      if (invalid) return { status: invalid };
     }
 
     const property = await this.prisma.imobProperty.findFirst({
@@ -124,45 +137,85 @@ export class ImobRentalLeaseService {
     });
     if (!property) return { status: "property_not_found" as const };
 
-    const activeLease = await this.prisma.imobCase.findFirst({
-      where: {
-        tenantId: scope.tenantId,
-        workspaceId: scope.workspaceId,
-        propertyId: property.id,
-        flow: RENTAL_LEASE_FLOW,
-        status: "active",
-      },
-      select: { id: true },
-    });
-    if (activeLease) return { status: "lease_already_active" as const, caseId: activeLease.id };
+    const historical = Boolean(input.closure);
+    // Locação histórica convive com uma locação ativa do imóvel; só a vigente é exclusiva.
+    if (!historical) {
+      const activeLease = await this.prisma.imobCase.findFirst({
+        where: {
+          tenantId: scope.tenantId,
+          workspaceId: scope.workspaceId,
+          propertyId: property.id,
+          flow: RENTAL_LEASE_FLOW,
+          status: "active",
+        },
+        select: { id: true },
+      });
+      if (activeLease) return { status: "lease_already_active" as const, caseId: activeLease.id };
+    }
 
-    const stableAgreementKey = `rental:${property.id}:${input.startDate ?? new Date().toISOString().slice(0, 10)}`;
-    const pendingItems = buildRentalLeasePendingItems(input);
+    const stableAgreementKey = historical
+      ? `rental:${property.id}:${input.startDate ?? `ended-${input.closure!.endedOn}`}:historical`
+      : `rental:${property.id}:${input.startDate ?? new Date().toISOString().slice(0, 10)}`;
+    if (historical) {
+      const already = await this.prisma.imobCase.findFirst({
+        where: {
+          tenantId: scope.tenantId,
+          workspaceId: scope.workspaceId,
+          propertyId: property.id,
+          flow: RENTAL_LEASE_FLOW,
+          externalDealId: stableAgreementKey,
+        },
+        select: { id: true },
+      });
+      if (already) return { status: "lease_already_registered" as const, caseId: already.id };
+    }
+
+    const pendingItems = historical ? [] : buildRentalLeasePendingItems(input);
     const mutations = new ImobCrmMutationService(this.prisma);
+    const baseMetadata = buildRentalLeaseMetadata(input, stableAgreementKey);
+    const metadata = historical
+      ? {
+          ...baseMetadata,
+          closure: {
+            endedOn: input.closure!.endedOn,
+            reason: input.closure!.reason,
+            notes: input.closure!.notes?.trim() || null,
+            closedAt: new Date().toISOString(),
+            closedByUserId: scope.userId ?? null,
+            historical: true,
+          },
+        }
+      : baseMetadata;
     const created = await mutations.createCase(scope, {
       flow: RENTAL_LEASE_FLOW,
-      stage: "active",
-      status: "active",
+      stage: historical ? RENTAL_LEASE_CLOSED_STAGE : "active",
+      status: historical ? RENTAL_LEASE_CLOSED_STATUS : "active",
       ownerId: property.ownerId ?? null,
       propertyId: property.id,
       externalDealId: stableAgreementKey,
       pendingItems,
-      metadata: buildRentalLeaseMetadata(input, stableAgreementKey),
+      metadata,
       initialEvent: {
-        type: "rental.lease.registered",
+        type: historical ? "rental.lease.registered_historical" : "rental.lease.registered",
         actorType: "user",
         actorRef: scope.userId ?? null,
-        summary: "Locação vigente cadastrada pelo formulário do chat IMOB",
+        summary: historical
+          ? "Locação encerrada (histórica) cadastrada pelo formulário do chat IMOB"
+          : "Locação vigente cadastrada pelo formulário do chat IMOB",
         evidenceRef: stableAgreementKey,
-        payload: { source: RENTAL_LEASE_SOURCE, propertyId: property.id },
+        payload: historical
+          ? { source: RENTAL_LEASE_SOURCE, propertyId: property.id, endedOn: input.closure!.endedOn, reason: input.closure!.reason }
+          : { source: RENTAL_LEASE_SOURCE, propertyId: property.id },
       },
     } as any);
     if (created.status !== "created") return { status: created.status };
 
     const propertyMetadata = asObject(property.metadata);
-    await mutations.updateProperty(scope, property.id, {
-      metadata: { ...propertyMetadata, occupancy: informed("locado") },
-    } as any);
+    if (!historical) {
+      await mutations.updateProperty(scope, property.id, {
+        metadata: { ...propertyMetadata, occupancy: informed("locado") },
+      } as any);
+    }
 
     return {
       status: "created" as const,
@@ -177,6 +230,7 @@ export class ImobRentalLeaseService {
         tenantName: input.tenantName,
         tenantDocumentMasked: maskTaxDocument(input.tenantDocument),
         pendingItems,
+        historical,
       },
     };
   }
