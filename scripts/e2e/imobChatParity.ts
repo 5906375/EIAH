@@ -185,15 +185,19 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
       { timeout: 20000 },
     );
     await field(page, "Salvar cadastro", "Tipo").selectOption("kitnet");
-    await field(page, "Salvar cadastro", "Finalidade").selectOption("locacao");
+    await field(page, "Salvar cadastro", "Destinação inicial").selectOption("locacao");
     await field(page, "Salvar cadastro", "Identificação da unidade").fill(unit);
     await field(page, "Salvar cadastro", "Cidade").fill("Cidade Paridade");
     await field(page, "Salvar cadastro", "Endereço").fill(`Rua Paridade ${tag}, ${STAMP}`);
     await formWith(page, "Salvar cadastro").getByRole("button", { name: "Salvar cadastro", exact: true }).click();
     await page.getByText(`Imóvel cadastrado: ${unit}`, { exact: false }).last().waitFor({ timeout: 20000 });
+    // Destinação "Locação" → próximos passos resolvidos pelo contrato; nenhum abre locação ou contrato sozinho.
+    for (const chip of ["Registrar locação atual", "Registrar locação encerrada", "Iniciar nova locação"]) {
+      await page.getByRole("button", { name: chip, exact: true }).last().waitFor({ timeout: 20000 });
+    }
   });
   await step("salvar locação e abrir contrato preenchido", async () => {
-    await page.getByRole("button", { name: "Gerar contrato de locação" }).last().click();
+    await page.getByRole("button", { name: "Iniciar nova locação", exact: true }).last().click();
     await field(page, "Salvar locação", "Nome do inquilino").waitFor({ timeout: 30000 });
     await page.waitForFunction(
       (ref) => [...document.querySelectorAll("select")].some((select) => (select as HTMLSelectElement).selectedOptions[0]?.textContent?.includes(ref)),
@@ -215,6 +219,9 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     const leaseBody = (await leaseResponse.json().catch(() => null)) as { data?: { caseId?: unknown } } | null;
     if (typeof leaseBody?.data?.caseId !== "string" || !leaseBody.data.caseId) throw new Error("resposta da criação da locação sem caseId");
     createdRentalCaseId = leaseBody.data.caseId;
+    // O contrato só é oferecido depois que a locação foi criada: confirmação + chip, e só então o formulário da minuta.
+    await page.getByText("Locação cadastrada:", { exact: false }).last().waitFor({ timeout: 20000 });
+    await page.getByRole("button", { name: "Gerar contrato desta locação", exact: true }).last().click();
     await formWith(page, "Gerar minuta").waitFor({ timeout: 30000 });
     await page.waitForFunction((name) => [...document.querySelectorAll("input")].some((input) => input.value === name), ownerName, { timeout: 20000 });
     if ((await field(page, "Gerar minuta", "Locatário (nome)").inputValue()) !== `Inquilino ${tag}`) throw new Error("locatário não veio da locação");
