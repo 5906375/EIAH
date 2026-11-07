@@ -65,6 +65,7 @@ export default defineConfig(({ mode }) => {
       "@": path.resolve(__dirname, "src"),
       "@repo/utils": path.resolve(__dirname, "../../packages/utils/src"),
       "@eiah/core": path.resolve(__dirname, "../../packages/core/src"),
+      "@eiah/contracts": path.resolve(__dirname, "../../packages/contracts/src/browser.ts"),
     },
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"],
   },

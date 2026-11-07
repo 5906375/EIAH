@@ -86,7 +86,16 @@ export const imobRentalLeaseCreateSchema = z.object({
   condominio: rentalChargePayerSchema.default("desconhecido"),
   condominioAmountCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
   notes: optionalShortString(1000),
+  // Presente = locação histórica (já encerrada): registrada direto como encerrada, sem ocupar o imóvel.
+  closure: z.object({
+    endedOn: isoDateSchema,
+    reason: z.enum(["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"]),
+    notes: optionalShortString(500),
+  }).optional(),
 }).superRefine((value, ctx) => {
+  if (value.closure && value.startDate && value.closure.endedOn < value.startDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["closure", "endedOn"], message: "endedOn must not be before startDate" });
+  }
   if (value.startDate && value.endDate && value.endDate < value.startDate) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "endDate must not be before startDate" });
   }
@@ -99,6 +108,32 @@ export const imobRentalLeaseCloseSchema = z.object({
   propertyId: z.string().trim().min(1).max(80),
   endedOn: isoDateSchema,
   reason: z.enum(["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"]),
+  notes: optionalShortString(500),
+});
+
+const assetDealStateSchema = z.enum(["em_andamento", "concluida"]);
+// Sem teto comercial novo: os valores do negócio ficam em `metadata` (JSON) do caso,
+// então basta inteiro não negativo seguro. Só a escrita em `ImobProperty.askingPriceCents`
+// (coluna Int) respeita o limite técnico do banco, no serviço.
+const assetDealMoneySchema = z.union([z.number().int().nonnegative().safe(), z.null()]).optional();
+
+/** Venda (`sale.deal`) e permuta (`exchange.deal`) de um imóvel/unidade. */
+export const imobAssetDealCreateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  kind: z.enum(["venda", "permuta"]),
+  state: assetDealStateSchema.default("em_andamento"),
+  // Venda: valor pretendido. Permuta: valor atribuído ao imóvel oferecido.
+  askingPriceCents: assetDealMoneySchema,
+  counterpartyName: optionalShortString(160),
+  // Permuta: bem recebido, valor atribuído e eventual torna.
+  receivedAssetDescription: optionalShortString(400),
+  receivedValueCents: assetDealMoneySchema,
+  tornaCents: assetDealMoneySchema,
+  notes: optionalShortString(1000),
+});
+
+export const imobAssetDealCompleteSchema = z.object({
+  caseId: z.string().trim().min(1).max(80),
   notes: optionalShortString(500),
 });
 

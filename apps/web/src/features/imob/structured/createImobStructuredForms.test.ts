@@ -70,14 +70,40 @@ const localItems = IMOB_ACTION_MENUS.flatMap((menu) => menu.items).filter(
   (item): item is Extract<ImobActionMenuItem, { kind: "local" }> => item.kind === "local",
 );
 
+// "Registrar locação encerrada" usa o formulário de locação do servidor: envia o pedido e pré-configura o formulário.
+const FORMS_VIA_SERVER = new Set(["rental_historical"]);
+
 test("todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro", () => {
-  for (const item of localItems) {
+  for (const item of localItems.filter((candidate) => !FORMS_VIA_SERVER.has(candidate.form))) {
     const { state } = fakeState();
     const { host, appended } = fakeHost();
     createImobStructuredForms(state, host).handleActionMenuSelect(item);
     assert.equal(appended.length, 1, item.id);
     assert.ok(appended[0].form?.submitTarget, `${item.id} sem submitTarget`);
     assert.equal(appended[0].thread?.id, "thread-1", item.id);
+  }
+});
+
+test("menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada", () => {
+  const { state, raw } = fakeState();
+  const { host, sent, appended } = fakeHost();
+  const item = localItems.find((candidate) => candidate.form === "rental_historical");
+  assert.ok(item, "item de menu existe");
+  createImobStructuredForms(state, host).handleActionMenuSelect(item);
+  assert.equal(appended.length, 0);
+  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { leaseState: "encerrada" } });
+  assert.deepEqual(sent, [["cadastrar locatário", "Registrar locação encerrada"]]);
+});
+
+test("menus Negócios: venda e permuta abrem o formulário com o tipo certo", () => {
+  for (const [form, kind] of [["deal_sale", "venda"], ["deal_exchange", "permuta"]] as const) {
+    const item = localItems.find((candidate) => candidate.form === form);
+    assert.ok(item, form);
+    const { state } = fakeState();
+    const { host, appended } = fakeHost();
+    createImobStructuredForms(state, host).handleActionMenuSelect(item);
+    assert.equal(appended[0].form?.submitTarget, "imob.deals.create");
+    assert.equal(appended[0].form?.action, kind);
   }
 });
 
@@ -237,7 +263,12 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   assert.match(nextForm().text, /Imóvel cadastrado: Kit Paridade/);
   assert.equal(property.ownerId, owner.id);
 
-  await follow("next-rental-contract");
+  // Destinação "locação": três próximos passos do contrato, nenhum abre contrato direto.
+  assert.deepEqual(nextForm().quickReplies?.map((reply) => reply.id).filter((id) => id.startsWith("next-lease")), [
+    "next-lease_register_current", "next-lease_register_historical", "next-lease_start_new",
+  ]);
+  assert.match(nextForm().text, /Você definiu Kit Paridade para locação/);
+  await follow("next-lease_start_new");
   const leaseForm = nextForm();
   assert.equal(leaseForm.form?.submitTarget, "imob.rentals.create", "depois do imóvel, deve abrir locação, não repetir captação");
   assert.equal(harness.calls.at(-1)?.threadState?.operational, null);
@@ -245,6 +276,10 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   fill(leaseForm, { tenantName: "Inquilino Paridade", startDate: "01/04/2025", endDate: "31/03/2026", rent: "900,00", dueDay: "10" });
   await harness.structuredForms.handleStructuredFormAction(leaseForm, "submit");
   await new Promise<void>((resolve) => setImmediate(resolve));
+  // O contrato só é oferecido depois que a locação foi criada com sucesso (fluxo existente).
+  assert.equal(nextForm().form, undefined);
+  assert.ok(nextForm().quickReplies?.some((reply) => reply.id === "next-contract"));
+  await follow("next-contract");
   const contract = nextForm();
   assert.equal(contract.form?.submitTarget, "imob.contracts.rental");
   assert.equal(contract.thread?.id, leaseForm.thread?.id);
@@ -1474,4 +1509,239 @@ test("P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conve
   assert.equal(denied.widget, undefined, "sem cartão nem dados na negativa");
   await harness.consumeOperationalTurn("claim", "Quero divulgar meu apartamento.");
   assert.equal(harness.claimCalls[3].caseId ?? null, null, "após a negativa o próximo turno não reenvia o caseId negado");
+});
+
+// ---------------------------------------------------------------------------
+// Destinação, lote de unidades, venda/permuta e locação encerrada — pelo Front Door (host compartilhado)
+// ---------------------------------------------------------------------------
+
+type Call = { path: string; method: string; body: Record<string, any> };
+
+function mockImobApi(t: { mock: { method: (target: object, name: string, impl: unknown) => unknown } }, options: { failPropertyPostAt?: number } = {}) {
+  const calls: Call[] = [];
+  const properties: Array<Record<string, any>> = [];
+  let postCount = 0;
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(String(input));
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    calls.push({ path, method, body });
+    let data: unknown;
+    if (path === "/imob/properties" && method === "GET") data = { items: properties };
+    else if (path === "/imob/properties" && method === "POST") {
+      postCount += 1;
+      if (options.failPropertyPostAt === postCount) return new Response(JSON.stringify({ error: { code: "UNAVAILABLE" } }), { status: 503 });
+      const created = { ...body, id: `property-${properties.length + 1}`, ownerId: body.ownerId ?? null, owner: body.ownerId ? { id: body.ownerId, name: "Dona Lote" } : null };
+      properties.push(created);
+      data = created;
+    } else if (path === "/imob/deals" && method === "POST") {
+      data = { caseId: "deal-1", propertyId: body.propertyId, propertyLabel: "Kitnet 101", kind: body.kind, state: body.state, askingPriceCents: body.askingPriceCents ?? null, propertyProjection: body.kind === "venda" && body.askingPriceCents ? "applied" : "not_applicable" };
+    } else if (path === "/imob/rentals" && method === "POST") {
+      data = { propertyId: body.propertyId, caseId: "lease-1", propertyLabel: "Kitnet 101", tenantName: body.tenantName, pendingItems: [], tenantDocumentMasked: null, historical: Boolean(body.closure) };
+    } else throw new Error(`requisição indevida: ${method} ${path}`);
+    return new Response(JSON.stringify({ ok: true, data }), { status: method === "POST" ? 201 : 200 });
+  });
+  return { calls, properties, posts: (path: string) => calls.filter((call) => call.method === "POST" && call.path === path) };
+}
+
+function realResolverHarness() {
+  return frontDoorHarness(async (request) => ({ ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse }), { current: 0 }, true);
+}
+
+/** Valores efetivos do formulário no chat real: padrões dos campos + o que o usuário digitou. */
+function withDefaults(harness: ReturnType<typeof frontDoorHarness>, message: StructuredMessage, typed: Record<string, string> = {}) {
+  const defaults = Object.fromEntries((message.form?.fields ?? []).map((field) => [field.name, String(field.value ?? "")]));
+  harness.raw.setFormValuesByMessageId((previous: Record<string, Record<string, string>>) => ({
+    ...previous, [message.id]: { ...defaults, ...(previous[message.id] ?? {}), ...typed },
+  }));
+}
+
+const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+test("lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 103 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  assert.equal(first.form?.submitTarget, "imob.properties.create");
+  const goalField = first.form?.fields.find((field) => field.name === "goal");
+  assert.equal(goalField?.required, false, "destinação é opcional no cadastro");
+  assert.match(String(first.form?.fields.find((field) => field.name === "unitLabel")?.value), /Kitnet 101, Kitnet 102, Kitnet 103/);
+
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", ownerId: "owner-1" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+
+  // Confirmação do lote aberta; NADA gravado ainda; formulário original fechado.
+  const batch = harness.messages().at(-1)!;
+  assert.equal(batch.form?.submitTarget, "imob.properties.batch");
+  assert.equal(api.posts("/imob/properties").length, 0, "nenhuma gravação antes da confirmação");
+  assert.equal(harness.messages().find((message) => message.id === first.id)?.form, undefined);
+  assert.match(batch.text, /Identifiquei 3 unidades/);
+
+  // Destinação geral = locação; Kitnet 102 = venda (override); Kitnet 103 removida; Kitnet 104 adicionada.
+  withDefaults(harness, batch, { generalDestination: "locacao", dest_1: "venda", unit_2: "", extraUnits: "Kitnet 104" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+
+  const posts = api.posts("/imob/properties");
+  assert.deepEqual(posts.map((call) => [call.body.metadata.externalPropertyRef, call.body.goal]), [
+    ["Kitnet 101", "locacao"], ["Kitnet 102", "venda"], ["Kitnet 104", "locacao"],
+  ]);
+  assert.ok(posts.every((call) => call.body.ownerId === "owner-1" && call.body.address === "Rua Alvin Bauer, 783" && call.body.city === "Joinville"));
+  assert.equal(harness.messages().find((message) => message.id === batch.id)?.form, undefined, "lote confirmado fecha o formulário");
+
+  const texts = harness.messages().map((message) => message.text);
+  assert.ok(texts.some((text) => /3 imóveis cadastrados em Rua Alvin Bauer, 783, Joinville: Kitnet 101, Kitnet 102, Kitnet 104/.test(text)));
+  // Locação (2 unidades): "as 2 unidades", chips sem imóvel fixo. Venda (1): leva o imóvel.
+  const leaseStep = harness.messages().find((message) => /Você definiu as 2 unidades para locação/.test(message.text));
+  assert.ok(leaseStep, "próximos passos da locação em lote");
+  assert.deepEqual(leaseStep.quickReplies?.map((reply) => reply.id), ["next-lease_register_current", "next-lease_register_historical", "next-lease_start_new"]);
+  const saleStep = harness.messages().find((message) => /Você definiu Kitnet 102 para venda/.test(message.text));
+  assert.deepEqual(saleStep?.quickReplies?.map((reply) => reply.id), ["next-sale_register_existing", "next-sale_start_new"]);
+  assert.equal(api.posts("/imob/deals").length + api.posts("/imob/rentals").length, 0, "próximo passo nunca abre nada sozinho");
+
+  // "Iniciar venda" da unidade 102 abre o formulário de venda já com imóvel e situação.
+  saleStep!.quickReplies!.find((reply) => reply.id === "next-sale_start_new")!.onSelect!();
+  const dealForm = harness.messages().at(-1)!;
+  assert.equal(dealForm.form?.submitTarget, "imob.deals.create");
+  assert.deepEqual([harness.getValues()[dealForm.id].propertyId, harness.getValues()[dealForm.id].state], ["property-2", "em_andamento"]);
+});
+
+test("lote: erro de pré-validação mantém o formulário e não grava nada", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 102 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+  const batch = harness.messages().at(-1)!;
+  withDefaults(harness, batch, { unit_1: "Kitnet 101" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.match(harness.getErrors()[batch.id].unit_1, /mais de uma vez/);
+  assert.ok(harness.messages().find((message) => message.id === batch.id)?.form, "formulário segue aberto");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  // cancelar o lote também não grava
+  await harness.structuredForms.handleStructuredFormAction(batch, "cancel");
+  assert.match(harness.messages().at(-1)!.text, /Cadastro em lote cancelado\. Nada foi gravado\./);
+  assert.equal(api.posts("/imob/properties").length, 0);
+});
+
+test("lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes", async (t) => {
+  const api = mockImobApi(t, { failPropertyPostAt: 2 });
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 103 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+  const batch = harness.messages().at(-1)!;
+  withDefaults(harness, batch, { generalDestination: "uso_proprio" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+
+  assert.equal(api.properties.length, 1, "só a primeira entrou");
+  assert.match(harness.getErrors()[batch.id]._form, /1 unidade\(s\) já gravada\(s\)\. Não foi possível cadastrar 2 unidade\(s\) \(HTTP 503\)/);
+  assert.ok(harness.messages().find((message) => message.id === batch.id)?.form, "formulário segue aberto para as pendentes");
+  assert.equal(harness.getValues()[batch.id].unit_0, "", "já gravada sai do lote");
+  assert.equal(harness.getValues()[batch.id].unit_1, "Kitnet 102");
+
+  // Tentar de novo grava apenas as pendentes (sem duplicar a primeira).
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.deepEqual(api.properties.map((row) => row.metadata.externalPropertyRef), ["Kitnet 101", "Kitnet 102", "Kitnet 103"]);
+  assert.equal(harness.messages().find((message) => message.id === batch.id)?.form, undefined);
+});
+
+test("uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 104", goal: "uso_proprio" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  const done = harness.messages().at(-1)!;
+  assert.equal(api.posts("/imob/properties")[0].body.goal, "uso_proprio");
+  assert.match(done.text, /Você definiu Kitnet 104 como uso próprio\. Nenhum contrato ou negócio foi iniciado/);
+  assert.deepEqual(done.quickReplies ?? [], []);
+});
+
+test("sem destinação informada: cadastra sem goal e sem sugerir próximo passo", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 105", goal: "" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.equal("goal" in api.posts("/imob/properties")[0].body, false);
+  assert.doesNotMatch(harness.messages().at(-1)!.text, /Você definiu/);
+});
+
+test("venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  harness.structuredForms.openAssetDealForm("venda", "property-1", "em_andamento");
+  const sale = harness.messages().at(-1)!;
+  assert.equal(sale.form?.action, "venda");
+  withDefaults(harness, sale, { askingPrice: "250.000,00", counterpartyName: "Comprador X" });
+  await harness.structuredForms.handleStructuredFormAction(sale, "submit");
+  assert.deepEqual(api.posts("/imob/deals")[0].body, {
+    propertyId: "property-1", kind: "venda", state: "em_andamento", askingPriceCents: 25_000_000, counterpartyName: "Comprador X", notes: null,
+  });
+  const done = harness.messages().at(-1)!;
+  assert.match(done.text, /Venda registrada: Kitnet 101 — em andamento\./);
+  assert.doesNotMatch(done.text, /Comprador X/);
+  assert.deepEqual(done.quickReplies?.map((reply) => reply.id), ["next-sale-contract"]);
+
+  harness.structuredForms.openAssetDealForm("permuta", "property-1");
+  const exchange = harness.messages().at(-1)!;
+  withDefaults(harness, exchange, { state: "concluida", receivedAssetDescription: "Terreno", torna: "5.000,00" });
+  await harness.structuredForms.handleStructuredFormAction(exchange, "submit");
+  const body = api.posts("/imob/deals")[1].body;
+  assert.deepEqual([body.kind, body.state, body.receivedAssetDescription, body.tornaCents], ["permuta", "concluida", "Terreno", 500_000]);
+  assert.deepEqual(harness.messages().at(-1)!.quickReplies ?? [], [], "permuta não oferece contrato de venda");
+});
+
+test("venda: erro de validação não chama a API; cancelar não registra", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  harness.structuredForms.openAssetDealForm("venda");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, {});
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.deepEqual(Object.keys(harness.getErrors()[form.id]).sort(), ["propertyId", "state"]);
+  await harness.structuredForms.handleStructuredFormAction(form, "cancel");
+  assert.match(harness.messages().at(-1)!.text, /Nenhum negócio foi registrado\./);
+  assert.equal(api.calls.length, 0);
+});
+
+test("locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  // chip do próximo passo → pedido de formulário com leaseState pré-configurado
+  harness.structuredForms.startRentalLeaseFor("property-1", { historical: true });
+  await tick();
+  await tick();
+  const form = harness.messages().at(-1)!;
+  assert.equal(form.form?.submitTarget, "imob.rentals.create");
+  assert.equal(harness.getValues()[form.id].propertyId, "property-1");
+  assert.equal(harness.getValues()[form.id].leaseState, "encerrada");
+  assert.ok(form.form?.fields.some((field) => field.name === "leaseState"));
+
+  withDefaults(harness, form, { tenantName: "Pessoa A", startDate: "01/03/2024", endedOn: "28/02/2025", closeReason: "fim_contrato" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  const body = api.posts("/imob/rentals")[0].body;
+  assert.deepEqual(body.closure, { endedOn: "2025-02-28", reason: "fim_contrato" });
+  const done = harness.messages().at(-1)!;
+  assert.match(done.text, /Locação encerrada registrada no histórico: Kitnet 101/);
+  assert.deepEqual(done.quickReplies?.map((reply) => reply.id), ["next-history"]);
+  assert.equal(harness.messages().some((message) => message.form?.submitTarget === "imob.contracts.rental"), false);
+});
+
+test("lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)", async (t) => {
+  mockImobApi(t);
+  const { state, raw } = fakeState();
+  const { host, sent } = fakeHost();
+  const forms = createImobStructuredForms(state, host);
+  forms.startRentalLeaseFor("property-7");
+  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { propertyId: "property-7" } });
+  assert.equal(raw.contractAfterLeaseRef.current, null, "não pula para o contrato");
+  assert.deepEqual(sent, [["cadastrar locatário", "Cadastrar locação"]]);
 });

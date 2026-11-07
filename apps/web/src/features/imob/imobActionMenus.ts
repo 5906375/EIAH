@@ -19,6 +19,9 @@ export type ImobLocalFormKind =
   | "rental_close"
   | "rental_history"
   | "contract_sale"
+  | "deal_sale"
+  | "deal_exchange"
+  | "rental_historical"
   | "tokenization_owners"
   | "tokenization_properties"
   | "tokenization_rentals"
@@ -79,6 +82,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     items: [
       { id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" },
       { id: "rental-edit", label: "Editar locação", kind: "local", form: "rental_edit" },
+      { id: "rental-historical", label: "Registrar locação encerrada", kind: "local", form: "rental_historical" },
       { id: "rental-close", label: "Encerrar locação", kind: "local", form: "rental_close" },
       { id: "rental-history", label: "Histórico de locações", kind: "local", form: "rental_history" },
       { id: "rental-documents", label: "Anexar documento", kind: "local", form: "documents_rentals" },
@@ -92,6 +96,8 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     items: [
       { id: "deal-proposal", label: "Gerar proposta", kind: "prompt", prompt: "Quero gerar uma proposta comercial para um cliente." },
       { id: "deal-contract", label: "Contrato de locação", kind: "local", form: "contract_rental" },
+      { id: "deal-sale", label: "Registrar venda", kind: "local", form: "deal_sale" },
+      { id: "deal-exchange", label: "Registrar permuta", kind: "local", form: "deal_exchange" },
       { id: "deal-sale-contract", label: "Contrato de venda", kind: "local", form: "contract_sale" },
       { id: "deal-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_deals" },
     ],

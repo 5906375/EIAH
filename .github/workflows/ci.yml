@@ -133,7 +133,7 @@ jobs:
           ESBUILD_TMPDIR: /tmp 
           NODE_ENV: production
         # O filtro garante que apenas 'apps/web' seja construído
-        run: pnpm --filter apps/web build
+        run: pnpm --filter @eiah/web build
 
   self_service_dedup_guards:
     name: SelfServiceDedupGuards
@@ -821,6 +821,9 @@ jobs:
 
       - name: Run assignment fail-closed suite
         run: pnpm test:assignment-fail-closed
+
+      - name: Run IMOB asset destination unit suite
+        run: pnpm test:imob-asset-destination
 
   imob_chat_parity_e2e_informative:
     # ADR-010 etapa E: mesmas jornadas do IMOB no /app/chat e no /app/imob/chat,

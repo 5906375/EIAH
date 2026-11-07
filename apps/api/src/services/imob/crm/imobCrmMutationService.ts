@@ -2,6 +2,7 @@ import type { PrismaClient } from "@repo/db";
 import { IMOB_REASON_CODE_CATALOG } from "../control/imobReasonCodeCatalog";
 import { buildResponsibleActorAssignmentContract } from "../../../types/verticalResponsibleActorContract";
 import { recordImobCrmAuditEvent } from "./imobCrmAudit";
+import { normalizeImobCrmPropertyDestination } from "./imobCrmPropertyGoals";
 import {
   planCaseShadowExecutions,
   planLeadShadowExecutions,
@@ -206,6 +207,15 @@ function buildOwnerAssignmentEventRef(params: {
 }) {
   const normalizedOwner = normalizeComparableToken(params.ownerResponsible)?.replace(/[^a-z0-9]+/g, "-") ?? "owner";
   return `case-owner-assigned:${params.caseId}:${normalizedOwner}`;
+}
+
+/**
+ * Destinação canônica do imóvel. Vazio/ausente continua "não informada" (null);
+ * valor desconhecido legado é preservado como veio (nada é apagado).
+ */
+function canonicalDestination(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  return normalizeImobCrmPropertyDestination(value) ?? (value.trim() ? value : null);
 }
 
 export class ImobCrmMutationService {
@@ -429,7 +439,7 @@ export class ImobCrmMutationService {
         workspaceId: scope.workspaceId,
         ownerId: input.ownerId ?? null,
         propertyType: input.propertyType ?? null,
-        goal: input.goal ?? null,
+        goal: canonicalDestination(input.goal) ?? null,
         address: input.address ?? null,
         city: input.city ?? null,
         neighborhood: input.neighborhood ?? null,
@@ -456,6 +466,8 @@ export class ImobCrmMutationService {
       action: "created",
       summary: `Property ${formatPropertyLabel(created)} created`,
       after: created,
+      // Destinação definida no cadastro: registrada no próprio evento de criação (um evento por mutação).
+      ...(created.goal ? { metadata: { change: "destination_set", from: null, to: created.goal } } : {}),
     });
 
     await this.recordCaseShadow(scope, {
@@ -488,7 +500,7 @@ export class ImobCrmMutationService {
       data: {
         ...(input.ownerId !== undefined ? { owner: input.ownerId ? { connect: { id: input.ownerId } } : { disconnect: true } } : {}),
         ...(input.propertyType !== undefined ? { propertyType: input.propertyType } : {}),
-        ...(input.goal !== undefined ? { goal: input.goal } : {}),
+        ...(input.goal !== undefined ? { goal: canonicalDestination(input.goal) } : {}),
         ...(input.address !== undefined ? { address: input.address } : {}),
         ...(input.city !== undefined ? { city: input.city } : {}),
         ...(input.neighborhood !== undefined ? { neighborhood: input.neighborhood } : {}),
@@ -505,6 +517,10 @@ export class ImobCrmMutationService {
       include: { owner: { select: { id: true, name: true } } },
     });
 
+    const destinationFrom = canonicalDestination(previous?.goal ?? null);
+    const destinationTo = canonicalDestination(updated.goal ?? null);
+    const destinationChanged = input.goal !== undefined && destinationFrom !== destinationTo;
+
     await recordImobCrmAuditEvent({
       prisma: this.prisma,
       tenantId: scope.tenantId,
@@ -516,6 +532,10 @@ export class ImobCrmMutationService {
       summary: `Property ${formatPropertyLabel(updated)} updated`,
       before: previous,
       after: updated,
+      // Destinação definida/alterada: registrada no próprio evento de atualização (de → para), só quando mudou de fato.
+      ...(destinationChanged
+        ? { metadata: { change: destinationFrom ? "destination_changed" : "destination_set", from: destinationFrom, to: destinationTo } }
+        : {}),
     });
 
     return { status: "updated" as const, data: updated };

@@ -4,6 +4,7 @@ import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContra
 import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
 import { ImobRentalLeaseLifecycleService, ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
+import { ImobAssetDealService } from "../services/imob/crm/imobAssetDealService";
 import { ImobDocumentLinkService } from "../services/imob/crm/imobDocumentLinkService";
 import { ImobRentalContractService } from "../services/imob/crm/imobRentalContractService";
 import { ImobSaleContractService } from "../services/imob/crm/imobSaleContractService";
@@ -77,6 +78,8 @@ export type RegisterImobCrmRoutesParams = {
     imobCaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCloseSchema: SafeParseSchema;
+    imobAssetDealCreateSchema: SafeParseSchema;
+    imobAssetDealCompleteSchema: SafeParseSchema;
     imobDocumentLinkSchema: SafeParseSchema;
     imobRentalContractGenerateSchema: SafeParseSchema;
     imobSaleContractGenerateSchema: SafeParseSchema;
@@ -1136,6 +1139,15 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     if (result.status === "lease_already_active") {
       return res.status(409).json({ ok: false, error: { code: "RENTAL_LEASE_ALREADY_ACTIVE", message: "Este imóvel já tem uma locação ativa", caseId: result.caseId } });
     }
+    if (result.status === "lease_already_registered") {
+      return res.status(409).json({ ok: false, error: { code: "RENTAL_LEASE_ALREADY_REGISTERED", message: "Esta locação encerrada já está registrada neste imóvel", caseId: result.caseId } });
+    }
+    if (result.status === "ended_before_start") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_BEFORE_START", message: "A saída não pode ser antes do início da locação" } });
+    }
+    if (result.status === "ended_in_future") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_IN_FUTURE", message: "A data de saída não pode ser futura" } });
+    }
     if (result.status !== "created") {
       return res.status(422).json({ ok: false, error: { code: "RENTAL_LEASE_NOT_CREATED", message: `Locação não criada: ${result.status}` } });
     }
@@ -1217,6 +1229,58 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const result = await ctx.service.history(ctx.scope, propertyId);
     if (result.status === "property_not_found") {
       return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    return res.json({ ok: true, data: result.data });
+  });
+
+  /** Venda e permuta do ativo (`sale.deal` / `exchange.deal`): mesmo acesso das rotas de locação. */
+  router.post("/deals", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode registrar negócios neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobAssetDealCreateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).register(ctx.scope, parsed.data);
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    if (result.status === "deal_already_active") {
+      return res.status(409).json({ ok: false, error: { code: "ASSET_DEAL_ALREADY_ACTIVE", message: "Este imóvel já tem um negócio em andamento deste tipo", caseId: result.caseId } });
+    }
+    if (result.status !== "created") {
+      return res.status(422).json({ ok: false, error: { code: "ASSET_DEAL_NOT_CREATED", message: `Negócio não criado: ${result.status}` } });
+    }
+    return res.status(201).json({ ok: true, data: result.data });
+  });
+
+  router.get("/deals", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode consultar negócios neste workspace.");
+    if (!ctx) return;
+    const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : "";
+    if (!propertyId) return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", message: "propertyId is required" } });
+    const kindRaw = typeof req.query.kind === "string" ? req.query.kind : "";
+    const kind = kindRaw === "venda" || kindRaw === "permuta" ? kindRaw : undefined;
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).list(ctx.scope, propertyId, kind);
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    return res.json({ ok: true, data: result.data });
+  });
+
+  router.post("/deals/complete", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode concluir negócios neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobAssetDealCompleteSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).complete(ctx.scope, parsed.data);
+    if (result.status === "deal_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "ASSET_DEAL_NOT_FOUND", message: "Negócio não encontrado neste workspace" } });
+    }
+    if (result.status === "deal_not_active") {
+      return res.status(409).json({ ok: false, error: { code: "ASSET_DEAL_NOT_ACTIVE", message: "Este negócio já está concluído" } });
     }
     return res.json({ ok: true, data: result.data });
   });
