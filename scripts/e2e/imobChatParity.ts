@@ -139,7 +139,8 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
   const { page, runs } = await openPage(browser, session, surface);
   const tag = surface === "/app/chat" ? "FD" : "IC";
   const ownerName = `Dona Paridade ${tag} ${STAMP}`;
-  const unit = `Kit ${tag} ${STAMP}`;
+  const unitNumber = `${tag === "FD" ? "9" : "8"}${STAMP}`;
+  const unit = `Kitnet ${unitNumber}`;
   const shot = (name: string) => page.screenshot({ path: path.join(ARTIFACTS, `${tag}-${name}.png`), fullPage: true }).catch(() => undefined);
   let stop = false;
   // caseId da locação criada NESTA jornada (resposta de POST /imob/rentals); o histórico do imóvel é validado por ele.
