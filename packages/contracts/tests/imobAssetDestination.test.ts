@@ -6,10 +6,37 @@ import {
   getImobAssetDestinationLabel,
   normalizeImobAssetDestination,
   parseImobUnits,
+  parseCanonicalImobUnits,
+  looksLikeMultipleUnits,
   resolveImobAssetNextSteps,
 } from "../src/index.js";
 
 const labels = (text: string) => parseImobUnits(text).units.map((unit) => unit.label);
+
+test("normalizador canônico não aceita uma frase livre parcialmente entendida", () => {
+  assert.deepEqual(parseCanonicalImobUnits("Kitnets 102 a 104")?.units.map((unit) => unit.label), ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+  assert.equal(parseCanonicalImobUnits("Tenho três kitnets de teste, da 102 à 104."), null);
+  assert.equal(parseCanonicalImobUnits("Kitnets TESTE 102 a 104"), null);
+  assert.equal(parseCanonicalImobUnits("Apto 301 bloco B"), null);
+  for (const phrase of ["Tenho as kitnets 102 a 104 naquele endereço", "Quero cadastrar as kitnets 102 a 104", "Kitnets 中 102 a 104", "Kitnets ² 102 a 104"]) {
+    assert.equal(parseCanonicalImobUnits(phrase), null, "nenhum token pode ser descartado para reconhecer uma entrada inteira");
+  }
+  assert.deepEqual(parseImobUnits("Kitnets 102 a 104"), parseImobUnits("Kitnets 102 a 104"));
+  assert.ok(parseImobUnits("Kitnets 9007199254740992 a 9007199254740994").invalidRanges.length);
+});
+
+test("safety net sinaliza risco e não produz unidades nem prova singularidade", () => {
+  assert.equal(looksLikeMultipleUnits("Kitnets TESTE 102 a 104"), true);
+  assert.equal(looksLikeMultipleUnits("unidade do fundo"), false);
+  assert.equal(parseCanonicalImobUnits("unidade do fundo"), null, "ausência de sinal não autoriza cadastro");
+});
+
+test("duplicata no limite do lote não conta como unidade adicional", () => {
+  const result = parseCanonicalImobUnits("Kitnets 1 a 200 e Kitnet 200");
+  assert.equal(result?.units.length, 200);
+  assert.deepEqual(result?.invalidRanges, []);
+  assert.deepEqual(result?.duplicates, ["Kitnet 200"]);
+});
 
 test("destinação: valores legados e novos normalizam; ausência não vira sem_destinacao", () => {
   assert.equal(normalizeImobAssetDestination("locacao"), "locacao");

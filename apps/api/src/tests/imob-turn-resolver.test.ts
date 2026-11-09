@@ -4,6 +4,15 @@ import assert from "node:assert/strict";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
 import type { ImobProposalDraft } from "../services/imob/imobConversationContract";
 
+test("draft e formulário recebem unidades já resolvidas pelo intake, inclusive singular", () => {
+  for (const unitLabels of [["Kitnet 102", "Kitnet 103", "Kitnet 104"], ["unidade do fundo"]]) {
+    const result = resolveImobTurn({ message: "cadastrar imóvel", propertyUnitIntake: { status: "resolved", source: "openai", unitLabels },
+      access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } } });
+    assert.deepEqual(result.conversationState.operational?.propertyDraft?.unitLabels, unitLabels);
+    assert.equal(result.presentation.form?.fields.find((field) => field.name === "unitLabel")?.value, unitLabels.join(", "));
+  }
+});
+
 test("IMOB turn resolver returns consult mode for broad rental discovery", () => {
   const result = resolveImobTurn({
     message: "quero alugar apto",
@@ -597,7 +606,7 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
     [
-      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "cep", "city", "neighborhood", "address",
+      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "city", "address", "neighborhood", "cep",
       "areaM2", "bedrooms", "bathrooms", "garageSpots",
     ],
   );

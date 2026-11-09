@@ -2,11 +2,11 @@
  * IMOB — destinação inicial do ativo (imóvel/unidade) e interpretação de
  * múltiplas unidades.
  *
- * Helpers puros e sem dependências: a mesma interpretação serve ao
+ * Helpers puros e sem dependências: a mesma normalização serve ao
  * Front Door (`/app/chat`), ao chat dedicado (`/app/imob/chat`) e à API.
  * A autoridade de domínio continua no IMOB (serviços/rotas); aqui só vive a
- * regra de "o que isto significa" e "qual o próximo passo", para que nenhuma
- * superfície recrie essa regra.
+ * validação canônica e "qual o próximo passo". Linguagem livre pertence ao
+ * intake agêntico do IMOB, não ao parser nem às superfícies.
  *
  * A destinação NÃO é estado permanente nem substitui ocupação: ela orienta a
  * próxima jornada. Ausência (nunca informada) e `sem_destinacao` (escolha
@@ -253,6 +253,22 @@ export type ImobParsedUnits = {
 
 export const IMOB_MAX_UNITS_PER_BATCH = 200;
 
+/** Contrato de saída do intake IMOB. Nunca concede autorização de cadastro. */
+export type ImobPropertyUnitIntake =
+  | { status: "resolved"; unitLabels: string[]; source: "canonical" | "openai"; confidence?: number | null }
+  | { status: "needs_clarification"; unitLabels: []; message: string; confidence?: number | null }
+  | { status: "not_mentioned"; unitLabels: [] };
+
+export const IMOB_PROPERTY_UNIT_INTAKE_POLICY = Object.freeze({
+  owner: "IMOB",
+  kind: "property_units",
+  minimumConfidence: 0.85,
+  clarification: "Quais unidades você deseja cadastrar? Confirme os tipos e as identificações; nada foi cadastrado.",
+  unavailable: "Não consegui interpretar as unidades com segurança agora. Podemos retomar essa identificação antes de cadastrar; nada foi gravado.",
+  batchConfirmationRequired: true,
+  writesAllowed: false,
+} as const);
+
 const UNIT_KINDS: Record<string, string> = {
   kitnet: "Kitnet",
   kitnets: "Kitnet",
@@ -314,11 +330,14 @@ export function parseImobUnits(text: string | null | undefined): ImobParsedUnits
   const seen = new Set<string>();
 
   const add = (kind: string, number: string) => {
-    if (result.units.length >= IMOB_MAX_UNITS_PER_BATCH) return;
     const label = `${kind} ${number}`;
     const key = foldText(label);
     if (seen.has(key)) {
       if (!result.duplicates.includes(label)) result.duplicates.push(label);
+      return;
+    }
+    if (result.units.length >= IMOB_MAX_UNITS_PER_BATCH) {
+      if (!result.invalidRanges.includes("Limite de unidades excedido")) result.invalidRanges.push("Limite de unidades excedido");
       return;
     }
     seen.add(key);
@@ -346,7 +365,7 @@ export function parseImobUnits(text: string | null | undefined): ImobParsedUnits
         const end = tokens[index + 2];
         const from = Number(start);
         const to = Number(end);
-        if (to < from || to - from + 1 > IMOB_MAX_UNITS_PER_BATCH) {
+        if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || to < from || to - from + 1 > IMOB_MAX_UNITS_PER_BATCH) {
           result.invalidRanges.push(`${kind} ${start} a ${end}`);
         } else {
           for (let value = from; value <= to; value += 1) add(kind, padLike(start, value));
@@ -367,6 +386,43 @@ export function parseImobUnits(text: string | null | undefined): ImobParsedUnits
     index += 1;
   }
   return result;
+}
+
+/** Reconhece SOMENTE expressão canônica completa. Não extrai significado de frases livres. */
+export function parseCanonicalImobUnits(text: string | null | undefined): ImobParsedUnits | null {
+  const raw = foldText(text ?? "");
+  // Após caixa/acentos/espaços, só caracteres que o tokenizer consome integralmente.
+  // Letras/números Unicode desconhecidos não podem desaparecer e transformar frase em expressão canônica.
+  if (!raw || !/^[a-z0-9\s,;-]+$/.test(raw)) return null;
+  const kind = `(?:${Object.keys(UNIT_KINDS).join("|")})`;
+  const number = "\\d+(?: (?:a|ao|ate|-) \\d+)?";
+  const group = `${kind} ${number}(?: (?:,|;|e) ${number})*`;
+  if (!new RegExp(`^${group}(?: (?:,|;|e) ${group})*$`).test(tokenize(raw).join(" "))) return null;
+  return parseImobUnits(raw);
+}
+
+/** Formas no plural da tabela de tipos acima: indício de que a pessoa quis dizer "várias". */
+const PLURAL_UNIT_WORDS = new Set([
+  "kitnets", "kitinetes", "salas", "aptos", "aps", "apartamentos", "lojas", "casas",
+  "studios", "estudios", "conjuntos", "boxes", "galpoes", "coberturas", "unidades",
+]);
+
+/**
+ * Indício claro de VÁRIAS unidades na entrada, independente do que `parseImobUnits` conseguiu ler:
+ * uma faixa ("102 a 104") ou uma palavra de unidade no plural com dois ou mais números.
+ * Serve para falhar fechado quando há indício de lote mas o parser não achou 2+ unidades
+ * (ex.: "Kitnets TESTE 102 a 104"). Uma unidade singular ("Kit IC 1730", "Apto 301 bloco B") não dispara.
+ * Não interpreta nem inventa unidades.
+ */
+export function looksLikeMultipleUnits(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const tokens = tokenize(text);
+  const numbers = tokens.filter((token) => isNumber(token)).length;
+  const hasRange = tokens.some(
+    (token, index) => RANGE_CONNECTORS.has(token) && isNumber(tokens[index - 1]) && isNumber(tokens[index + 1]),
+  );
+  const hasPlural = tokens.some((token) => PLURAL_UNIT_WORDS.has(token));
+  return hasRange || (hasPlural && numbers >= 2);
 }
 
 /** Lista canônica, reaproveitável como valor de campo e re-interpretável por `parseImobUnits`. */

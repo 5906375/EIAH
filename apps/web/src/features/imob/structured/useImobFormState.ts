@@ -12,7 +12,58 @@ import {
 import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
 import { buildImobOwnerOptions, matchOptionByName } from "@/pages/app/imob/propertyCreateForm";
 import { buildImobPropertyOptions } from "@/pages/app/imob/rentalLeaseForm";
-import { normalizeCepValue, normalizeImobFormValue, resolveFieldAutofillTarget, type StructuredMessage } from "./types";
+import { normalizeCepValue, normalizeImobFormValue, planImobCepAutofill, resolveFieldAutofillTarget, type StructuredMessage } from "./types";
+
+/** Coordena o lookup interno e descarta respostas de outra edição ou formulário. */
+export function createImobCepLookup(dependencies: {
+  resolveValues: (message: StructuredMessage) => Record<string, string>;
+  isCurrent: (message: StructuredMessage) => boolean;
+  updateValue: (messageId: string, field: string, value: string) => void;
+  setLoading: (messageId: string, field: string, loading: boolean) => void;
+  setError: (messageId: string, field: string, text: string) => void;
+}) {
+  const sequenceByMessage: Record<string, number> = {};
+  return async (message: StructuredMessage, fieldName: string, rawValue: string) => {
+    const field = message.form?.fields.find((item) => item.name === fieldName);
+    if (field?.lookup?.kind !== "cep") return null;
+    const cep = normalizeCepValue(rawValue);
+    dependencies.updateValue(message.id, fieldName, cep);
+    const sequence = (sequenceByMessage[message.id] ?? 0) + 1;
+    sequenceByMessage[message.id] = sequence;
+    const isCurrent = () => sequenceByMessage[message.id] === sequence && dependencies.isCurrent(message)
+      && normalizeCepValue(dependencies.resolveValues(message)[fieldName] ?? "") === cep;
+    if (!/^\d{5}-?\d{3}$/.test(cep)) {
+      dependencies.setLoading(message.id, fieldName, false);
+      return null;
+    }
+    dependencies.setLoading(message.id, fieldName, true);
+    try {
+      const response = await apiLookupImobCep(cep);
+      if (!isCurrent()) return null;
+      const candidates: Array<[string, string | null]> = [
+        [fieldName, response.data.cep],
+        [resolveFieldAutofillTarget(field, "city") ?? "", response.data.city],
+        [resolveFieldAutofillTarget(field, "address") ?? "", response.data.street ?? response.data.address],
+        [resolveFieldAutofillTarget(field, "neighborhood") ?? "", response.data.neighborhood],
+      ];
+      const { applied, conflicts } = planImobCepAutofill(dependencies.resolveValues(message), candidates, fieldName);
+      for (const [target, value] of Object.entries(applied)) dependencies.updateValue(message.id, target, value);
+      if (conflicts.length) {
+        const details = conflicts.map((conflict) => `${message.form?.fields.find((item) => item.name === conflict.field)?.label ?? "Endereço"}: ${conflict.lookup}`).join("; ");
+        dependencies.setError(message.id, fieldName, `O CEP retornou dados diferentes: ${details}. Mantive o que você informou. Confira o endereço e o CEP antes de cadastrar.`);
+      }
+      return applied;
+    } catch (error) {
+      if (!isCurrent()) return null;
+      const reason = error instanceof ApiError && error.status === 404
+        ? "CEP não encontrado." : "Não consegui consultar o CEP agora. Preencha o endereço manualmente.";
+      dependencies.setError(message.id, fieldName, reason);
+      return null;
+    } finally {
+      if (sequenceByMessage[message.id] === sequence) dependencies.setLoading(message.id, fieldName, false);
+    }
+  };
+}
 
 /**
  * Estado dos formulários do IMOB numa conversa: valores e erros por mensagem,
@@ -21,7 +72,13 @@ import { normalizeCepValue, normalizeImobFormValue, resolveFieldAutofillTarget, 
  * Usado pelo chat do IMOB e, no front door, pela mesma conversa do EIAH.
  */
 export function useImobFormState(messages: StructuredMessage[]) {
-  const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
+  const [formValuesByMessageId, setStoredFormValues] = React.useState<Record<string, Record<string, string>>>({});
+  const formValuesRef = React.useRef(formValuesByMessageId);
+  const setFormValuesByMessageId = React.useCallback<React.Dispatch<React.SetStateAction<typeof formValuesByMessageId>>>((update) => {
+    const next = typeof update === "function" ? update(formValuesRef.current) : update;
+    formValuesRef.current = next;
+    setStoredFormValues(next);
+  }, []);
   const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
   const [imobPropertyOptions, setImobPropertyOptions] = React.useState<ImobPresentationFormFieldOption[] | null>(null);
@@ -35,7 +92,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
   /** Arquivos escolhidos nos formulários "Anexar documento", por mensagem. */
   const formFilesRef = React.useRef<Record<string, File[]>>({});
   /** Valores a aplicar no próximo formulário com este destino (ex.: proprietário recém-cadastrado no "Cadastrar imóvel"). */
-  const pendingFormPrefillRef = React.useRef<{ submitTarget: string; values: Record<string, string> } | null>(null);
+  const pendingFormPrefillRef = React.useRef<{ submitTarget: string; values: Record<string, string>; isCurrent?: () => boolean } | null>(null);
   /** Imóvel cuja locação, ao ser salva, abre direto o contrato. */
   const contractAfterLeaseRef = React.useRef<string | null>(null);
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
@@ -88,7 +145,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
       const values: Record<string, string> = Object.fromEntries(
         form.fields.map((field) => [field.name, String(field.value ?? "")]),
       );
-      const localOverrides = formValuesByMessageId[message.id] ?? null;
+      const localOverrides = formValuesRef.current[message.id] ?? null;
       if (localOverrides) {
         for (const [fieldName, value] of Object.entries(localOverrides)) {
           values[fieldName] = value;
@@ -106,7 +163,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
           const candidateThreadId = candidate.thread?.id ?? candidate.card?.thread?.id ?? null;
           if (candidateThreadId !== currentThreadId) continue;
 
-          const candidateLocalValues = formValuesByMessageId[candidate.id] ?? null;
+          const candidateLocalValues = formValuesRef.current[candidate.id] ?? null;
           const candidateValue = normalizeImobFormValue(
             candidateLocalValues?.[field.name] ?? String(candidateForm.fields.find((item) => item.name === field.name)?.value ?? ""),
           );
@@ -144,6 +201,13 @@ export function useImobFormState(messages: StructuredMessage[]) {
     });
   }, []);
 
+  // A resposta de lookup deve observar edições feitas enquanto a requisição estava em voo.
+  const resolveLatestValues = React.useRef(resolveFormValuesForMessage);
+  resolveLatestValues.current = resolveFormValuesForMessage;
+  const latestMessages = React.useRef(messages);
+  latestMessages.current = messages;
+  const resolveCurrentFormValues = React.useCallback((message: StructuredMessage) => resolveLatestValues.current(message), []);
+
   const setFormLookupLoading = React.useCallback((messageId: string, fieldName: string, isLoading: boolean) => {
     setFormLookupLoadingByMessageId((prev) => ({
       ...prev,
@@ -154,57 +218,25 @@ export function useImobFormState(messages: StructuredMessage[]) {
     }));
   }, []);
 
-  const applyCepLookupToForm = React.useCallback(async (message: StructuredMessage, fieldName: string, rawValue: string) => {
-    const form = message.form;
-    const field = form?.fields.find((item) => item.name === fieldName);
-    if (!form || !field || field.lookup?.kind !== "cep") return null;
-
-    const normalizedCep = normalizeCepValue(rawValue);
-    updateFormFieldValue(message.id, fieldName, normalizedCep);
-    if (normalizedCep.replace(/\D/g, "").length !== 8) return null;
-
-    setFormLookupLoading(message.id, fieldName, true);
-    try {
-      const response = await apiLookupImobCep(normalizedCep);
-      const nextValues: Array<[string, string | null]> = [
-        [fieldName, response.data.cep],
-        [resolveFieldAutofillTarget(field, "city") ?? "", response.data.city],
-        [resolveFieldAutofillTarget(field, "address") ?? "", response.data.street ?? response.data.address],
-        [resolveFieldAutofillTarget(field, "neighborhood") ?? "", response.data.neighborhood],
-      ];
-      const appliedValues: Record<string, string> = {};
-
-      for (const [targetFieldName, nextValue] of nextValues) {
-        if (!targetFieldName || !nextValue) continue;
-        appliedValues[targetFieldName] = nextValue;
-        updateFormFieldValue(message.id, targetFieldName, nextValue);
-      }
-      return appliedValues;
-    } catch (error) {
-      const reason =
-        error instanceof ApiError
-          ? error.status === 404
-            ? "CEP não encontrado."
-            : `Não consegui consultar o CEP agora. (${error.status})`
-          : "Não consegui consultar o CEP agora.";
-      setFormErrorsByMessageId((prev) => ({
-        ...prev,
-        [message.id]: {
-          ...(prev[message.id] ?? {}),
-          [fieldName]: reason,
-        },
-      }));
-      return null;
-    } finally {
-      setFormLookupLoading(message.id, fieldName, false);
-    }
-  }, [setFormLookupLoading, updateFormFieldValue]);
+  const applyCepLookupToForm = React.useMemo(() => createImobCepLookup({
+    resolveValues: resolveCurrentFormValues,
+    isCurrent: (message) => latestMessages.current.some((item) => item.id === message.id && Boolean(item.form)),
+    updateValue: updateFormFieldValue,
+    setLoading: setFormLookupLoading,
+    setError: (messageId, field, text) => setFormErrorsByMessageId((prev) => ({
+      ...prev, [messageId]: { ...(prev[messageId] ?? {}), [field]: text },
+    })),
+  }), [resolveCurrentFormValues, setFormLookupLoading, updateFormFieldValue]);
 
   /** Antes de exibir um formulário: anexos no próprio formulário e valores pendentes para este destino. */
   const prepareIncomingMessage = React.useCallback(<M extends StructuredMessage>(incoming: M): M => {
     // Formulários de cadastro e contrato ganham "Anexar documentos" no próprio formulário.
     const message = incoming.form ? { ...incoming, form: withInlineDocumentFields(incoming.form) } : incoming;
     const pendingPrefill = pendingFormPrefillRef.current;
+    if (pendingPrefill?.isCurrent?.() === false) {
+      pendingFormPrefillRef.current = null;
+      return message;
+    }
     if (pendingPrefill && message.form?.submitTarget === pendingPrefill.submitTarget) {
       pendingFormPrefillRef.current = null;
       setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...(prev[message.id] ?? {}), ...pendingPrefill.values } }));
@@ -229,7 +261,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
     contractAfterLeaseRef,
     propertyRecordsRef,
     resolveFormFieldOptions,
-    resolveFormValuesForMessage,
+    resolveFormValuesForMessage: resolveCurrentFormValues,
     updateFormFieldValue,
     applyCepLookupToForm,
     prepareIncomingMessage,

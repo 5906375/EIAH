@@ -17,6 +17,28 @@ import {
 
 const base = { propertyType: "kitnet", goal: "locacao", city: "Itapema", address: "Rua A, 100" };
 
+test("campo híbrido pede intake, nunca converte frase livre em uma unidade", () => {
+  for (const unitLabel of ["Tenho três kitnets de teste, da 102 à 104.", "São as salas 1, 2 e 3 desse endereço.", "Cadastre os apartamentos 301 até 305.", "unidade do fundo"]) {
+    const plan = planPropertyCreate({ ...base, unitLabel });
+    assert.equal(plan.ok, false);
+    assert.equal(!plan.ok && plan.needsIntake, true);
+  }
+  const resolved = planPropertyCreate({ ...base, unitLabel: "Tenho três kitnets de teste, da 102 à 104." }, ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+  assert.ok(resolved.ok && resolved.mode === "batch");
+  assert.equal("request" in resolved, false, "lote ainda exige confirmação");
+  assert.equal(planPropertyCreate({ ...base, unitLabel: "Kitnet 102" }).ok, true);
+});
+
+test("CEP ausente é válido; CEP informado inválido não desaparece como ausência", () => {
+  assert.equal(buildPropertyCreateRequest(base).ok, true);
+  for (const cep of ["abc", "123", "123456789", "88220-00x"]) {
+    const result = buildPropertyCreateRequest({ ...base, cep });
+    assert.equal(result.ok, false);
+    assert.ok(!result.ok && result.errors.cep);
+  }
+  assert.equal(buildPropertyCreateRequest({ ...base, cep: "88220-000" }).ok, true);
+});
+
 test("property form is recognized by its submit target", () => {
   assert.equal(isPropertyCreateForm({ submitTarget: "imob.properties.create" }), true);
   assert.equal(isPropertyCreateForm({ submitTarget: "imob.rentals.create" }), false);
@@ -186,7 +208,7 @@ test("lote: pré-validação bloqueia repetida, já cadastrada, destinação inv
   const badRange = buildPropertyBatchRequests(batchValues({ extraUnits: "Kitnets 109 a 106" }), []);
   assert.equal(badRange.ok === false && /Faixa inválida/.test(badRange.errors.extraUnits), true);
   const noUnits = buildPropertyBatchRequests(batchValues({ extraUnits: "qualquer coisa" }), []);
-  assert.equal(noUnits.ok === false && /Não identifiquei/.test(noUnits.errors.extraUnits), true);
+  assert.equal(noUnits.ok === false && /Quais unidades/.test(noUnits.errors.extraUnits), true);
   const empty = buildPropertyBatchRequests(batchValues({ unit_0: "", unit_1: "", unit_2: "" }), []);
   assert.equal(empty.ok === false && /Nenhuma unidade/.test(empty.errors._form), true);
 });

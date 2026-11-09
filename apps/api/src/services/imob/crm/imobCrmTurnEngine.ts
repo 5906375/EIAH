@@ -1,7 +1,9 @@
 import { interpretTransversalTurn } from "../imobTransversalTurn";
 import { buildCaseBindingDenialText, buildInviteClarificationResolution, buildInviteGuidanceResolution, buildTransversalTurnText, type CaseBindingDenialCode } from "../imobTransversalTurnCopy";
 import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
-import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
+import { resolveImobSemanticIntent, resolveImobPropertyUnitIntake, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
+import { IMOB_PROPERTY_UNIT_INTAKE_POLICY, looksLikeMultipleUnits } from "@eiah/contracts";
+import type { ImobResolveTurnResponse, ImobThreadConversationState } from "../imobConversationContract";
 import { matchImobConversationalIntents, parseImobIntent } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
 import { InternalCrmMarketScanProvider } from "../marketScan/InternalCrmMarketScanProvider";
@@ -1768,6 +1770,22 @@ export async function resolveImobTransversalTurnStage(input: {
   };
 }
 
+/** Intake do formulário no mesmo engine e provider do chat. Não chama repositórios. */
+export async function resolveImobPropertyUnitIntakeTurn(message: string, previous?: unknown): Promise<ImobResolveTurnResponse> {
+  const propertyUnitIntake = await resolveImobPropertyUnitIntake(message);
+  const conversationState = (parseImobCrmThreadState({ threadState: previous }) ?? createEmptyImobCrmThreadState()) as ImobThreadConversationState;
+  return {
+    mode: "consult", action: "property.units.intake", threadLabel: "Captação", propertyUnitIntake,
+    conversationState: propertyUnitIntake.status === "resolved" && conversationState.operational?.flow === "property.create" && conversationState.operational.propertyDraft
+      ? { ...conversationState, operational: { ...conversationState.operational,
+          propertyDraft: { ...conversationState.operational.propertyDraft, unitLabels: propertyUnitIntake.unitLabels } } }
+      : conversationState,
+    presentation: { text: propertyUnitIntake.status === "resolved"
+      ? `Identifiquei: ${propertyUnitIntake.unitLabels.join(", ")}. Confira antes de cadastrar; nada foi gravado.`
+      : propertyUnitIntake.status === "needs_clarification" ? propertyUnitIntake.message : IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification },
+  };
+}
+
 export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) {
   const { asString } = params.helpers;
   const message = asString(params.body.message);
@@ -1777,6 +1795,11 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   const recipeMissionContext = asObject(params.body.recipeMissionContext) as ImobMissionContext | null;
   const threadLabel = asString(params.body.threadLabel);
   const parsedThreadState = parseImobCrmThreadState(params.body);
+  if (params.body.intake === "property_units") {
+    if (!params.entitlements.REAL_ESTATE_CORE) return { mode: "blocked", action: "property.units.denied", threadLabel: "IMOB",
+      conversationState: parsedThreadState ?? createEmptyImobCrmThreadState(), presentation: { text: "O IMOB não está habilitado neste workspace." } };
+    return resolveImobPropertyUnitIntakeTurn(message ?? "", parsedThreadState);
+  }
   const hasContinuity = Object.hasOwn(asObject(asObject(params.body.threadState)?.operational) ?? {}, "continuity");
   const shortReply = isImobPendingActionConfirmationMessage(message ?? "")
     || /^(sim|não|nao|ok|confirmo|confirmar|pode executar|pode seguir|seguir)[.!?]*$/i.test(message ?? "");
@@ -1991,6 +2014,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         message: effectiveMessage,
         semanticIntent: semanticIntent.parsedIntent,
         semanticIntentSource: semanticIntent.source,
+        propertyUnitIntake: semanticIntent.propertyUnits,
         threadLabel,
         threadId: requestedThreadId,
         caseId: turn.caseId,
@@ -2100,6 +2124,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       message: effectiveMessage,
       semanticIntent: semanticIntent.parsedIntent,
       semanticIntentSource: semanticIntent.source,
+      propertyUnitIntake: semanticIntent.propertyUnits,
       threadLabel,
       threadId: requestedThreadId,
       caseId: turn.caseId,
@@ -2180,6 +2205,15 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   };
 
   const rootSemanticIntent = message ? await resolveImobSemanticIntent(message) : null;
+  const propertyCapture = rootSemanticIntent?.parsedIntent.entity === "imovel" && rootSemanticIntent.parsedIntent.action === "create"
+    || parsedThreadState?.operational?.flow === "property.create";
+  if (rootSemanticIntent?.propertyUnits?.status === "needs_clarification"
+    || propertyCapture && rootSemanticIntent?.propertyUnits?.status !== "resolved" && looksLikeMultipleUnits(message)) {
+    const propertyUnitIntake = rootSemanticIntent?.propertyUnits?.status === "needs_clarification" ? rootSemanticIntent.propertyUnits
+      : { status: "needs_clarification" as const, unitLabels: [] as [], message: IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification };
+    return { mode: "consult", action: "property.units.clarify", threadLabel: "Captação", propertyUnitIntake,
+      conversationState: parsedThreadState ?? createEmptyImobCrmThreadState(), presentation: { text: propertyUnitIntake.message } };
+  }
   const batches = extractImobOperationalBatches(
     message ?? "",
     params.helpers.normalizeImobRouteText,

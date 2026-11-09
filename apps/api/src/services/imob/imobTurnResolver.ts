@@ -1208,11 +1208,11 @@ function buildPropertyCreateForm(propertyDraft?: {
         name: "unitLabel",
         label: hasMultipleUnits ? "Unidades deste endereço" : "Identificação da unidade",
         type: "text" as const,
-        placeholder: "Ex.: Kitnet 01, Sala 02, Apto 301 — ou várias: Kitnets 101 a 105 e Salas 01 e 02",
-        value: hasMultipleUnits ? draftUnitLabels.join(", ") : "",
+        placeholder: "Descreva a unidade ou as unidades deste endereço",
+        value: draftUnitLabels.join(", "),
         helperText: hasMultipleUnits
           ? `Identifiquei ${draftUnitLabels.length} unidades; você confirma, edita ou remove antes de gravar.`
-          : "Como você chama esta unidade; aparece nas listas e na locação. Para várias unidades no mesmo endereço, liste ou use faixas (Kitnets 101 a 105).",
+          : "Conte quais unidades deseja cadastrar, com suas identificações. Você poderá conferir antes de gravar.",
       },
       {
         name: "ownerId",
@@ -1237,27 +1237,18 @@ function buildPropertyCreateForm(propertyDraft?: {
         ],
       },
       {
-        name: "cep",
-        label: "CEP",
-        type: "text" as const,
-        inputMode: "numeric" as const,
-        maxLength: 9,
-        value: propertyDraft?.cep ?? "",
-        lookup: {
-          kind: "cep" as const,
-          autoFillTargets: {
-            city: "city",
-            address: "address",
-            neighborhood: "neighborhood",
-          },
-        },
-      },
-      {
         name: "city",
         label: "Cidade",
         type: "text" as const,
         required: true,
         value: propertyDraft?.city ?? "",
+      },
+      {
+        name: "address",
+        label: "Endereço",
+        type: "text" as const,
+        required: true,
+        value: propertyDraft?.address ?? "",
       },
       {
         name: "neighborhood",
@@ -1266,11 +1257,22 @@ function buildPropertyCreateForm(propertyDraft?: {
         value: "",
       },
       {
-        name: "address",
-        label: "Endereço",
+        // CEP é só um atalho: cidade e endereço bastam. A consulta segue interna (rota do IMOB), sem sair do EIAH.
+        name: "cep",
+        label: "CEP (opcional)",
         type: "text" as const,
-        required: true,
-        value: propertyDraft?.address ?? "",
+        inputMode: "numeric" as const,
+        maxLength: 9,
+        value: propertyDraft?.cep ?? "",
+        helperText: "Se souber, informe o CEP para completar ou confirmar o endereço automaticamente. Se não souber, continue com cidade e endereço.",
+        lookup: {
+          kind: "cep" as const,
+          autoFillTargets: {
+            city: "city",
+            address: "address",
+            neighborhood: "neighborhood",
+          },
+        },
       },
       { name: "areaM2", label: "Área (m²)", type: "text" as const, inputMode: "numeric" as const, maxLength: 6, placeholder: "Ex.: 25", value: "" },
       { name: "bedrooms", label: "Quartos", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
@@ -3867,7 +3869,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     );
 
   if (explicitMarketScanContinuation) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots, request.propertyUnitIntake);
     const availableMarketScanResult =
       request.marketScanResult
       ?? request.threadState?.operational?.marketScanSnapshot
@@ -3991,7 +3993,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     || normalizedMessage.includes("scan de mercado");
 
   if (explicitMarketScanRequest) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots, request.propertyUnitIntake);
     if (operationalState?.flow === "property.market_scan") {
       const baseText = buildExplicitMarketScanBaseText(operationalState);
       const availableMarketScanResult =
@@ -4175,7 +4177,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   if (wantsDocumentValidation) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     return finalize({
       mode: "execute",
       action: "realestate.collect_documents",
@@ -4192,7 +4194,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   if (intent === "documents" && isDocumentationStageRequest) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
@@ -4243,7 +4245,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     }
   }
   if (intent === "documents" && isDocumentUploadOnlyRequest(message)) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     const presentationMeta = buildVisibleOperationalPresentationMeta(operationalState);
     return finalize({
       mode: "consult",
@@ -4298,7 +4300,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     });
   }
 
-  const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+  const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
   const operationalPendingLabels = operationalState
     ? operationalState.pendingFields.map((field) =>
         mapOperationalPendingFieldLabel(operationalState.flow, field, {

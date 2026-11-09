@@ -332,6 +332,10 @@ export function createImobFrontDoorForms(params: {
   }
 
   const host: ImobStructuredFormsHost = {
+    getFormContextKey: () => `${requestSequence.current}:${latestAssistantId() ?? ""}`,
+    isFormCurrent: (message) => params.getConversationGeneration() === initialGeneration
+      && params.getConversationScopeKey?.() === initialScopeKey
+      && getMessages().some((item) => item.id === message.id && Boolean(item.form)),
     activeThreadId: latestContext()?.thread?.id ?? FRONT_DOOR_IMOB_THREAD.id,
     appendMessage: appendStructured,
     updateMessage: (messageId, patch) => patchStructured(messageId, (message) => ({ ...message, ...patch })),
@@ -349,7 +353,7 @@ export function createImobFrontDoorForms(params: {
       }));
     },
   };
-  const structuredForms = createImobStructuredForms(imobForms, host);
+  const structuredForms = createImobStructuredForms(imobForms, host, { resolveTurn });
   return {
     forwardToImob,
     getConversationState: () => {

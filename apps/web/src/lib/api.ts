@@ -1976,6 +1976,8 @@ export type ImobLeadDraftState = {
 };
 
 export type ImobPropertyDraftState = {
+  /** Identificações estruturadas pelo intake IMOB; não autoriza cadastro. */
+  unitLabels?: string[] | null;
   propertyId: string | null;
   propertyType: ImobPropertyType | null;
   goal: ImobPropertyGoal | null;
@@ -3223,6 +3225,7 @@ export type ImobOperationalPresentation = {
 };
 
 export type ImobResolveTurnResponse = {
+  propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
   action: string;
   threadLabel: string;
@@ -3449,6 +3452,8 @@ export async function apiCreateImobChatTelemetry(
 }
 
 export async function apiResolveImobTurn(body: {
+  /** Intake consultivo do mesmo runtime IMOB, antes de enviar o cadastro estruturado. */
+  intake?: "property_units";
   message: string;
   threadLabel?: string | null;
   threadId?: string | null;
