@@ -98,7 +98,6 @@ import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
 import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
-import FrontDoorConversationHistory from "./FrontDoorConversationHistory";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -1878,12 +1877,6 @@ export default function ChatAgentLauncher({
               target.focus({ preventScroll: true });
             }
           }} />}
-          history={showImobSurface ? <FrontDoorConversationHistory
-            key={`${session.tenantId}:${session.workspaceId}:${session.userId ?? ""}`}
-            currentId={imobPersistence.conversationId}
-            onOpen={imobPersistence.openConversation}
-            onDeletedCurrent={handleNewConversation}
-          /> : null}
           status={
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {copyToast ? (

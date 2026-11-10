@@ -1,0 +1,3 @@
+Removida a montagem do bloco FrontDoorConversationHistory no launcher: títulos salvos, busca, renomear/excluir e aviso de indisponibilidade não aparecem na lateral. Preserva sequência da conversa, Nova conversa, persistência atual e acesso ao histórico via operação existente; não apaga registros nem remove endpoints backend.
+
+29 testes de cabeçalho/sequência PASS e quatro cenários Chromium PASS com dados/API sintéticos (320,390,1024,1440): confirma ausência do bloco/aviso/ações, navegação na sequência, nova conversa e zero PATCH/DELETE. Capturas e browser-results.json. Status parcial: CI/deploy pendentes.
