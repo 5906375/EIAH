@@ -1,0 +1,16 @@
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5775771Z ok   [/app/imob/chat] abrir Cadastrar proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5776901Z ok   [/app/imob/chat] salvar proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5777731Z ok   [/app/imob/chat] salvar imóvel do proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5778756Z ok   [/app/imob/chat] salvar locação e abrir contrato preenchido
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5779655Z ok   [/app/imob/chat] encerrar locação pela barra
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5780387Z ok   [/app/imob/chat] nenhuma run criada
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5781748Z ok   [/app/chat] abrir Cadastrar proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5782557Z ok   [/app/chat] salvar proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5783714Z ok   [/app/chat] salvar imóvel do proprietário
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5784632Z ok   [/app/chat] salvar locação e abrir contrato preenchido
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5785477Z ok   [/app/chat] encerrar locação pela barra
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5786072Z ok   [/app/chat] nenhuma run criada
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5786860Z ok   [/app/chat (ativação)] pedido sem IMOB oferece ativar
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5787673Z ok   [/app/chat (ativação)] proposta não ativa
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5788833Z ok   [/app/chat (ativação)] confirmação explícita ativa e segue com o IMOB
+ImobChatParityE2EInformative	Run IMOB chat parity journeys	2026-11-10T15:26:11.5789631Z PARIDADE OK

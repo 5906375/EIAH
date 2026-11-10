@@ -233,8 +233,21 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     await formWith(page, "Encerrar locação").waitFor({ timeout: 15000 });
     await selectContaining(page, "Encerrar locação", "Imóvel da locação", unit);
     await field(page, "Encerrar locação", "Motivo").selectOption("fim_contrato");
+    // Correlacionar a operação real antes de consultar o histórico: texto restaurado
+    // de uma conversa anterior não prova que o POST desta jornada terminou.
+    const closeCompleted = page.waitForResponse(
+      (response) => response.request().method() === "POST"
+        && new URL(response.url()).pathname.endsWith("/imob/rentals/close"),
+      { timeout: 30000 },
+    );
     await formWith(page, "Encerrar locação").getByRole("button", { name: "Encerrar locação", exact: true }).click();
-    await page.getByText("O imóvel voltou a vago", { exact: false }).last().waitFor({ timeout: 20000 });
+    const closeResponse = await closeCompleted;
+    const closeBody = await closeResponse.json().catch(() => null) as { data?: { caseId?: string } } | null;
+    if (closeResponse.status() !== 200) throw new Error(`POST /imob/rentals/close → ${closeResponse.status()}`);
+    if (closeBody?.data?.caseId !== createdRentalCaseId) {
+      throw new Error(`encerramento atingiu outra locação: criada=${createdRentalCaseId}, encerrada=${closeBody?.data?.caseId ?? "ausente"}`);
+    }
+    await page.getByText(`Locação de ${unit}`, { exact: false }).filter({ hasText: "O imóvel voltou a vago" }).last().waitFor({ timeout: 20000 });
     const properties = await api<{ data: { items: Array<{ id: string; metadata?: { externalPropertyRef?: string } }> } }>(session, "GET", "/imob/properties");
     const property = properties.data.items.find((item) => item.metadata?.externalPropertyRef === unit);
     if (!property) throw new Error("imóvel não encontrado");

@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Chat interno preto e comandos sem bordas (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Apresentação do Front Door | `docs/evidence/black-front-door-chat/README.md`, `docs/evidence/black-front-door-chat/parity-correlated-ci.log`, `docs/evidence/black-front-door-chat/unit-tests.log`, `docs/evidence/black-front-door-chat/build.log`, `docs/evidence/black-front-door-chat/render-only.log`, `docs/evidence/black-front-door-chat/browser-results.json`, `docs/evidence/black-front-door-chat/chat-320.png`, `docs/evidence/black-front-door-chat/chat-390.png`, `docs/evidence/black-front-door-chat/chat-1440.png` | 175 testes, build e gate render-only PASS; E2E real com resposta de encerramento correlacionada ao caseId PASS no commit ac18f50 (ambos os chats); Chromium em três larguras comprova fundo preto, mensagens e resposta rápida sem caixas, com histórico/API sintéticos. Não comprova backend, autenticação ou staging. Status parcial. |
+
 ## Navegação global responsiva / Front Door (2026-11-10)
 
 | Assunto | Arquivo | O que prova |
