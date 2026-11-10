@@ -1,4 +1,4 @@
-import { formatImobUnitList, resolveImobAssetNextSteps, type ImobAssetNextAction, type ImobAssetNextSteps } from "@eiah/contracts";
+import { formatImobUnitList, IMOB_PROPERTY_UNIT_INTAKE_POLICY, parseCanonicalImobUnits, resolveImobAssetNextSteps, type ImobAssetNextAction, type ImobAssetNextSteps } from "@eiah/contracts";
 import {
   ApiError,
   apiArchiveImobOwner,
@@ -18,11 +18,13 @@ import {
   apiLinkImobDocuments,
   apiListImobOwners,
   apiListImobProperties,
+  apiResolveImobTurn,
   apiUpdateImobOwner,
   apiUpdateImobProperty,
   apiUpdateImobRentalLease,
   apiUploadDocuments,
 } from "@/lib/api";
+import { getSession } from "@/state/sessionStore";
 import type { ImobActionMenuItem } from "@/features/imob/imobActionMenus";
 import {
   INLINE_DOCUMENT_CATEGORY_FIELD,
@@ -70,6 +72,7 @@ import {
   isPropertyBatchForm,
   isPropertyCreateForm,
   planPropertyCreate,
+  propertyBatchBaseValues,
   toPropertyBatchBaseValues,
   type PropertyBatchItem,
 } from "@/pages/app/imob/propertyCreateForm";
@@ -136,7 +139,7 @@ import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type 
  *
  * Funciona em qualquer chat que implemente `ImobStructuredFormsHost`.
  */
-export function createImobStructuredForms(state: ImobFormState, host: ImobStructuredFormsHost) {
+export function createImobStructuredForms(state: ImobFormState, host: ImobStructuredFormsHost, dependencies: { resolveTurn?: typeof apiResolveImobTurn } = {}) {
   const {
     setFormValuesByMessageId,
     setFormErrorsByMessageId,
@@ -271,6 +274,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
   async function handlePropertyCreateFormAction(message: StructuredMessage, actionId: "cancel" | "submit") {
     if (actionId === "cancel") {
+      formSubmittingRef.current.delete(message.id);
       updateMessageById(message.id, { form: undefined });
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
       clearThreadOperationalState(message);
@@ -285,7 +289,53 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
-    const plan = planPropertyCreate(values);
+    const knownUnits = message.propertyUnitIntake?.status === "resolved" ? message.propertyUnitIntake.unitLabels
+      : message.conversationState?.operational?.propertyDraft?.unitLabels;
+    let plan = planPropertyCreate(values, knownUnits?.length && values.unitLabel?.trim() === knownUnits.join(", ") ? knownUnits : undefined);
+    if (!plan.ok && plan.needsIntake) {
+      const before = getSession();
+      const contextKey = host.getFormContextKey?.();
+      const isCurrentIntake = () => {
+        const current = getSession();
+        const currentValues = resolveFormValuesForMessage(message);
+        return host.isFormCurrent?.(message) !== false && formSubmittingRef.current.has(message.id)
+          && contextKey === host.getFormContextKey?.()
+          && before.token === current.token && before.workspaceId === current.workspaceId && before.tenantId === current.tenantId
+          && [...new Set([...Object.keys(values), ...Object.keys(currentValues)])].every((field) => currentValues[field] === values[field]);
+      };
+      formSubmittingRef.current.add(message.id);
+      try {
+        const response = await (dependencies.resolveTurn ?? apiResolveImobTurn)({
+          message: values.unitLabel, intake: "property_units", threadId: message.thread?.id,
+          threadState: message.conversationState ?? null,
+        });
+        if (!isCurrentIntake()) return;
+        const intake = response.data.propertyUnitIntake;
+        if (!response.ok || intake?.status !== "resolved") {
+          pendingFormPrefillRef.current = { submitTarget: "imob.properties.create",
+            isCurrent: () => {
+              const current = getSession();
+              return host.isFormCurrent?.(message) !== false && before.token === current.token
+                && before.tenantId === current.tenantId && before.workspaceId === current.workspaceId;
+            },
+            values: Object.fromEntries(Object.entries(values).filter(([field]) => field !== "unitLabel")) };
+          setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { unitLabel: response.data.presentation.text } }));
+          appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: response.data.presentation.text,
+            thread: message.thread, conversationState: response.data.conversationState, caseContext: message.caseContext });
+          return;
+        }
+        plan = planPropertyCreate(values, intake.unitLabels);
+        message = { ...message, conversationState: response.data.conversationState, propertyUnitIntake: intake };
+        updateMessageById(message.id, { conversationState: response.data.conversationState, propertyUnitIntake: intake });
+        setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...values, unitLabel: intake.unitLabels.join(", ") } }));
+      } catch {
+        if (!isCurrentIntake()) return;
+        const text = IMOB_PROPERTY_UNIT_INTAKE_POLICY.unavailable;
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { unitLabel: text } }));
+        appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text, thread: message.thread });
+        return;
+      } finally { formSubmittingRef.current.delete(message.id); }
+    }
     if (!plan.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: plan.errors }));
       return;
@@ -311,6 +361,8 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
         text: `Identifiquei ${plan.units.length} unidades. Confirme o lote antes de gravar: nada foi cadastrado ainda.`,
         form: buildPropertyBatchForm(plan.units, values, plan.duplicatesInInput, batchId),
         thread: message.thread,
+        conversationState: message.conversationState,
+        caseContext: message.caseContext,
       });
       return;
     }
@@ -384,6 +436,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
    */
   async function handlePropertyBatchFormAction(message: StructuredMessage, actionId: "cancel" | "submit" | "archive") {
     if (actionId !== "submit") {
+      formSubmittingRef.current.delete(message.id);
       updateMessageById(message.id, { form: undefined });
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
       clearThreadOperationalState(message);
@@ -392,9 +445,40 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     }
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
+    const batchSession = getSession();
+    const batchContextKey = host.getFormContextKey?.();
+    const isCurrentBatchIntake = () => {
+      const current = getSession();
+      const currentValues = resolveFormValuesForMessage(message);
+      return host.isFormCurrent?.(message) !== false && formSubmittingRef.current.has(message.id)
+        && batchContextKey === host.getFormContextKey?.()
+        && batchSession.token === current.token && batchSession.workspaceId === current.workspaceId && batchSession.tenantId === current.tenantId
+        && [...new Set([...Object.keys(values), ...Object.keys(currentValues)])].every((field) => currentValues[field] === values[field]);
+    };
+    let interpretingUnits = false;
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
     try {
+      if (values.extraUnits?.trim() && !parseCanonicalImobUnits(values.extraUnits)) {
+        interpretingUnits = true;
+        const response = await (dependencies.resolveTurn ?? apiResolveImobTurn)({
+          message: values.extraUnits, intake: "property_units", threadId: message.thread?.id, threadState: message.conversationState ?? null,
+        });
+        if (!isCurrentBatchIntake()) return;
+        const intake = response.data.propertyUnitIntake;
+        if (intake?.status !== "resolved") {
+          setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { extraUnits: response.data.presentation.text } }));
+          appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: response.data.presentation.text, thread: message.thread });
+          return;
+        }
+        const fields = Object.keys(values).filter((field) => /^unit_\d+$/.test(field)).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
+        const labels = fields.map((field) => values[field]);
+        const additions = Object.fromEntries(intake.unitLabels.map((label, index) => [`unit_${fields.length + index}`, label]));
+        setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...values, ...additions, extraUnits: "" } }));
+        updateMessageById(message.id, { form: buildPropertyBatchForm([...labels, ...intake.unitLabels], propertyBatchBaseValues(values), [], message.id),
+          text: response.data.presentation.text });
+        return; // Nova estrutura sempre volta à confirmação; nenhuma unidade é gravada neste clique.
+      }
       const existing = await apiListImobProperties();
       const built = buildPropertyBatchRequests(values, existing.data.items ?? []);
       if (!built.ok) {
@@ -470,6 +554,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
         },
       }));
     } catch (error) {
+      if (interpretingUnits && !isCurrentBatchIntake()) return;
       const status = error instanceof ApiError ? error.status : 0;
       setFormErrorsByMessageId((prev) => ({
         ...prev,

@@ -183,6 +183,20 @@ Leitura normativa correta após F0.45:
 - nenhum runtime interno deve ser exposto como nome principal de produto sem decisão explícita;
 - componentes internos como `IMOB_CRM` e subagentes `IMOB_*` permanecem fora da nomenclatura pública principal.
 
+**Princípio transversal de entrada semântica — todas as verticais atuais e futuras**
+
+O usuário se expressa naturalmente; a EIAH interpreta semanticamente. Toda superfície destinada a receber significado humano deve aceitar linguagem natural, independentemente da vertical, agente, campo ou formato de interface. É proibido exigir sintaxe interna, palavras-chave obrigatórias, ordem de tokens, gramática de parser, nomes de actions, contratos técnicos ou nomes internos de campos para compreender uma entrada semântica.
+
+A interpretação de significado pertence ao intake contextual/runtime agêntico do agente ou vertical, utilizando provider/model conforme policy, disponibilidade, contexto, entitlement, escopo e governança vigente. O engine coordena esse fluxo e executa o resultado estruturado; o launcher/formulário coleta e renderiza. Parsers, regex, schemas e validadores determinísticos atuam posteriormente para normalização, validação e enforcement de invariantes, sem substituir a interpretação semântica.
+
+As entradas devem ser classificadas como **semânticas**, **canônicas** ou **híbridas**. Dados cuja exatidão material dependa de um valor canônico não podem ser inventados pela IA: podem ser extraídos de informação fornecida, formatados, normalizados, validados ou submetidos a confirmação, preservando sua verificabilidade. Entradas híbridas passam por estruturação agêntica e posterior validação determinística.
+
+Ambiguidade material ou confiança insuficiente antes de mutação exige clarificação ou confirmação humana no próprio Front Door. É proibido fallback silencioso que converta interpretação incerta em persistência ou operação diferente. Indisponibilidade do provider/model não autoriza contornar essas exigências nem os gates de execução.
+
+**IA interpreta significado e contexto. Código determinístico garante exatidão e invariantes. Humano confirma quando houver incerteza material antes de efeito.**
+
+Especificação canônica: [Entrada agêntica, linguagem natural e validação determinística](docs/architecture/agent-chat-runtime.md#entrada-agêntica-linguagem-natural-e-validação-determinística). Este registro é normativo; não declara conformidade dos runtimes existentes, capacidade evidenciada, ativação de vertical nem mudança de status de fase.
+
 **DoD P4**
 - KPI mínimo por vertical atingido.
 - Sem regressão de isolamento multi-tenant/workspace.
@@ -192,6 +206,8 @@ Leitura normativa correta após F0.45:
 - Taxonomia pública oficial documentada e aplicada sem ambiguidade entre `EIAH`, especialistas, verticais e áreas operacionais.
 - Ordem das próximas frentes verticais registrada explicitamente no roadmap e nas superfícies de produto: `LEGAL` -> `MKT` -> `Financeiro` -> `URBAN` -> `Logística`.
 - Componentes internos de vertical permanecem fora da nomenclatura pública principal.
+- Cada vertical nova demonstra `linguagem natural -> estrutura de domínio -> validação determinística -> clarificação/HITL quando necessário`, antes da execução governada, conforme a especificação transversal de entrada.
+- Testes demonstram que variações semanticamente equivalentes produzem estrutura de domínio equivalente quando não houver ambiguidade material; valores canônicos preservam exatidão e normalização; ambiguidade material antes de mutação produz clarificação/confirmação e zero side effects da operação solicitada.
 
 ## 5) Riscos principais e mitigação
 
@@ -312,6 +328,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Sem regressão de isolamento multi-tenant/workspace.
 - Evidência semanal de operação e rollout.
 - Busca documental `IMOB` disponível in-chat sem reabrir lógica no launcher e com fonte do resultado explicitada no payload/renderização.
+- Aplicar os requisitos transversais de entrada semântica e seus testes definidos no **DoD P4** (§4), inclusive para novas verticais, sem exigir gramática interna do usuário.
 
 ### 9.6) P0 transversal (obrigatório durante todas as frentes)
 - Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md` e `docs/EVIDENCE_INDEX.md` sincronizados.

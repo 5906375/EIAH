@@ -122,6 +122,25 @@ deve pertencer a um agente específico e ser executada pelo engine.
 
 O `ChatAgentLauncher` não pode receber regra cognitiva nova diretamente.
 
+### Disciplina transversal de entrada semântica
+
+O usuário se expressa naturalmente; a EIAH interpreta semanticamente. A disciplina vale para todas as superfícies destinadas a significado humano, agentes e verticais atuais e futuros. Aplicar o princípio normativo do Track P no roadmap vigente e a [especificação canônica de entrada agêntica](docs/architecture/agent-chat-runtime.md#entrada-agêntica-linguagem-natural-e-validação-determinística).
+
+Antes de criar regex, parser ou heurística para interpretar linguagem do usuário:
+
+1. classificar a entrada como **semântica**, **canônica** ou **híbrida**, pela finalidade do conteúdo, não pelo widget;
+2. identificar o agente/vertical dono da intenção e de sua política de ambiguidade;
+3. localizar o intake/runtime contextual existente;
+4. verificar como provider/model participa pela arquitetura central, respeitando policy, disponibilidade, contexto, entitlement, escopo e governança;
+5. estruturar intenção, slots, entidades e draft no domínio pelo intake agêntico, quando a entrada for semântica ou híbrida;
+6. aplicar parser/schema/validator depois da interpretação, quando aplicável; para entrada canônica, normalizar e validar o valor informado;
+7. preservar valores canônicos verificáveis, sem inventar informações ausentes;
+8. em ambiguidade material ou confiança insuficiente antes de write, exigir clarificação/HITL no próprio Front Door e zero side effects da operação solicitada.
+
+Não transformar parser determinístico em substituto do intake agêntico nem obrigar o usuário a aprender sua sintaxe. Não usar IA para inventar identificadores ou valores canônicos ausentes, nem para flexibilizar invariantes determinísticos. Exemplos, placeholders e helpers são ajuda de UX, não gramática obrigatória.
+
+Heurísticas de segurança podem bloquear risco como safety nets; não assumem a compreensão semântica principal. Indisponibilidade de provider/model não autoriza fallback silencioso para persistência ou outra operação. Launcher/formulário coleta e renderiza; qualquer evolução cognitiva segue contrato do agente e engine.
+
 ---
 
 ## 7. Sequência obrigatória para mudanças no chat
@@ -252,6 +271,13 @@ Nunca adicionar ao Evidence Index:
 ## 14. Testes e gates
 
 Antes de encerrar uma tarefa, rodar os testes/gates aplicáveis ao escopo alterado.
+
+Para implementação/adaptação de entradas, verificar:
+
+- entradas semanticamente equivalentes geram estrutura de domínio equivalente quando não houver ambiguidade material;
+- campos canônicos preservam exatidão, verificabilidade e normalização;
+- ambiguidade material antes de mutação produz clarificação/confirmação e zero side effects da operação solicitada;
+- parser/regex não é tratado como contrato público de linguagem.
 
 Priorizar:
 

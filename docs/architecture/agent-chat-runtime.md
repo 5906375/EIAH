@@ -84,6 +84,71 @@ A arquitetura correta deve seguir esta ordem:
 - o engine executa;
 - o launcher renderiza.
 
+## Entrada agêntica, linguagem natural e validação determinística
+
+**O usuário se expressa naturalmente; a EIAH interpreta semanticamente.** A EIAH é uma plataforma agêntica: o usuário não deve precisar conhecer sintaxe interna, palavras-chave obrigatórias, ordem de tokens, gramática de parser, regex, nomes internos de actions, contratos técnicos, nomes de campos internos ou formatos artificiais de comando para ter sua intenção ou informação compreendida.
+
+Este é um requisito arquitetural transversal, conforme o Track P do [roadmap canônico](../../ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md#p4--track-p-produto-e-rollout). Não é declaração de que todos os runtimes existentes já o implementam, nem evidência de nova capacidade ou liberação operacional.
+
+**IA interpreta significado e contexto; código determinístico protege invariantes; humano confirma quando a incerteza puder gerar efeito.**
+
+### Fluxo canônico e responsabilidades
+
+`Front Door → agente/vertical → intake contextual/agêntico → interpretação semântica → intenção/slots/draft estruturados → normalização/validação determinística → clarificação/HITL quando necessário → execução governada → resultado no Front Door`
+
+1. O Front Door recebe linguagem humana e contexto, preservando a continuidade da demanda.
+2. O agente/vertical é dono da interpretação do domínio, incluindo intenção, entidades, slots, drafts, ambiguidade e política de clarificação.
+3. O intake/runtime agêntico transforma a entrada em estrutura de domínio. Provider/model participa pelo runtime e arquitetura central, conforme policy, disponibilidade, contexto, entitlement, escopo e governança vigente; uma tela ou campo não estabelece um caminho cognitivo independente.
+4. O engine coordena esse intake, aplica a normalização/validação ao resultado estruturado e executa o comportamento definido no contrato do agente, respeitando os gates vigentes.
+5. Parsers, regex, schemas e validadores determinísticos protegem exatidão, formato e invariantes depois da interpretação, quando aplicável. Não substituem compreensão semântica nem conferem autoridade para agir.
+6. Launcher e formulários coletam entradas e renderizam estrutura, perguntas e resultados já resolvidos. Não recebem regra cognitiva nova.
+
+### Classes de entrada
+
+A classe depende do significado e da exatidão exigidos pelo conteúdo, não do widget usado. Um campo de texto pode receber um identificador canônico; um formulário também pode conter entradas semânticas ou híbridas.
+
+| Classe | Finalidade e exemplos ilustrativos | Tratamento obrigatório |
+| --- | --- | --- |
+| Semântica / linguagem natural | Descrição de imóvel ou mercadoria, identificação informal de unidades, observação comercial, pedido de ação, instrução jurídica, condição contratual, contexto logístico, justificativa, descrição de problema e texto livre em chat ou textarea | `linguagem natural → interpretação agêntica → estrutura de domínio → validação determinística`. Aceitar linguagem humana sem exigir gramática interna. |
+| Canônica / estruturada | CEP, CPF, CNPJ, e-mail, telefone, datas, valores monetários, quantidades, NCM, matrícula, número de processo, identificadores, hashes, txids, códigos oficiais e referências externas | `valor informado → normalização determinística → validação → confirmação quando aplicável`. Preservar valor verificável; não inventar nem inferir criativamente dados ausentes. |
+| Híbrida | Linguagem natural contendo dados estruturáveis, como endereço, unidades e condição de uma operação | Interpretar no intake agêntico, extrair intenção/slots/draft e depois normalizar e validar deterministicamente cada valor canônico. |
+
+Em entradas canônicas, a IA pode extrair valores da informação fornecida, apoiar formatação, sugerir correções e pedir confirmação. A normalização e a validação determinísticas continuam obrigatórias; a IA não flexibiliza invariantes nem transforma uma sugestão em valor verificado.
+
+Exemplo meramente ilustrativo de entrada híbrida: `O imóvel fica na Alvin Bauer 783, aptos 101 a 105, todos para locação.` O intake pode propor endereço, unidades e destinação como estrutura de domínio. Proprietário ou outros dados não informados permanecem ausentes; a interpretação não autoriza inventá-los nem executar um cadastro. O exemplo não define sintaxe obrigatória nem afirma suporte já implementado a essa frase.
+
+### Ambiguidade, disponibilidade e confirmação
+
+- Ambiguidade material ou confiança insuficiente antes de mutação exige clarificação ou confirmação/HITL no próprio Front Door. A regra é definida pelo agente/vertical e executada pelo engine.
+- Até resolver a incerteza, não persistir dados de domínio, executar ações externas ou converter silenciosamente o pedido em outra operação. A clarificação deve preservar o contexto original.
+- Provider/model indisponível ou negado pela governança exige tratamento de indisponibilidade, bloqueio ou clarificação conforme contrato. Não autoriza trocar a interpretação agêntica por uma gramática obrigatória, baixar invariantes ou persistir uma suposição.
+- Confirmação humana não substitui validação canônica, autorização, RBAC, entitlement, escopo, políticas ou demais gates de execução.
+- Exemplos de preenchimento, placeholders e helpers são ajuda de UX, nunca contrato obrigatório de linguagem.
+- Heurísticas determinísticas podem atuar como safety nets para detectar risco e impedir efeitos; não são a arquitetura principal de compreensão nem comprovação de que uma entrada não sinalizada foi entendida corretamente.
+
+### Anti-padrões
+
+1. Obrigar o usuário a memorizar sintaxe interna ou exigir estrutura técnica de uma frase natural.
+2. Transformar regex/parser em interface cognitiva do produto.
+3. Usar formulário, placeholder ou helper como substituto do intake agêntico.
+4. Fazer fallback silencioso de uma entrada ambígua para uma operação diferente.
+5. Persistir dados a partir de interpretação incerta sem clarificação/HITL quando houver efeito material.
+6. Duplicar lógica cognitiva no `ChatAgentLauncher` ou criar parser por tela quando o significado pertence ao agente/vertical.
+7. Inventar identificadores ou valores canônicos ausentes.
+8. Usar IA para flexibilizar invariantes determinísticos.
+
+### Abrangência e verificação
+
+A regra vale para EIAH como Front Door; IMOB, LEGAL, MKT, Financeiro, URBAN e Logística; capacidades internas, agentes, especialistas e verticais futuras; novos formulários, campos de texto livre e fluxos conversacionais. Não há exceção implícita para uma superfície ou vertical futura. Essa abrangência normativa não promove verticais planejadas ou contextuais a operacionais.
+
+Ao implementar ou adaptar uma capacidade, demonstrar:
+
+- entradas semanticamente equivalentes produzindo estrutura de domínio equivalente, sem ambiguidade material;
+- valores canônicos preservando exatidão, verificabilidade e normalização;
+- ambiguidade material antes de mutação produzindo clarificação/confirmação e zero side effects da operação solicitada;
+- parser/regex sem assumir o papel de contrato público de linguagem;
+- interpretação pertencente ao agente/vertical e launcher/formulário limitados à coleta e renderização.
+
 ## Aplicação ao EIAH
 
 O `EIAH` é o centro nervoso conceitual do seu próprio papel. Ele existe para:
@@ -403,6 +468,8 @@ Regra prática para fallback:
 - primeiro responder de forma útil e curta;
 - depois, se necessário, fazer handoff;
 - só por último pedir clarificação.
+
+Essa ordem de fallback não se aplica à ambiguidade material ou confiança insuficiente antes de mutação: nesses casos prevalece a clarificação/confirmação obrigatória definida na seção de entrada agêntica, sem side effects da operação solicitada.
 
 ## Estrutura Recomendada de Runtime
 

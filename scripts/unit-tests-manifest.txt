@@ -231,6 +231,7 @@ apps/api/src/tests/imob-document-link.test.ts
 apps/api/src/tests/imob-rental-lifecycle.test.ts
 apps/web/src/pages/app/imob/rentalLifecycleForms.test.ts
 apps/web/src/features/imob/structured/createImobStructuredForms.test.ts
+apps/web/src/features/imob/structured/imobCepAutofill.test.ts
 apps/api/src/tests/chat-vertical-registry.test.ts
 apps/web/src/components/agents/verticalHandoffEngine.test.ts
 apps/web/src/components/agents/verticalActivationEngine.test.ts

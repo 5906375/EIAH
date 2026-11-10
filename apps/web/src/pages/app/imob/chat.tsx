@@ -1204,6 +1204,7 @@ function isLikelyPhone(value: string) {
 }
 
 function normalizeCepValue(value: string) {
+  if (/[^\d\s-]/.test(value) || value.replace(/\D/g, "").length > 8) return value;
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
@@ -2148,6 +2149,8 @@ const ImobChatPage: React.FC = () => {
   const [uploadingDocuments, setUploadingDocuments] = React.useState(false);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const structuredMessagesRef = React.useRef(messages);
+  structuredMessagesRef.current = messages;
   const [pendingExecution, setPendingExecution] = React.useState<PendingExecution | null>(null);
   const [activeThread, setActiveThread] = React.useState<{ id: string; label: string } | null>(null);
   const [activeAssistantMessageId, setActiveAssistantMessageId] = React.useState<string | null>(null);
@@ -4513,7 +4516,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
+  const formOriginRef = reviewOriginRef.current.ref;
   const structuredForms = createImobStructuredForms(imobForms, {
+    getFormContextKey: () => `${reviewOriginRef.current.ref}:${reviewOriginRef.current.sequence}:${latestAssistantMessageRef.current?.id ?? ""}`,
+    isFormCurrent: (message) => formOriginRef === reviewOriginRef.current.ref
+      && structuredMessagesRef.current.some((item) => item.id === message.id && Boolean(item.form)),
     activeThreadId: activeThread?.id ?? null,
     appendMessage: (message) => appendMessage(message as ChatMessage),
     updateMessage: (messageId, patch) => updateMessageById(messageId, patch as Partial<ChatMessage>),

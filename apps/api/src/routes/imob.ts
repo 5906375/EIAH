@@ -82,7 +82,7 @@ import {
   resolveLegacyCrmFallbackDecision,
   type LegacyCrmFallbackDecision,
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
-import { resolveImobCrmTurnEngine, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { resolveImobCrmTurnEngine, resolveImobPropertyUnitIntakeTurn, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
 import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
 import { evaluateImobFrontDoorCapabilityAccess, IMOB_CASE_CONSULT_CAPABILITY } from "../services/chat/verticalRegistryComposition";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
@@ -1716,6 +1716,14 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     return;
   }
 
+  // Intake de campo: auth/escopo, revogação, instalação, vínculo ativo e imob.chat.use já passaram; exige REAL_ESTATE_CORE.
+  // Não consulta/binda caso nem usa recipe, capability de consulta de caso ou action; retorna antes de dispatch e telemetria operacional.
+  if (body.intake === "property_units") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    return res.json({ ok: true, data: await resolveImobPropertyUnitIntakeTurn(message, body.threadState) });
+  }
+
   // P11: o Front Door (/app/chat) reivindica o turno SOMENTE LEITURA. Acesso: handoff v2 + vertical.access.v1 sobre fatos do servidor
   // (capability `crm.case.consult`); só roda a etapa transversal do P10 (nunca as etapas que gravam). O vínculo com o caso é
   // FAIL-CLOSED e fica ANTES de qualquer resolução implícita de caso (por thread ou "mais recente"): só vale um `caseId` explícito,
@@ -2000,6 +2008,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       formatImobCaseFlowLabel,
     },
   });
+
+  if (data.action === "property.units.clarify") return res.json({ ok: true, data });
 
   await recordImobResolveTurnSemanticTelemetry({
     prisma: prisma as never,

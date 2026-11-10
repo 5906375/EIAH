@@ -1,7 +1,10 @@
 import {
   IMOB_ASSET_DESTINATION_OPTIONS,
+  looksLikeMultipleUnits,
   normalizeImobAssetDestination,
-  parseImobUnits,
+  parseCanonicalImobUnits,
+  IMOB_MAX_UNITS_PER_BATCH,
+  IMOB_PROPERTY_UNIT_INTAKE_POLICY,
 } from "@eiah/contracts";
 import type { ImobPresentationForm, ImobPresentationFormFieldOption, ImobPropertyCreateRequest } from "@/lib/api";
 
@@ -13,7 +16,7 @@ import type { ImobPresentationForm, ImobPresentationFormFieldOption, ImobPropert
  * Várias unidades no mesmo endereço (ex.: "Kitnets 101 a 105 e Salas 01 e 02")
  * passam por uma confirmação do lote ANTES de gravar: destinação geral
  * opcional, destinação individual por unidade, edição/remoção/adição e
- * pré-validação. A interpretação das unidades vive em `@eiah/contracts`.
+ * pré-validação. Linguagem livre passa pelo intake do IMOB; contracts normaliza/valida.
  */
 
 export const PROPERTY_CREATE_SUBMIT_TARGET = "imob.properties.create";
@@ -61,8 +64,8 @@ export function buildPropertyCreateRequest(values: Record<string, string>): Prop
   const goalRaw = clean(values.goal);
   const goal = goalRaw ? normalizeImobAssetDestination(goalRaw) : null;
   if (goalRaw && !goal) errors.goal = "Destinação inválida.";
-  if (parseImobUnits(values.unitLabel).units.length >= 2) {
-    errors.unitLabel = "Informe uma única unidade neste cadastro. Para várias, use o cadastro em lote (ex.: Kitnets 101 a 105).";
+  if ((parseCanonicalImobUnits(values.unitLabel)?.units.length ?? 0) >= 2 || looksLikeMultipleUnits(values.unitLabel)) {
+    errors.unitLabel = "Estas unidades precisam de confirmação no cadastro em lote antes de gravar.";
   }
   const city = clean(values.city);
   if (!city) errors.city = "Informe a cidade.";
@@ -71,7 +74,7 @@ export function buildPropertyCreateRequest(values: Record<string, string>): Prop
   else if (address.length < 5) errors.address = "Endereço muito curto.";
 
   const cep = clean(values.cep).replace(/\D/g, "");
-  if (cep && cep.length !== 8) errors.cep = "CEP deve ter 8 dígitos.";
+  if (clean(values.cep) && (!/^\d{5}-?\d{3}$/.test(clean(values.cep)) || cep.length !== 8)) errors.cep = "CEP deve ter 8 dígitos.";
 
   const counts = {
     areaM2: parseCount(values.areaM2, 100000),
@@ -185,24 +188,34 @@ export function matchOptionByName(options: ImobPresentationFormFieldOption[], hi
 export type PropertyCreatePlan =
   | { ok: true; mode: "single"; request: ImobPropertyCreateRequest }
   | { ok: true; mode: "batch"; units: string[]; duplicatesInInput: string[] }
-  | { ok: false; errors: Record<string, string> };
+  | { ok: false; errors: Record<string, string>; needsIntake?: true };
+
+export const AMBIGUOUS_UNITS_MESSAGE =
+  IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification;
 
 /** Uma unidade grava direto; duas ou mais abrem a confirmação do lote (nada é gravado antes dela). */
-export function planPropertyCreate(values: Record<string, string>): PropertyCreatePlan {
-  const parsed = parseImobUnits(values.unitLabel);
-  if (parsed.invalidRanges.length > 0) {
+export function planPropertyCreate(values: Record<string, string>, resolvedUnitLabels?: string[]): PropertyCreatePlan {
+  const parsed = parseCanonicalImobUnits(values.unitLabel);
+  if (!resolvedUnitLabels && clean(values.unitLabel) && !parsed) {
+    return { ok: false, needsIntake: true, errors: { unitLabel: AMBIGUOUS_UNITS_MESSAGE } };
+  }
+  if (parsed?.invalidRanges.length) {
     return {
       ok: false,
-      errors: { unitLabel: `Faixa inválida: ${parsed.invalidRanges.join("; ")}. Use do menor para o maior (ex.: Kitnets 101 a 105).` },
+      errors: { unitLabel: `Faixa inválida: ${parsed.invalidRanges.join("; ")}. Confirme quais unidades fazem parte do cadastro.` },
     };
   }
-  if (parsed.units.length >= 2) {
-    // Valida os campos comuns uma vez, com a primeira unidade como amostra.
-    const probe = buildPropertyCreateRequest({ ...values, unitLabel: parsed.units[0].label });
-    if (!probe.ok) return probe;
-    return { ok: true, mode: "batch", units: parsed.units.map((unit) => unit.label), duplicatesInInput: parsed.duplicates };
+  const units = resolvedUnitLabels ?? parsed?.units.map((unit) => unit.label) ?? [];
+  if (units.length > IMOB_MAX_UNITS_PER_BATCH || units.some((label) => !label.trim() || label.length > 80 || looksLikeMultipleUnits(label))) {
+    return { ok: false, errors: { unitLabel: AMBIGUOUS_UNITS_MESSAGE } };
   }
-  const single = buildPropertyCreateRequest(values);
+  if (units.length >= 2) {
+    // Valida os campos comuns uma vez, com a primeira unidade como amostra.
+    const probe = buildPropertyCreateRequest({ ...values, unitLabel: units[0] });
+    if (!probe.ok) return probe;
+    return { ok: true, mode: "batch", units: [...new Set(units)], duplicatesInInput: parsed?.duplicates ?? [] };
+  }
+  const single = buildPropertyCreateRequest({ ...values, unitLabel: units[0] ?? values.unitLabel });
   return single.ok ? { ok: true, mode: "single", request: single.request } : single;
 }
 
@@ -329,17 +342,18 @@ export function buildPropertyBatchRequests(
       destinationRaw: clean(values[PROPERTY_BATCH_DESTINATION_FIELD(index)]),
     });
   }
-  const extras = parseImobUnits(values.extraUnits);
+  const extras = parseCanonicalImobUnits(values.extraUnits) ?? { units: [], invalidRanges: [], duplicates: [] };
   if (extras.invalidRanges.length > 0) {
-    errors.extraUnits = `Faixa inválida: ${extras.invalidRanges.join("; ")}. Use do menor para o maior.`;
+    errors.extraUnits = `Faixa inválida: ${extras.invalidRanges.join("; ")}. Confirme quais unidades deseja adicionar.`;
   } else if (clean(values.extraUnits) && extras.units.length === 0) {
-    errors.extraUnits = "Não identifiquei unidades neste texto. Use, por exemplo, Kitnets 106 a 108.";
+    errors.extraUnits = IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification;
   }
   for (const unit of extras.units) {
     entries.push({ field: "extraUnits", label: unit.label, destinationField: null, destinationRaw: "" });
   }
 
   if (entries.length === 0) errors._form = "Nenhuma unidade para cadastrar. Adicione ao menos uma ou cancele.";
+  if (entries.length > IMOB_MAX_UNITS_PER_BATCH) errors._form = `Confirme no máximo ${IMOB_MAX_UNITS_PER_BATCH} unidades por lote.`;
 
   const seen = new Set<string>();
   const items: PropertyBatchItem[] = [];

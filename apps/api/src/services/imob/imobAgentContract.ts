@@ -7,6 +7,7 @@ import { imobCapabilityRegistry, listAllImobCapabilities } from "./imobCapabilit
 import { IMOB_CONVERSATIONAL_INTENT_CATALOG } from "./imobIntentCatalog";
 import { buildImobPromotionReviewSurface } from "./imobPromotionReviewSurface";
 import { listImobBackingSpecialists } from "./imobSpecialistBridge";
+import { IMOB_PROPERTY_UNIT_INTAKE_POLICY } from "@eiah/contracts";
 
 const IMOB_AGENT_CONTRACT_ID = "imob.case_concierge.v1" as const;
 const IMOB_AGENT_CONTRACT_VERSION = 1 as const;
@@ -121,6 +122,7 @@ export function buildImobAgentContractV1() {
       ...capabilities,
     },
     runtimePolicies: {
+      propertyUnits: IMOB_PROPERTY_UNIT_INTAKE_POLICY,
       proposalReview: IMOB_PROPOSAL_REVIEW_POLICY,
       contractIntake: { ...IMOB_CONTRACT_INTAKE_RUNTIME_POLICY },
     },
