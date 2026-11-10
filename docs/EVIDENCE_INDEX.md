@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Formulários legíveis e rolagem sem barra no Front Door (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Escala de leitura e rolagem do chat | `docs/evidence/front-door-readable-forms/README.md`, `docs/evidence/front-door-readable-forms/browser-results.json`, `docs/evidence/front-door-readable-forms/unit-tests.log`, `docs/evidence/front-door-readable-forms/build.log`, `docs/evidence/front-door-readable-forms/render-only.log`, `docs/evidence/front-door-readable-forms/form-320.png`, `docs/evidence/front-door-readable-forms/form-390.png`, `docs/evidence/front-door-readable-forms/form-1440.png` | 175 testes, build e render-only PASS; Chromium com API/formulário sintéticos confirma escala dos campos e comandos, edição, barra oculta e rolagem por roda do mouse e setas em 320/390/1440px. Não comprova backend, toque físico ou staging. Status parcial. |
+
 ## Chat interno preto e comandos sem bordas (2026-11-10)
 
 | Assunto | Arquivo | O que prova |
