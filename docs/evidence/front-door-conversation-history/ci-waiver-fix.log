@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "check": "check:gate-waiver-expiry",
+  "clockDate": "2026-11-10",
+  "contract": "ops/contracts/gate-waivers.v1.json",
+  "warnings": [],
+  "violations": []
+}

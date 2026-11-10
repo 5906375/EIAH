@@ -1,0 +1,1822 @@
+TAP version 13
+# Subtest: conforme: launcher compartilhado, componentes de vertical dentro da árvore do launcher, rotas registradas
+ok 1 - conforme: launcher compartilhado, componentes de vertical dentro da árvore do launcher, rotas registradas
+  ---
+  duration_ms: 4.81755
+  type: 'test'
+  ...
+# Subtest: rota nova não registrada (ex.: cockpit paralelo de uma vertical nova) é violação
+ok 2 - rota nova não registrada (ex.: cockpit paralelo de uma vertical nova) é violação
+  ---
+  duration_ms: 1.409557
+  type: 'test'
+  ...
+# Subtest: rota operacional/pendente registrada DEPOIS da data-base é proibida; legado sem plano de integração também
+ok 3 - rota operacional/pendente registrada DEPOIS da data-base é proibida; legado sem plano de integração também
+  ---
+  duration_ms: 2.375455
+  type: 'test'
+  ...
+# Subtest: segundo consumidor do launcher (página de vertical com chat secundário) e launcher alternativo são violações
+ok 4 - segundo consumidor do launcher (página de vertical com chat secundário) e launcher alternativo são violações
+  ---
+  duration_ms: 1.397299
+  type: 'test'
+  ...
+# Subtest: componente operacional de vertical FORA da árvore do launcher é violação; no registro de legado é tolerado
+ok 5 - componente operacional de vertical FORA da árvore do launcher é violação; no registro de legado é tolerado
+  ---
+  duration_ms: 3.298908
+  type: 'test'
+  ...
+# Subtest: a conversa não pode linkar para rota operacional legada; a página do Front Door não compõe painel de vertical
+ok 6 - a conversa não pode linkar para rota operacional legada; a página do Front Door não compõe painel de vertical
+  ---
+  duration_ms: 1.038667
+  type: 'test'
+  ...
+# Subtest: entradas obsoletas do registro são reportadas (sem falhar) para o legado poder ser retirado com evidência
+ok 7 - entradas obsoletas do registro são reportadas (sem falhar) para o legado poder ser retirado com evidência
+  ---
+  duration_ms: 0.897494
+  type: 'test'
+  ...
+# Subtest: repositório real: o registro cobre todas as rotas e o legado conhecido; nenhuma violação nova
+ok 8 - repositório real: o registro cobre todas as rotas e o legado conhecido; nenhuma violação nova
+  ---
+  duration_ms: 100.863417
+  type: 'test'
+  ...
+# Subtest: rota legada redirecionada: exige o wrapper como elemento mais externo; sem ele (ou com página antes dele) é violação
+ok 9 - rota legada redirecionada: exige o wrapper como elemento mais externo; sem ele (ou com página antes dele) é violação
+  ---
+  duration_ms: 4.849257
+  type: 'test'
+  ...
+# Subtest: continue-on-error true with a future waiver passes with days remaining
+ok 10 - continue-on-error true with a future waiver passes with days remaining
+  ---
+  duration_ms: 1.727907
+  type: 'test'
+  ...
+# Subtest: continue-on-error true with an expired waiver fails
+ok 11 - continue-on-error true with an expired waiver fails
+  ---
+  duration_ms: 0.53055
+  type: 'test'
+  ...
+# Subtest: continue-on-error true without a waiver fails as undeclared
+ok 12 - continue-on-error true without a waiver fails as undeclared
+  ---
+  duration_ms: 0.155995
+  type: 'test'
+  ...
+# Subtest: a declared waiver without continue-on-error fails as stale
+ok 13 - a declared waiver without continue-on-error fails as stale
+  ---
+  duration_ms: 0.130166
+  type: 'test'
+  ...
+# Subtest: no waiver and no continue-on-error passes
+ok 14 - no waiver and no continue-on-error passes
+  ---
+  duration_ms: 0.491311
+  type: 'test'
+  ...
+# Subtest: full without providerAdapters fails criterion 1
+ok 15 - full without providerAdapters fails criterion 1
+  ---
+  duration_ms: 3.191776
+  type: 'test'
+  ...
+# Subtest: full with a declared missing module fails criterion 2
+ok 16 - full with a declared missing module fails criterion 2
+  ---
+  duration_ms: 0.988342
+  type: 'test'
+  ...
+# Subtest: full module resolving to the local stub fails criterion 3
+ok 17 - full module resolving to the local stub fails criterion 3
+  ---
+  duration_ms: 1.798363
+  type: 'test'
+  ...
+# Subtest: simulated without providerAdapters passes
+ok 18 - simulated without providerAdapters passes
+  ---
+  duration_ms: 1.061602
+  type: 'test'
+  ...
+# Subtest: a circular pair without an exception fails
+ok 19 - a circular pair without an exception fails
+  ---
+  duration_ms: 8.886549
+  type: 'test'
+  ...
+# Subtest: a circular pair with a valid nominal exception passes
+ok 20 - a circular pair with a valid nominal exception passes
+  ---
+  duration_ms: 1.305199
+  type: 'test'
+  ...
+# Subtest: a circular pair with an expired exception fails
+ok 21 - a circular pair with an expired exception fails
+  ---
+  duration_ms: 0.910664
+  type: 'test'
+  ...
+# Subtest: an exception for a nonexistent pair fails as stale
+ok 22 - an exception for a nonexistent pair fails as stale
+  ---
+  duration_ms: 0.956093
+  type: 'test'
+  ...
+# Subtest: a dynamic governed write path is reported as undetermined
+ok 23 - a dynamic governed write path is reported as undetermined
+  ---
+  duration_ms: 1.302125
+  type: 'test'
+  ...
+# Subtest: targets chained by && in one run command preserve order and are detected
+ok 24 - targets chained by && in one run command preserve order and are detected
+  ---
+  duration_ms: 1.046139
+  type: 'test'
+  ...
+# Subtest: recursive package target expansion detects and reports a target cycle
+ok 25 - recursive package target expansion detects and reports a target cycle
+  ---
+  duration_ms: 1.027381
+  type: 'test'
+  ...
+# Subtest: a destination reached through path.join(CONST, var) with var bound by for...of over a const array literal of templates is resolved, not undetermined
+ok 26 - a destination reached through path.join(CONST, var) with var bound by for...of over a const array literal of templates is resolved, not undetermined
+  ---
+  duration_ms: 9.49014
+  type: 'test'
+  ...
+# Subtest: a template interpolation resolved through the for...of array literal matches an equivalent glob pattern read by the check
+ok 27 - a template interpolation resolved through the for...of array literal matches an equivalent glob pattern read by the check
+  ---
+  duration_ms: 0.834469
+  type: 'test'
+  ...
+# Subtest: distinct prefixes resolved through the for...of array literal do not cross-match the check's pattern
+ok 28 - distinct prefixes resolved through the for...of array literal do not cross-match the check's pattern
+  ---
+  duration_ms: 0.724553
+  type: 'test'
+  ...
+# Subtest: a write destination reached via path.join(CONST, var) whose var is bound by for...of over a non-literal source stays undetermined
+ok 29 - a write destination reached via path.join(CONST, var) whose var is bound by for...of over a non-literal source stays undetermined
+  ---
+  duration_ms: 0.406534
+  type: 'test'
+  ...
+# Subtest: a function declaration is not counted as a call
+ok 30 - a function declaration is not counted as a call
+  ---
+  duration_ms: 0.253182
+  type: 'test'
+  ...
+# Subtest: a real call with a type-annotated argument is still captured alongside its declaration
+ok 31 - a real call with a type-annotated argument is still captured alongside its declaration
+  ---
+  duration_ms: 0.496299
+  type: 'test'
+  ...
+# Subtest: a genuinely dynamic read path stays undetermined
+ok 32 - a genuinely dynamic read path stays undetermined
+  ---
+  duration_ms: 0.266392
+  type: 'test'
+  ...
+# Subtest: ok semantics: an undetermined path without a declared exception fails ok
+ok 33 - ok semantics: an undetermined path without a declared exception fails ok
+  ---
+  duration_ms: 0.289557
+  type: 'test'
+  ...
+# Subtest: ok semantics: an undetermined path with an active declared exception does not fail ok, and is listed as excepted without being removed from undetermined
+ok 34 - ok semantics: an undetermined path with an active declared exception does not fail ok, and is listed as excepted without being removed from undetermined
+  ---
+  duration_ms: 0.646686
+  type: 'test'
+  ...
+# Subtest: ok semantics: an expired declared exception for an undetermined path still fails ok
+ok 35 - ok semantics: an expired declared exception for an undetermined path still fails ok
+  ---
+  duration_ms: 0.403929
+  type: 'test'
+  ...
+# Subtest: a *.test.ts file mentioned in a command's text is not analyzed: no pair, no undetermined
+ok 36 - a *.test.ts file mentioned in a command's text is not analyzed: no pair, no undetermined
+  ---
+  duration_ms: 0.330458
+  type: 'test'
+  ...
+# Subtest: a non-test file with the same content, mentioned in the same command shape, is still analyzed
+ok 37 - a non-test file with the same content, mentioned in the same command shape, is still analyzed
+  ---
+  duration_ms: 0.207884
+  type: 'test'
+  ...
+# Subtest: execution-aware gate separates blocking, disabled and uncalled references
+ok 38 - execution-aware gate separates blocking, disabled and uncalled references
+  ---
+  duration_ms: 2.901088
+  type: 'test'
+  ...
+# Subtest: tests added to a CI-invoked static suite become blocking
+ok 39 - tests added to a CI-invoked static suite become blocking
+  ---
+  duration_ms: 0.424801
+  type: 'test'
+  ...
+# Subtest: new orphan blocks even when absolute debt does not increase
+ok 40 - new orphan blocks even when absolute debt does not increase
+  ---
+  duration_ms: 0.539904
+  type: 'test'
+  ...
+# Subtest: a lower prior debt becomes the decreasing ceiling
+ok 41 - a lower prior debt becomes the decreasing ceiling
+  ---
+  duration_ms: 0.262717
+  type: 'test'
+  ...
+# Subtest: baseline válido: dados compatíveis com ExpectedFileBaseline, digests e proveniência declarada
+ok 42 - baseline válido: dados compatíveis com ExpectedFileBaseline, digests e proveniência declarada
+  ---
+  duration_ms: 4.871801
+  type: 'test'
+  ...
+# Subtest: a saída é aceita diretamente pelo verificador (compatibilidade de contrato)
+ok 43 - a saída é aceita diretamente pelo verificador (compatibilidade de contrato)
+  ---
+  duration_ms: 1.591972
+  type: 'test'
+  ...
+# Subtest: JSON inválido ou texto que não é JSON de objeto: reprovado sem lançar
+ok 44 - JSON inválido ou texto que não é JSON de objeto: reprovado sem lançar
+  ---
+  duration_ms: 2.828718
+  type: 'test'
+  ...
+# Subtest: raiz que não é objeto, ou objeto de outro tipo: TYPE_INVALID
+ok 45 - raiz que não é objeto, ou objeto de outro tipo: TYPE_INVALID
+  ---
+  duration_ms: 0.992217
+  type: 'test'
+  ...
+# Subtest: versão do schema: ausente, outra versão, tipo errado
+ok 46 - versão do schema: ausente, outra versão, tipo errado
+  ---
+  duration_ms: 3.664149
+  type: 'test'
+  ...
+# Subtest: chaves ausentes e inesperadas, na raiz, na proveniência e nas entradas
+ok 47 - chaves ausentes e inesperadas, na raiz, na proveniência e nas entradas
+  ---
+  duration_ms: 2.01443
+  type: 'test'
+  ...
+# Subtest: tipos estritos: provenance, files e entradas
+ok 48 - tipos estritos: provenance, files e entradas
+  ---
+  duration_ms: 0.60315
+  type: 'test'
+  ...
+# Subtest: proveniência: apenas 'declared' e formatos estritos; nada é tratado como prova
+ok 49 - proveniência: apenas 'declared' e formatos estritos; nada é tratado como prova
+  ---
+  duration_ms: 4.827855
+  type: 'test'
+  ...
+# Subtest: caminhos inválidos ou não canônicos
+ok 50 - caminhos inválidos ou não canônicos
+  ---
+  duration_ms: 2.275423
+  type: 'test'
+  ...
+# Subtest: arquivo duplicado, inclusive com chave repetida no JSON, e baseline vazio
+ok 51 - arquivo duplicado, inclusive com chave repetida no JSON, e baseline vazio
+  ---
+  duration_ms: 0.444931
+  type: 'test'
+  ...
+# Subtest: ordenação determinística: fora de ordem reprova, e a ordem é por unidade de código
+ok 52 - ordenação determinística: fora de ordem reprova, e a ordem é por unidade de código
+  ---
+  duration_ms: 0.415787
+  type: 'test'
+  ...
+# Subtest: contagens: negativa, fracionária, notação científica, '-0', acima do limite seguro, texto, null, booleano
+ok 53 - contagens: negativa, fracionária, notação científica, '-0', acima do limite seguro, texto, null, booleano
+  ---
+  duration_ms: 6.653169
+  type: 'test'
+  ...
+# Subtest: coerência: skipped + todo ≤ tests (igualdade é válida)
+ok 54 - coerência: skipped + todo ≤ tests (igualdade é válida)
+  ---
+  duration_ms: 0.875981
+  type: 'test'
+  ...
+# Subtest: sha256: obrigatório e sintaticamente estrito (64 hex minúsculos)
+ok 55 - sha256: obrigatório e sintaticamente estrito (64 hex minúsculos)
+  ---
+  duration_ms: 0.970094
+  type: 'test'
+  ...
+# Subtest: correspondência com o inventário: ausentes, adicionais, ambos, e ordem do inventário irrelevante
+ok 56 - correspondência com o inventário: ausentes, adicionais, ambos, e ordem do inventário irrelevante
+  ---
+  duration_ms: 0.819828
+  type: 'test'
+  ...
+# Subtest: opções inválidas (expectedFiles) reprovam, mesmo com baseline perfeito
+ok 57 - opções inválidas (expectedFiles) reprovam, mesmo com baseline perfeito
+  ---
+  duration_ms: 1.23247
+  type: 'test'
+  ...
+# Subtest: valores ambíguos: chaves repetidas em qualquer nível são rejeitadas (JSON.parse manteria a última)
+ok 58 - valores ambíguos: chaves repetidas em qualquer nível são rejeitadas (JSON.parse manteria a última)
+  ---
+  duration_ms: 0.380935
+  type: 'test'
+  ...
+# Subtest: nenhuma entrada inválida produz ok:true: mutações sucessivas do documento válido
+ok 59 - nenhuma entrada inválida produz ok:true: mutações sucessivas do documento válido
+  ---
+  duration_ms: 0.844624
+  type: 'test'
+  ...
+# Subtest: função pura: determinística, não depende da ordem do inventário e aceita opções congeladas
+ok 60 - função pura: determinística, não depende da ordem do inventário e aceita opções congeladas
+  ---
+  duration_ms: 0.467836
+  type: 'test'
+  ...
+# Subtest: os dados devolvidos não compartilham referências com as opções
+ok 61 - os dados devolvidos não compartilham referências com as opções
+  ---
+  duration_ms: 0.239591
+  type: 'test'
+  ...
+# Subtest: higiene do módulo: sem disco, processo, rede, ambiente, relógio ou aleatoriedade; só importa módulos do gate
+ok 62 - higiene do módulo: sem disco, processo, rede, ambiente, relógio ou aleatoriedade; só importa módulos do gate
+  ---
+  duration_ms: 0.654097
+  type: 'test'
+  ...
+# Subtest: identificadores UNIT_SUITE_BASELINE_* são estáveis, únicos e todos usados no módulo
+ok 63 - identificadores UNIT_SUITE_BASELINE_* são estáveis, únicos e todos usados no módulo
+  ---
+  duration_ms: 0.388356
+  type: 'test'
+  ...
+# Subtest: PASS integral: as oito etapas OK, sem motivos, com proveniência apenas declarada
+ok 64 - PASS integral: as oito etapas OK, sem motivos, com proveniência apenas declarada
+  ---
+  duration_ms: 6.260326
+  type: 'test'
+  ...
+# Subtest: a proveniência é só declarada: o relatório do baseline traz attestation not_demonstrated, mesmo em PASS
+ok 65 - a proveniência é só declarada: o relatório do baseline traz attestation not_demonstrated, mesmo em PASS
+  ---
+  duration_ms: 1.404169
+  type: 'test'
+  ...
+# Subtest: o SHA-256 do baseline é apenas reportado: formato inválido reprova; valor válido não é 'verificado' aqui
+ok 66 - o SHA-256 do baseline é apenas reportado: formato inválido reprova; valor válido não é 'verificado' aqui
+  ---
+  duration_ms: 3.449104
+  type: 'test'
+  ...
+# Subtest: a versão do Node não altera a decisão nesta etapa
+ok 67 - a versão do Node não altera a decisão nesta etapa
+  ---
+  duration_ms: 1.434485
+  type: 'test'
+  ...
+# Subtest: issues do adaptador reprovam mesmo com o verificador em PASS
+ok 68 - issues do adaptador reprovam mesmo com o verificador em PASS
+  ---
+  duration_ms: 0.600497
+  type: 'test'
+  ...
+# Subtest: baseline inválido passa obrigatoriamente pelo parser: as issues originais são preservadas e o restante é bloqueado
+ok 69 - baseline inválido passa obrigatoriamente pelo parser: as issues originais são preservadas e o restante é bloqueado
+  ---
+  duration_ms: 2.73712
+  type: 'test'
+  ...
+# Subtest: chave duplicada no baseline é rejeitada (JSON.parse manteria a última) e nunca chega ao verificador
+ok 70 - chave duplicada no baseline é rejeitada (JSON.parse manteria a última) e nunca chega ao verificador
+  ---
+  duration_ms: 0.489408
+  type: 'test'
+  ...
+# Subtest: o parser do baseline é sempre usado: texto com arquivos de outro inventário não alimenta o verificador
+ok 71 - o parser do baseline é sempre usado: texto com arquivos de outro inventário não alimenta o verificador
+  ---
+  duration_ms: 0.464651
+  type: 'test'
+  ...
+# Subtest: inventário inválido reprova, preserva as issues do parser e bloqueia baseline, integridade e argv
+ok 72 - inventário inválido reprova, preserva as issues do parser e bloqueia baseline, integridade e argv
+  ---
+  duration_ms: 1.157887
+  type: 'test'
+  ...
+# Subtest: integridade aprovada: declarado == anterior == posterior, com cobertura exata
+ok 73 - integridade aprovada: declarado == anterior == posterior, com cobertura exata
+  ---
+  duration_ms: 0.540215
+  type: 'test'
+  ...
+# Subtest: digest declarado diferente do observado antes e/ou depois reprova
+ok 74 - digest declarado diferente do observado antes e/ou depois reprova
+  ---
+  duration_ms: 0.580877
+  type: 'test'
+  ...
+# Subtest: digest anterior diferente do posterior: arquivo alterado durante a execução
+ok 75 - digest anterior diferente do posterior: arquivo alterado durante a execução
+  ---
+  duration_ms: 0.354444
+  type: 'test'
+  ...
+# Subtest: digest ausente, adicional ou inválido nos mapas reprova, com fase e arquivo
+ok 76 - digest ausente, adicional ou inválido nos mapas reprova, com fase e arquivo
+  ---
+  duration_ms: 3.657419
+  type: 'test'
+  ...
+# Subtest: forma de testFileDigests: ausente, malformada, mapa que não é objeto, antes nulo
+ok 77 - forma de testFileDigests: ausente, malformada, mapa que não é objeto, antes nulo
+  ---
+  duration_ms: 4.933054
+  type: 'test'
+  ...
+# Subtest: run presente exige digests posteriores; run nulo permite after nulo mas avalia os digests anteriores
+ok 78 - run presente exige digests posteriores; run nulo permite after nulo mas avalia os digests anteriores
+  ---
+  duration_ms: 0.788239
+  type: 'test'
+  ...
+# Subtest: run: null nunca é PASS, mesmo com todo o resto íntegro
+ok 79 - run: null nunca é PASS, mesmo com todo o resto íntegro
+  ---
+  duration_ms: 0.279832
+  type: 'test'
+  ...
+# Subtest: baseline inválido deixa a integridade não avaliada, com reprovação global, mesmo com digests corretos
+ok 80 - baseline inválido deixa a integridade não avaliada, com reprovação global, mesmo com digests corretos
+  ---
+  duration_ms: 0.33143
+  type: 'test'
+  ...
+# Subtest: argv divergente do inventário reprova: ausente, adicional, duplicado, inválido; './' é normalizado
+ok 81 - argv divergente do inventário reprova: ausente, adicional, duplicado, inválido; './' é normalizado
+  ---
+  duration_ms: 2.54499
+  type: 'test'
+  ...
+# Subtest: execução: código ≠ 0, sinal, timeout, saída desconhecida, não executada e observação inválida reprovam
+ok 82 - execução: código ≠ 0, sinal, timeout, saída desconhecida, não executada e observação inválida reprovam
+  ---
+  duration_ms: 9.026891
+  type: 'test'
+  ...
+# Subtest: eventos: ausente (null), vazio, só espaços, não texto e linha corrompida são distinguidos
+ok 83 - eventos: ausente (null), vazio, só espaços, não texto e linha corrompida são distinguidos
+  ---
+  duration_ms: 3.995109
+  type: 'test'
+  ...
+# Subtest: falha de suite com rc=0, resumo de sucesso e testes aprovados reprova e preserva o motivo do verificador
+ok 84 - falha de suite com rc=0, resumo de sucesso e testes aprovados reprova e preserva o motivo do verificador
+  ---
+  duration_ms: 1.396948
+  type: 'test'
+  ...
+# Subtest: resumo ausente, duplicado e eventos perdidos reprovam com os motivos do verificador
+ok 85 - resumo ausente, duplicado e eventos perdidos reprovam com os motivos do verificador
+  ---
+  duration_ms: 3.296004
+  type: 'test'
+  ...
+# Subtest: o veredito do verificador é preservado integralmente, usando os dados do parser do baseline
+ok 86 - o veredito do verificador é preservado integralmente, usando os dados do parser do baseline
+  ---
+  duration_ms: 0.515919
+  type: 'test'
+  ...
+# Subtest: todas as etapas são avaliadas e relatadas mesmo quando várias falham
+ok 87 - todas as etapas são avaliadas e relatadas mesmo quando várias falham
+  ---
+  duration_ms: 0.56973
+  type: 'test'
+  ...
+# Subtest: entrada ausente ou de tipo errado nunca lança e reprova, com todas as etapas não avaliadas
+ok 88 - entrada ausente ou de tipo errado nunca lança e reprova, com todas as etapas não avaliadas
+  ---
+  duration_ms: 3.624599
+  type: 'test'
+  ...
+# Subtest: exceções internas viram FAIL com GATE_INTERNAL_ERROR, nunca aprovação
+ok 89 - exceções internas viram FAIL com GATE_INTERNAL_ERROR, nunca aprovação
+  ---
+  duration_ms: 1.796871
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada, é determinística e aceita entrada congelada
+ok 90 - função pura: não altera a entrada, é determinística e aceita entrada congelada
+  ---
+  duration_ms: 1.297758
+  type: 'test'
+  ...
+# Subtest: a ordem de argv e das chaves dos mapas de digest não altera a decisão
+ok 91 - a ordem de argv e das chaves dos mapas de digest não altera a decisão
+  ---
+  duration_ms: 0.724503
+  type: 'test'
+  ...
+# Subtest: higiene do módulo: sem disco, processo, rede, ambiente, relógio, hash ou aleatoriedade; só importa módulos do gate
+ok 92 - higiene do módulo: sem disco, processo, rede, ambiente, relógio, hash ou aleatoriedade; só importa módulos do gate
+  ---
+  duration_ms: 1.241904
+  type: 'test'
+  ...
+# Subtest: identificadores GATE são estáveis, únicos, com prefixo, e todo código usado no módulo está declarado
+ok 93 - identificadores GATE são estáveis, únicos, com prefixo, e todo código usado no módulo está declarado
+  ---
+  duration_ms: 0.647547
+  type: 'test'
+  ...
+# Subtest: observe: observação completa => OBSERVED_UNATTESTED, sem aprovação, sem baseline e com candidatos por arquivo
+ok 94 - observe: observação completa => OBSERVED_UNATTESTED, sem aprovação, sem baseline e com candidatos por arquivo
+  ---
+  duration_ms: 1.929181
+  type: 'test'
+  ...
+# Subtest: observe: o módulo não usa baseline (nenhum parser de baseline nem texto de baseline na entrada)
+ok 95 - observe: o módulo não usa baseline (nenhum parser de baseline nem texto de baseline na entrada)
+  ---
+  duration_ms: 0.302186
+  type: 'test'
+  ...
+# Subtest: observe: nunca produz PASS nem aprovação, em nenhuma variação de entrada
+ok 96 - observe: nunca produz PASS nem aprovação, em nenhuma variação de entrada
+  ---
+  duration_ms: 4.025864
+  type: 'test'
+  ...
+# Subtest: observe: falhas estruturais => OBSERVATION_INCOMPLETE, nunca observação bem-sucedida
+ok 97 - observe: falhas estruturais => OBSERVATION_INCOMPLETE, nunca observação bem-sucedida
+  ---
+  duration_ms: 5.01031
+  type: 'test'
+  ...
+# Subtest: observe: teste falho => OBSERVATION_FAILED (contagens informativas, sem candidatos); saída ≠ 0 sem falha nos eventos => INCOMPLETE
+ok 98 - observe: teste falho => OBSERVATION_FAILED (contagens informativas, sem candidatos); saída ≠ 0 sem falha nos eventos => INCOMPLETE
+  ---
+  duration_ms: 0.735681
+  type: 'test'
+  ...
+# Subtest: observe: skip e todo nunca contam como teste executado; arquivo condicional ignorado fica NOT_DEMONSTRATED
+ok 99 - observe: skip e todo nunca contam como teste executado; arquivo condicional ignorado fica NOT_DEMONSTRATED
+  ---
+  duration_ms: 0.628037
+  type: 'test'
+  ...
+# Subtest: observe: pré-verificação (sem execução) avalia inventário, integridade e argv e deixa o resto bloqueado
+ok 100 - observe: pré-verificação (sem execução) avalia inventário, integridade e argv e deixa o resto bloqueado
+  ---
+  duration_ms: 0.241234
+  type: 'test'
+  ...
+# Subtest: observe: determinístico, ordenado e não altera a entrada
+ok 101 - observe: determinístico, ordenado e não altera a entrada
+  ---
+  duration_ms: 0.436328
+  type: 'test'
+  ...
+# Subtest: observe: entrada ilegível não lança e nunca vira observação bem-sucedida
+ok 102 - observe: entrada ilegível não lança e nunca vira observação bem-sucedida
+  ---
+  duration_ms: 0.678003
+  type: 'test'
+  ...
+# Subtest: observe: classificação de cobertura condicional pelo nome do arquivo
+ok 103 - observe: classificação de cobertura condicional pelo nome do arquivo
+  ---
+  duration_ms: 0.075244
+  type: 'test'
+  ...
+# Subtest: PASS integral: código 0, quatro artefatos, hashes e envelope launcher/decision/final
+not ok 104 - PASS integral: código 0, quatro artefatos, hashes e envelope launcher/decision/final
+  ---
+  duration_ms: 2155.805817
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:6:1828'
+  failureType: 'testCodeFailure'
+  error: |-
+    []
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:152:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: os dois campos de ambiente e de proveniência não vazam valores nem alegam atestação
+ok 105 - os dois campos de ambiente e de proveniência não vazam valores nem alegam atestação
+  ---
+  duration_ms: 2092.301767
+  type: 'test'
+  ...
+# Subtest: baseline inválido: nenhum teste é iniciado, evidências preservadas, código 1
+ok 106 - baseline inválido: nenhum teste é iniciado, evidências preservadas, código 1
+  ---
+  duration_ms: 2.393332
+  type: 'test'
+  ...
+# Subtest: SHA-256 divergente do arquivo de teste: reprova antes de executar
+ok 107 - SHA-256 divergente do arquivo de teste: reprova antes de executar
+  ---
+  duration_ms: 1.922752
+  type: 'test'
+  ...
+# Subtest: arquivo de teste ausente, manifesto ilegível e entradas acima do teto: falham sem iniciar testes
+ok 108 - arquivo de teste ausente, manifesto ilegível e entradas acima do teto: falham sem iniciar testes
+  ---
+  duration_ms: 33.425622
+  type: 'test'
+  ...
+# Subtest: arquivo de teste que é link simbólico para fora da raiz é recusado
+ok 109 - arquivo de teste que é link simbólico para fora da raiz é recusado
+  ---
+  duration_ms: 1.565953
+  type: 'test'
+  ...
+# Subtest: arquivo alterado durante a execução: reprova pela integridade, mesmo com os testes passando
+ok 110 - arquivo alterado durante a execução: reprova pela integridade, mesmo com os testes passando
+  ---
+  duration_ms: 2161.882707
+  type: 'test'
+  ...
+# Subtest: falha de teste e código de saída ≠ 0 reprovam com código 1 e preservam stdout/stderr
+ok 111 - falha de teste e código de saída ≠ 0 reprovam com código 1 e preservam stdout/stderr
+  ---
+  duration_ms: 2114.549094
+  type: 'test'
+  ...
+# Subtest: falha de suite (hook) com código 0 e resumo de sucesso reprova
+ok 112 - falha de suite (hook) com código 0 e resumo de sucesso reprova
+  ---
+  duration_ms: 2195.193372
+  type: 'test'
+  ...
+# Subtest: timeout: encerra o grupo inteiro, inclusive descendentes, e reprova
+not ok 113 - timeout: encerra o grupo inteiro, inclusive descendentes, e reprova
+  ---
+  duration_ms: 13066.134853
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:12:368'
+  failureType: 'testCodeFailure'
+  error: |-
+    o descendente foi encerrado junto com o grupo
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:332:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: timeout: runner que ignora SIGTERM é encerrado por SIGKILL após a tolerância
+ok 114 - timeout: runner que ignora SIGTERM é encerrado por SIGKILL após a tolerância
+  ---
+  duration_ms: 5347.117725
+  type: 'test'
+  ...
+# Subtest: descendente que sobrevive ao runner após saída normal: é encerrado e a execução reprova
+not ok 115 - descendente que sobrevive ao runner após saída normal: é encerrado e a execução reprova
+  ---
+  duration_ms: 4836.188031
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:14:1776'
+  failureType: 'testCodeFailure'
+  error: |-
+    o descendente foi encerrado
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:365:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: limitação conhecida: descendente que abre nova sessão escapa da supervisão (não é detectado)
+not ok 116 - limitação conhecida: descendente que abre nova sessão escapa da supervisão (não é detectado)
+  ---
+  duration_ms: 1840.792003
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:19:586'
+  failureType: 'testCodeFailure'
+  error: |-
+    e o lançador não o enxerga
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:377:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: erro de spawn: reprova com evidências e campos indisponíveis explícitos
+ok 117 - erro de spawn: reprova com evidências e campos indisponíveis explícitos
+  ---
+  duration_ms: 3.299199
+  type: 'test'
+  ...
+# Subtest: reporter ausente: o runner falha, a execução reprova e o stderr preserva a causa
+ok 118 - reporter ausente: o runner falha, a execução reprova e o stderr preserva a causa
+  ---
+  duration_ms: 39.460309
+  type: 'test'
+  ...
+# Subtest: reporter inválido: sem eventos, linhas corrompidas, fluxo incompleto e arquivo grande demais reprovam
+ok 119 - reporter inválido: sem eventos, linhas corrompidas, fluxo incompleto e arquivo grande demais reprovam
+  ---
+  duration_ms: 8395.30494
+  type: 'test'
+  ...
+# Subtest: NDJSON truncado com registro end presente é reprovado pelos resumos por arquivo
+ok 120 - NDJSON truncado com registro end presente é reprovado pelos resumos por arquivo
+  ---
+  duration_ms: 2038.573891
+  type: 'test'
+  ...
+# Subtest: artefatos pré-existentes: events/stdout colidindo impedem a execução; nada é sobrescrito
+ok 121 - artefatos pré-existentes: events/stdout colidindo impedem a execução; nada é sobrescrito
+  ---
+  duration_ms: 3.113428
+  type: 'test'
+  ...
+# Subtest: falha de persistência: código 2, evidências já gravadas preservadas, sem aprovação
+ok 122 - falha de persistência: código 2, evidências já gravadas preservadas, sem aprovação
+  ---
+  duration_ms: 2143.327859
+  type: 'test'
+  ...
+# Subtest: decision.json pré-existente nunca é sobrescrito: gravação exclusiva, código 2
+ok 123 - decision.json pré-existente nunca é sobrescrito: gravação exclusiva, código 2
+  ---
+  duration_ms: 2136.758215
+  type: 'test'
+  ...
+# Subtest: colisão de runId: a segunda execução falha com código 2 e não altera a primeira
+not ok 124 - colisão de runId: a segunda execução falha com código 2 e não altera a primeira
+  ---
+  duration_ms: 2113.152769
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:24:7018'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:498:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: concorrência: execuções simultâneas com ids distintos passam; com o mesmo id só uma prossegue
+not ok 125 - concorrência: execuções simultâneas com ids distintos passam; com o mesmo id só uma prossegue
+  ---
+  duration_ms: 2360.200737
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:24:7666'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    +   1,
+    +   1
+    -   0,
+    -   0
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 0
+    1: 0
+  actual:
+    0: 1
+    1: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:511:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: execuções simultâneas no mesmo diretório de saída não misturam artefatos
+not ok 126 - execuções simultâneas no mesmo diretório de saída não misturam artefatos
+  ---
+  duration_ms: 2235.59739
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:24:8416'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    +   1,
+    +   1
+    -   0,
+    -   0
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 0
+    1: 0
+  actual:
+    0: 1
+    1: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:529:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: ambiente mínimo: segredos e URLs de serviços do pai não chegam aos testes; DATABASE_URL é o sentinela
+not ok 127 - ambiente mínimo: segredos e URLs de serviços do pai não chegam aos testes; DATABASE_URL é o sentinela
+  ---
+  duration_ms: 1829.061162
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:24:8993'
+  failureType: 'testCodeFailure'
+  error: |-
+    []
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:548:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: opções inválidas ou inseguras: código 2, sem criar diretório de execução
+ok 128 - opções inválidas ou inseguras: código 2, sem criar diretório de execução
+  ---
+  duration_ms: 1.762331
+  type: 'test'
+  ...
+# Subtest: loader tsx não resolvível a partir da raiz e diretório de saída indisponível: código 2
+ok 129 - loader tsx não resolvível a partir da raiz e diretório de saída indisponível: código 2
+  ---
+  duration_ms: 0.934301
+  type: 'test'
+  ...
+# Subtest: códigos de saída 0, 1 e 2 em sequência, sempre derivados do envelope
+not ok 130 - códigos de saída 0, 1 e 2 em sequência, sempre derivados do envelope
+  ---
+  duration_ms: 2142.714343
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:3458'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    -   0,
+        1,
+    +   1,
+        2
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 0
+    1: 1
+    2: 2
+  actual:
+    0: 1
+    1: 1
+    2: 2
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:618:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: baseline com permissão somente leitura e execução repetida: bytes e mtime inalterados em PASS e FAIL
+not ok 131 - baseline com permissão somente leitura e execução repetida: bytes e mtime inalterados em PASS e FAIL
+  ---
+  duration_ms: 2117.159656
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:4104'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+      [
+    -   0,
+        1,
+    +   1
+      ]
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    0: 0
+    1: 1
+  actual:
+    0: 1
+    1: 1
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:631:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: identificadores do lançador são estáveis, únicos e todos usados
+ok 132 - identificadores do lançador são estáveis, únicos e todos usados
+  ---
+  duration_ms: 1.419012
+  type: 'test'
+  ...
+# Subtest: CLI: argumentos desconhecidos, ausentes ou repetidos são rejeitados antes de qualquer execução
+ok 133 - CLI: argumentos desconhecidos, ausentes ou repetidos são rejeitados antes de qualquer execução
+  ---
+  duration_ms: 0.426955
+  type: 'test'
+  ...
+# Subtest: CLI de ponta a ponta: códigos 0, 1 e 2
+not ok 134 - CLI de ponta a ponta: códigos 0, 1 e 2
+  ---
+  duration_ms: 2286.436676
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:6656'
+  failureType: 'testCodeFailure'
+  error: |-
+    {
+      "ok": false,
+      "check": "unit-suite-gate",
+      "final": "FAIL",
+      "runDir": "/tmp/eiah-unit-suite-gate-1YcLdn/case-99/out/cli-ok",
+      "persisted": true,
+      "errors": [],
+      "issues": [
+        {
+          "code": "UNIT_SUITE_LAUNCHER_PROCESSES_REMAINING",
+          "detail": "processes survived SIGKILL"
+        }
+      ],
+      "reasons": []
+    }
+    
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:678:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: execução completa => OBSERVED_UNATTESTED (código 0), sem baseline, sem PASS, quatro artefatos
+not ok 135 - observe: execução completa => OBSERVED_UNATTESTED (código 0), sem baseline, sem PASS, quatro artefatos
+  ---
+  duration_ms: 2137.347035
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:8108'
+  failureType: 'testCodeFailure'
+  error: |-
+    []
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:715:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: não aceita caminho de baseline (código 2, nenhum diretório criado) e não lê o baseline mesmo existente
+not ok 136 - observe: não aceita caminho de baseline (código 2, nenhum diretório criado) e não lê o baseline mesmo existente
+  ---
+  duration_ms: 2128.344151
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:9846'
+  failureType: 'testCodeFailure'
+  error: |-
+    baseline inválido no disco é irrelevante para observe
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:751:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: gate sem baseline continua fail-closed e não inicia testes
+ok 137 - observe: gate sem baseline continua fail-closed e não inicia testes
+  ---
+  duration_ms: 1.456278
+  type: 'test'
+  ...
+# Subtest: observe: teste falho => OBSERVATION_FAILED (código 1) com contagens informativas e sem candidatos
+not ok 138 - observe: teste falho => OBSERVATION_FAILED (código 1) com contagens informativas e sem candidatos
+  ---
+  duration_ms: 2200.843889
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:27:11494'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'OBSERVATION_INCOMPLETE'
+    - 'OBSERVATION_FAILED'
+                   ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'OBSERVATION_FAILED'
+  actual: 'OBSERVATION_INCOMPLETE'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:778:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: falha de suite (hook) com saída 0 não é observação bem-sucedida
+not ok 139 - observe: falha de suite (hook) com saída 0 não é observação bem-sucedida
+  ---
+  duration_ms: 2108.945848
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:29:549'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + 'OBSERVATION_INCOMPLETE'
+    - 'OBSERVATION_FAILED'
+                   ^
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'OBSERVATION_FAILED'
+  actual: 'OBSERVATION_INCOMPLETE'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:793:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: timeout => OBSERVATION_INCOMPLETE; o grupo inteiro é encerrado
+not ok 140 - observe: timeout => OBSERVATION_INCOMPLETE; o grupo inteiro é encerrado
+  ---
+  duration_ms: 13093.768998
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:31:251'
+  failureType: 'testCodeFailure'
+  error: |-
+    o descendente foi encerrado
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:809:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: descendente que sobrevive ao runner rebaixa para OBSERVATION_INCOMPLETE mesmo com testes aprovados
+not ok 141 - observe: descendente que sobrevive ao runner rebaixa para OBSERVATION_INCOMPLETE mesmo com testes aprovados
+  ---
+  duration_ms: 4973.529071
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:33:772'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:822:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: arquivo de teste alterado durante a execução => OBSERVATION_INCOMPLETE
+ok 142 - observe: arquivo de teste alterado durante a execução => OBSERVATION_INCOMPLETE
+  ---
+  duration_ms: 2246.376964
+  type: 'test'
+  ...
+# Subtest: observe: arquivo condicional ignorado (sem banco) => cobertura NOT_DEMONSTRATED; skip nunca conta como executado
+not ok 143 - observe: arquivo condicional ignorado (sem banco) => cobertura NOT_DEMONSTRATED; skip nunca conta como executado
+  ---
+  duration_ms: 2139.788776
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:41:358'
+  failureType: 'testCodeFailure'
+  error: |-
+    []
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:844:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: ambiente mínimo - segredos do pai não chegam aos testes e nada de ambiente é gravado
+not ok 144 - observe: ambiente mínimo - segredos do pai não chegam aos testes e nada de ambiente é gravado
+  ---
+  duration_ms: 1874.919278
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:44:736'
+  failureType: 'testCodeFailure'
+  error: |-
+    []
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:857:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: execução repetida produz a mesma observação (determinística) e nunca sobrescreve execuções
+not ok 145 - observe: execução repetida produz a mesma observação (determinística) e nunca sobrescreve execuções
+  ---
+  duration_ms: 2604.003218
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:47:1008'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:870:10)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: observe: manifesto e argv divergentes reprovam antes de executar (nenhum teste iniciado)
+ok 146 - observe: manifesto e argv divergentes reprovam antes de executar (nenhum teste iniciado)
+  ---
+  duration_ms: 1.614496
+  type: 'test'
+  ...
+# Subtest: CLI: --mode padrão é gate; observe rejeita --baseline e modos desconhecidos
+ok 147 - CLI: --mode padrão é gate; observe rejeita --baseline e modos desconhecidos
+  ---
+  duration_ms: 0.285982
+  type: 'test'
+  ...
+# Subtest: CLI observe de ponta a ponta: 0 (observação completa), 1 (falha), 2 (uso); saída sem ok/PASS
+not ok 148 - CLI observe de ponta a ponta: 0 (observação completa), 1 (falha), 2 (uso); saída sem ok/PASS
+  ---
+  duration_ms: 2328.511755
+  type: 'test'
+  location: '/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:47:3247'
+  failureType: 'testCodeFailure'
+  error: |-
+    {
+      "check": "unit-suite-observe",
+      "final": "OBSERVATION_INCOMPLETE",
+      "approval": "NONE",
+      "runDir": "/tmp/eiah-unit-suite-gate-1YcLdn/case-126/out/obs-ok",
+      "persisted": true,
+      "errors": [],
+      "issues": [
+        {
+          "code": "UNIT_SUITE_LAUNCHER_PROCESSES_REMAINING",
+          "detail": "processes survived SIGKILL"
+        }
+      ],
+      "reasons": [],
+      "totals": {
+        "files": 2,
+        "filesObserved": 2,
+        "tests": 5,
+        "executed": 5,
+        "skipped": 0,
+        "todo": 0,
+        "failed": 0,
+        "cancelled": 0,
+        "suiteFailures": 0,
+        "filesPartial": 0,
+        "filesNotDemonstrated": 0,
+        "conditionalFiles": 0,
+        "conditionalNotDemonstrated": 0
+      }
+    }
+    
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/workspace/work/EIAH/scripts/tests/unitSuiteGate.test.ts:908:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+ok 149 - inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+  ---
+  duration_ms: 2.755188
+  type: 'test'
+  ...
+# Subtest: a ordem de saída não depende da ordem do manifesto nem do fim de linha
+ok 150 - a ordem de saída não depende da ordem do manifesto nem do fim de linha
+  ---
+  duration_ms: 0.296227
+  type: 'test'
+  ...
+# Subtest: entrada duplicada é reprovada, inclusive após normalização
+ok 151 - entrada duplicada é reprovada, inclusive após normalização
+  ---
+  duration_ms: 0.30467
+  type: 'test'
+  ...
+# Subtest: caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+ok 152 - caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+  ---
+  duration_ms: 1.481847
+  type: 'test'
+  ...
+# Subtest: extensão fora de .test.ts/.test.tsx é reprovada
+ok 153 - extensão fora de .test.ts/.test.tsx é reprovada
+  ---
+  duration_ms: 1.393743
+  type: 'test'
+  ...
+# Subtest: mais de um caminho na mesma linha ou comentário inline não é aceito
+ok 154 - mais de um caminho na mesma linha ou comentário inline não é aceito
+  ---
+  duration_ms: 0.137688
+  type: 'test'
+  ...
+# Subtest: todos os problemas são reportados de uma vez, na ordem das linhas
+ok 155 - todos os problemas são reportados de uma vez, na ordem das linhas
+  ---
+  duration_ms: 0.114393
+  type: 'test'
+  ...
+# Subtest: manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+ok 156 - manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+  ---
+  duration_ms: 0.385191
+  type: 'test'
+  ...
+# Subtest: conteúdo que não é texto é reprovado sem lançar
+ok 157 - conteúdo que não é texto é reprovado sem lançar
+  ---
+  duration_ms: 0.288996
+  type: 'test'
+  ...
+# Subtest: entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+ok 158 - entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+  ---
+  duration_ms: 0.462358
+  type: 'test'
+  ...
+# Subtest: manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+ok 159 - manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+  ---
+  duration_ms: 2.472392
+  type: 'test'
+  ...
+# Subtest: manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+ok 160 - manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+  ---
+  duration_ms: 1.136836
+  type: 'test'
+  ...
+# Subtest: o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+ok 161 - o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+  ---
+  duration_ms: 1.197828
+  type: 'test'
+  ...
+# Subtest: arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+ok 162 - arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+  ---
+  duration_ms: 0.923914
+  type: 'test'
+  ...
+# Subtest: execução completa: contadores, identidade relativa e aprovação pelo verificador
+ok 163 - execução completa: contadores, identidade relativa e aprovação pelo verificador
+  ---
+  duration_ms: 2.881178
+  type: 'test'
+  ...
+# Subtest: falha individual: failed=1 e reprovação
+ok 164 - falha individual: failed=1 e reprovação
+  ---
+  duration_ms: 0.593666
+  type: 'test'
+  ...
+# Subtest: falha de suite (hookFailed) com rc=0, resumo de sucesso e testes aprovados reprova com SUITE_FAILED
+ok 165 - falha de suite (hookFailed) com rc=0, resumo de sucesso e testes aprovados reprova com SUITE_FAILED
+  ---
+  duration_ms: 0.428307
+  type: 'test'
+  ...
+# Subtest: suite que passa não conta como teste e seu início é descontado de started
+ok 166 - suite que passa não conta como teste e seu início é descontado de started
+  ---
+  duration_ms: 0.213091
+  type: 'test'
+  ...
+# Subtest: skip, todo, skip+todo e todo que falha seguem a contagem do Node
+ok 167 - skip, todo, skip+todo e todo que falha seguem a contagem do Node
+  ---
+  duration_ms: 0.504632
+  type: 'test'
+  ...
+# Subtest: cancelamento: test:fail com cancelledByParent vira cancelled, não failed
+ok 168 - cancelamento: test:fail com cancelledByParent vira cancelled, não failed
+  ---
+  duration_ms: 0.264709
+  type: 'test'
+  ...
+# Subtest: nomes repetidos, em qualquer nível, são contados individualmente e não reprovam
+ok 169 - nomes repetidos, em qualquer nível, são contados individualmente e não reprovam
+  ---
+  duration_ms: 0.320714
+  type: 'test'
+  ...
+# Subtest: item de arquivo (nome = caminho absoluto, relativo ao cwd ou ./relativo) vira fileLevelEntries
+ok 170 - item de arquivo (nome = caminho absoluto, relativo ao cwd ou ./relativo) vira fileLevelEntries
+  ---
+  duration_ms: 0.637362
+  type: 'test'
+  ...
+# Subtest: item de arquivo com falha (erro de carga ou hook global) também é fileLevelEntries
+ok 171 - item de arquivo com falha (erro de carga ou hook global) também é fileLevelEntries
+  ---
+  duration_ms: 0.426243
+  type: 'test'
+  ...
+# Subtest: o cwd distingue o nome relativo: cwd diferente da raiz
+ok 172 - o cwd distingue o nome relativo: cwd diferente da raiz
+  ---
+  duration_ms: 0.489148
+  type: 'test'
+  ...
+# Subtest: resumo por arquivo ausente ou duplicado reprova; o global nunca substitui o do arquivo
+ok 173 - resumo por arquivo ausente ou duplicado reprova; o global nunca substitui o do arquivo
+  ---
+  duration_ms: 0.244579
+  type: 'test'
+  ...
+# Subtest: eventos incompletos: perda de resultados reprova pela contagem e pelo início sem resultado
+ok 174 - eventos incompletos: perda de resultados reprova pela contagem e pelo início sem resultado
+  ---
+  duration_ms: 0.239021
+  type: 'test'
+  ...
+# Subtest: vários arquivos intercalados: cada arquivo é avaliado de forma independente e a ordem não importa
+ok 175 - vários arquivos intercalados: cada arquivo é avaliado de forma independente e a ordem não importa
+  ---
+  duration_ms: 2.475306
+  type: 'test'
+  ...
+# Subtest: identidade vem só de eventos de teste e resumo: arquivo fora da raiz é issue
+ok 176 - identidade vem só de eventos de teste e resumo: arquivo fora da raiz é issue
+  ---
+  duration_ms: 0.359853
+  type: 'test'
+  ...
+# Subtest: eventos essenciais desconhecidos, campos inválidos e chaves extras são rejeitados
+ok 177 - eventos essenciais desconhecidos, campos inválidos e chaves extras são rejeitados
+  ---
+  duration_ms: 0.469198
+  type: 'test'
+  ...
+# Subtest: integridade do fluxo: fim ausente, contagem do fim, lacuna, duplicata, registros após o fim e cabeçalho
+ok 178 - integridade do fluxo: fim ausente, contagem do fim, lacuna, duplicata, registros após o fim e cabeçalho
+  ---
+  duration_ms: 0.429127
+  type: 'test'
+  ...
+# Subtest: fluxo vazio, sem eventos, ou opções inválidas: nunca presume sucesso
+ok 179 - fluxo vazio, sem eventos, ou opções inválidas: nunca presume sucesso
+  ---
+  duration_ms: 0.161203
+  type: 'test'
+  ...
+# Subtest: mais resultados de suite do que inícios é inconsistência explícita
+ok 180 - mais resultados de suite do que inícios é inconsistência explícita
+  ---
+  duration_ms: 0.093802
+  type: 'test'
+  ...
+# Subtest: parseNdjson: linhas vazias são ignoradas; linha corrompida ou que não é objeto vira issue
+ok 181 - parseNdjson: linhas vazias são ignoradas; linha corrompida ou que não é objeto vira issue
+  ---
+  duration_ms: 0.203287
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada e é determinística
+ok 182 - função pura: não altera a entrada e é determinística
+  ---
+  duration_ms: 0.148815
+  type: 'test'
+  ...
+# Subtest: serializeEvent grava apenas start/pass/fail/summary e descarta o resto
+ok 183 - serializeEvent grava apenas start/pass/fail/summary e descarta o resto
+  ---
+  duration_ms: 1.209325
+  type: 'test'
+  ...
+# Subtest: serializeEvent reduz os campos e nunca guarda mensagem de erro nem motivo de skip
+ok 184 - serializeEvent reduz os campos e nunca guarda mensagem de erro nem motivo de skip
+  ---
+  duration_ms: 0.750593
+  type: 'test'
+  ...
+# Subtest: serializeEvent preserva resumo do arquivo e global; valores inesperados viram null e o adaptador os rejeita
+ok 185 - serializeEvent preserva resumo do arquivo e global; valores inesperados viram null e o adaptador os rejeita
+  ---
+  duration_ms: 0.323569
+  type: 'test'
+  ...
+# Subtest: o reporter grava cabeçalho, eventos e fim, sem emitir nada no stdout do runner
+ok 186 - o reporter grava cabeçalho, eventos e fim, sem emitir nada no stdout do runner
+  ---
+  duration_ms: 1.406042
+  type: 'test'
+  ...
+# Subtest: sem a variável de ambiente, ou com arquivo já existente, o reporter lança erro e não altera o arquivo
+ok 187 - sem a variável de ambiente, ou com arquivo já existente, o reporter lança erro e não altera o arquivo
+  ---
+  duration_ms: 0.876072
+  type: 'test'
+  ...
+# Subtest: se a fonte falha no meio, o fim não é gravado e o adaptador acusa fluxo incompleto
+ok 188 - se a fonte falha no meio, o fim não é gravado e o adaptador acusa fluxo incompleto
+  ---
+  duration_ms: 0.552745
+  type: 'test'
+  ...
+# Subtest: e2e: execução completa e nomes repetidos/aninhados/suites aprovam
+ok 189 - e2e: execução completa e nomes repetidos/aninhados/suites aprovam
+  ---
+  duration_ms: 296.176497
+  type: 'test'
+  ...
+# Subtest: e2e: falha individual reprova
+ok 190 - e2e: falha individual reprova
+  ---
+  duration_ms: 111.409388
+  type: 'test'
+  ...
+# Subtest: e2e: falha de hook em describe() com testes aprovados e resumo de sucesso reprova por SUITE_FAILED
+ok 191 - e2e: falha de hook em describe() com testes aprovados e resumo de sucesso reprova por SUITE_FAILED
+  ---
+  duration_ms: 101.662324
+  type: 'test'
+  ...
+# Subtest: e2e: skip e todo precisam estar declarados; todo que falha segue a política vigente (todo)
+ok 192 - e2e: skip e todo precisam estar declarados; todo que falha segue a política vigente (todo)
+  ---
+  duration_ms: 429.298559
+  type: 'test'
+  ...
+# Subtest: e2e: cancelamento reprova
+ok 193 - e2e: cancelamento reprova
+  ---
+  duration_ms: 104.656262
+  type: 'test'
+  ...
+# Subtest: e2e: arquivo vazio, process.exit(0) prematuro e erro de carga reprovam como item de arquivo sem resumo
+ok 194 - e2e: arquivo vazio, process.exit(0) prematuro e erro de carga reprovam como item de arquivo sem resumo
+  ---
+  duration_ms: 353.811354
+  type: 'test'
+  ...
+# Subtest: e2e: identidade relativa e absoluta do arquivo é a mesma (caminho relativo à raiz)
+ok 195 - e2e: identidade relativa e absoluta do arquivo é a mesma (caminho relativo à raiz)
+  ---
+  duration_ms: 194.941463
+  type: 'test'
+  ...
+# Subtest: e2e: o item de arquivo prematuro é reconhecido também em subdiretório, com caminho relativo e absoluto
+ok 196 - e2e: o item de arquivo prematuro é reconhecido também em subdiretório, com caminho relativo e absoluto
+  ---
+  duration_ms: 320.425114
+  type: 'test'
+  ...
+# Subtest: e2e: vários arquivos na mesma execução são avaliados individualmente
+ok 197 - e2e: vários arquivos na mesma execução são avaliados individualmente
+  ---
+  duration_ms: 411.049302
+  type: 'test'
+  ...
+# Subtest: e2e: arquivo esperado que não foi passado ao runner e arquivo inesperado reprovam
+ok 198 - e2e: arquivo esperado que não foi passado ao runner e arquivo inesperado reprovam
+  ---
+  duration_ms: 255.208559
+  type: 'test'
+  ...
+# Subtest: e2e: reporter sem variável de ambiente derruba a execução (fail-closed)
+ok 199 - e2e: reporter sem variável de ambiente derruba a execução (fail-closed)
+  ---
+  duration_ms: 48.219402
+  type: 'test'
+  ...
+# Subtest: e2e: sob --test-force-exit nenhuma execução incompleta é aprovada
+ok 200 - e2e: sob --test-force-exit nenhuma execução incompleta é aprovada
+  ---
+  duration_ms: 2961.578285
+  type: 'test'
+  ...
+# Subtest: execução completa e concordante é aprovada
+ok 201 - execução completa e concordante é aprovada
+  ---
+  duration_ms: 1.640665
+  type: 'test'
+  ...
+# Subtest: rc=0 com contagem incompleta reprova (perda observada sob --test-force-exit)
+ok 202 - rc=0 com contagem incompleta reprova (perda observada sob --test-force-exit)
+  ---
+  duration_ms: 0.375316
+  type: 'test'
+  ...
+# Subtest: contagem truncada mas com resumo coerente com os eventos ainda reprova pela contagem esperada
+ok 203 - contagem truncada mas com resumo coerente com os eventos ainda reprova pela contagem esperada
+  ---
+  duration_ms: 0.205901
+  type: 'test'
+  ...
+# Subtest: contagem acima da esperada também reprova
+ok 204 - contagem acima da esperada também reprova
+  ---
+  duration_ms: 0.151459
+  type: 'test'
+  ...
+# Subtest: resumo por arquivo ausente reprova mesmo com todas as contagens batendo
+ok 205 - resumo por arquivo ausente reprova mesmo com todas as contagens batendo
+  ---
+  duration_ms: 0.325331
+  type: 'test'
+  ...
+# Subtest: resumo duplicado é resultado ambíguo e reprova
+ok 206 - resumo duplicado é resultado ambíguo e reprova
+  ---
+  duration_ms: 0.153832
+  type: 'test'
+  ...
+# Subtest: process.exit(0) prematuro (item de nível de arquivo, sem testes nem resumo) reprova
+ok 207 - process.exit(0) prematuro (item de nível de arquivo, sem testes nem resumo) reprova
+  ---
+  duration_ms: 0.177048
+  type: 'test'
+  ...
+# Subtest: falha real reprova e identifica o arquivo
+ok 208 - falha real reprova e identifica o arquivo
+  ---
+  duration_ms: 0.216537
+  type: 'test'
+  ...
+# Subtest: falha apenas no resumo (sem evento de falha) também reprova
+ok 209 - falha apenas no resumo (sem evento de falha) também reprova
+  ---
+  duration_ms: 0.290839
+  type: 'test'
+  ...
+# Subtest: skip declarado no baseline é aprovado
+ok 210 - skip declarado no baseline é aprovado
+  ---
+  duration_ms: 0.308445
+  type: 'test'
+  ...
+# Subtest: skip não declarado reprova, e skip declarado que desapareceu também
+ok 211 - skip não declarado reprova, e skip declarado que desapareceu também
+  ---
+  duration_ms: 0.165951
+  type: 'test'
+  ...
+# Subtest: todo é tratado como skip: precisa estar declarado
+ok 212 - todo é tratado como skip: precisa estar declarado
+  ---
+  duration_ms: 0.167132
+  type: 'test'
+  ...
+# Subtest: cancelamento reprova, mesmo que o resumo só o registre
+ok 213 - cancelamento reprova, mesmo que o resumo só o registre
+  ---
+  duration_ms: 0.141864
+  type: 'test'
+  ...
+# Subtest: eventos inconsistentes reprovam: teste iniciado sem resultado e resumo divergente dos eventos
+ok 214 - eventos inconsistentes reprovam: teste iniciado sem resultado e resumo divergente dos eventos
+  ---
+  duration_ms: 0.127603
+  type: 'test'
+  ...
+# Subtest: arquivo inesperado reprova a execução
+ok 215 - arquivo inesperado reprova a execução
+  ---
+  duration_ms: 0.12596
+  type: 'test'
+  ...
+# Subtest: arquivo obrigatório ausente (nunca iniciou) reprova
+ok 216 - arquivo obrigatório ausente (nunca iniciou) reprova
+  ---
+  duration_ms: 0.094293
+  type: 'test'
+  ...
+# Subtest: observações vazias com rc=0 reprovam: sem evidência não há aprovação presumida
+ok 217 - observações vazias com rc=0 reprovam: sem evidência não há aprovação presumida
+  ---
+  duration_ms: 0.107872
+  type: 'test'
+  ...
+# Subtest: dois testes legítimos com o mesmo nome não reprovam: nomes não fazem parte do contrato
+ok 218 - dois testes legítimos com o mesmo nome não reprovam: nomes não fazem parte do contrato
+  ---
+  duration_ms: 0.08621
+  type: 'test'
+  ...
+# Subtest: duas observações do mesmo arquivo são ambíguas e reprovam
+ok 219 - duas observações do mesmo arquivo são ambíguas e reprovam
+  ---
+  duration_ms: 0.956373
+  type: 'test'
+  ...
+# Subtest: observação malformada reprova o arquivo; entrada sem identificação reprova a execução
+ok 220 - observação malformada reprova o arquivo; entrada sem identificação reprova a execução
+  ---
+  duration_ms: 0.250639
+  type: 'test'
+  ...
+# Subtest: baseline inválido ou vazio reprova a execução
+ok 221 - baseline inválido ou vazio reprova a execução
+  ---
+  duration_ms: 0.232441
+  type: 'test'
+  ...
+# Subtest: execução: código de saída ≠ 0, sinal, timeout e saída desconhecida reprovam mesmo com arquivos íntegros
+ok 222 - execução: código de saída ≠ 0, sinal, timeout e saída desconhecida reprovam mesmo com arquivos íntegros
+  ---
+  duration_ms: 0.297699
+  type: 'test'
+  ...
+# Subtest: entrada ilegível não lança e reprova
+ok 223 - entrada ilegível não lança e reprova
+  ---
+  duration_ms: 0.142335
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada e produz o mesmo veredito com entrada congelada
+ok 224 - função pura: não altera a entrada e produz o mesmo veredito com entrada congelada
+  ---
+  duration_ms: 0.222436
+  type: 'test'
+  ...
+# Subtest: ordem de entrada não altera o veredito: arquivos saem em ordem determinística
+ok 225 - ordem de entrada não altera o veredito: arquivos saem em ordem determinística
+  ---
+  duration_ms: 0.130146
+  type: 'test'
+  ...
+# Subtest: identificadores de erro são estáveis, únicos e com prefixo UNIT_SUITE_
+ok 226 - identificadores de erro são estáveis, únicos e com prefixo UNIT_SUITE_
+  ---
+  duration_ms: 0.147853
+  type: 'test'
+  ...
+# Subtest: falha de suite com dois testes aprovados, resumo completo e rc=0 reprova
+ok 227 - falha de suite com dois testes aprovados, resumo completo e rc=0 reprova
+  ---
+  duration_ms: 0.146571
+  type: 'test'
+  ...
+# Subtest: falha de suite fica separada das falhas individuais e não altera as contagens
+ok 228 - falha de suite fica separada das falhas individuais e não altera as contagens
+  ---
+  duration_ms: 0.128614
+  type: 'test'
+  ...
+# Subtest: falha de suite reprova mesmo com skip e todo declarados e arquivos vizinhos íntegros
+ok 229 - falha de suite reprova mesmo com skip e todo declarados e arquivos vizinhos íntegros
+  ---
+  duration_ms: 0.125339
+  type: 'test'
+  ...
+# Subtest: suiteFailures é obrigatório e deve ser inteiro seguro não negativo
+ok 230 - suiteFailures é obrigatório e deve ser inteiro seguro não negativo
+  ---
+  duration_ms: 0.253312
+  type: 'test'
+  ...
+1..230
+# tests 230
+# suites 0
+# pass 209
+# fail 21
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 112393.000087
