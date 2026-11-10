@@ -97,6 +97,8 @@ import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
+import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
+import FrontDoorConversationHistory from "./FrontDoorConversationHistory";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -1869,6 +1871,20 @@ export default function ChatAgentLauncher({
 
       <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
         <FrontDoorSidebar
+          actions={<button type="button" data-sidebar-navigation="true" onClick={handleNewConversation}>Nova conversa</button>}
+          sequence={<FrontDoorConversationSequence messages={messages} onNavigate={(messageId) => {
+            const target = Array.from(scrollRef.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? []).find((element) => element.dataset.messageId === messageId);
+            if (target && scrollRef.current) {
+              scrollRef.current.scrollTo({ top: target.getBoundingClientRect().top - scrollRef.current.getBoundingClientRect().top + scrollRef.current.scrollTop, behavior: "smooth" });
+              target.focus({ preventScroll: true });
+            }
+          }} />}
+          history={showImobSurface ? <FrontDoorConversationHistory
+            key={`${session.tenantId}:${session.workspaceId}:${session.userId ?? ""}`}
+            currentId={imobPersistence.conversationId}
+            onOpen={imobPersistence.openConversation}
+            onDeletedCurrent={handleNewConversation}
+          /> : null}
           status={
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {copyToast ? (
@@ -1935,6 +1951,8 @@ export default function ChatAgentLauncher({
                       return (
                         <div
                           key={message.id}
+                          data-message-id={message.id}
+                          tabIndex={-1}
                           className="flex w-full min-w-0 max-w-full animate-in flex-col gap-3 fade-in slide-in-from-bottom-2"
                         >
                           <div className="min-w-0 px-2 py-1 sm:px-3">
@@ -2108,6 +2126,8 @@ export default function ChatAgentLauncher({
                       <div
                         key={message.id}
                         data-message-role={message.role}
+                        data-message-id={message.id}
+                        tabIndex={-1}
                         className={`max-w-[85%] break-words px-4 py-3 text-sm leading-relaxed ${
                           message.role === "user"
                             ? "ml-auto text-accent"
@@ -2249,13 +2269,6 @@ export default function ChatAgentLauncher({
                 className="min-h-[44px] max-h-[128px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
-	            <button
-	              type="button"
-	              onClick={handleNewConversation}
-	              className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-muted-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-	            >
-	              Nova conversa
-	            </button>
 	            {conversation.policy?.requiresConfirmation && runId ? (
 	              <button
                 type="button"

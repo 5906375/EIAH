@@ -3333,11 +3333,24 @@ export type ImobKnowledgeSearchResponse = {
   };
 };
 
-export async function apiListImobChatConversations(params?: { limit?: number }) {
+export async function apiListImobChatConversations(params?: { limit?: number; q?: string }) {
   const query = new URLSearchParams();
   if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+  if (params?.q?.trim()) query.append("q", params.q.trim());
   const qs = query.toString() ? `?${query.toString()}` : "";
-  return http<{ ok: true; items: ImobChatConversation[] }>(`/imob/chat/conversations${qs}`, { method: "GET" });
+  return http<{ ok: true; items: ImobChatConversation[]; capabilities?: { search?: boolean; rename?: boolean; delete?: boolean } }>(`/imob/chat/conversations${qs}`, { method: "GET" });
+}
+
+export async function apiRenameImobChatConversation(conversationId: string, title: string) {
+  return http<{ ok: true; conversationId: string; title: string }>(`/imob/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "PATCH", body: JSON.stringify({ title }),
+  });
+}
+
+export async function apiDeleteImobChatConversation(conversationId: string) {
+  return http<{ ok: true; conversationId: string; deleted: true }>(`/imob/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "DELETE", body: JSON.stringify({ confirm: true }),
+  });
 }
 
 export async function apiCreateImobChatConversation(body?: {

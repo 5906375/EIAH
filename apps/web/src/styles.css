@@ -100,12 +100,23 @@
 
   .front-door-page .front-door-sidebar button,
   .front-door-page .front-door-sidebar button[aria-expanded="true"] {
-    @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[36px];
+    @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[30px] lg:py-0.5;
   }
 
-  .front-door-page .front-door-sidebar button:hover:not(:disabled),
+  .front-door-page .front-door-sidebar button:hover:not(:disabled) {
+    @apply bg-white/[0.03] text-accent;
+  }
+
   .front-door-page .front-door-sidebar button[aria-expanded="true"] {
-    @apply bg-white/5 text-accent;
+    @apply bg-transparent text-accent;
+  }
+
+  .front-door-page .front-door-sidebar-content {
+    @apply space-y-2;
+  }
+
+  .front-door-page .front-door-sidebar-controls > div > div {
+    @apply gap-1;
   }
 
   .front-door-page .front-door-sidebar [role="menuitem"] {
@@ -260,6 +271,23 @@
   .front-door-page .front-door-launcher button[aria-expanded="true"],
   .front-door-page .front-door-launcher button[aria-pressed="true"] {
     @apply border-accent/40 bg-accent/20 text-accent;
+  }
+
+  /* Keep expanded sidebar controls light; broad command styles must not add pills. */
+  .front-door-page .front-door-sidebar.front-door-context-panel button[aria-expanded="true"] {
+    @apply bg-transparent text-accent;
+  }
+
+  .front-door-page .front-door-sidebar-status div:has(> span) {
+    @apply flex flex-col items-start gap-1;
+  }
+
+  .front-door-page .front-door-conversation-history > div:first-child > h4 {
+    @apply min-w-0 flex-1;
+  }
+
+  .front-door-page .front-door-conversation-history > div:first-child > button {
+    @apply w-auto shrink-0;
   }
 
   .front-door-composer textarea {

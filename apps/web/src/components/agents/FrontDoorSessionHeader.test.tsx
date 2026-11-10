@@ -6,6 +6,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
+import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
@@ -53,7 +54,7 @@ findSidebar(launcherSource);
 assert.ok(sidebar);
 const renderSidebar = new Function(
   "React", "FrontDoorSidebar", "ContextualCostPanel", "headerControls", "workspaceBillingContext",
-  "copyToast", "runId", "activeRunFinance", "estimatedRunCostCents", "onPlaybookClick", "showImobSurface",
+  "copyToast", "runId", "activeRunFinance", "estimatedRunCostCents", "onPlaybookClick", "showImobSurface", "handleNewConversation", "FrontDoorConversationSequence", "messages",
   ts.transpileModule(`return (${sidebar.getText(launcherSource)});`, {
     compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 },
   }).outputText,
@@ -74,7 +75,7 @@ for (const [activeDomain, expectedLabel] of [["imob", "IMOB"], ["logistica", "Lo
         React, FrontDoorSidebar, ContextualCostPanel,
         <span>{selectedAgent ?? "Selecione um agente"}</span>,
         { monthUsageCents: 12345, workspaceRuns: 7, quotaPercent: 37, softLimitCents: 20000, hardLimitCents: 40000 },
-        null, null, null, null, undefined, false,
+        null, null, null, null, undefined, false, () => undefined, FrontDoorConversationSequence, [],
       ));
       assert.ok(sidebarHtml.includes(selectedAgent ?? "Selecione um agente"));
       assert.match(sidebarHtml, /Workspace no mês: R\$.*123,45/);

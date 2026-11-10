@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Painel compacto e gestão de conversas IMOB (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Sequência, busca, renomeação e exclusão confirmada | `docs/evidence/front-door-conversation-history/README.md`, `docs/evidence/front-door-conversation-history/ci-inventory-fix.log`, `docs/evidence/front-door-conversation-history/ci-waiver-fix.log`, `docs/evidence/front-door-conversation-history/frontend-tests.log`, `docs/evidence/front-door-conversation-history/api-tests.log`, `docs/evidence/front-door-conversation-history/build.log`, `docs/evidence/front-door-conversation-history/architecture-gates.log`, `docs/evidence/front-door-conversation-history/browser-results.json`, `docs/evidence/front-door-conversation-history/delete-390.png`, `docs/evidence/front-door-conversation-history/delete-1440.png`, `docs/evidence/front-door-conversation-history/sidebar-390.png`, `docs/evidence/front-door-conversation-history/sidebar-1440.png` | 191 testes frontend e 16 API/autorização PASS (HTTP/PostgreSQL descartável); build/gates PASS; quatro cenários Chromium com API sintética validam sequência, busca, rename, confirmação/cancelamento, retomada e compatibilidade com API antiga. Auditoria preservada e escopos protegidos. Typecheck global não limpo; não comprova staging, histórico geral multivertical ou resumo semântico por IA. Status parcial. |
+
 ## Painel lateral único de workspace e operações (2026-11-10)
 
 | Assunto | Arquivo | O que prova |
