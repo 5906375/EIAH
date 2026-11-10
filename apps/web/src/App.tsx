@@ -86,7 +86,6 @@ function Layout({
     location.pathname.startsWith("/app/imob") ||
     location.pathname.startsWith("/app/marketplace/imob");
   const isImobChatRoute = location.pathname === "/app/imob/chat";
-  const isFrontDoorRoute = location.pathname === "/app/chat";
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
   const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
@@ -111,7 +110,7 @@ function Layout({
       <div className={isImobChatRoute ? "relative z-10 flex h-screen min-h-screen flex-col overflow-hidden" : "relative z-10 flex min-h-screen flex-col"}>
         {!isImobChatRoute ? (
           <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-surface-strong/80 via-surface/70 to-surface-strong/80 backdrop-blur-2xl">
-            <div className={`mx-auto flex w-full min-w-0 flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4 ${isFrontDoorRoute ? "" : "max-w-6xl"}`}>
+            <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
               <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
                   <EiahBrandMark
@@ -169,7 +168,7 @@ function Layout({
           </header>
         ) : null}
 
-        <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : isFrontDoorRoute ? "flex w-full min-w-0 flex-1 flex-col gap-4 px-2 py-2 sm:px-4" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
+        <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : "mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
           {children}
         </main>
       </div>
