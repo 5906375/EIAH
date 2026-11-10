@@ -10,7 +10,7 @@ try {
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const writes=[]; let supportsManagement=true;
   let items=[{conversationId:'conv-one',title:'Primeira conversa',lastMessagePreview:'Pedido da primeira conversa'},{conversationId:'conv-two',title:'Segunda conversa',lastMessagePreview:'Pedido da segunda conversa'}].map(item=>({...item,status:'active',createdAt:'2026-11-10T10:00:00Z',updatedAt:'2026-11-10T11:00:00Z',lastMessageAt:'2026-11-10T11:00:00Z'}));
-  await page.addInitScript((includeForm)=>{
+  await page.addInitScript(({includeForm,longChat})=>{
     localStorage.setItem('eiah_token','synthetic-history-fixture');localStorage.setItem('tenant_id','tenant-history');localStorage.setItem('workspace_id','workspace-history');localStorage.setItem('active_domain','imob');
     localStorage.setItem('eiah:greeted:tenant-history:workspace-history','1');
     sessionStorage.setItem('eiah:chat:tenant-history:workspace-history:EIAH:default',JSON.stringify({runId:null,messages:[
@@ -24,7 +24,12 @@ try {
       }:undefined}},
       {id:'request-two',role:'user',content:'Consultar imóveis cadastrados',status:'done'},
     ]}));
-  },Boolean(process.env.QA_IMOB_FORM));
+    if(longChat){
+      const key='eiah:chat:tenant-history:workspace-history:EIAH:default',saved=JSON.parse(sessionStorage.getItem(key));
+      for(let i=0;i<60;i++)saved.messages.push({id:`long-${i}`,role:'assistant',content:`Mensagem sintética ${i}: ${'Conteúdo para verificar rolagem da conversa. '.repeat(6)}`,status:'done'});
+      sessionStorage.setItem(key,JSON.stringify(saved));
+    }
+  },{includeForm:Boolean(process.env.QA_IMOB_FORM),longChat:Boolean(process.env.QA_LONG_CHAT)});
   await page.route('**/api/**',async route=>{
     const url=new URL(route.request().url()),method=route.request().method(),path=url.pathname;
     const session={tenantId:'tenant-history',workspaceId:'workspace-history',userId:'owner-history',activeDomain:'imob',availableDomains:['core','imob'],entitlements:{IMOB_INSTALLED:true},productInstallations:[{product:'IMOB'}],verticals:[{verticalId:'IMOB',activeDomain:'imob',label:'IMOB',enabled:true,frontDoorSurface:'chat'}],roles:[],branding:{brandName:'EIAH',workspaceLabel:'Workspace sintético'},experience:{roleProfile:'workspace_admin',primaryNavigation:[],landingPath:'/app/chat'}};
@@ -51,6 +56,19 @@ try {
     assert.equal(card.border,'rgba(255, 255, 255, 0.1)');
     assert.ok(Math.abs(card.radius-card.root*1.5)<1,'same rounded corners as Self-Service card');
   }
+  if(process.env.QA_LONG_CHAT){
+    const surface=page.getByRole('region',{name:'Conversa',exact:true});
+    await surface.waitFor();
+    const metrics=await surface.evaluate(el=>({height:el.clientHeight,scroll:el.scrollHeight,top:el.scrollTop}));
+    assert.ok(metrics.height>50&&metrics.scroll>metrics.height+500,JSON.stringify(metrics));
+    await surface.evaluate(el=>el.scrollTop=0);
+    await surface.hover();await page.mouse.wheel(0,700);await page.waitForTimeout(400);
+    assert.ok(await surface.evaluate(el=>el.scrollTop)>0,'mouse wheel moves messages');
+    await surface.focus();await page.keyboard.press('Home');await page.keyboard.press('Control+Home');await page.waitForTimeout(250);
+    const before=await surface.evaluate(el=>el.scrollTop);await page.keyboard.press('PageDown');await page.waitForTimeout(300);
+    assert.ok(await surface.evaluate(el=>el.scrollTop)>before,'keyboard moves messages');
+    await page.screenshot({path:`${output}/scroll-${width}.png`});
+  }
   const send=page.getByRole('button',{name:/^Enviar(?: mensagem)?$/i});
   const composer=page.locator('.front-door-composer');
   const input=composer.locator('textarea').last();
@@ -69,6 +87,9 @@ try {
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
   await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
   assert.equal(await sidebar.locator('label#agent-label').evaluate(el=>el.classList.contains('sr-only')),true);
+  const divider=await sidebar.evaluate(el=>{const s=getComputedStyle(el);return {right:s.borderRightWidth,bottom:s.borderBottomWidth,color:s.borderRightColor};});
+  if(width>=1024){assert.equal(divider.right,'1px');assert.equal(divider.bottom,'0px');assert.equal(divider.color,'rgba(255, 255, 255, 0.13)');}
+  else {assert.equal(divider.right,'0px');assert.equal(divider.bottom,'1px');}
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();

@@ -223,3 +223,27 @@ test("handler real de Nova conversa limpa histórico e preserva domínio/superf�
   assert.equal(getSession().activeDomain, "imob");
   assert.ok(surfaceHtml(getSession(), messages).includes("Negócios"));
 });
+
+test("resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima", async () => {
+  let initializer: ts.Expression | undefined;
+  function findTyping(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(launcherSource) === "pushAssistantMessageWithTyping") initializer = node.initializer;
+    ts.forEachChild(node, findTyping);
+  }
+  findTyping(launcherSource);
+  assert.ok(initializer);
+  const factory = new Function("useCallback", "setMessages", "scrollRef", "followConversationEnd", "requestAnimationFrame", "window",
+    ts.transpileModule(`return (${initializer.getText(launcherSource)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText);
+  for (const pause of [false, true]) {
+    const follow = { current: true };
+    let updates = 0;
+    let scrolls = 0;
+    const typeReply = factory((fn: unknown) => fn, () => { if (++updates === 3 && pause) follow.current = false; },
+      { current: { scrollHeight: 2000, scrollTo: () => { scrolls++; } } }, follow,
+      (fn: () => void) => fn(), { setTimeout: (fn: () => void) => fn() });
+    await typeReply({ idPrefix: "synthetic", content: "Resposta sintética longa para conferir a leitura anterior" });
+    assert.ok(updates > 5);
+    if (pause) assert.equal(scrolls, 1, "novos trechos não puxam o leitor ao fim");
+    else assert.ok(scrolls > 5, "acompanha resposta quando o usuário permanece no fim");
+  }
+});

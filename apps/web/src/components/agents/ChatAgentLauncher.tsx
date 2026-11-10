@@ -476,6 +476,7 @@ export default function ChatAgentLauncher({
   >({});
   const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const followConversationEnd = useRef(true);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     const textarea = composerInputRef.current;
@@ -738,9 +739,10 @@ export default function ChatAgentLauncher({
   }, [activeAgentId, pendingAgentReplayInput]);
 
   const pushMessage = (message: ChatMessage) => {
+    if (message.role === "user") followConversationEnd.current = true;
     setMessages((prev) => [...prev, message]);
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      if (followConversationEnd.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "auto" });
     });
   };
 
@@ -783,7 +785,7 @@ export default function ChatAgentLauncher({
           )
         );
         requestAnimationFrame(() => {
-          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+          if (followConversationEnd.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "auto" });
         });
         // Mantém o ritmo de escrita sem travar a interface.
         // Respostas curtas ficam naturais; respostas longas continuam rápidas.
@@ -1929,6 +1931,17 @@ export default function ChatAgentLauncher({
               data-testid="launcher-conversation-surface"
               role="region"
               aria-label="Conversa"
+              onScroll={(event) => {
+                const viewport = event.currentTarget;
+                followConversationEnd.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 48;
+              }}
+              onWheel={(event) => {
+                if (event.deltaY < 0) followConversationEnd.current = false;
+              }}
+              onTouchMove={() => { followConversationEnd.current = false; }}
+              onKeyDown={(event) => {
+                if (["ArrowUp", "PageUp", "Home"].includes(event.key)) followConversationEnd.current = false;
+              }}
               tabIndex={0}
               className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:p-2"
             >
