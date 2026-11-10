@@ -83,11 +83,50 @@
 
   /* Shell follows the shared page width; conversation has a narrower reading column. */
   .front-door-page .front-door-launcher {
-    height: max(30rem, calc(100dvh - 14rem));
+    height: max(30rem, calc(100dvh - 8rem));
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] {
     padding-inline: 0;
+  }
+
+  .front-door-page .front-door-launcher > header {
+    @apply mb-2 gap-x-3 gap-y-1;
+  }
+
+  .front-door-page .front-door-launcher > header [role="combobox"] {
+    @apply min-h-[44px] py-1 lg:min-h-[36px];
+  }
+
+  .front-door-page .front-door-sidebar button,
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[36px];
+  }
+
+  .front-door-page .front-door-sidebar button:hover:not(:disabled),
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply bg-white/5 text-accent;
+  }
+
+  .front-door-page .front-door-sidebar [role="menuitem"] {
+    @apply text-sm;
+  }
+
+  .front-door-page .front-door-sidebar-status > div,
+  .front-door-page .front-door-sidebar-status > div > div {
+    @apply flex flex-col items-start gap-2;
+  }
+
+  .front-door-page .front-door-sidebar-status span {
+    @apply max-w-full whitespace-normal break-words rounded-lg px-2 text-xs normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar-controls > div {
+    @apply w-full max-w-full;
+  }
+
+  .front-door-page .front-door-sidebar [role="combobox"] {
+    @apply min-h-[44px] rounded-xl border border-white/10 bg-black/30 px-3 text-sm font-normal;
   }
 
   .front-door-page .front-door-reading-column {
@@ -194,7 +233,20 @@
   }
 
   .front-door-page .front-door-composer [role="menu"] {
-    @apply rounded-2xl border border-white/10 bg-[#1a2231];
+    @apply grid gap-1 rounded-xl border border-white/10 bg-[#1a2231] p-1.5;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"],
+  .front-door-page [data-message-role="user"] {
+    @apply rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 font-medium;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"] {
+    @apply min-h-[44px] text-sm sm:min-h-[36px];
+  }
+
+  .front-door-page [data-message-role="user"] {
+    @apply w-fit;
   }
 
   .front-door-page .front-door-launcher button[role="combobox"] {

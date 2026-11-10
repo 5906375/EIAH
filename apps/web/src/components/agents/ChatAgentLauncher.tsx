@@ -96,6 +96,7 @@ import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
+import FrontDoorSidebar from "./FrontDoorSidebar";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -474,6 +475,13 @@ export default function ChatAgentLauncher({
   >({});
   const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const textarea = composerInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${input ? Math.min(textarea.scrollHeight, 128) : 44}px`;
+  }, [input]);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const clearAttachmentComposer = useCallback(
     (options?: { resetMode?: boolean }) => {
@@ -1857,46 +1865,56 @@ export default function ChatAgentLauncher({
 
   return (
     <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-black p-2 sm:p-3">
-      <FrontDoorSessionHeader
-        activeDomain={session.activeDomain}
-        status={
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {copyToast ? (
-              <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
-                {copyToast}
-              </div>
-            ) : null}
-            {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
-              <ContextualCostPanel
-                compact
-                run={{
-                  runId,
-                  actualCostCents: activeRunFinance?.amountCents ?? null,
-                  estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
-                  tokens: activeRunFinance?.tokens ?? null,
-                  issueLabel: activeRunFinance?.issueLabel ?? null,
-                  hasGap: activeRunFinance?.hasGap ?? false,
-                }}
-                workspace={workspaceBillingContext}
-              />
-            ) : null}
-          </div>
-        }
-      >
-        {headerControls}
-        {onPlaybookClick ? (
-          <button
-            type="button"
-            onClick={onPlaybookClick}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
-          >
-            Playbook
-          </button>
-        ) : null}
-      </FrontDoorSessionHeader>
+      <FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>
 
-      <div className="relative z-10 min-h-0 flex-1">
-        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+      <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
+        <FrontDoorSidebar
+          status={
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {copyToast ? (
+                <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
+                  {copyToast}
+                </div>
+              ) : null}
+              {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
+                <ContextualCostPanel
+                  compact
+                  run={{
+                    runId,
+                    actualCostCents: activeRunFinance?.amountCents ?? null,
+                    estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                    tokens: activeRunFinance?.tokens ?? null,
+                    issueLabel: activeRunFinance?.issueLabel ?? null,
+                    hasGap: activeRunFinance?.hasGap ?? false,
+                  }}
+                  workspace={workspaceBillingContext}
+                />
+              ) : null}
+            </div>
+          }
+          controls={<>
+            {headerControls}
+            {onPlaybookClick ? (
+              <button
+                type="button"
+                onClick={onPlaybookClick}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
+              >
+                Playbook
+              </button>
+            ) : null}
+          </>}
+        >
+          {showImobSurface ? (
+            <ImobActionMenuBar
+              layout="sidebar"
+              embedded
+              menus={IMOB_ACTION_MENUS}
+              onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
+            />
+          ) : null}
+        </FrontDoorSidebar>
+        <div className="front-door-workspace-main flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               ref={scrollRef}
@@ -2089,6 +2107,7 @@ export default function ChatAgentLauncher({
                     return (
                       <div
                         key={message.id}
+                        data-message-role={message.role}
                         className={`max-w-[85%] break-words px-4 py-3 text-sm leading-relaxed ${
                           message.role === "user"
                             ? "ml-auto text-accent"
@@ -2221,19 +2240,13 @@ export default function ChatAgentLauncher({
                   ) : null}
                 </div>
               ) : null}
-              {showImobSurface ? (
-                <div className="w-full">
-                  <ImobActionMenuBar
-                    menus={IMOB_ACTION_MENUS}
-                    onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
-                  />
-                </div>
-              ) : null}
               <textarea
+                ref={composerInputRef}
+                rows={1}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={mainComposerPlaceholder}
-                className="min-h-[64px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+                className="min-h-[44px] max-h-[128px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
 	            <button

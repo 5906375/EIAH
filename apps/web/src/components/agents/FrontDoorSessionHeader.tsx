@@ -19,9 +19,11 @@ export default function FrontDoorSessionHeader({
         <h3 className="text-lg font-semibold text-foreground sm:text-xl">Chat ativo · {verticalLabel}</h3>
         {status}
       </div>
-      <div className="ml-auto flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
-        {children}
-      </div>
+      {children != null ? (
+        <div className="ml-auto flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+          {children}
+        </div>
+      ) : null}
     </header>
   );
 }

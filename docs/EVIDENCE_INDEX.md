@@ -4,6 +4,24 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Painel lateral único de workspace e operações (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Custo, quota, agente e menus na coluna expansível | `docs/evidence/front-door-context-sidebar/README.md`, `docs/evidence/front-door-context-sidebar/unit-tests.log`, `docs/evidence/front-door-context-sidebar/build.log`, `docs/evidence/front-door-context-sidebar/architecture-gates.log`, `docs/evidence/front-door-context-sidebar/browser-results.json`, `docs/evidence/front-door-context-sidebar/menu-390.png`, `docs/evidence/front-door-context-sidebar/menu-1440.png`, `docs/evidence/front-door-context-sidebar/form-390.png`, `docs/evidence/front-door-context-sidebar/form-1440.png` | 184 testes, build e gates PASS; Chromium em cinco viewports, API/formulários sintéticos e menu real como fixture, confirma custo/quota preservados, seletor só na lateral, expansão/recolhimento desktop/mobile, seleção/Escape/foco e espaço útil/layout/rolagem sem overflow. Não comprova backend ou staging nem elimina baseline legado do single-surface. Status parcial. |
+
+## Menus laterais e maior área útil no Front Door (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Sidebar sem bordas, header compacto e compositor expansível | `docs/evidence/front-door-sidebar-layout/README.md`, `docs/evidence/front-door-sidebar-layout/unit-tests.log`, `docs/evidence/front-door-sidebar-layout/build.log`, `docs/evidence/front-door-sidebar-layout/architecture-gates.log`, `docs/evidence/front-door-sidebar-layout/browser-results.json`, `docs/evidence/front-door-sidebar-layout/menu-390.png`, `docs/evidence/front-door-sidebar-layout/menu-1440.png`, `docs/evidence/front-door-sidebar-layout/form-390.png`, `docs/evidence/front-door-sidebar-layout/form-1440.png` | 184 testes, build e gates PASS; Chromium em cinco viewports, com API/formulários sintéticos e menu real montado em fixture, confirma sidebar sem sobreposição/bordas, seleção e Escape com foco, menu mobile recolhível, área útil da transcrição, compositor compacto/crescimento e layout/rolagem preservados. Não comprova backend ou staging nem elimina baseline legado do single-surface. Status parcial. |
+
+## Menu compacto e contorno de comandos enviados (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Bordas discretas compartilhadas por menu e comandos enviados | `docs/evidence/front-door-compact-command-borders/README.md`, `docs/evidence/front-door-compact-command-borders/unit-tests.log`, `docs/evidence/front-door-compact-command-borders/build.log`, `docs/evidence/front-door-compact-command-borders/render-only.log`, `docs/evidence/front-door-compact-command-borders/browser-results.json`, `docs/evidence/front-door-compact-command-borders/form-390.png`, `docs/evidence/front-door-compact-command-borders/form-1440.png`, `docs/evidence/front-door-compact-command-borders/menu-390.png`, `docs/evidence/front-door-compact-command-borders/menu-1440.png` | 27 testes, build e render-only PASS; Chromium em quatro larguras com menu real montado em fixture e API sintética confirma raios/bordas iguais, opções desktop compactas e mobile >=44px, callback e fechamento por seleção/Escape, sem overflow e preservando layout/rolagem. Não comprova backend ou staging. Status parcial. |
+
 ## Formulários e comandos no padrão visual Perfil (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

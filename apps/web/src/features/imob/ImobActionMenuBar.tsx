@@ -8,19 +8,33 @@ import type { ImobActionMenu, ImobActionMenuItem } from "./imobActionMenus";
 export function ImobActionMenuBar(props: {
   menus: ImobActionMenu[];
   onSelect: (item: ImobActionMenuItem) => void;
+  layout?: "bar" | "sidebar";
+  embedded?: boolean;
 }) {
-  const { menus, onSelect } = props;
+  const { menus, onSelect, layout = "bar", embedded = false } = props;
+  const [mobileOpen, setMobileOpen] = React.useState(false);
+  const navigationId = React.useId();
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
-    if (!openMenuId) return;
+    if (!openMenuId && !mobileOpen) return;
     const close = (event: MouseEvent | KeyboardEvent) => {
       if (event instanceof KeyboardEvent) {
-        if (event.key === "Escape") setOpenMenuId(null);
+        if (event.key === "Escape") {
+          const target = mobileOpen
+            ? rootRef.current?.querySelector<HTMLButtonElement>('[aria-controls]')
+            : rootRef.current?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"][aria-expanded="true"]');
+          target?.focus();
+          setOpenMenuId(null);
+          setMobileOpen(false);
+        }
         return;
       }
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpenMenuId(null);
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+        setMobileOpen(false);
+      }
     };
     document.addEventListener("mousedown", close);
     document.addEventListener("keydown", close);
@@ -28,9 +42,41 @@ export function ImobActionMenuBar(props: {
       document.removeEventListener("mousedown", close);
       document.removeEventListener("keydown", close);
     };
-  }, [openMenuId]);
+  }, [openMenuId, mobileOpen]);
 
   const openMenu = menus.find((menu) => menu.id === openMenuId) ?? null;
+
+  if (layout === "sidebar") {
+    return (
+      <div ref={rootRef} className="imob-sidebar-menu min-w-0">
+        {!embedded ? <button type="button" aria-expanded={mobileOpen} aria-controls={navigationId}
+          className="lg:hidden" onClick={() => setMobileOpen((open) => !open)}>
+          Operações IMOB {mobileOpen ? "▴" : "▾"}
+        </button> : null}
+        <nav id={navigationId} aria-label="Operações IMOB"
+          className={`${embedded || mobileOpen ? "block" : "hidden"} ${embedded ? "" : "no-scrollbar max-h-[40dvh] overflow-y-auto lg:max-h-none"} lg:block`}>
+          {menus.map((menu) => (
+            <div key={menu.id} className="mb-1">
+              <button type="button" aria-haspopup="menu" aria-expanded={menu.id === openMenuId}
+                className="w-full text-left" onClick={() => setOpenMenuId(menu.id === openMenuId ? null : menu.id)}>
+                {menu.label} {menu.id === openMenuId ? "▴" : "▾"}
+              </button>
+              {menu.id === openMenuId ? (
+                <div role="menu" aria-label={menu.label} className="pl-2">
+                  {menu.items.map((item) => (
+                    <button key={item.id} type="button" role="menuitem" className="block w-full text-left"
+                      onClick={() => { setOpenMenuId(null); setMobileOpen(false); onSelect(item); }}>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </nav>
+      </div>
+    );
+  }
 
   return (
     <div ref={rootRef} className="relative mb-1 px-0.5">
