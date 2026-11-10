@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Formulários e comandos no padrão visual Perfil (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Painéis, campos e comandos com bordas no Front Door | `docs/evidence/front-door-profile-controls/README.md`, `docs/evidence/front-door-profile-controls/unit-tests.log`, `docs/evidence/front-door-profile-controls/build.log`, `docs/evidence/front-door-profile-controls/render-only.log`, `docs/evidence/front-door-profile-controls/browser-results.json`, `docs/evidence/front-door-profile-controls/form-390.png`, `docs/evidence/front-door-profile-controls/form-1440.png`, `docs/evidence/front-door-profile-controls/form-actions-390.png`, `docs/evidence/front-door-profile-controls/form-actions-1440.png` | 178 testes, build e gate render-only PASS; Chromium com API/formulários sintéticos em 320/390/1440/1920px confirma bordas, cores, cantos arredondados, ação primária e foco, preservando coluna única, moldura externa e rolagem. Não comprova backend ou staging. Status parcial. |
+
 ## Front Door com coluna central de leitura (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

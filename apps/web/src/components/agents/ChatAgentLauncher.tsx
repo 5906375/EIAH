@@ -2247,6 +2247,7 @@ export default function ChatAgentLauncher({
 	              <button
                 type="button"
                 onClick={handleApprove}
+                data-front-door-primary="true"
                 className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Aprovar
@@ -2255,6 +2256,7 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleSend}
+              data-front-door-primary="true"
               className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
             >

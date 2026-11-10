@@ -160,6 +160,7 @@ export function ImobFormCard({ message, state, onSelectChange, onAction, onAttac
         {(message.form.actions ?? []).map((action) => (
           <button
             key={`${message.id}-form-${action.id}`}
+            data-front-door-primary={action.kind === "primary" ? "true" : undefined}
             type="button"
             onClick={() => void onAction(message, action.id)}
             className={`rounded-full px-3 py-1 text-[11px] normal-case tracking-normal ${action.kind === "primary" ? "bg-accent/15 text-foreground" : "bg-black/25 text-muted-foreground hover:text-foreground"}`}

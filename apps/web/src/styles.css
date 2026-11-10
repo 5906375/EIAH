@@ -102,8 +102,17 @@
     margin-left: auto;
   }
 
+  .front-door-page .imob-structured-form,
+  .front-door-page [data-testid="launcher-conversation-surface"] form {
+    @apply min-w-0 rounded-2xl border border-white/10 bg-[#1a2231] p-4 sm:p-5;
+  }
+
   .front-door-page .imob-structured-form {
-    @apply mt-0 border-0 bg-transparent p-0;
+    @apply mt-0;
+  }
+
+  .front-door-page .imob-structured-form > div:first-child {
+    @apply border-b border-white/10 pb-4;
   }
 
   .front-door-page .imob-form-fields {
@@ -129,7 +138,7 @@
   }
 
   .front-door-page .imob-structured-form > div:first-child > p:first-child {
-    @apply text-base font-semibold;
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-accent;
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] input,
@@ -146,6 +155,59 @@
   .front-door-composer button {
     @apply min-h-[44px] max-w-full whitespace-normal text-[16px] font-medium sm:text-base normal-case tracking-normal;
     overflow-wrap: anywhere;
+  }
+
+  /* Perfil controls shared by every native form and command inside Front Door. */
+  .front-door-page [data-testid="launcher-conversation-surface"] input:not([type="checkbox"]):not([type="radio"]),
+  .front-door-page [data-testid="launcher-conversation-surface"] select,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea,
+  .front-door-page .front-door-composer textarea,
+  .front-door-page .front-door-composer select {
+    @apply rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-foreground placeholder:text-muted-foreground;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] input:focus-visible,
+  .front-door-page [data-testid="launcher-conversation-surface"] select:focus-visible,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea:focus-visible {
+    @apply outline-none ring-2 ring-accent/40;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button,
+  .front-door-page .front-door-composer button,
+  .front-door-page .front-door-launcher > header button {
+    @apply rounded-full border border-white/10 bg-white/5 px-4 py-2 font-semibold no-underline transition;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button:hover:not(:disabled),
+  .front-door-page .front-door-composer button:hover:not(:disabled) {
+    @apply bg-white/10 no-underline;
+  }
+
+  .front-door-page button[data-front-door-primary="true"],
+  .front-door-page [data-testid="launcher-conversation-surface"] button[type="submit"] {
+    @apply border border-white/10 bg-accent/20 px-6 text-foreground;
+  }
+
+  .front-door-page button[data-front-door-primary="true"]:hover:not(:disabled),
+  .front-door-page [data-testid="launcher-conversation-surface"] button[type="submit"]:hover:not(:disabled) {
+    @apply bg-accent/30;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] {
+    @apply rounded-2xl border border-white/10 bg-[#1a2231];
+  }
+
+  .front-door-page .front-door-launcher button[role="combobox"] {
+    @apply rounded-xl bg-black/30 font-normal;
+  }
+
+  .front-door-page .front-door-launcher button:focus-visible {
+    @apply outline-none ring-2 ring-accent/40;
+  }
+
+  .front-door-page .front-door-launcher button[aria-expanded="true"],
+  .front-door-page .front-door-launcher button[aria-pressed="true"] {
+    @apply border-accent/40 bg-accent/20 text-accent;
   }
 
   .front-door-composer textarea {
