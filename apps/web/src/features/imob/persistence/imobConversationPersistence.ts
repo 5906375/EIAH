@@ -97,6 +97,7 @@ export function createImobPersistenceCore(api: ImobPersistenceApi = defaultImobP
             conversationId = target;
           }
           const saved = await api.createMessage(target, body);
+          if (myEpoch !== epoch) return null;
           report(target, 1, body.role);
           return { conversationId: target, messageId: saved.message.id };
         } catch {
@@ -114,12 +115,14 @@ export function createImobPersistenceCore(api: ImobPersistenceApi = defaultImobP
     },
     /** Carrega a conversa pedida, ou a mais recente com histórico (mesma escolha do bootstrap do chat legado). */
     async restore(options?: { conversationId?: string | null; limit?: number; force?: boolean }): Promise<RestoreOutcome | null> {
+      const myEpoch = epoch;
       const limit = options?.limit ?? HISTORY_RESTORE_LIMIT;
-      const withHistory = await this.listConversations();
-      const target = (options?.conversationId && withHistory.find((item) => item.conversationId === options.conversationId)?.conversationId)
-        ?? withHistory[0]?.conversationId ?? null;
+      const withHistory = options?.conversationId ? [] : await this.listConversations();
+      if (myEpoch !== epoch) return null;
+      const target = options?.conversationId ?? withHistory[0]?.conversationId ?? null;
       if (!target) return null;
       const history = await api.listMessages(target, { limit });
+      if (myEpoch !== epoch) return null;
       // Restauração automática nunca atropela uma conversa que o usuário já abriu/gravou enquanto o histórico carregava.
       if (options?.force || !conversationId) conversationId = target;
       return { conversationId: target, messages: restoreFrontDoorMessages(target, history.items as ImobChatMessage[]), hasMore: history.items.length >= limit };

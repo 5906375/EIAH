@@ -1,0 +1,344 @@
+TAP version 13
+# Subtest: conversation title is a bounded canonical label, not an inferred instruction
+ok 1 - conversation title is a bounded canonical label, not an inferred instruction
+  ---
+  duration_ms: 1.022625
+  type: 'test'
+  ...
+# Subtest: autorizado: vínculo ativo + titular da conversa
+ok 2 - autorizado: vínculo ativo + titular da conversa
+  ---
+  duration_ms: 1.78177
+  type: 'test'
+  ...
+# Subtest: identidade incompleta (sem usuário, tenant ou workspace) nega sem consultar nada
+ok 3 - identidade incompleta (sem usuário, tenant ou workspace) nega sem consultar nada
+  ---
+  duration_ms: 0.27831
+  type: 'test'
+  ...
+# Subtest: ausência, status diferente de active ou erro na leitura do vínculo ⇒ 403 (fail-closed); a titularidade nem é consultada
+ok 4 - ausência, status diferente de active ou erro na leitura do vínculo ⇒ 403 (fail-closed); a titularidade nem é consultada
+  ---
+  duration_ms: 0.579335
+  type: 'test'
+  ...
+# Subtest: conversa alheia, inexistente ou erro na titularidade ⇒ 404 idêntico (sem oráculo de existência)
+ok 5 - conversa alheia, inexistente ou erro na titularidade ⇒ 404 idêntico (sem oráculo de existência)
+  ---
+  duration_ms: 0.550701
+  type: 'test'
+  ...
+# Subtest: resposta de negação: 403 leva o reasonCode IMOB_PERMISSION_DENIED (cópia existente da UI); 404 não carrega motivo
+ok 6 - resposta de negação: 403 leva o reasonCode IMOB_PERMISSION_DENIED (cópia existente da UI); 404 não carrega motivo
+  ---
+  duration_ms: 0.255486
+  type: 'test'
+  ...
+# Subtest: o serviço não importa nenhuma escrita de vínculo (bootstrap/promoção) — só a leitura canônica
+ok 7 - o serviço não importa nenhuma escrita de vínculo (bootstrap/promoção) — só a leitura canônica
+  ---
+  duration_ms: 8.938667
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 1. titular autorizado recupera o próprio histórico (lista, mensagens, threads, entrevista, snapshot, export) e telemetria por conversa
+ok 8 - 1. titular autorizado recupera o próprio histórico (lista, mensagens, threads, entrevista, snapshot, export) e telemetria por conversa
+  ---
+  duration_ms: 1688.87065
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 2. usuário SEM vínculo (token do workspace, sem membership) recebe 403 em tudo e nada é exibido nem gravado
+ok 9 - 2. usuário SEM vínculo (token do workspace, sem membership) recebe 403 em tudo e nada é exibido nem gravado
+  ---
+  duration_ms: 459.786529
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 3. vínculo REVOGADO não autoriza nem a própria conversa; a restauração do vínculo restaura o acesso
+ok 10 - 3. vínculo REVOGADO não autoriza nem a própria conversa; a restauração do vínculo restaura o acesso
+  ---
+  duration_ms: 564.717405
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 4–5. outro tenant e outro workspace não acessam (leitura e escrita); o próprio histórico segue acessível
+ok 11 - 4–5. outro tenant e outro workspace não acessam (leitura e escrita); o próprio histórico segue acessível
+  ---
+  duration_ms: 806.841857
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 6. outro usuário do MESMO workspace, com vínculo ativo, não acessa conversa alheia (sem compartilhamento no modelo)
+ok 12 - 6. outro usuário do MESMO workspace, com vínculo ativo, não acessa conversa alheia (sem compartilhamento no modelo)
+  ---
+  duration_ms: 647.693388
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 7. leituras e tentativas negadas não modificam memberships; identificador inexistente é indistinguível de conversa alheia
+ok 13 - 7. leituras e tentativas negadas não modificam memberships; identificador inexistente é indistinguível de conversa alheia
+  ---
+  duration_ms: 147.929886
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: 8. listagem e recuperação aplicam as mesmas regras; token de serviço (sem usuário) é negado; a agregação de telemetria exige vínculo
+ok 14 - 8. listagem e recuperação aplicam as mesmas regras; token de serviço (sem usuário) é negado; a agregação de telemetria exige vínculo
+  ---
+  duration_ms: 603.93844
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:findFirst enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-b-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-x-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-xa-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: titular busca/renomeia/exclui conversas sem apagar auditoria; pares e outros escopos falham fechados
+ok 15 - titular busca/renomeia/exclui conversas sem apagar auditoria; pares e outros escopos falham fechados
+  ---
+  duration_ms: 1083.718878
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] RunEvent:create enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] TenantActionPolicy:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# [tenantGuard] Run:findMany enforced for hist-t-50a3abe6-4476-4523-a3e0-2373f11a8d68/hist-a-50a3abe6-4476-4523-a3e0-2373f11a8d68
+# Subtest: renomeação concorrente com exclusão nunca restaura a conversa excluída
+ok 16 - renomeação concorrente com exclusão nunca restaura a conversa excluída
+  ---
+  duration_ms: 208.132478
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 8848.630939

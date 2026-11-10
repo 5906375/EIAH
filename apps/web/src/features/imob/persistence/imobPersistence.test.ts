@@ -164,3 +164,33 @@ test("título: curto demais não vira título; longo é truncado como no chat le
   assert.equal(titleFromFirstMessage("oi"), undefined);
   assert.equal(titleFromFirstMessage("a".repeat(100)), `${"a".repeat(72)}...`);
 });
+
+test("restauração explícita ausente/excluída não abre outra conversa", async () => {
+  const item: ImobChatConversation = { conversationId: "other", title: "Outra", status: "active", createdAt: "", updatedAt: "", lastMessagePreview: "oi" };
+  const { api } = fakeApi({ conversations: [item] });
+  api.listMessages = async () => { throw new Error("404 Conversation not found"); };
+  const core = createImobPersistenceCore(api);
+  await assert.rejects(core.restore({ conversationId: "deleted", force: true }), /404/);
+  assert.equal(core.getConversationId(), null);
+});
+
+test("resposta de restauração atrasada é descartada após nova conversa ou troca de escopo", async () => {
+  const item: ImobChatConversation = { conversationId: "old", title: "Antiga", status: "active", createdAt: "", updatedAt: "", lastMessagePreview: "oi" };
+  const { api } = fakeApi({ conversations: [item] });
+  let finish!: (value: { ok: true; items: ImobChatMessage[] }) => void;
+  api.listMessages = async () => new Promise((resolve) => { finish = resolve; });
+  const core = createImobPersistenceCore(api);
+  const pending = core.restore({ conversationId: "old", force: true });
+  await new Promise((resolve) => setImmediate(resolve));
+  core.reset();
+  finish({ ok: true, items: [] });
+  assert.equal(await pending, null);
+  assert.equal(core.getConversationId(), null);
+});
+
+test("conversa explicitamente selecionada não depende do limite da listagem recente; API continua autorizando a leitura", async () => {
+  const { api } = fakeApi({ conversations: [], history: { older: [stored({ id: "old-msg", conversationId: "older", content: "Pedido antigo" })] } });
+  const core = createImobPersistenceCore(api);
+  assert.equal((await core.restore({ conversationId: "older", force: true }))?.conversationId, "older");
+  assert.equal(core.getConversationId(), "older");
+});

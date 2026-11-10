@@ -1,3 +1,4 @@
+import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
 import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
@@ -1151,6 +1152,10 @@ async function gateImobHistory(req: TenantAwareRequest, res: Response, conversat
     : await authorizeImobHistoryActor(req.authContext, deps);
   if (!decision.allowed) {
     sendImobHistoryDenied(res, decision);
+    return null;
+  }
+  if (conversationId && req.prisma && await isConversationDeleted(req.prisma, decision, conversationId)) {
+    res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
     return null;
   }
   return decision;
@@ -2867,12 +2872,32 @@ imobRouter.get("/chat/conversations", async (req, res) => {
   }
 
   // FD-IMOB-HISTORY-AUTHZ-001: só as conversas das quais o usuário é titular (as demais nem aparecem).
-  const items = Array.from(conversationMap.values())
+  const authorized = Array.from(conversationMap.values())
     .filter((item) => ownedConversationIds.has(item.conversationId))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, limit);
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const visible = await applyConversationChanges(prisma, { tenantId: historyActor.tenantId, workspaceId: historyActor.workspaceId }, authorized);
+  const search = typeof req.query.q === "string" ? conversationSearchText(req.query.q.trim().slice(0, 200)) : "";
+  const items = visible.filter((item) => !search || conversationSearchText(`${item.title} ${item.lastMessagePreview ?? ""}`).includes(search)).slice(0, limit);
+  return res.json({ ok: true, items, capabilities: { search: true, rename: true, delete: true } });
+});
 
-  return res.json({ ok: true, items });
+imobRouter.patch("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  const title = conversationTitle(req.body?.title);
+  if (!title) return res.status(400).json({ ok: false, error: { code: "INVALID_CONVERSATION_TITLE", message: "Informe um título entre 1 e 120 caracteres, sem quebras de linha." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "rename", title);
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, title });
+});
+
+imobRouter.delete("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  if (req.body?.confirm !== true) return res.status(400).json({ ok: false, error: { code: "CONVERSATION_DELETE_CONFIRMATION_REQUIRED", message: "Confirme a exclusão da conversa." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "delete");
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, deleted: true });
 });
 
 imobRouter.post("/chat/conversations", async (req, res) => {

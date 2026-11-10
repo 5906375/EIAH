@@ -1,9 +1,12 @@
 import React, { useId, useRef, useState, type ReactNode } from "react";
 
 /** Painel de apresentação: recebe valores e controles já resolvidos pelo runtime. */
-export default function FrontDoorSidebar({ status, controls, children }: {
+export default function FrontDoorSidebar({ status, controls, actions, sequence, history, children }: {
   status?: ReactNode;
   controls?: ReactNode;
+  actions?: ReactNode;
+  sequence?: ReactNode;
+  history?: ReactNode;
   children?: ReactNode;
 }) {
   const [desktopOpen, setDesktopOpen] = useState(true);
@@ -14,7 +17,7 @@ export default function FrontDoorSidebar({ status, controls, children }: {
     <aside aria-label="Workspace e operações"
       className={`front-door-sidebar front-door-context-panel flex min-h-0 min-w-0 shrink-0 flex-col ${desktopOpen ? "lg:w-60" : "lg:w-12"}`}
       onClickCapture={(event) => {
-        if ((event.target as HTMLElement).closest('[role="menuitem"]')) setMobileOpen(false);
+        if ((event.target as HTMLElement).closest('[role="menuitem"], [data-sidebar-navigation]')) setMobileOpen(false);
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && mobileOpen) {
@@ -36,9 +39,12 @@ export default function FrontDoorSidebar({ status, controls, children }: {
       </button>
       <div id={panelId}
         className={`front-door-sidebar-content no-scrollbar min-h-0 max-h-[45dvh] space-y-4 overflow-y-auto pt-2 lg:max-h-none ${mobileOpen ? "block" : "hidden"} ${desktopOpen ? "lg:block" : "lg:hidden"}`}>
+        {actions ? <div className="front-door-sidebar-actions">{actions}</div> : null}
         {status ? <div className="front-door-sidebar-status min-w-0" aria-label="Consumo do workspace">{status}</div> : null}
         {controls ? <div className="front-door-sidebar-controls min-w-0 space-y-2">{controls}</div> : null}
         {children}
+        {sequence}
+        {history}
       </div>
     </aside>
   );
