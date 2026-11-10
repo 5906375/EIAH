@@ -95,7 +95,7 @@ import type { StructuredMessage } from "@/features/imob/structured/types";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
-import { conversationDomainLabel } from "./conversationDomainLabel";
+import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -1860,55 +1860,47 @@ export default function ChatAgentLauncher({
       <div className="absolute -left-32 top-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" aria-hidden />
       <div className="absolute -right-10 top-40 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
-      <header className="relative z-10 mb-3 flex shrink-0 flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-x-2 pt-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Launcher</p>
-          <h3 className="text-lg font-semibold text-foreground sm:text-xl">Chat Agent Launcher</h3>
-        </div>
-        <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
-          {headerControls}
-          {onPlaybookClick ? (
-            <button
-              type="button"
-              onClick={onPlaybookClick}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
-            >
-              Playbook
-            </button>
-          ) : null}
-        </div>
-      </header>
+      <FrontDoorSessionHeader
+        activeDomain={session.activeDomain}
+        status={
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {copyToast ? (
+              <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
+                {copyToast}
+              </div>
+            ) : null}
+            {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
+              <ContextualCostPanel
+                compact
+                run={{
+                  runId,
+                  actualCostCents: activeRunFinance?.amountCents ?? null,
+                  estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                  tokens: activeRunFinance?.tokens ?? null,
+                  issueLabel: activeRunFinance?.issueLabel ?? null,
+                  hasGap: activeRunFinance?.hasGap ?? false,
+                }}
+                workspace={workspaceBillingContext}
+              />
+            ) : null}
+          </div>
+        }
+      >
+        {headerControls}
+        {onPlaybookClick ? (
+          <button
+            type="button"
+            onClick={onPlaybookClick}
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
+          >
+            Playbook
+          </button>
+        ) : null}
+      </FrontDoorSessionHeader>
 
       <div className="relative z-10 min-h-0 flex-1">
         <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
-                <div className="text-xs text-muted-foreground">
-                  Conversa ativa · {conversationDomainLabel(session.activeDomain)}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {copyToast ? (
-                    <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
-                      {copyToast}
-                    </div>
-                  ) : null}
-                  {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
-                    <ContextualCostPanel
-                      compact
-                      run={{
-                        runId,
-                        actualCostCents: activeRunFinance?.amountCents ?? null,
-                        estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
-                        tokens: activeRunFinance?.tokens ?? null,
-                        issueLabel: activeRunFinance?.issueLabel ?? null,
-                        hasGap: activeRunFinance?.hasGap ?? false,
-                      }}
-                      workspace={workspaceBillingContext}
-                    />
-                  ) : null}
-                </div>
-              </div>
-
             <div
               ref={scrollRef}
               data-testid="launcher-conversation-surface"

@@ -5,7 +5,7 @@ import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
-import { conversationDomainLabel } from "./conversationDomainLabel";
+import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
@@ -22,36 +22,39 @@ const launcherSource = ts.createSourceFile(
   true,
   ts.ScriptKind.TSX,
 );
-let conversationLabel: ts.JsxElement | undefined;
-function findConversationLabel(node: ts.Node) {
-  if (ts.isJsxElement(node) && node.children.some((child) => ts.isJsxText(child) && child.text.includes("Conversa ativa"))) {
-    assert.equal(conversationLabel, undefined, "identificação interna única");
-    conversationLabel = node;
+let sessionHeader: ts.JsxElement | undefined;
+function findSessionHeader(node: ts.Node) {
+  if (ts.isJsxElement(node) && node.openingElement.tagName.getText(launcherSource) === "FrontDoorSessionHeader") {
+    assert.equal(sessionHeader, undefined, "cabeçalho único");
+    sessionHeader = node;
   }
-  ts.forEachChild(node, findConversationLabel);
+  ts.forEachChild(node, findSessionHeader);
 }
-findConversationLabel(launcherSource);
-assert.ok(conversationLabel, "bloco interno da conversa encontrado");
-const renderInternalLabel = new Function(
-  "React", "session", "activeAgentTitle", "conversationDomainLabel",
-  ts.transpileModule(`return (${conversationLabel.getText(launcherSource)});`, {
+findSessionHeader(launcherSource);
+assert.ok(sessionHeader, "cabeçalho real da conversa encontrado");
+const renderSessionHeader = new Function(
+  "React", "FrontDoorSessionHeader", "ContextualCostPanel", "session", "headerControls", "workspaceBillingContext",
+  "copyToast", "runId", "activeRunFinance", "estimatedRunCostCents", "onPlaybookClick",
+  ts.transpileModule(`return (${sessionHeader.getText(launcherSource)});`, {
     compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 },
   }).outputText,
 );
 
-for (const activeDomain of ["imob", "core", undefined] as const) {
+for (const [activeDomain, expectedLabel] of [["imob", "IMOB"], ["logistica", "Logística &amp; Comex"], ["core", "EIAH"], [undefined, "EIAH"]] as const) {
   for (const selectedAgent of ["EIAH", "Especialista", undefined]) {
-    test(`ambos os rótulos seguem ${activeDomain ?? "domínio inicial"}, com agente ${selectedAgent ?? "ausente"}`, () => {
-      const expectedLabel = activeDomain === "imob" ? "IMOB" : "EIAH";
-      const external = renderToStaticMarkup(
-        <FrontDoorSessionHeader activeDomain={activeDomain}>
-          <span>{selectedAgent ?? "Selecione um agente"}</span>
-        </FrontDoorSessionHeader>,
-      );
-      const internal = renderToStaticMarkup(renderInternalLabel(React, { activeDomain }, selectedAgent, conversationDomainLabel));
-      assert.ok(external.includes(`Conversa ativa · ${expectedLabel}`));
-      assert.ok(internal.includes(`Conversa ativa · ${expectedLabel}`));
-      assert.ok(external.includes(`>${expectedLabel}</p>`));
+    test(`título único segue ${activeDomain ?? "domínio inicial"}, com agente ${selectedAgent ?? "ausente"}`, () => {
+      const html = renderToStaticMarkup(renderSessionHeader(
+        React, FrontDoorSessionHeader, ContextualCostPanel, { activeDomain },
+        <span>{selectedAgent ?? "Selecione um agente"}</span>,
+        { monthUsageCents: 12345, workspaceRuns: 7, quotaPercent: 37, softLimitCents: 20000, hardLimitCents: 40000 },
+        null, null, null, null, undefined,
+      ));
+      assert.equal((html.match(/Chat ativo · /g) ?? []).length, 1);
+      assert.ok(html.includes(`Chat ativo · ${expectedLabel}`));
+      assert.ok(html.includes(selectedAgent ?? "Selecione um agente"));
+      assert.match(html, /Workspace no mês: R\$.*123,45/);
+      assert.match(html, /Quota: 37%/);
+      assert.doesNotMatch(html, /Launcher|Vertical ativa|Conversa ativa/);
     });
   }
 }
@@ -63,9 +66,7 @@ for (const [activeDomain, label] of [["imob", "IMOB"], ["core", "EIAH"], [undefi
         <label>Agente<select aria-label="Agente"><option>EIAH</option><option>Especialista</option></select></label>
       </FrontDoorSessionHeader>,
     );
-    assert.match(html, /Vertical ativa/);
-    assert.ok(html.includes(`>${label}</p>`));
-    assert.ok(html.includes(`Conversa ativa · ${label}`));
+    assert.ok(html.includes(`Chat ativo · ${label}`));
     assert.match(html, /Especialista/);
     assert.equal((html.match(/<select/g) ?? []).length, 1, "não inventa seletor de vertical");
   });
