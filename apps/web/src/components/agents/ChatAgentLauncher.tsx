@@ -1867,10 +1867,9 @@ export default function ChatAgentLauncher({
 
   return (
     <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-black p-2 sm:p-3">
-      <FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>
-
       <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
         <FrontDoorSidebar
+          heading={<FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>}
           actions={<button type="button" data-sidebar-navigation="true" onClick={handleNewConversation}>Nova conversa</button>}
           sequence={<FrontDoorConversationSequence messages={messages} onNavigate={(messageId) => {
             const target = Array.from(scrollRef.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? []).find((element) => element.dataset.messageId === messageId);
@@ -2160,8 +2159,8 @@ export default function ChatAgentLauncher({
 
           </div>
 
-	          <div className="front-door-composer front-door-reading-column flex shrink-0 flex-wrap items-end gap-2 border-t border-white/10 pt-2">
-            <div className="min-w-0 flex-1 basis-full space-y-2 lg:basis-0">
+	          <div className="front-door-composer front-door-reading-column grid shrink-0 grid-cols-[minmax(0,1fr)_44px] items-end gap-2 border-t border-white/10 pt-2">
+            <div className="min-w-0 space-y-2">
               {attachmentIntake.enabled ? (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -2273,6 +2272,7 @@ export default function ChatAgentLauncher({
 	              <button
                 type="button"
                 onClick={handleApprove}
+                style={{ gridColumn: "1 / -1", gridRow: 2 }}
                 data-front-door-primary="true"
                 className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
@@ -2282,11 +2282,17 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleSend}
+              aria-label={isUploadingAttachment ? "Enviando mensagem" : "Enviar mensagem"}
+              title={isUploadingAttachment ? "Enviando mensagem" : "Enviar mensagem"}
+              aria-busy={isUploadingAttachment}
+              data-front-door-send="true"
               data-front-door-primary="true"
               className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
             >
-              {isUploadingAttachment ? "Enviando..." : "Enviar"}
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5m-6 6 6-6 6 6" />
+              </svg>
             </button>
           </div>
         </div>

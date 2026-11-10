@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
-const output='docs/evidence/front-door-conversation-history';
+const output=process.env.QA_OUTPUT_DIR||'docs/evidence/front-door-conversation-history';
 const browser=await chromium.launch({headless:true});
 const results=[];
 try {
@@ -39,7 +39,20 @@ try {
     await route.fulfill({json:body});
   });
   await page.goto(`${process.env.QA_BASE_URL||'http://localhost:5180'}/app/chat`,{waitUntil:'domcontentloaded'});
+  const send=page.getByRole('button',{name:/^Enviar(?: mensagem)?$/i});
+  const composer=page.locator('.front-door-composer');
+  const input=composer.locator('textarea').last();
+  await send.waitFor();
+  assert.equal(await send.isDisabled(),true);
+  await input.fill('Pedido sintético');
+  assert.equal(await send.isEnabled(),true);
+  const sendBox=await send.boundingBox(),inputBox=await input.boundingBox();
+  assert.ok(sendBox.x>=inputBox.x+inputBox.width,'send beside input');
+  assert.ok(sendBox.y<inputBox.y+inputBox.height&&sendBox.y+sendBox.height>inputBox.y,'same row');
+  assert.equal(await send.locator('svg').count(),1);
+  await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
+  await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();
@@ -50,6 +63,14 @@ try {
   assert.ok(quota.y>=cost.y+cost.height,'cost and quota stacked in one column');
   await history.getByRole('button',{name:'Primeira conversa',exact:true}).waitFor();
   const sequence=sidebar.getByRole('region',{name:'Sequência da conversa'});
+  const sequenceToggle=sequence.getByRole('button',{name:/Resumo da sequência/});
+  assert.equal(await sequenceToggle.getAttribute('aria-expanded'),'false');
+  await sequenceToggle.click();
+  assert.equal(await sequenceToggle.getAttribute('aria-expanded'),'true');
+  await page.screenshot({path:`${output}/sequence-${width}.png`});
+  await sequenceToggle.click();
+  await sequence.getByRole('button',{name:'1. Cadastrar proprietário',exact:true}).waitFor({state:'hidden'});
+  await sequenceToggle.click();
   await sequence.getByRole('button',{name:'1. Cadastrar proprietário',exact:true}).click();
   assert.equal(await page.evaluate(()=>document.activeElement?.dataset.messageId),'request-one');
   await openPanel();

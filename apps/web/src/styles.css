@@ -137,7 +137,7 @@
   }
 
   .front-door-page .front-door-sidebar [role="combobox"] {
-    @apply min-h-[44px] rounded-xl border border-white/10 bg-black/30 px-3 text-sm font-normal;
+    @apply min-h-[44px] rounded-xl border border-white/[0.13] bg-black/30 px-3 text-sm font-normal;
   }
 
   .front-door-page .front-door-reading-column {
@@ -145,16 +145,18 @@
   }
 
   .front-door-page .front-door-composer > div:first-child {
-    flex-basis: 100%;
+    grid-column: 1;
+    grid-row: 1;
   }
 
   .front-door-page .front-door-composer > button:last-child {
-    margin-left: auto;
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .front-door-page .imob-structured-form,
   .front-door-page [data-testid="launcher-conversation-surface"] form {
-    @apply min-w-0 rounded-2xl border border-white/10 bg-[#1a2231] p-4 sm:p-5;
+    @apply min-w-0 rounded-2xl border border-white/[0.13] bg-[#1a2231] p-4 sm:p-5;
   }
 
   .front-door-page .imob-structured-form {
@@ -162,7 +164,7 @@
   }
 
   .front-door-page .imob-structured-form > div:first-child {
-    @apply border-b border-white/10 pb-4;
+    @apply border-b border-white/[0.13] pb-4;
   }
 
   .front-door-page .imob-form-fields {
@@ -213,7 +215,7 @@
   .front-door-page [data-testid="launcher-conversation-surface"] textarea,
   .front-door-page .front-door-composer textarea,
   .front-door-page .front-door-composer select {
-    @apply rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-foreground placeholder:text-muted-foreground;
+    @apply rounded-xl border border-white/[0.13] bg-black/30 px-4 py-2 text-foreground placeholder:text-muted-foreground;
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] input:focus-visible,
@@ -225,7 +227,7 @@
   .front-door-page [data-testid="launcher-conversation-surface"] button,
   .front-door-page .front-door-composer button,
   .front-door-page .front-door-launcher > header button {
-    @apply rounded-full border border-white/10 bg-white/5 px-4 py-2 font-semibold no-underline transition;
+    @apply rounded-full border border-white/[0.13] bg-white/5 px-4 py-2 font-semibold no-underline transition;
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] button:hover:not(:disabled),
@@ -235,7 +237,7 @@
 
   .front-door-page button[data-front-door-primary="true"],
   .front-door-page [data-testid="launcher-conversation-surface"] button[type="submit"] {
-    @apply border border-white/10 bg-accent/20 px-6 text-foreground;
+    @apply border border-white/[0.13] bg-accent/20 px-6 text-foreground;
   }
 
   .front-door-page button[data-front-door-primary="true"]:hover:not(:disabled),
@@ -244,12 +246,12 @@
   }
 
   .front-door-page .front-door-composer [role="menu"] {
-    @apply grid gap-1 rounded-xl border border-white/10 bg-[#1a2231] p-1.5;
+    @apply grid gap-1 rounded-xl border border-white/[0.13] bg-[#1a2231] p-1.5;
   }
 
   .front-door-page .front-door-composer [role="menu"] [role="menuitem"],
   .front-door-page [data-message-role="user"] {
-    @apply rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 font-medium;
+    @apply rounded-lg border border-white/[0.104] bg-white/[0.03] px-3 py-1.5 font-medium;
   }
 
   .front-door-page .front-door-composer [role="menu"] [role="menuitem"] {
@@ -282,12 +284,35 @@
     @apply flex flex-col items-start gap-1;
   }
 
+  .front-door-page .front-door-sidebar .front-door-sequence-toggle {
+    @apply flex items-center justify-between gap-2 text-xs font-normal normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar .front-door-sequence-turn {
+    @apply block truncate text-xs font-normal normal-case tracking-normal;
+  }
+
   .front-door-page .front-door-conversation-history > div:first-child > h4 {
     @apply min-w-0 flex-1;
   }
 
   .front-door-page .front-door-conversation-history > div:first-child > button {
     @apply w-auto shrink-0;
+  }
+
+  /* Increase existing border alpha by 30%; preserve hue and borderless menus. */
+  .front-door-page [class~="border-white/10"] { border-color: rgb(255 255 255 / 0.13); }
+  .front-door-page [class~="border-white/[0.08]"] { border-color: rgb(255 255 255 / 0.104); }
+  .front-door-page [class~="border-white/5"] { border-color: rgb(255 255 255 / 0.065); }
+
+  .front-door-page .front-door-composer button[data-front-door-send="true"] {
+    @apply flex h-11 min-h-[44px] w-11 items-center justify-center rounded-full p-0 text-white;
+    background-color: #2d67ca;
+    border-color: rgb(255 255 255 / 0.13);
+    margin-bottom: 1px;
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"]:hover:not(:disabled) {
+    background-color: #3977df;
   }
 
   .front-door-composer textarea {
@@ -337,7 +362,7 @@
 }
 
 .mission-control-tour .introjs-button {
-  @apply rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground transition hover:border-accent/60 hover:text-accent;
+  @apply rounded-full border border-white/[0.13] bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground transition hover:border-accent/60 hover:text-accent;
 }
 
 .mission-control-tour .introjs-button.introjs-disabled {
