@@ -1906,7 +1906,7 @@ export default function ChatAgentLauncher({
               tabIndex={0}
               className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:p-2"
             >
-              <div className="space-y-4">
+              <div className="front-door-reading-column space-y-4">
                 {messages
                   .filter(
                     (message) =>
@@ -2121,7 +2121,7 @@ export default function ChatAgentLauncher({
 
           </div>
 
-	          <div className="front-door-composer flex shrink-0 flex-wrap items-end gap-2 border-t border-white/10 pt-2">
+	          <div className="front-door-composer front-door-reading-column flex shrink-0 flex-wrap items-end gap-2 border-t border-white/10 pt-2">
             <div className="min-w-0 flex-1 basis-full space-y-2 lg:basis-0">
               {attachmentIntake.enabled ? (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">

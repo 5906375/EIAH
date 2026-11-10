@@ -81,12 +81,33 @@
     }
   }
 
+  /* Shell follows the shared page width; conversation has a narrower reading column. */
+  .front-door-page .front-door-launcher {
+    height: max(30rem, calc(100dvh - 14rem));
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] {
+    padding-inline: 0;
+  }
+
+  .front-door-page .front-door-reading-column {
+    @apply mx-auto w-full min-w-0 max-w-3xl;
+  }
+
+  .front-door-page .front-door-composer > div:first-child {
+    flex-basis: 100%;
+  }
+
+  .front-door-page .front-door-composer > button:last-child {
+    margin-left: auto;
+  }
+
   .front-door-page .imob-structured-form {
     @apply mt-0 border-0 bg-transparent p-0;
   }
 
   .front-door-page .imob-form-fields {
-    @apply grid grid-cols-1 gap-3 space-y-0 md:grid-cols-2;
+    @apply grid grid-cols-1 gap-3 space-y-0;
   }
 
   .front-door-page [data-imob-form-field="unitLabel"],

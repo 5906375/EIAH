@@ -1,0 +1,49 @@
+{
+  "ok": true,
+  "check": "check:chat-launcher-render-only",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": []
+}
+{
+  "ok": true,
+  "check": "check:front-door-single-surface",
+  "rule": "EIAH-FD-001",
+  "conformant": false,
+  "conformanceBlockers": 35,
+  "conformanceBlockerSummary": {
+    "operationalParallelRoutes": 5,
+    "unclassifiedRoutes": 10,
+    "componentsOutsideConversation": 13,
+    "conversationLinksToLegacy": 7
+  },
+  "registerVersion": "front-door-surface-register.v1",
+  "routes": 23,
+  "sources": 215,
+  "insideLauncher": 137,
+  "legacyComponents": 13,
+  "staleEntries": [],
+  "legacyOperationalRoutes": [
+    "/app/imob/chat",
+    "/app/imob/dashboard",
+    "/app/imob/properties",
+    "/app/imob/processes",
+    "/app/imob/partners"
+  ],
+  "legacyRedirectedRoutes": [
+    "/app/logistica",
+    "/app/logistica/pre-duimp",
+    "/app/logistica/*"
+  ],
+  "pendingClassificationRoutes": [
+    "/app/runs",
+    "/app/billing",
+    "/app/economy",
+    "/app/admin/aprovacoes",
+    "/app/marketplace",
+    "/app/marketplace/imob",
+    "/self-service",
+    "/app/self-service",
+    "/self-service/:slug",
+    "/profile"
+  ]
+}

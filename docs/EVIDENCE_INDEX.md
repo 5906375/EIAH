@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Front Door com coluna central de leitura (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Moldura externa compartilhada e conversa em coluna única | `docs/evidence/front-door-reading-column/README.md`, `docs/evidence/front-door-reading-column/unit-tests.log`, `docs/evidence/front-door-reading-column/build.log`, `docs/evidence/front-door-reading-column/architecture-gates.log`, `docs/evidence/front-door-reading-column/browser-results.json`, `docs/evidence/front-door-reading-column/form-320.png`, `docs/evidence/front-door-reading-column/form-390.png`, `docs/evidence/front-door-reading-column/form-1440.png`, `docs/evidence/front-door-reading-column/form-1920.png` | 184 testes, build e gates PASS; Chromium com API/formulários sintéticos em quatro larguras confirma main/cabeçalho iguais ao Perfil, transcrição/compositor centralizados e alinhados, textarea na largura total e formulário em uma coluna. Sem overflow, rolagem sem barra preservada. Não comprova backend ou staging nem elimina pendências legadas do single-surface. Status parcial. |
+
 ## Formulários legíveis e rolagem sem barra no Front Door (2026-11-10)
 
 | Assunto | Arquivo | O que prova |
