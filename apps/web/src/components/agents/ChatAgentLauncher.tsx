@@ -1856,16 +1856,16 @@ export default function ChatAgentLauncher({
   );
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-2 shadow-lg shadow-black/20 sm:p-8">
+    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-surface/80 p-2 shadow-lg shadow-black/20 sm:p-3">
       <div className="absolute -left-32 top-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" aria-hidden />
       <div className="absolute -right-10 top-40 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
 
-      <header className="relative z-10 mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="pt-1">
+      <header className="relative z-10 mb-3 flex shrink-0 flex-wrap items-start justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 pt-1">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Launcher</p>
-          <h3 className="mt-1 text-lg font-semibold text-foreground sm:text-xl">Chat Agent Launcher</h3>
+          <h3 className="text-lg font-semibold text-foreground sm:text-xl">Chat Agent Launcher</h3>
         </div>
-        <div className="flex w-full flex-wrap items-center justify-start gap-3 sm:w-auto sm:justify-end">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
           {headerControls}
           {onPlaybookClick ? (
             <button
@@ -1879,10 +1879,10 @@ export default function ChatAgentLauncher({
         </div>
       </header>
 
-      <div className="relative z-10 grid gap-6">
-        <div className="flex h-full flex-col gap-4">
-          <div className="glass-subtle flex-1 p-2 sm:p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="relative z-10 min-h-0 flex-1">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="mb-2 flex shrink-0 flex-wrap items-center justify-between gap-2">
                 <div className="text-xs text-muted-foreground">
                   Conversa ativa · {conversationDomainLabel(session.activeDomain)}
                 </div>
@@ -1912,7 +1912,7 @@ export default function ChatAgentLauncher({
             <div
               ref={scrollRef}
               data-testid="launcher-conversation-surface"
-              className={`no-scrollbar h-[62vh] min-h-[360px] overflow-y-auto rounded-3xl border border-white/5 bg-black/20 p-1.5 sm:p-4 ${lastLogisticaJourneyMessageId || lastLogisticaPendingMessageId || lastPreDuimpMessageId ? "sm:h-[70vh]" : "sm:h-[360px]"}`}
+              className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 sm:p-2"
             >
               <div className="space-y-4">
                 {messages
@@ -1925,9 +1925,9 @@ export default function ChatAgentLauncher({
                       return (
                         <div
                           key={message.id}
-                          className="flex w-full max-w-full animate-in flex-col gap-3 overflow-hidden fade-in slide-in-from-bottom-2"
+                          className="flex w-full min-w-0 max-w-full animate-in flex-col gap-3 fade-in slide-in-from-bottom-2"
                         >
-                          <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-2.5 shadow-xl backdrop-blur-md sm:p-4">
+                          <div className="min-w-0 rounded-xl bg-white/[0.03] p-2 sm:p-3">
                             {message.imobStructured ? (
                               <ImobFrontDoorPart
                                 message={message.imobStructured}
@@ -2129,8 +2129,8 @@ export default function ChatAgentLauncher({
 
           </div>
 
-	          <div className="glass-subtle flex flex-wrap items-end gap-3 p-3 sm:p-4">
-            <div className="flex-1 basis-full space-y-3 sm:basis-0">
+	          <div className="front-door-composer flex shrink-0 flex-wrap items-end gap-2 border-t border-white/10 pt-2">
+            <div className="min-w-0 flex-1 basis-full space-y-2 lg:basis-0">
               {attachmentIntake.enabled ? (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                   <div className="flex flex-wrap items-center gap-2">
