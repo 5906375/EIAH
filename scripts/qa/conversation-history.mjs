@@ -56,6 +56,9 @@ try {
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();
+  const menuButton=sidebar.locator('.imob-sidebar-menu button[aria-haspopup="menu"]').first();
+  assert.equal(await menuButton.evaluate(el=>getComputedStyle(el).fontWeight),'400');
+  if(width>=1024) assert.ok((await menuButton.boundingBox()).height<=30,'compact desktop menu');
   const history=sidebar.getByRole('region',{name:'Conversas salvas'});
   // A labelled section is a region only when it has an accessible name.
   await history.waitFor();

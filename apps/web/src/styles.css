@@ -103,6 +103,15 @@
     @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[30px] lg:py-0.5;
   }
 
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu nav > div {
+    margin-bottom: 0;
+  }
+
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu button {
+    @apply min-h-[40px] py-1 text-sm font-normal normal-case tracking-normal lg:min-h-[28px] lg:py-0;
+    line-height: 1.4;
+  }
+
   .front-door-page .front-door-sidebar button:hover:not(:disabled) {
     @apply bg-white/[0.03] text-accent;
   }
