@@ -50,6 +50,9 @@ try {
   assert.ok(sendBox.x>=inputBox.x+inputBox.width,'send beside input');
   assert.ok(sendBox.y<inputBox.y+inputBox.height&&sendBox.y+sendBox.height>inputBox.y,'same row');
   assert.equal(await send.locator('svg').count(),1);
+  assert.ok(Math.abs(sendBox.y+sendBox.height/2-inputBox.y-inputBox.height/2)<2,'send centered vertically');
+  const circle=await send.evaluate(el=>parseFloat(getComputedStyle(el,'::before').width));
+  assert.ok(Math.abs(circle-sendBox.width*0.7)<1,'send circle reduced by 30 percent');
   await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
   await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
