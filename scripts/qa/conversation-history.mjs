@@ -1,7 +1,7 @@
 import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
-const output='docs/evidence/front-door-conversation-history';
+const output=process.env.QA_OUTPUT_DIR||'docs/evidence/front-door-conversation-history';
 const browser=await chromium.launch({headless:true});
 const results=[];
 try {
@@ -50,6 +50,14 @@ try {
   assert.ok(quota.y>=cost.y+cost.height,'cost and quota stacked in one column');
   await history.getByRole('button',{name:'Primeira conversa',exact:true}).waitFor();
   const sequence=sidebar.getByRole('region',{name:'Sequência da conversa'});
+  const sequenceToggle=sequence.getByRole('button',{name:/Resumo da sequência/});
+  assert.equal(await sequenceToggle.getAttribute('aria-expanded'),'false');
+  await sequenceToggle.click();
+  assert.equal(await sequenceToggle.getAttribute('aria-expanded'),'true');
+  await page.screenshot({path:`${output}/sequence-${width}.png`});
+  await sequenceToggle.click();
+  await sequence.getByRole('button',{name:'1. Cadastrar proprietário',exact:true}).waitFor({state:'hidden'});
+  await sequenceToggle.click();
   await sequence.getByRole('button',{name:'1. Cadastrar proprietário',exact:true}).click();
   assert.equal(await page.evaluate(()=>document.activeElement?.dataset.messageId),'request-one');
   await openPanel();

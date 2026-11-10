@@ -282,6 +282,14 @@
     @apply flex flex-col items-start gap-1;
   }
 
+  .front-door-page .front-door-sidebar .front-door-sequence-toggle {
+    @apply flex items-center justify-between gap-2 text-xs font-normal normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar .front-door-sequence-turn {
+    @apply block truncate text-xs font-normal normal-case tracking-normal;
+  }
+
   .front-door-page .front-door-conversation-history > div:first-child > h4 {
     @apply min-w-0 flex-1;
   }
