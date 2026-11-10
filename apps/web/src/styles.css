@@ -103,6 +103,15 @@
     @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[30px] lg:py-0.5;
   }
 
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu nav > div {
+    margin-bottom: 0;
+  }
+
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu button {
+    @apply min-h-[40px] py-1 text-sm font-normal normal-case tracking-normal lg:min-h-[28px] lg:py-0;
+    line-height: 1.4;
+  }
+
   .front-door-page .front-door-sidebar button:hover:not(:disabled) {
     @apply bg-white/[0.03] text-accent;
   }
@@ -306,19 +315,87 @@
   .front-door-page [class~="border-white/5"] { border-color: rgb(255 255 255 / 0.065); }
 
   .front-door-page .front-door-composer button[data-front-door-send="true"] {
-    @apply flex h-11 min-h-[44px] w-11 items-center justify-center rounded-full p-0 text-white;
-    background-color: #2d67ca;
-    border-color: rgb(255 255 255 / 0.13);
-    margin-bottom: 1px;
+    @apply flex h-[44px] min-h-[44px] w-[44px] items-center justify-center rounded-full p-0 text-white;
+    position: relative;
+    align-self: end;
+    background: transparent;
+    border: 0;
+    margin-bottom: 0;
   }
-  .front-door-page .front-door-composer button[data-front-door-send="true"]:hover:not(:disabled) {
+  .front-door-page .front-door-composer button[data-front-door-send="true"]::before {
+    content: "";
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    background-color: #2d67ca;
+    border: 1px solid rgb(255 255 255 / 0.13);
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"] svg {
+    position: relative;
+    width: 15.4px;
+    height: 15.4px;
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"]:hover:not(:disabled)::before {
     background-color: #3977df;
   }
 
   .front-door-composer textarea {
+    display: block;
     @apply text-[16px] sm:text-base;
   }
 
+}
+
+
+/* Shared by every IMOB form in both chat surfaces. Keep the responsive width. */
+body .imob-structured-form.imob-structured-form {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.4375rem;
+}
+body .imob-structured-form.imob-structured-form > div:first-child {
+  padding-bottom: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form .imob-form-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] {
+  min-width: 0;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.175rem;
+}
+body .imob-structured-form.imob-structured-form :is(input, select, button) {
+  min-height: 30.8px;
+  padding: 0.35rem 0.7rem;
+  font-size: max(12px, 0.7rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form :is(input, select) {
+  border-radius: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form :is(label, p, li) {
+  font-size: max(12px, 0.6125rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form .imob-form-actions {
+  gap: 0.2625rem;
+}
+@media (min-width: 640px) {
+  body .imob-structured-form.imob-structured-form { padding: 0.875rem; }
+}
+@media (max-width: 639px) {
+  /* Preserve readable mobile inputs and comfortable touch targets. */
+  body .imob-structured-form.imob-structured-form :is(input, select) {
+    min-height: 40px;
+    font-size: 16px;
+  }
+  body .imob-structured-form.imob-structured-form button { min-height: 40px; }
 }
 
 @layer utilities {

@@ -10,15 +10,21 @@ try {
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const writes=[]; let supportsManagement=true;
   let items=[{conversationId:'conv-one',title:'Primeira conversa',lastMessagePreview:'Pedido da primeira conversa'},{conversationId:'conv-two',title:'Segunda conversa',lastMessagePreview:'Pedido da segunda conversa'}].map(item=>({...item,status:'active',createdAt:'2026-11-10T10:00:00Z',updatedAt:'2026-11-10T11:00:00Z',lastMessageAt:'2026-11-10T11:00:00Z'}));
-  await page.addInitScript(()=>{
+  await page.addInitScript((includeForm)=>{
     localStorage.setItem('eiah_token','synthetic-history-fixture');localStorage.setItem('tenant_id','tenant-history');localStorage.setItem('workspace_id','workspace-history');localStorage.setItem('active_domain','imob');
     localStorage.setItem('eiah:greeted:tenant-history:workspace-history','1');
     sessionStorage.setItem('eiah:chat:tenant-history:workspace-history:EIAH:default',JSON.stringify({runId:null,messages:[
       {id:'request-one',role:'user',content:'Cadastrar proprietário',status:'done'},
-      {id:'answer-one',role:'assistant',content:'Formulário de demonstração',status:'done',presentationSnapshot:{verticalHandoff:{ok:true,handoff:{vertical:{id:'imob'}}}},imobStructured:{id:'answer-one',role:'assistant',text:'Formulário de demonstração'}},
+      {id:'answer-one',role:'assistant',content:'Formulário de demonstração',status:'done',presentationSnapshot:{verticalHandoff:{ok:true,handoff:{vertical:{id:'imob'}}}},imobStructured:{id:'answer-one',role:'assistant',text:'Formulário de demonstração',form:includeForm?{
+        entity:'proprietario',action:'create',label:'Cadastrar proprietário — exemplo sintético',description:'Campos compartilhados dos formulários IMOB.',submitTarget:'imob.owners.create',
+        fields:[{name:'ownerName',label:'Nome completo',type:'text',required:true},{name:'ownerEmail',label:'E-mail',type:'email'},{name:'ownerPhone',label:'Telefone',type:'tel'},
+        {name:'documentCategory',label:'Tipo de documento',type:'select',options:[{value:'identity',label:'Identificação'}]},
+        {name:'documents',label:'Anexar documentos',type:'file',helperText:'Documentação sintética para verificar o layout.'}],
+        actions:[{id:'cancel',label:'Cancelar',kind:'secondary'},{id:'submit',label:'Salvar cadastro',kind:'primary'}]
+      }:undefined}},
       {id:'request-two',role:'user',content:'Consultar imóveis cadastrados',status:'done'},
     ]}));
-  });
+  },Boolean(process.env.QA_IMOB_FORM));
   await page.route('**/api/**',async route=>{
     const url=new URL(route.request().url()),method=route.request().method(),path=url.pathname;
     const session={tenantId:'tenant-history',workspaceId:'workspace-history',userId:'owner-history',activeDomain:'imob',availableDomains:['core','imob'],entitlements:{IMOB_INSTALLED:true},productInstallations:[{product:'IMOB'}],verticals:[{verticalId:'IMOB',activeDomain:'imob',label:'IMOB',enabled:true,frontDoorSurface:'chat'}],roles:[],branding:{brandName:'EIAH',workspaceLabel:'Workspace sintético'},experience:{roleProfile:'workspace_admin',primaryNavigation:[],landingPath:'/app/chat'}};
@@ -50,12 +56,40 @@ try {
   assert.ok(sendBox.x>=inputBox.x+inputBox.width,'send beside input');
   assert.ok(sendBox.y<inputBox.y+inputBox.height&&sendBox.y+sendBox.height>inputBox.y,'same row');
   assert.equal(await send.locator('svg').count(),1);
+  assert.ok(Math.abs(sendBox.y+sendBox.height/2-inputBox.y-inputBox.height/2)<2,'send centered vertically');
+  const circle=await send.evaluate(el=>parseFloat(getComputedStyle(el,'::before').width));
+  assert.ok(Math.abs(circle-sendBox.width*0.7)<1,'send circle reduced by 30 percent');
   await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
   await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
+  assert.equal(await sidebar.locator('label#agent-label').evaluate(el=>el.classList.contains('sr-only')),true);
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();
+  await sidebar.getByRole('combobox',{name:'Agente',exact:true}).waitFor({state:'attached'});
+  const menuButton=sidebar.locator('.imob-sidebar-menu button[aria-haspopup="menu"]').first();
+  assert.equal(await menuButton.evaluate(el=>getComputedStyle(el).fontWeight),'400');
+  if(width>=1024) assert.ok((await menuButton.boundingBox()).height<=30,'compact desktop menu');
+  if(process.env.QA_IMOB_FORM){
+    const form=page.locator('.imob-structured-form');
+    await form.waitFor();
+    const metrics=await form.evaluate(el=>{
+      const root=parseFloat(getComputedStyle(document.documentElement).fontSize),css=getComputedStyle(el),field=el.querySelector('input'),fields=el.querySelector('.imob-form-fields');
+      return {padding:parseFloat(css.paddingLeft),expectedPadding:root*(innerWidth>=640?.875:.7),gap:parseFloat(getComputedStyle(fields).gap),expectedGap:root*.525,font:parseFloat(getComputedStyle(field).fontSize),height:field.getBoundingClientRect().height};
+    });
+    assert.ok(Math.abs(metrics.padding-metrics.expectedPadding)<1,'form padding scaled to 70 percent');
+    assert.ok(Math.abs(metrics.gap-metrics.expectedGap)<1,'field gap scaled to 70 percent');
+    if(width<640){assert.equal(metrics.font,16);assert.ok(metrics.height>=40);}
+    else assert.ok(metrics.height<44,'compact desktop fields');
+    const name=form.locator('input[type="text"]').first();await name.fill('Pessoa Sintética');assert.equal(await name.inputValue(),'Pessoa Sintética');
+    await form.locator('select').selectOption('identity');
+    await form.locator('input[type="file"]').setInputFiles({name:'sintetico.txt',mimeType:'text/plain',buffer:Buffer.from('Somente dados sinteticos')});
+    await form.scrollIntoViewIfNeeded();
+    await page.screenshot({path:`${output}/form-${width}.png`});
+    // The legacy IMOB chat hosts the same component without the Front Door ancestor.
+    const legacy=await form.evaluate(el=>{const clone=el.cloneNode(true);document.body.append(clone);const css=getComputedStyle(clone),input=getComputedStyle(clone.querySelector('input'));const result={padding:parseFloat(css.paddingLeft),font:parseFloat(input.fontSize)};clone.remove();return result;});
+    assert.equal(legacy.padding,metrics.padding);assert.equal(legacy.font,metrics.font);
+  }
   const history=sidebar.getByRole('region',{name:'Conversas salvas'});
   // A labelled section is a region only when it has an accessible name.
   await history.waitFor();
