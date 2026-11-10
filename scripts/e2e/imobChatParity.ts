@@ -122,7 +122,7 @@ const pick = async (page: Page, menu: string, item: string) => {
 };
 const send = async (page: Page, text: string) => {
   await page.locator("textarea").last().fill(text);
-  await page.getByRole("button", { name: /^Enviar$/i }).last().click();
+  await page.getByRole("button", { name: /^Enviar(?: mensagem)?$/i }).last().click();
 };
 const selectContaining = async (page: Page, button: string, label: string, text: string) => {
   await page.waitForFunction(

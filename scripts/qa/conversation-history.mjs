@@ -39,7 +39,7 @@ try {
     await route.fulfill({json:body});
   });
   await page.goto(`${process.env.QA_BASE_URL||'http://localhost:5180'}/app/chat`,{waitUntil:'domcontentloaded'});
-  const send=page.getByRole('button',{name:'Enviar mensagem',exact:true});
+  const send=page.getByRole('button',{name:/^Enviar(?: mensagem)?$/i});
   const composer=page.locator('.front-door-composer');
   const input=composer.locator('textarea').last();
   await send.waitFor();
