@@ -56,6 +56,12 @@ try {
     assert.equal(card.border,'rgba(255, 255, 255, 0.1)');
     assert.ok(Math.abs(card.radius-card.root*1.5)<1,'same rounded corners as Self-Service card');
   }
+  if(process.env.QA_DARK_MESSAGES){
+    const surface=page.getByRole('region',{name:'Conversa',exact:true});
+    assert.equal(await surface.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0.2)');
+    assert.equal(await surface.evaluate(el=>getComputedStyle(el).opacity),'1');
+    assert.equal(await page.locator('.front-door-launcher').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(15, 23, 42, 0.7)');
+  }
   if(process.env.QA_LONG_CHAT){
     const surface=page.getByRole('region',{name:'Conversa',exact:true});
     await surface.waitFor();
