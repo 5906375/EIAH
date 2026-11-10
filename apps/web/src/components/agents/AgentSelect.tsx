@@ -52,7 +52,7 @@ export default function AgentSelect({
       <div className="flex flex-col gap-2">
         <label
           id="agent-label"
-          className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+          className={inline ? "sr-only" : "text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"}
         >
           Agente
         </label>

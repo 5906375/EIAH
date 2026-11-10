@@ -62,9 +62,11 @@ try {
   await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
   await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
+  assert.equal(await sidebar.locator('label#agent-label').evaluate(el=>el.classList.contains('sr-only')),true);
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();
+  await sidebar.getByRole('combobox',{name:'Agente',exact:true}).waitFor({state:'attached'});
   const menuButton=sidebar.locator('.imob-sidebar-menu button[aria-haspopup="menu"]').first();
   assert.equal(await menuButton.evaluate(el=>getComputedStyle(el).fontWeight),'400');
   if(width>=1024) assert.ok((await menuButton.boundingBox()).height<=30,'compact desktop menu');
