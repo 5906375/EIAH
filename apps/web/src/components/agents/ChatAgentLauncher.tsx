@@ -1866,7 +1866,7 @@ export default function ChatAgentLauncher({
   );
 
   return (
-    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-black p-2 sm:p-3">
+    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-3xl border border-white/10 bg-surface/70 p-2 sm:p-3">
       <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
         <FrontDoorSidebar
           heading={<FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>}

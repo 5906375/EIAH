@@ -45,6 +45,12 @@ try {
     await route.fulfill({json:body});
   });
   await page.goto(`${process.env.QA_BASE_URL||'http://localhost:5180'}/app/chat`,{waitUntil:'domcontentloaded'});
+  if(process.env.QA_CHAT_CARD){
+    const card=await page.locator('.front-door-launcher').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopColor,radius:parseFloat(s.borderTopLeftRadius),root:parseFloat(getComputedStyle(document.documentElement).fontSize)};});
+    assert.equal(card.background,'rgba(15, 23, 42, 0.7)');
+    assert.equal(card.border,'rgba(255, 255, 255, 0.1)');
+    assert.ok(Math.abs(card.radius-card.root*1.5)<1,'same rounded corners as Self-Service card');
+  }
   const send=page.getByRole('button',{name:/^Enviar(?: mensagem)?$/i});
   const composer=page.locator('.front-door-composer');
   const input=composer.locator('textarea').last();

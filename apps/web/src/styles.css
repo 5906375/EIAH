@@ -86,6 +86,11 @@
     height: max(30rem, calc(100dvh - 8rem));
   }
 
+  /* Match the resting Self-Service card border rather than its hover state. */
+  .front-door-page .front-door-launcher.front-door-launcher {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+
   .front-door-page [data-testid="launcher-conversation-surface"] {
     padding-inline: 0;
   }
