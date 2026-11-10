@@ -96,6 +96,7 @@ import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
+import FrontDoorSidebar from "./FrontDoorSidebar";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -1864,54 +1865,55 @@ export default function ChatAgentLauncher({
 
   return (
     <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-black p-2 sm:p-3">
-      <FrontDoorSessionHeader
-        activeDomain={session.activeDomain}
-        status={
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            {copyToast ? (
-              <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
-                {copyToast}
-              </div>
-            ) : null}
-            {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
-              <ContextualCostPanel
-                compact
-                run={{
-                  runId,
-                  actualCostCents: activeRunFinance?.amountCents ?? null,
-                  estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
-                  tokens: activeRunFinance?.tokens ?? null,
-                  issueLabel: activeRunFinance?.issueLabel ?? null,
-                  hasGap: activeRunFinance?.hasGap ?? false,
-                }}
-                workspace={workspaceBillingContext}
-              />
-            ) : null}
-          </div>
-        }
-      >
-        {headerControls}
-        {onPlaybookClick ? (
-          <button
-            type="button"
-            onClick={onPlaybookClick}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
-          >
-            Playbook
-          </button>
-        ) : null}
-      </FrontDoorSessionHeader>
+      <FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>
 
       <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
-        {showImobSurface ? (
-          <aside className="front-door-sidebar no-scrollbar min-w-0 shrink-0 lg:w-48 lg:overflow-y-auto" aria-label="Menu operacional">
+        <FrontDoorSidebar
+          status={
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {copyToast ? (
+                <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
+                  {copyToast}
+                </div>
+              ) : null}
+              {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
+                <ContextualCostPanel
+                  compact
+                  run={{
+                    runId,
+                    actualCostCents: activeRunFinance?.amountCents ?? null,
+                    estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                    tokens: activeRunFinance?.tokens ?? null,
+                    issueLabel: activeRunFinance?.issueLabel ?? null,
+                    hasGap: activeRunFinance?.hasGap ?? false,
+                  }}
+                  workspace={workspaceBillingContext}
+                />
+              ) : null}
+            </div>
+          }
+          controls={<>
+            {headerControls}
+            {onPlaybookClick ? (
+              <button
+                type="button"
+                onClick={onPlaybookClick}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
+              >
+                Playbook
+              </button>
+            ) : null}
+          </>}
+        >
+          {showImobSurface ? (
             <ImobActionMenuBar
               layout="sidebar"
+              embedded
               menus={IMOB_ACTION_MENUS}
               onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
             />
-          </aside>
-        ) : null}
+          ) : null}
+        </FrontDoorSidebar>
         <div className="front-door-workspace-main flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div

@@ -112,6 +112,23 @@
     @apply text-sm;
   }
 
+  .front-door-page .front-door-sidebar-status > div,
+  .front-door-page .front-door-sidebar-status > div > div {
+    @apply flex flex-col items-start gap-2;
+  }
+
+  .front-door-page .front-door-sidebar-status span {
+    @apply max-w-full whitespace-normal break-words rounded-lg px-2 text-xs normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar-controls > div {
+    @apply w-full max-w-full;
+  }
+
+  .front-door-page .front-door-sidebar [role="combobox"] {
+    @apply min-h-[44px] rounded-xl border border-white/10 bg-black/30 px-3 text-sm font-normal;
+  }
+
   .front-door-page .front-door-reading-column {
     @apply mx-auto w-full min-w-0 max-w-3xl;
   }

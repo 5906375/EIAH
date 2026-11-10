@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Painel lateral único de workspace e operações (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Custo, quota, agente e menus na coluna expansível | `docs/evidence/front-door-context-sidebar/README.md`, `docs/evidence/front-door-context-sidebar/unit-tests.log`, `docs/evidence/front-door-context-sidebar/build.log`, `docs/evidence/front-door-context-sidebar/architecture-gates.log`, `docs/evidence/front-door-context-sidebar/browser-results.json`, `docs/evidence/front-door-context-sidebar/menu-390.png`, `docs/evidence/front-door-context-sidebar/menu-1440.png`, `docs/evidence/front-door-context-sidebar/form-390.png`, `docs/evidence/front-door-context-sidebar/form-1440.png` | 184 testes, build e gates PASS; Chromium em cinco viewports, API/formulários sintéticos e menu real como fixture, confirma custo/quota preservados, seletor só na lateral, expansão/recolhimento desktop/mobile, seleção/Escape/foco e espaço útil/layout/rolagem sem overflow. Não comprova backend ou staging nem elimina baseline legado do single-surface. Status parcial. |
+
 ## Menus laterais e maior área útil no Front Door (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

@@ -9,8 +9,9 @@ export function ImobActionMenuBar(props: {
   menus: ImobActionMenu[];
   onSelect: (item: ImobActionMenuItem) => void;
   layout?: "bar" | "sidebar";
+  embedded?: boolean;
 }) {
-  const { menus, onSelect, layout = "bar" } = props;
+  const { menus, onSelect, layout = "bar", embedded = false } = props;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigationId = React.useId();
   const [openMenuId, setOpenMenuId] = React.useState<string | null>(null);
@@ -48,12 +49,12 @@ export function ImobActionMenuBar(props: {
   if (layout === "sidebar") {
     return (
       <div ref={rootRef} className="imob-sidebar-menu min-w-0">
-        <button type="button" aria-expanded={mobileOpen} aria-controls={navigationId}
+        {!embedded ? <button type="button" aria-expanded={mobileOpen} aria-controls={navigationId}
           className="lg:hidden" onClick={() => setMobileOpen((open) => !open)}>
           Operações IMOB {mobileOpen ? "▴" : "▾"}
-        </button>
+        </button> : null}
         <nav id={navigationId} aria-label="Operações IMOB"
-          className={`${mobileOpen ? "block" : "hidden"} no-scrollbar max-h-[40dvh] overflow-y-auto lg:block lg:max-h-none`}>
+          className={`${embedded || mobileOpen ? "block" : "hidden"} ${embedded ? "" : "no-scrollbar max-h-[40dvh] overflow-y-auto lg:max-h-none"} lg:block`}>
           {menus.map((menu) => (
             <div key={menu.id} className="mb-1">
               <button type="button" aria-haspopup="menu" aria-expanded={menu.id === openMenuId}

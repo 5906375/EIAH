@@ -5,6 +5,7 @@ import ts from "typescript";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
+import FrontDoorSidebar from "./FrontDoorSidebar";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
@@ -40,6 +41,24 @@ const renderSessionHeader = new Function(
   }).outputText,
 );
 
+let sidebar: ts.JsxElement | undefined;
+function findSidebar(node: ts.Node) {
+  if (ts.isJsxElement(node) && node.openingElement.tagName.getText(launcherSource) === "FrontDoorSidebar") {
+    assert.equal(sidebar, undefined, "painel lateral único");
+    sidebar = node;
+  }
+  ts.forEachChild(node, findSidebar);
+}
+findSidebar(launcherSource);
+assert.ok(sidebar);
+const renderSidebar = new Function(
+  "React", "FrontDoorSidebar", "ContextualCostPanel", "headerControls", "workspaceBillingContext",
+  "copyToast", "runId", "activeRunFinance", "estimatedRunCostCents", "onPlaybookClick", "showImobSurface",
+  ts.transpileModule(`return (${sidebar.getText(launcherSource)});`, {
+    compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 },
+  }).outputText,
+);
+
 for (const [activeDomain, expectedLabel] of [["imob", "IMOB"], ["logistica", "Logística &amp; Comex"], ["core", "EIAH"], [undefined, "EIAH"]] as const) {
   for (const selectedAgent of ["EIAH", "Especialista", undefined]) {
     test(`título único segue ${activeDomain ?? "domínio inicial"}, com agente ${selectedAgent ?? "ausente"}`, () => {
@@ -51,9 +70,16 @@ for (const [activeDomain, expectedLabel] of [["imob", "IMOB"], ["logistica", "Lo
       ));
       assert.equal((html.match(/Chat ativo · /g) ?? []).length, 1);
       assert.ok(html.includes(`Chat ativo · ${expectedLabel}`));
-      assert.ok(html.includes(selectedAgent ?? "Selecione um agente"));
-      assert.match(html, /Workspace no mês: R\$.*123,45/);
-      assert.match(html, /Quota: 37%/);
+      const sidebarHtml = renderToStaticMarkup(renderSidebar(
+        React, FrontDoorSidebar, ContextualCostPanel,
+        <span>{selectedAgent ?? "Selecione um agente"}</span>,
+        { monthUsageCents: 12345, workspaceRuns: 7, quotaPercent: 37, softLimitCents: 20000, hardLimitCents: 40000 },
+        null, null, null, null, undefined, false,
+      ));
+      assert.ok(sidebarHtml.includes(selectedAgent ?? "Selecione um agente"));
+      assert.match(sidebarHtml, /Workspace no mês: R\$.*123,45/);
+      assert.match(sidebarHtml, /Quota: 37%/);
+      assert.doesNotMatch(html, /Workspace no mês|Quota:|Selecione um agente/);
       assert.doesNotMatch(html, /Launcher|Vertical ativa|Conversa ativa/);
     });
   }
