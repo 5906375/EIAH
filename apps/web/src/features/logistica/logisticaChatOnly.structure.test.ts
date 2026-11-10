@@ -30,12 +30,11 @@ test("a jornada operacional é renderizada pelo launcher (mensagens), que expõe
   assert.match(launcher, /<LogisticaConversationJourney/); assert.match(launcher, /<LogisticaPendingDecisionsPanel/);
 });
 
-test("os menus de Logística e de Pré-DUIMP levam ao Front Door; as rotas legadas passam pelo redirecionamento antes de montar a página", () => {
+test("verticais não aparecem no menu global; as rotas legadas passam pelo redirecionamento antes de montar a página", () => {
   const app = read("../../App.tsx");
-  assert.match(app, /\{ to: "\/app\/chat\?domain=logistica", label: "Logística & Comex" \}/);
-  assert.match(app, /\{ to: "\/app\/chat\?entry=pre_duimp", label: "Pré-DUIMP", requiresPreDuimp: true \}/);
-  assert.equal(PRE_DUIMP_FRONT_DOOR_HREF, "/app/chat?entry=pre_duimp", "o literal do menu é a constante da entrada");
-  assert.doesNotMatch(app.slice(app.indexOf("SHELL_NAV_ITEMS"), app.indexOf("SHELL_NAV_ITEMS") + 900).replace(/\/\/.*$/gm, ""), /to: "\/app\/logistica/, "nenhum item de menu aponta a rota legada");
+  const menu = app.slice(app.indexOf("const SHELL_NAV_ITEMS"), app.indexOf("function Layout"));
+  assert.doesNotMatch(menu, /domain=imob|domain=logistica|entry=pre_duimp|to: "\/app\/logistica/);
+  assert.equal(PRE_DUIMP_FRONT_DOOR_HREF, "/app/chat?entry=pre_duimp", "entrada contextual preservada na conversa");
   const routes = app.replace(/\/\/.*$/gm, "");
   for (const [path, entry] of [["/app/logistica", "cockpit"], ["/app/logistica/pre-duimp", "pre_duimp"], ["/app/logistica/*", "cockpit"]] as const) {
     const at = routes.indexOf(`path="${path}"`);
