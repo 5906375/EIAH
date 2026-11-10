@@ -194,7 +194,20 @@
   }
 
   .front-door-page .front-door-composer [role="menu"] {
-    @apply rounded-2xl border border-white/10 bg-[#1a2231];
+    @apply grid gap-1 rounded-xl border border-white/10 bg-[#1a2231] p-1.5;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"],
+  .front-door-page [data-message-role="user"] {
+    @apply rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 font-medium;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"] {
+    @apply min-h-[44px] text-sm sm:min-h-[36px];
+  }
+
+  .front-door-page [data-message-role="user"] {
+    @apply w-fit;
   }
 
   .front-door-page .front-door-launcher button[role="combobox"] {

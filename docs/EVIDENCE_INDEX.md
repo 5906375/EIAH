@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Menu compacto e contorno de comandos enviados (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Bordas discretas compartilhadas por menu e comandos enviados | `docs/evidence/front-door-compact-command-borders/README.md`, `docs/evidence/front-door-compact-command-borders/unit-tests.log`, `docs/evidence/front-door-compact-command-borders/build.log`, `docs/evidence/front-door-compact-command-borders/render-only.log`, `docs/evidence/front-door-compact-command-borders/browser-results.json`, `docs/evidence/front-door-compact-command-borders/form-390.png`, `docs/evidence/front-door-compact-command-borders/form-1440.png`, `docs/evidence/front-door-compact-command-borders/menu-390.png`, `docs/evidence/front-door-compact-command-borders/menu-1440.png` | 27 testes, build e render-only PASS; Chromium em quatro larguras com menu real montado em fixture e API sintética confirma raios/bordas iguais, opções desktop compactas e mobile >=44px, callback e fechamento por seleção/Escape, sem overflow e preservando layout/rolagem. Não comprova backend ou staging. Status parcial. |
+
 ## Formulários e comandos no padrão visual Perfil (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

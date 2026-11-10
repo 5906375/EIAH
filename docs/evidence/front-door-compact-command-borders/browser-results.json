@@ -1,0 +1,93 @@
+{
+  "fixture": "synthetic session and restored messages, mocked API, no real mutations",
+  "results": [
+    {
+      "width": 320,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "matching user command/menu borders and radius",
+        "compact menu options",
+        "menu selection callback and Escape",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 390,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "matching user command/menu borders and radius",
+        "compact menu options",
+        "menu selection callback and Escape",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1440,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "matching user command/menu borders and radius",
+        "compact menu options",
+        "menu selection callback and Escape",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1920,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "matching user command/menu borders and radius",
+        "compact menu options",
+        "menu selection callback and Escape",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    }
+  ]
+}

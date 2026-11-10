@@ -2089,6 +2089,7 @@ export default function ChatAgentLauncher({
                     return (
                       <div
                         key={message.id}
+                        data-message-role={message.role}
                         className={`max-w-[85%] break-words px-4 py-3 text-sm leading-relaxed ${
                           message.role === "user"
                             ? "ml-auto text-accent"
