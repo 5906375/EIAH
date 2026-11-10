@@ -92,6 +92,8 @@
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] {
+    /* Darken the inherited card backdrop by 20% without dimming content. */
+    background-color: rgb(0 0 0 / 0.2);
     padding-inline: 0;
   }
 
