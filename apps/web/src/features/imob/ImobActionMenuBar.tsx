@@ -38,7 +38,7 @@ export function ImobActionMenuBar(props: {
         <div
           role="menu"
           aria-label={openMenu.label}
-          className="absolute bottom-full left-0 z-20 mb-1 w-full max-w-xs rounded-xl border border-white/10 bg-surface-strong/95 p-1 shadow-lg backdrop-blur-xl"
+          className="absolute bottom-full left-0 z-20 mb-1 w-full max-w-xs rounded-xl bg-black p-1 shadow-lg backdrop-blur-xl"
         >
           {openMenu.items.map((item) => (
             <button
@@ -66,10 +66,10 @@ export function ImobActionMenuBar(props: {
               aria-haspopup="menu"
               aria-expanded={isOpen}
               onClick={() => setOpenMenuId(isOpen ? null : menu.id)}
-              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] transition ${
+              className={`min-h-[44px] shrink-0 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                 isOpen
-                  ? "border-accent/40 bg-accent/10 text-accent"
-                  : "border-white/10 bg-white/[0.04] text-muted-foreground hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
+                  ? "text-accent underline"
+                  : "text-muted-foreground hover:text-accent hover:underline"
               }`}
             >
               {menu.label} {isOpen ? "▴" : "▾"}

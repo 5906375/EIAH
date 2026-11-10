@@ -1856,10 +1856,7 @@ export default function ChatAgentLauncher({
   );
 
   return (
-    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-surface/80 p-2 shadow-lg shadow-black/20 sm:p-3">
-      <div className="absolute -left-32 top-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" aria-hidden />
-      <div className="absolute -right-10 top-40 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
-
+    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-2xl border border-white/10 bg-black p-2 sm:p-3">
       <FrontDoorSessionHeader
         activeDomain={session.activeDomain}
         status={
@@ -1919,7 +1916,7 @@ export default function ChatAgentLauncher({
                           key={message.id}
                           className="flex w-full min-w-0 max-w-full animate-in flex-col gap-3 fade-in slide-in-from-bottom-2"
                         >
-                          <div className="min-w-0 rounded-xl bg-white/[0.03] p-2 sm:p-3">
+                          <div className="min-w-0 px-2 py-1 sm:px-3">
                             {message.imobStructured ? (
                               <ImobFrontDoorPart
                                 message={message.imobStructured}
@@ -1945,7 +1942,7 @@ export default function ChatAgentLauncher({
                                         <button
                                           key={i}
                                           onClick={() => handleAdoptRec(displayRunId, rec)}
-                                          className="flex flex-col rounded-xl border border-accent/20 bg-accent/5 p-3 text-left transition-all hover:bg-accent/10 active:scale-95"
+                                          className="flex min-h-[44px] flex-col p-3 text-left text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         >
                                           <span className="text-[9px] font-bold uppercase tracking-tighter text-accent">
                                             Sugerido
@@ -1958,7 +1955,7 @@ export default function ChatAgentLauncher({
                                     </div>
                                   ) : null}
 
-                                  <div className="prose prose-invert prose-sm max-w-full break-words leading-relaxed prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/50">
+                                  <div className="prose prose-invert prose-sm max-w-full break-words leading-relaxed prose-pre:border-0 prose-pre:bg-transparent">
                                     <ReactMarkdown components={markdownComponents}>
                                       {(() => {
                                         return buildRenderableAssistantMarkdown({
@@ -2068,7 +2065,7 @@ export default function ChatAgentLauncher({
                                           onClick={() => {
                                             setInput(reply);
                                           }}
-                                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
+                                          className="min-h-[44px] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         >
                                           {reply}
                                         </button>
@@ -2089,10 +2086,10 @@ export default function ChatAgentLauncher({
                     return (
                       <div
                         key={message.id}
-                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        className={`max-w-[85%] break-words px-4 py-3 text-sm leading-relaxed ${
                           message.role === "user"
-                            ? "ml-auto bg-accent/20 text-foreground"
-                            : "mx-auto bg-white/10 text-muted-foreground"
+                            ? "ml-auto text-accent"
+                            : "mx-auto text-muted-foreground"
                         }`}
                       >
                         <p className="whitespace-pre-line">{message.content}</p>
@@ -2112,7 +2109,7 @@ export default function ChatAgentLauncher({
                     );
                   })}
                 {isStreaming ? (
-                  <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
+                  <div className="max-w-[85%] px-4 py-3 text-sm text-muted-foreground">
                     Pensando...
                   </div>
                 ) : null}
@@ -2239,7 +2236,7 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleNewConversation}
-	              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-muted-foreground transition hover:border-accent/40"
+	              className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-muted-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
 	            >
 	              Nova conversa
 	            </button>
@@ -2247,7 +2244,7 @@ export default function ChatAgentLauncher({
 	              <button
                 type="button"
                 onClick={handleApprove}
-                className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:border-accent hover:bg-accent/30"
+                className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Aprovar
               </button>
@@ -2255,7 +2252,7 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleSend}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
             >
               {isUploadingAttachment ? "Enviando..." : "Enviar"}
