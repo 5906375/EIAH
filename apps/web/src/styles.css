@@ -347,6 +347,57 @@
 
 }
 
+
+/* Shared by every IMOB form in both chat surfaces. Keep the responsive width. */
+body .imob-structured-form.imob-structured-form {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.4375rem;
+}
+body .imob-structured-form.imob-structured-form > div:first-child {
+  padding-bottom: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form .imob-form-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] {
+  min-width: 0;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.175rem;
+}
+body .imob-structured-form.imob-structured-form :is(input, select, button) {
+  min-height: 30.8px;
+  padding: 0.35rem 0.7rem;
+  font-size: max(12px, 0.7rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form :is(input, select) {
+  border-radius: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form :is(label, p, li) {
+  font-size: max(12px, 0.6125rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form .imob-form-actions {
+  gap: 0.2625rem;
+}
+@media (min-width: 640px) {
+  body .imob-structured-form.imob-structured-form { padding: 0.875rem; }
+}
+@media (max-width: 639px) {
+  /* Preserve readable mobile inputs and comfortable touch targets. */
+  body .imob-structured-form.imob-structured-form :is(input, select) {
+    min-height: 40px;
+    font-size: 16px;
+  }
+  body .imob-structured-form.imob-structured-form button { min-height: 40px; }
+}
+
 @layer utilities {
   .no-scrollbar {
     -ms-overflow-style: none;
