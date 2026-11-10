@@ -1901,7 +1901,10 @@ export default function ChatAgentLauncher({
             <div
               ref={scrollRef}
               data-testid="launcher-conversation-surface"
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 sm:p-2"
+              role="region"
+              aria-label="Conversa"
+              tabIndex={0}
+              className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:p-2"
             >
               <div className="space-y-4">
                 {messages

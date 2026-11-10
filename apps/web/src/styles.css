@@ -98,21 +98,39 @@
 
   .front-door-page .imob-form-fields input,
   .front-door-page .imob-form-fields select {
-    @apply min-h-[44px] min-w-0 text-[16px] sm:min-h-[36px] sm:text-sm;
+    @apply min-h-[44px] min-w-0 rounded-xl px-4 py-2 text-[16px] sm:text-base;
   }
 
-  .front-door-page .imob-form-actions button,
+  /* Same rem scale as Perfil; keep mobile inputs at 16px to avoid zoom. */
+  .front-door-page .imob-structured-form label,
+  .front-door-page .imob-structured-form p {
+    @apply text-sm leading-relaxed;
+  }
+
+  .front-door-page .imob-structured-form > div:first-child > p:first-child {
+    @apply text-base font-semibold;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] input,
+  .front-door-page [data-testid="launcher-conversation-surface"] select,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea {
+    @apply min-h-[44px] min-w-0 max-w-full text-[16px] sm:text-base;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] label {
+    @apply text-sm leading-relaxed;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button,
   .front-door-composer button {
-    @apply min-h-[44px] sm:min-h-[36px];
+    @apply min-h-[44px] max-w-full whitespace-normal text-[16px] font-medium sm:text-base normal-case tracking-normal;
+    overflow-wrap: anywhere;
   }
 
   .front-door-composer textarea {
-    @apply text-[16px] sm:text-sm;
+    @apply text-[16px] sm:text-base;
   }
 
-  .front-door-composer [aria-haspopup="menu"] {
-    @apply text-[11px] sm:text-[10px];
-  }
 }
 
 @layer utilities {
