@@ -103,6 +103,20 @@
     @apply min-h-[44px] py-1 lg:min-h-[36px];
   }
 
+  .front-door-page .front-door-sidebar {
+    border-bottom: 1px solid rgb(255 255 255 / 0.13);
+    padding-bottom: 0.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .front-door-page .front-door-sidebar {
+      border-bottom: 0;
+      padding-bottom: 0;
+      border-inline-end: 1px solid rgb(255 255 255 / 0.13);
+      padding-inline-end: 0.75rem;
+    }
+  }
+
   .front-door-page .front-door-sidebar button,
   .front-door-page .front-door-sidebar button[aria-expanded="true"] {
     @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[30px] lg:py-0.5;
