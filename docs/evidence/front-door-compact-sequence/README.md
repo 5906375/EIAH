@@ -1,3 +1,5 @@
 Resumo da sequência compacto e recolhível, inicialmente fechado. Fonte menor, normal-case e tracking normal; pedidos em uma linha com truncamento e título completo no hover. Mantém navegação à mensagem original.
 
 Validação real: 29 testes de sequência/cabeçalho PASS; quatro cenários Chromium (320, 390, 1024, 1440) PASS com API e dados sintéticos. Verifica abrir/recolher/reabrir, navegação e regressão de busca/rename/delete/retomada. Capturas sequence-*.png mostram painel expandido. Não comprova staging. Status parcial: CI e deploy pendentes.
+
+Atualização do compositor: botão circular azul com SVG de seta para cima, nome acessível Enviar mensagem, mesmo handleSend/canSend e estado de upload; grid mantém botão ao lado do campo e aprovação em linha própria. Bordas brancas existentes com alpha multiplicado por 1,3 (10% para 13%, 8% para 10,4% e 5% para 6,5%); menus sem borda preservados. Nova execução: 29 testes PASS e quatro cenários Chromium PASS, incluindo posição na mesma linha e habilitação ao preencher/limpar. Logs composer-tests.log e composer-browser.log.

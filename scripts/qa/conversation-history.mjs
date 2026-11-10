@@ -39,6 +39,18 @@ try {
     await route.fulfill({json:body});
   });
   await page.goto(`${process.env.QA_BASE_URL||'http://localhost:5180'}/app/chat`,{waitUntil:'domcontentloaded'});
+  const send=page.getByRole('button',{name:'Enviar mensagem',exact:true});
+  const composer=page.locator('.front-door-composer');
+  const input=composer.locator('textarea').last();
+  await send.waitFor();
+  assert.equal(await send.isDisabled(),true);
+  await input.fill('Pedido sintético');
+  assert.equal(await send.isEnabled(),true);
+  const sendBox=await send.boundingBox(),inputBox=await input.boundingBox();
+  assert.ok(sendBox.x>=inputBox.x+inputBox.width,'send beside input');
+  assert.ok(sendBox.y<inputBox.y+inputBox.height&&sendBox.y+sendBox.height>inputBox.y,'same row');
+  assert.equal(await send.locator('svg').count(),1);
+  await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
