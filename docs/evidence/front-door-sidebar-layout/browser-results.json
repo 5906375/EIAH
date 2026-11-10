@@ -1,0 +1,125 @@
+{
+  "fixture": "synthetic session and restored messages, mocked API, no real mutations",
+  "results": [
+    {
+      "width": 320,
+      "height": 700,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "borderless sidebar, callbacks and Escape",
+        "mobile collapse",
+        "usable transcript height",
+        "composer autogrow",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "borderless sidebar, callbacks and Escape",
+        "mobile collapse",
+        "usable transcript height",
+        "composer autogrow",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "borderless sidebar, callbacks and Escape",
+        "mobile collapse",
+        "usable transcript height",
+        "composer autogrow",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 705,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "borderless sidebar, callbacks and Escape",
+        "mobile collapse",
+        "usable transcript height",
+        "composer autogrow",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "single column form",
+        "bordered panel and dark fields",
+        "borderless sidebar, callbacks and Escape",
+        "mobile collapse",
+        "usable transcript height",
+        "composer autogrow",
+        "pill buttons and primary emphasis",
+        "visible keyboard focus",
+        "transcript/composer alignment",
+        "Chat/Profile shared outer frame and header",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    }
+  ]
+}

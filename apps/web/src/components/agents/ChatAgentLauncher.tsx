@@ -474,6 +474,13 @@ export default function ChatAgentLauncher({
   >({});
   const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const textarea = composerInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${input ? Math.min(textarea.scrollHeight, 128) : 44}px`;
+  }, [input]);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const clearAttachmentComposer = useCallback(
     (options?: { resetMode?: boolean }) => {
@@ -1895,8 +1902,17 @@ export default function ChatAgentLauncher({
         ) : null}
       </FrontDoorSessionHeader>
 
-      <div className="relative z-10 min-h-0 flex-1">
-        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2">
+      <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
+        {showImobSurface ? (
+          <aside className="front-door-sidebar no-scrollbar min-w-0 shrink-0 lg:w-48 lg:overflow-y-auto" aria-label="Menu operacional">
+            <ImobActionMenuBar
+              layout="sidebar"
+              menus={IMOB_ACTION_MENUS}
+              onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
+            />
+          </aside>
+        ) : null}
+        <div className="front-door-workspace-main flex min-h-0 min-w-0 flex-1 flex-col gap-2">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               ref={scrollRef}
@@ -2222,19 +2238,13 @@ export default function ChatAgentLauncher({
                   ) : null}
                 </div>
               ) : null}
-              {showImobSurface ? (
-                <div className="w-full">
-                  <ImobActionMenuBar
-                    menus={IMOB_ACTION_MENUS}
-                    onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
-                  />
-                </div>
-              ) : null}
               <textarea
+                ref={composerInputRef}
+                rows={1}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={mainComposerPlaceholder}
-                className="min-h-[64px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+                className="min-h-[44px] max-h-[128px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
 	            <button

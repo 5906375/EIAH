@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Menus laterais e maior área útil no Front Door (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Sidebar sem bordas, header compacto e compositor expansível | `docs/evidence/front-door-sidebar-layout/README.md`, `docs/evidence/front-door-sidebar-layout/unit-tests.log`, `docs/evidence/front-door-sidebar-layout/build.log`, `docs/evidence/front-door-sidebar-layout/architecture-gates.log`, `docs/evidence/front-door-sidebar-layout/browser-results.json`, `docs/evidence/front-door-sidebar-layout/menu-390.png`, `docs/evidence/front-door-sidebar-layout/menu-1440.png`, `docs/evidence/front-door-sidebar-layout/form-390.png`, `docs/evidence/front-door-sidebar-layout/form-1440.png` | 184 testes, build e gates PASS; Chromium em cinco viewports, com API/formulários sintéticos e menu real montado em fixture, confirma sidebar sem sobreposição/bordas, seleção e Escape com foco, menu mobile recolhível, área útil da transcrição, compositor compacto/crescimento e layout/rolagem preservados. Não comprova backend ou staging nem elimina baseline legado do single-surface. Status parcial. |
+
 ## Menu compacto e contorno de comandos enviados (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

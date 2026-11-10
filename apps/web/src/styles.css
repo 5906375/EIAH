@@ -83,11 +83,33 @@
 
   /* Shell follows the shared page width; conversation has a narrower reading column. */
   .front-door-page .front-door-launcher {
-    height: max(30rem, calc(100dvh - 14rem));
+    height: max(30rem, calc(100dvh - 8rem));
   }
 
   .front-door-page [data-testid="launcher-conversation-surface"] {
     padding-inline: 0;
+  }
+
+  .front-door-page .front-door-launcher > header {
+    @apply mb-2 gap-x-3 gap-y-1;
+  }
+
+  .front-door-page .front-door-launcher > header [role="combobox"] {
+    @apply min-h-[44px] py-1 lg:min-h-[36px];
+  }
+
+  .front-door-page .front-door-sidebar button,
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[36px];
+  }
+
+  .front-door-page .front-door-sidebar button:hover:not(:disabled),
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply bg-white/5 text-accent;
+  }
+
+  .front-door-page .front-door-sidebar [role="menuitem"] {
+    @apply text-sm;
   }
 
   .front-door-page .front-door-reading-column {
