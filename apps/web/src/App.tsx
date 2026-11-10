@@ -153,7 +153,7 @@ function Layout({
                 </div>
               </div>
               {showNavigation ? (
-                <nav className={isFrontDoorRoute ? "front-door-navigation no-scrollbar flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1" : "flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none"}>
+                <nav className={isFrontDoorRoute ? "front-door-navigation no-scrollbar flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 sm:max-w-none" : "flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none"}>
                   {visibleNavItems.map((item) => (
                     <NavigationLink
                       key={item.to}
