@@ -1,0 +1,197 @@
+{
+  "ok": true,
+  "check": "check:chat-launcher-render-only",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": []
+}
+{
+  "ok": true,
+  "check": "check:arch-chat-contracts",
+  "contracts": [
+    {
+      "file": "contracts/chat/chat.vertical_handoff.v1.schema.json",
+      "version": "chat.vertical_handoff.v1",
+      "requiredFields": [
+        "version",
+        "handoffId",
+        "tenantId",
+        "workspaceId",
+        "scope",
+        "userId",
+        "verticalId",
+        "intentId",
+        "handoffMessage",
+        "reasonCode",
+        "riskLevel",
+        "hitlRequired"
+      ],
+      "optionalFields": [
+        "blueprintId",
+        "requiredEntitlement",
+        "requiredRoles",
+        "renderHints",
+        "runId",
+        "receiptId",
+        "bundleId"
+      ]
+    },
+    {
+      "file": "contracts/chat/hitl.gate_state.v1.schema.json",
+      "version": "hitl.gate_state.v1",
+      "requiredFields": [
+        "version",
+        "gateId",
+        "gateType",
+        "tenantId",
+        "workspaceId",
+        "scope",
+        "approvalState",
+        "hitlRequired",
+        "riskLevel",
+        "reasonCode",
+        "verticalId",
+        "message"
+      ],
+      "optionalFields": [
+        "runId",
+        "handoffId",
+        "requiredRole",
+        "requiredEntitlement",
+        "allowedUserActions",
+        "accessibilityLabel"
+      ]
+    },
+    {
+      "file": "contracts/chat/proof_receipt_bundle_state.v1.schema.json",
+      "version": "proof_receipt_bundle_state.v1",
+      "requiredFields": [
+        "version",
+        "proofKind",
+        "proofStatus",
+        "runId",
+        "verticalId",
+        "tenantId",
+        "workspaceId",
+        "scope",
+        "source",
+        "reasonCode",
+        "accessibilityLabel"
+      ],
+      "optionalFields": [
+        "proofId",
+        "receiptId",
+        "bundleId",
+        "ledgerRef",
+        "createdAt",
+        "verifiedAt",
+        "receiptLink",
+        "bundleLink"
+      ]
+    },
+    {
+      "file": "contracts/chat/vertical.registry.v1.schema.json",
+      "version": "vertical.registry.v1",
+      "requiredFields": [
+        "version",
+        "registryVersion",
+        "scope",
+        "verticals"
+      ],
+      "optionalFields": [],
+      "baselineFile": "contracts/chat/vertical.registry.v1.baseline.json",
+      "exampleFile": "contracts/examples/vertical.registry.v1.example.json"
+    },
+    {
+      "file": "contracts/chat/chat.vertical_handoff.v2.schema.json",
+      "version": "chat.vertical_handoff.v2",
+      "requiredFields": [
+        "version",
+        "handoffId",
+        "vertical",
+        "capability",
+        "refs",
+        "governance",
+        "presentation",
+        "outcome",
+        "reasonCode"
+      ],
+      "optionalFields": [],
+      "baselineFile": "contracts/chat/chat.vertical_handoff.v2.baseline.json",
+      "exampleFile": "contracts/examples/chat.vertical_handoff.v2.example.json"
+    },
+    {
+      "file": "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.schema.json",
+      "version": "chat.vertical_handoff_shadow_snapshot.v1",
+      "requiredFields": [
+        "version",
+        "vertical",
+        "capability",
+        "presentation",
+        "outcome",
+        "reasonCode"
+      ],
+      "optionalFields": [],
+      "baselineFile": "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.baseline.json",
+      "exampleFile": "contracts/examples/chat.vertical_handoff_shadow_snapshot.v1.example.json"
+    }
+  ],
+  "reasonCodeCatalog": "contracts/chat/vertical.reason_codes.v1.json",
+  "allowedV2PreflightConsumers": [
+    "apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"
+  ],
+  "guardedV2PreflightModules": [
+    "apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts",
+    "apps/api/src/resolvers/chatVerticalImobConfidence.ts",
+    "apps/api/src/resolvers/chatVerticalImobClarification.ts",
+    "apps/api/src/resolvers/chatVerticalImobHandoff.ts",
+    "apps/api/src/resolvers/chatVerticalImobRuntimeShadow.ts",
+    "apps/api/src/resolvers/chatVerticalImobRuntimeShadowEngine.ts",
+    "apps/api/src/routes/chatVerticalImobRuntimeShadow.ts"
+  ],
+  "allowedV1HandoffSnapshotFiles": [
+    "apps/api/src/services/chatVerticalHandoffSnapshot.ts"
+  ]
+}
+{
+  "ok": true,
+  "check": "check:front-door-single-surface",
+  "rule": "EIAH-FD-001",
+  "conformant": false,
+  "conformanceBlockers": 35,
+  "conformanceBlockerSummary": {
+    "operationalParallelRoutes": 5,
+    "unclassifiedRoutes": 10,
+    "componentsOutsideConversation": 13,
+    "conversationLinksToLegacy": 7
+  },
+  "registerVersion": "front-door-surface-register.v1",
+  "routes": 23,
+  "sources": 215,
+  "insideLauncher": 137,
+  "legacyComponents": 13,
+  "staleEntries": [],
+  "legacyOperationalRoutes": [
+    "/app/imob/chat",
+    "/app/imob/dashboard",
+    "/app/imob/properties",
+    "/app/imob/processes",
+    "/app/imob/partners"
+  ],
+  "legacyRedirectedRoutes": [
+    "/app/logistica",
+    "/app/logistica/pre-duimp",
+    "/app/logistica/*"
+  ],
+  "pendingClassificationRoutes": [
+    "/app/runs",
+    "/app/billing",
+    "/app/economy",
+    "/app/admin/aprovacoes",
+    "/app/marketplace",
+    "/app/marketplace/imob",
+    "/self-service",
+    "/app/self-service",
+    "/self-service/:slug",
+    "/profile"
+  ]
+}

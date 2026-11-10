@@ -14,7 +14,7 @@ import { isPreDuimpAccessAllowed } from "@/features/logistica/preDuimp";
 const shellSource = ts.createSourceFile("App.tsx",
   readFileSync(new URL("../../../App.tsx", import.meta.url), "utf8"),
   ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const shellFunctions = new Set(["NavigationLink", "getPreDuimpNavigationItems", "Layout", "RequireAuth", "RequireImobInstall"]);
+const shellFunctions = new Set(["NavigationLink", "Layout", "RequireAuth", "RequireImobInstall"]);
 const shellDeclarations = shellSource.statements.filter((node) =>
   (ts.isFunctionDeclaration(node) && node.name && shellFunctions.has(node.name.text))
   || (ts.isVariableStatement(node) && node.declarationList.declarations.some((declaration) =>
@@ -64,11 +64,11 @@ test("global menu has one canonical chat across roles, installations and PRE_DUI
             primaryNavigation: [{ surfaceId: "imob_chat", path: "/app/imob/chat", label: "IMOB" }] },
         }, enabled);
         const expected = ["/app/runs", "/app/chat",
-          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace", "/app/chat?domain=imob", "/app/chat?domain=logistica", // FD-SINGLE-ENTRY-001: IMOB também abre o Front Door; FD-UNIFICATION-001: o menu de Logística leva ao Front Door; o cockpit /app/logistica segue acessível, mas fora do menu
-          ...(enabled ? ["/app/chat?entry=pre_duimp"] : []), "/self-service", "/profile"];
+          ...(roleProfile === "workspace_member" ? [] : ["/app/billing"]), "/app/marketplace",
+          "/self-service", "/profile"];
         assert.deepEqual(navigationLinks(html), expected);
         assert.equal((html.match(/aria-label="Chat"/g) ?? []).length, 1);
-        assert.equal((html.match(/aria-label="IMOB"/g) ?? []).length, 1, "o IMOB tem um só item, que abre o Front Door");
+        assert.doesNotMatch(html, /aria-label="(?:IMOB|Logística &amp; Comex|Pré-DUIMP)"/);
         assert.doesNotMatch(html, /href="\/app\/imob/, "a navegação do servidor não restaura entrada para a página IMOB independente");
         assert.match(html, /aria-current="page" aria-label="Chat"/);
       }
@@ -86,9 +86,11 @@ test("legacy IMOB installation hints cannot restore the competing navigation ent
   }
 });
 
-test("shell retains accessible links and its shared desktop/mobile scroll navigation", () => {
+test("shell retains accessible links and its shared collapsible mobile navigation", () => {
   const html = renderShell(shellSession);
-  assert.match(html, /<nav class="[^"]*overflow-x-auto[^"]*sm:max-w-none/);
+  assert.match(html, /aria-controls="global-navigation"/);
+  assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /<nav[^>]*class="hidden[^"]*lg:flex/);
   for (const label of ["Runs", "Chat", "Marketplace", "Self-service", "Perfil"]) {
     assert.match(html, new RegExp(`aria-label="${label}"`));
   }
@@ -157,8 +159,7 @@ test("PRE_DUIMP shell gate is server-authoritative and never hydrates capability
   const appSource = readFileSync(new URL("../../../App.tsx", import.meta.url), "utf8");
   const storeSource = readFileSync(new URL("../../../state/sessionStore.ts", import.meta.url), "utf8");
 
-  assert.match(appSource, /isPreDuimpAccessAllowed/);
-  assert.match(appSource, /preDuimpAllowed/);
+  assert.match(appSource, /loadPreDuimpSessionContext/);
   assert.match(appSource, /preDuimpAccess: \{ status: "loading" \}/);
   assert.match(appSource, /if \(!active\) return/);
   assert.match(appSource, /active = false/);

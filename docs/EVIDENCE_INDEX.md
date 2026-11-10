@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Navegação global responsiva / Front Door (2026-11-10)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Menu compartilhado de Chat e Perfil, sem entradas globais de verticais | `docs/evidence/front-door-navigation/README.md`, `docs/evidence/front-door-navigation/browser-results.json`, `docs/evidence/front-door-navigation/unit-tests.log`, `docs/evidence/front-door-navigation/build.log`, `docs/evidence/front-door-navigation/architecture-gates.json.log`, `docs/evidence/front-door-navigation/chat-mobile.png`, `docs/evidence/front-door-navigation/profile-mobile.png` | 40 testes focais, build e 20 cenários Chromium em 320–1440 px; menu, navegação e overflow com API sintética. Não comprova backend, dispositivo físico, staging ou eliminação das 35 pendências legadas do gate single-surface. Status parcial. |
+
 ## BACKUP-A — recuperação criptográfica de objeto sintético de 100 MiB (2026-10-26)
 
 | Assunto | Arquivo | O que prova |
