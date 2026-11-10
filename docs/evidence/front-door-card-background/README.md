@@ -1,0 +1,3 @@
+Front Door adota o fundo/borda/arredondamento do cartão genérico do Self-Service (incluindo AADV): bg-surface/70, border-white/10 e rounded-3xl, conforme apps/web/src/pages/self-service/index.tsx. Preserva layout, formulários, mensagens, menus e envio. Borda do shell com 10% de opacidade, sem aplicar hover do cartão à superfície inteira.
+
+QA Chromium com API e dados sintéticos em 320,390,1024,1440: verifica background rgba(15,23,42,0.7), borda rgba(255,255,255,0.1), raio de 1.5rem, sem overflow e regressão de menus, formulários/histórico/compositor. Resultado em browser-results.json e browser.log. Capturas form-*.png e sidebar-*.png. Status parcial: CI/deploy pendentes; não comprova staging.

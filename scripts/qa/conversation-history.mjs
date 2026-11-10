@@ -45,6 +45,12 @@ try {
     await route.fulfill({json:body});
   });
   await page.goto(`${process.env.QA_BASE_URL||'http://localhost:5180'}/app/chat`,{waitUntil:'domcontentloaded'});
+  if(process.env.QA_CHAT_CARD){
+    const card=await page.locator('.front-door-launcher').evaluate(el=>{const s=getComputedStyle(el);return {background:s.backgroundColor,border:s.borderTopColor,radius:parseFloat(s.borderTopLeftRadius),root:parseFloat(getComputedStyle(document.documentElement).fontSize)};});
+    assert.equal(card.background,'rgba(15, 23, 42, 0.7)');
+    assert.equal(card.border,'rgba(255, 255, 255, 0.1)');
+    assert.ok(Math.abs(card.radius-card.root*1.5)<1,'same rounded corners as Self-Service card');
+  }
   const send=page.getByRole('button',{name:/^Enviar(?: mensagem)?$/i});
   const composer=page.locator('.front-door-composer');
   const input=composer.locator('textarea').last();
@@ -90,12 +96,11 @@ try {
     const legacy=await form.evaluate(el=>{const clone=el.cloneNode(true);document.body.append(clone);const css=getComputedStyle(clone),input=getComputedStyle(clone.querySelector('input'));const result={padding:parseFloat(css.paddingLeft),font:parseFloat(input.fontSize)};clone.remove();return result;});
     assert.equal(legacy.padding,metrics.padding);assert.equal(legacy.font,metrics.font);
   }
-  const history=sidebar.getByRole('region',{name:'Conversas salvas'});
-  // A labelled section is a region only when it has an accessible name.
-  await history.waitFor();
+  assert.equal(await sidebar.getByRole('region',{name:'Conversas salvas'}).count(),0);
+  assert.equal(await sidebar.getByText('Renomear e excluir estão indisponíveis no momento.',{exact:true}).count(),0);
+  assert.equal(await sidebar.getByRole('button',{name:/^(Renomear|Excluir) /}).count(),0);
   const cost=await sidebar.getByText(/Workspace no mês:/).boundingBox(),quota=await sidebar.getByText('Quota: 0%',{exact:true}).boundingBox();
   assert.ok(quota.y>=cost.y+cost.height,'cost and quota stacked in one column');
-  await history.getByRole('button',{name:'Primeira conversa',exact:true}).waitFor();
   const sequence=sidebar.getByRole('region',{name:'Sequência da conversa'});
   const sequenceToggle=sequence.getByRole('button',{name:/Resumo da sequência/});
   assert.equal(await sequenceToggle.getAttribute('aria-expanded'),'false');
@@ -108,47 +113,16 @@ try {
   await sequence.getByRole('button',{name:'1. Cadastrar proprietário',exact:true}).click();
   assert.equal(await page.evaluate(()=>document.activeElement?.dataset.messageId),'request-one');
   await openPanel();
-  const search=history.getByRole('searchbox',{name:'Buscar conversas'});
-  await search.fill('Segunda');
-  await history.getByRole('button',{name:'Primeira conversa',exact:true}).waitFor({state:'hidden'});
-  await history.getByRole('button',{name:'Segunda conversa',exact:true}).waitFor();
-  await search.fill('');
-  await history.getByRole('button',{name:'Primeira conversa',exact:true}).waitFor();
-  await history.getByRole('button',{name:'Renomear Primeira conversa',exact:true}).click();
-  await history.getByRole('textbox',{name:'Título da conversa'}).fill('Conversa renomeada');
-  await history.getByRole('button',{name:'Salvar título',exact:true}).click();
-  await history.getByRole('button',{name:'Conversa renomeada',exact:true}).waitFor();
-  assert.equal(writes.filter(write=>write.method==='PATCH').length,1);
-  await history.getByRole('button',{name:'Excluir Segunda conversa',exact:true}).click();
-  assert.equal(writes.filter(write=>write.method==='DELETE').length,0);
-  await history.getByRole('group',{name:'Confirmar exclusão da conversa'}).getByRole('button',{name:'Cancelar',exact:true}).click();
-  assert.equal(writes.filter(write=>write.method==='DELETE').length,0);
-  await history.getByRole('button',{name:'Conversa renomeada',exact:true}).click();
-  await page.getByTestId('launcher-conversation-surface').getByText('Pedido restaurado conv-one',{exact:true}).waitFor();
-  await openPanel();
-  await history.getByRole('button',{name:'Excluir Conversa renomeada',exact:true}).click();
-  await page.screenshot({path:`${output}/delete-${width}.png`});
-  await history.getByRole('button',{name:'Confirmar exclusão',exact:true}).click();
-  await history.getByRole('button',{name:'Conversa renomeada',exact:true}).waitFor({state:'hidden'});
-  assert.equal(writes.filter(write=>write.method==='DELETE').length,1);
-  await sequence.getByText('Os pedidos desta conversa aparecerão aqui.',{exact:true}).waitFor();
   await sidebar.getByRole('button',{name:'Nova conversa',exact:true}).click();
   await openPanel();
+  await sequence.getByText('Os pedidos desta conversa aparecerão aqui.',{exact:true}).waitFor();
+  assert.equal(writes.length,0,'removing saved history must not delete or rename records');
   await page.screenshot({path:`${output}/sidebar-${width}.png`});
-  supportsManagement=false;
-  await history.getByRole('button',{name:'Atualizar',exact:true}).click();
-  await history.getByText('Renomear e excluir estão indisponíveis no momento.',{exact:true}).waitFor();
-  assert.equal(await history.getByRole('button',{name:'Renomear Segunda conversa',exact:true}).isDisabled(),true);
-  assert.equal(await history.getByRole('button',{name:'Excluir Segunda conversa',exact:true}).isDisabled(),true);
-  await search.fill('Sem correspondência');
-  await history.getByText('Nenhuma conversa encontrada.',{exact:true}).waitFor();
-  await search.fill('');
-  await history.getByRole('button',{name:'Segunda conversa',exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);
-  results.push({width,height,status:'pass',checks:['compact sidebar','source turn navigation','search','rename','cancel delete makes no request','confirmed delete','open saved conversation','current deletion starts new conversation','old API mutation controls disabled and local search fallback','responsive no overflow or runtime errors']});
+  results.push({width,height,status:'pass',checks:['compact sidebar','source turn navigation','saved history and unavailable notice absent','no rename/delete requests','new conversation','responsive no overflow or runtime errors']});
   await page.close();
  }
  await writeFile(`${output}/browser-results.json`,JSON.stringify({fixture:'mock API, synthetic owner/conversations; no real records mutated',results},null,2)+'\n');
- console.log('4 conversation history browser scenarios PASS');
+ console.log('4 Front Door sidebar browser scenarios PASS');
 }finally{await browser.close()}
