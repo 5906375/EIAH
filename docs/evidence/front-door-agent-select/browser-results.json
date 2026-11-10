@@ -1,0 +1,57 @@
+{
+  "fixture": "mock API, synthetic owner/conversations; no real records mutated",
+  "results": [
+    {
+      "width": 320,
+      "height": 700,
+      "status": "pass",
+      "checks": [
+        "compact sidebar",
+        "source turn navigation",
+        "saved history and unavailable notice absent",
+        "no rename/delete requests",
+        "new conversation",
+        "responsive no overflow or runtime errors"
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "status": "pass",
+      "checks": [
+        "compact sidebar",
+        "source turn navigation",
+        "saved history and unavailable notice absent",
+        "no rename/delete requests",
+        "new conversation",
+        "responsive no overflow or runtime errors"
+      ]
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "status": "pass",
+      "checks": [
+        "compact sidebar",
+        "source turn navigation",
+        "saved history and unavailable notice absent",
+        "no rename/delete requests",
+        "new conversation",
+        "responsive no overflow or runtime errors"
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "status": "pass",
+      "checks": [
+        "compact sidebar",
+        "source turn navigation",
+        "saved history and unavailable notice absent",
+        "no rename/delete requests",
+        "new conversation",
+        "responsive no overflow or runtime errors"
+      ]
+    }
+  ]
+}

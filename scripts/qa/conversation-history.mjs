@@ -8,7 +8,7 @@ try {
  for(const [width,height] of [[320,700],[390,844],[1024,768],[1440,900]]) {
   const page=await browser.newPage({viewport:{width,height}});
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  const writes=[]; let supportsManagement=true;
+  const writes=[]; let supportsManagement=true; let agentsAvailable=false;
   let items=[{conversationId:'conv-one',title:'Primeira conversa',lastMessagePreview:'Pedido da primeira conversa'},{conversationId:'conv-two',title:'Segunda conversa',lastMessagePreview:'Pedido da segunda conversa'}].map(item=>({...item,status:'active',createdAt:'2026-11-10T10:00:00Z',updatedAt:'2026-11-10T11:00:00Z',lastMessageAt:'2026-11-10T11:00:00Z'}));
   await page.addInitScript(({includeForm,longChat})=>{
     localStorage.setItem('eiah_token','synthetic-history-fixture');localStorage.setItem('tenant_id','tenant-history');localStorage.setItem('workspace_id','workspace-history');localStorage.setItem('active_domain','imob');
@@ -35,6 +35,7 @@ try {
     const session={tenantId:'tenant-history',workspaceId:'workspace-history',userId:'owner-history',activeDomain:'imob',availableDomains:['core','imob'],entitlements:{IMOB_INSTALLED:true},productInstallations:[{product:'IMOB'}],verticals:[{verticalId:'IMOB',activeDomain:'imob',label:'IMOB',enabled:true,frontDoorSurface:'chat'}],roles:[],branding:{brandName:'EIAH',workspaceLabel:'Workspace sintético'},experience:{roleProfile:'workspace_admin',primaryNavigation:[],landingPath:'/app/chat'}};
     let body={ok:false,data:null,items:[]};
     if(path.endsWith('/session/context'))body={ok:true,data:session};
+    if(process.env.QA_AGENT_SELECT&&path.endsWith('/agents'))body={items:agentsAvailable?[{id:'EIAH',name:'EIAH Core',description:'Fixture'},{id:'specialist-fixture',name:'Especialista com nome muito longo para conferir quebra de texto e seleção responsiva',description:'Fixture'},...Array.from({length:20},(_,i)=>({id:`agent-${i}`,name:`Agente sintético ${i}`,description:'Fixture'}))]:[]};
     if(path.endsWith('/chat/vertical-handoff'))body={ok:true,data:{ok:true,handoff:{version:'chat.vertical_handoff.v2',handoffId:'fixture',vertical:{id:'imob',label:'IMOB',registryVersion:'fixture'},capability:{id:'knowledge.search',mode:'read_only'},outcome:'allowed',reasonCode:'VERTICAL_HANDOFF_ALLOWED',presentation:{source:'operational',variant:'chat_card'}}}};
     if(path.endsWith('/imob/chat/conversations')&&method==='GET'){
       const q=(url.searchParams.get('q')||'').toLowerCase();body={ok:true,capabilities:supportsManagement?{search:true,rename:true,delete:true}:undefined,items:items.filter(item=>!supportsManagement||`${item.title} ${item.lastMessagePreview}`.toLowerCase().includes(q))};
@@ -145,6 +146,20 @@ try {
   await sequence.getByText('Os pedidos desta conversa aparecerão aqui.',{exact:true}).waitFor();
   assert.equal(writes.length,0,'removing saved history must not delete or rename records');
   await page.screenshot({path:`${output}/sidebar-${width}.png`});
+  if(process.env.QA_AGENT_SELECT){
+    const agent=page.locator('.front-door-sidebar [role="combobox"]');
+    const checkPopup=async()=>{const box=await page.getByRole('listbox').boundingBox(),trigger=await agent.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+1,'popup within viewport');assert.ok(box.width<=trigger.width+1,'popup follows trigger width');assert.equal(await page.getByRole('listbox').evaluate(el=>el.scrollWidth<=el.clientWidth),true);};
+    await agent.click();await page.getByRole('option',{name:'Nenhum agente disponível neste workspace.',exact:true}).waitFor();await checkPopup();
+    await page.screenshot({path:`${output}/agents-empty-${width}.png`});
+    await page.keyboard.press('Escape');
+    assert.equal(await sidebar.getByRole('link',{name:'Ver agentes no Self-service'}).getAttribute('href'),'/self-service#marketplace-assinaturas');
+    agentsAvailable=true;await page.reload();await openPanel();
+    await agent.click();await page.getByRole('option',{name:/Especialista com nome muito longo/}).waitFor();await checkPopup();
+    await page.screenshot({path:`${output}/agents-list-${width}.png`});
+    await page.getByRole('option',{name:/Especialista com nome muito longo/}).click();
+    await agent.getByText(/Especialista com nome muito longo/).waitFor();
+    await agent.click();await page.keyboard.press('Escape');assert.equal(await page.getByRole('listbox').count(),0);
+  }
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);
   results.push({width,height,status:'pass',checks:['compact sidebar','source turn navigation','saved history and unavailable notice absent','no rename/delete requests','new conversation','responsive no overflow or runtime errors']});

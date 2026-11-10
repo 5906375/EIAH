@@ -1023,7 +1023,7 @@ export default function SelfServiceIndexPage() {
         ) : null}
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-surface/70 p-6">
+      <section id="marketplace-assinaturas" className="rounded-3xl border border-white/10 bg-surface/70 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Marketplace</p>
