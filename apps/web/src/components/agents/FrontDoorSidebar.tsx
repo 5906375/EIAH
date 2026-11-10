@@ -1,7 +1,8 @@
 import React, { useId, useRef, useState, type ReactNode } from "react";
 
 /** Painel de apresentação: recebe valores e controles já resolvidos pelo runtime. */
-export default function FrontDoorSidebar({ status, controls, actions, sequence, history, children }: {
+export default function FrontDoorSidebar({ heading, status, controls, actions, sequence, history, children }: {
+  heading?: ReactNode;
   status?: ReactNode;
   controls?: ReactNode;
   actions?: ReactNode;
@@ -27,6 +28,7 @@ export default function FrontDoorSidebar({ status, controls, actions, sequence, 
           mobileToggle.current?.focus();
         }
       }}>
+      {heading ? <div className={`front-door-sidebar-heading min-w-0 ${desktopOpen ? "lg:block" : "lg:hidden"}`}>{heading}</div> : null}
       <button ref={mobileToggle} type="button" aria-expanded={mobileOpen} aria-controls={panelId}
         className="lg:hidden" onClick={() => setMobileOpen((open) => !open)}>
         Painel do workspace {mobileOpen ? "▴" : "▾"}

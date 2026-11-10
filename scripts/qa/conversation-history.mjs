@@ -52,6 +52,7 @@ try {
   assert.equal(await send.locator('svg').count(),1);
   await input.fill('');
   const sidebar=page.getByRole('complementary',{name:'Workspace e operações'});
+  await sidebar.getByRole('heading',{name:'Chat ativo · IMOB',exact:true}).waitFor();
   const toggle=sidebar.getByRole('button',{name:/^Painel do workspace/});
   const openPanel=async()=>{if(width<1024&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click();};
   await openPanel();
