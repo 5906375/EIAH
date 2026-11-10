@@ -1027,10 +1027,10 @@ const AgentsPage: React.FC = () => {
 
   return (
     <>
-      <div className="glass-panel p-3 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
-          <div className="space-y-2">
-            <div className="mt-6" id="chat-agent-launcher">
+      <div className="front-door-page min-w-0">
+        <div className="grid min-w-0 lg:grid-cols-1 lg:items-start">
+          <div className="min-w-0 space-y-2">
+            <div className="min-w-0" id="chat-agent-launcher">
               <ChatAgentLauncher
                 historyScope="conversation"
                 activeAgentId={agentId}

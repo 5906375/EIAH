@@ -105,6 +105,7 @@ function Layout({
     location.pathname.startsWith("/app/imob") ||
     location.pathname.startsWith("/app/marketplace/imob");
   const isImobChatRoute = location.pathname === "/app/imob/chat";
+  const isFrontDoorRoute = location.pathname === "/app/chat";
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
   const preDuimpAllowed = isPreDuimpAccessAllowed(
@@ -133,7 +134,7 @@ function Layout({
       <div className={isImobChatRoute ? "relative z-10 flex h-screen min-h-screen flex-col overflow-hidden" : "relative z-10 flex min-h-screen flex-col"}>
         {!isImobChatRoute ? (
           <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-surface-strong/80 via-surface/70 to-surface-strong/80 backdrop-blur-2xl">
-            <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+            <div className={isFrontDoorRoute ? "mx-auto flex w-full min-w-0 flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-4" : "mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4"}>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
                   <EiahBrandMark
@@ -152,7 +153,7 @@ function Layout({
                 </div>
               </div>
               {showNavigation ? (
-                <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
+                <nav className={isFrontDoorRoute ? "front-door-navigation no-scrollbar flex min-w-0 max-w-full items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1" : "flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none"}>
                   {visibleNavItems.map((item) => (
                     <NavigationLink
                       key={item.to}
@@ -166,7 +167,7 @@ function Layout({
           </header>
         ) : null}
 
-        <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
+        <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : isFrontDoorRoute ? "flex w-full min-w-0 flex-1 flex-col gap-4 px-2 py-2 sm:px-4" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
           {children}
         </main>
       </div>

@@ -28,7 +28,7 @@ export function ImobFormCard({ message, state, onSelectChange, onAction, onAttac
   const formLabel = message.form.label?.trim() ?? "";
   const formDescription = message.form.description?.trim() ?? "";
   return (
-    <div className="mt-2.5 space-y-2.5 rounded-xl border border-white/10 bg-surface/50 p-2.5">
+    <div className="imob-structured-form mt-2.5 min-w-0 space-y-2.5 rounded-xl border border-white/10 bg-surface/50 p-2.5">
       {formLabel || formDescription ? (
         <div className="space-y-0.5">
           {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
@@ -49,9 +49,9 @@ export function ImobFormCard({ message, state, onSelectChange, onAction, onAttac
           ) : null}
         </div>
       ) : null}
-      <div className="space-y-2.5">
+      <div className="imob-form-fields space-y-2.5">
         {message.form.fields.map((field) => (
-          <div key={`${message.id}-${field.name}`} className="space-y-1">
+          <div key={`${message.id}-${field.name}`} data-imob-form-field={field.name} className="min-w-0 space-y-1">
             <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
             <div className="flex gap-2">
               {field.type === "file" ? (
@@ -156,7 +156,7 @@ export function ImobFormCard({ message, state, onSelectChange, onAction, onAttac
       {formErrors._form ? (
         <p role="alert" className="text-[11px] normal-case tracking-normal text-rose-200">{formErrors._form}</p>
       ) : null}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="imob-form-actions flex flex-wrap gap-1.5">
         {(message.form.actions ?? []).map((action) => (
           <button
             key={`${message.id}-form-${action.id}`}

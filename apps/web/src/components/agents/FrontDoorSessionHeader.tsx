@@ -12,8 +12,8 @@ export default function FrontDoorSessionHeader({
 }) {
   const verticalLabel = conversationDomainLabel(activeDomain);
   return (
-    <div className="flex w-full flex-wrap items-start gap-4 sm:w-auto">
-      <div className="space-y-2">
+    <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr),minmax(0,1.5fr)] items-end gap-2 sm:flex sm:w-auto sm:flex-wrap sm:gap-3">
+      <div className="space-y-0.5">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Vertical ativa</p>
         <p className="text-sm font-semibold text-foreground">{verticalLabel}</p>
         <p className="text-xs text-muted-foreground">Conversa ativa · {verticalLabel}</p>

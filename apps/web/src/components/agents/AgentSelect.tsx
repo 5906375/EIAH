@@ -45,7 +45,7 @@ export default function AgentSelect({
     <div
       className={
         inline
-          ? "w-full sm:w-[300px]"
+          ? "w-full min-w-0 sm:w-[260px] sm:max-w-full"
           : "rounded-3xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20"
       }
     >
