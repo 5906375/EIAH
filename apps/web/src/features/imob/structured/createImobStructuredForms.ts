@@ -16,6 +16,7 @@ import {
   apiGetImobRentalHistory,
   apiGetImobSaleContractPrefill,
   apiLinkImobDocuments,
+  apiListImobCases,
   apiListImobOwners,
   apiListImobProperties,
   apiResolveImobTurn,
@@ -25,6 +26,29 @@ import {
   apiUploadDocuments,
 } from "@/lib/api";
 import { getSession } from "@/state/sessionStore";
+import {
+  applyBulkArchiveEligibility,
+  backToBulkArchiveSelection,
+  buildBulkArchiveResultText,
+  buildPropertyBulkArchiveForm,
+  bulkArchiveResultLines,
+  clearBulkArchiveSelection,
+  enterBulkArchiveReview,
+  finishBulkArchiveRun,
+  initialBulkArchiveState,
+  loadedBulkArchiveState,
+  pendingBulkArchiveIds,
+  prepareBulkArchiveRetry,
+  recordBulkArchiveOutcome,
+  runBulkArchive,
+  selectVisibleBulkArchive,
+  setBulkArchiveQuery,
+  startBulkArchiveRun,
+  summarizeBulkArchiveOutcomes,
+  toggleBulkArchiveSelection,
+  type BulkArchiveEvent,
+  type PropertyBulkArchiveState,
+} from "@/pages/app/imob/propertyBulkArchive";
 import type { ImobActionMenuItem } from "@/features/imob/imobActionMenus";
 import {
   INLINE_DOCUMENT_CATEGORY_FIELD,
@@ -723,6 +747,211 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Arquivar imóveis (seleção múltipla). Cada escrita é o `DELETE /imob/properties/:id` existente.
+  // Fluxo: seleção → revisão (sem escrita) → confirmação explícita do lote exato → execução sequencial → resultado por imóvel.
+  // -------------------------------------------------------------------------
+
+  const { bulkArchiveRef, setBulkArchiveByMessageId, bulkArchiveScopeRef, bulkArchiveStopRef } = state;
+  const readBulkArchive = (messageId: string) => bulkArchiveRef.current[messageId];
+  const patchBulkArchive = (messageId: string, update: (current: PropertyBulkArchiveState) => PropertyBulkArchiveState) =>
+    setBulkArchiveByMessageId((previous) => (previous[messageId] ? { ...previous, [messageId]: update(previous[messageId]) } : previous));
+  const bulkArchiveScopeHolds = (messageId: string) => {
+    const scope = bulkArchiveScopeRef.current[messageId];
+    const now = getSession();
+    return Boolean(scope) && scope.token === now.token && scope.tenantId === now.tenantId && scope.workspaceId === now.workspaceId;
+  };
+  const forgetBulkArchive = (messageId: string) => {
+    delete bulkArchiveScopeRef.current[messageId];
+    bulkArchiveStopRef.current.delete(messageId);
+    setBulkArchiveByMessageId((previous) => {
+      const { [messageId]: _removed, ...rest } = previous;
+      return rest;
+    });
+  };
+  const STALE_NOTICE = "A sessão ou o workspace mudou desde que esta lista foi carregada. Nada foi alterado. Abra Imóveis → Arquivar imóvel de novo.";
+
+  async function loadBulkArchiveList(
+    messageId: string,
+    apply: (current: PropertyBulkArchiveState, items: Awaited<ReturnType<typeof apiListImobProperties>>["data"]["items"]) => PropertyBulkArchiveState,
+    onFailure: (current: PropertyBulkArchiveState) => PropertyBulkArchiveState = (current) => ({ ...current, stage: "error", notice: "Não foi possível carregar os imóveis agora. Nada foi alterado." }),
+  ) {
+    try {
+      const response = await apiListImobProperties();
+      if (!bulkArchiveScopeHolds(messageId)) return; // outro contexto: a lista antiga não é reaproveitada
+      patchBulkArchive(messageId, (current) => apply(current, response.data.items ?? []));
+    } catch {
+      if (!bulkArchiveScopeHolds(messageId)) return;
+      patchBulkArchive(messageId, onFailure);
+    }
+  }
+
+  function openPropertyBulkArchiveForm() {
+    const threadId = host.activeThreadId ?? makeStructuredId("thread");
+    const messageId = makeStructuredId("assistant");
+    const now = getSession();
+    bulkArchiveScopeRef.current[messageId] = { token: now.token, tenantId: now.tenantId, workspaceId: now.workspaceId };
+    setBulkArchiveByMessageId((previous) => ({ ...previous, [messageId]: initialBulkArchiveState() }));
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: "Escolha os imóveis que você quer arquivar. Nada é arquivado antes da sua confirmação.",
+      form: buildPropertyBulkArchiveForm(),
+      thread: { id: threadId, label: "Cadastro", status: "active" },
+    });
+    void loadBulkArchiveList(messageId, (current, items) => loadedBulkArchiveState(current, items));
+  }
+
+  /** Verificação preliminar, só leitura e só informativa; o servidor decide de novo em cada escrita. */
+  async function checkBulkArchiveEligibility(messageId: string, reviewedIds: string[]) {
+    let linked: Set<string> | null = null;
+    try {
+      const response = await apiListImobCases();
+      linked = new Set((response.data.items ?? []).map((item) => item.propertyId).filter((id): id is string => Boolean(id)));
+    } catch {
+      linked = null;
+    }
+    if (!bulkArchiveScopeHolds(messageId)) return;
+    patchBulkArchive(messageId, (current) => (
+      current.stage === "review" && current.reviewedIds.join("|") === reviewedIds.join("|")
+        ? applyBulkArchiveEligibility(current, linked)
+        : current
+    ));
+  }
+
+  async function runConfirmedBulkArchive(message: StructuredMessage) {
+    const messageId = message.id;
+    if (formSubmittingRef.current.has(messageId)) return; // duplo clique: só uma execução por vez
+    const reviewed = readBulkArchive(messageId);
+    if (reviewed?.stage !== "review" || reviewed.reviewedIds.length === 0) return;
+    // O lote é exatamente o que foi apresentado na revisão, não a seleção corrente.
+    const known = new Set(reviewed.candidates.map((candidate) => candidate.id));
+    const batch = reviewed.reviewedIds.filter((id) => known.has(id) && reviewed.outcomes[id] !== "archived");
+    if (batch.length === 0) return;
+    formSubmittingRef.current.add(messageId);
+    bulkArchiveStopRef.current.delete(messageId);
+    patchBulkArchive(messageId, startBulkArchiveRun);
+    let notice: string | null = null;
+    try {
+      await runBulkArchive({
+        ids: batch,
+        archive: (propertyId) => apiArchiveImobProperty(propertyId),
+        failureOf: (error) => error instanceof ApiError
+          ? { status: error.status, code: (error.body as { error?: { code?: string } } | undefined)?.error?.code ?? null }
+          : { status: 0 },
+        canContinue: () => bulkArchiveScopeHolds(messageId) && host.isFormCurrent?.(message) !== false && !bulkArchiveStopRef.current.has(messageId),
+        onOutcome: (propertyId, outcome) => patchBulkArchive(messageId, (current) => recordBulkArchiveOutcome(current, propertyId, outcome)),
+      });
+      if (!bulkArchiveScopeHolds(messageId)) notice = "A sessão ou o workspace mudou durante a operação. Os itens restantes não foram processados.";
+      else if (bulkArchiveStopRef.current.has(messageId)) notice = "Operação interrompida a seu pedido. Os itens restantes não foram processados.";
+    } finally {
+      formSubmittingRef.current.delete(messageId);
+    }
+    // Contexto trocado: nada é retomável a partir daqui (a seleção pertencia a outra sessão/workspace).
+    const contextChanged = !bulkArchiveScopeHolds(messageId);
+    patchBulkArchive(messageId, (current) => finishBulkArchiveRun(contextChanged ? { ...current, reviewedIds: [] } : current, notice));
+    const finished = readBulkArchive(messageId);
+    if (!finished || !bulkArchiveScopeHolds(messageId) || host.isFormCurrent?.(message) === false) return;
+
+    const totals = summarizeBulkArchiveOutcomes(finished.outcomes, Object.keys(finished.outcomes));
+    const record: StructuredMessage = {
+      id: makeStructuredId("assistant"),
+      role: "assistant",
+      text: buildBulkArchiveResultText(finished),
+      card: { type: "evidence", chip: "Resultado", title: "Resultado do arquivamento", lines: bulkArchiveResultLines(finished) },
+      thread: message.thread,
+    };
+    appendMessage(record);
+    if (totals.archived > 0) void persistMessage(record, { intent: "property.bulk_archived", action: "imob.properties.archive" });
+    if (pendingBulkArchiveIds(finished).length === 0) {
+      updateMessageById(messageId, { form: undefined });
+      forgetBulkArchive(messageId);
+    }
+  }
+
+  async function handlePropertyBulkArchiveEvent(message: StructuredMessage, event: BulkArchiveEvent) {
+    const messageId = message.id;
+    const current = readBulkArchive(messageId);
+
+    if (event.type === "cancel" || event.type === "close") {
+      if (current?.stage === "running") {
+        bulkArchiveStopRef.current.add(messageId); // nenhuma nova escrita depois do item em voo
+        return;
+      }
+      const changedSomething = Object.values(current?.outcomes ?? {}).includes("archived");
+      updateMessageById(messageId, { form: undefined });
+      forgetBulkArchive(messageId);
+      if (event.type === "cancel" && !changedSomething) {
+        appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Arquivamento cancelado. Nada foi alterado.", thread: message.thread });
+      }
+      return;
+    }
+
+    if (!current || current.stage === "stale") {
+      setBulkArchiveByMessageId((previous) => ({ ...previous, [messageId]: { ...(current ?? initialBulkArchiveState()), stage: "stale", notice: STALE_NOTICE } }));
+      return;
+    }
+    if (current.stage === "running") return; // durante a execução só "interromper" é aceito
+    if (!bulkArchiveScopeHolds(messageId) || host.isFormCurrent?.(message) === false) {
+      // Resultado já produzido continua legível, mas sem retomada; seleção/revisão antigas são descartadas.
+      patchBulkArchive(messageId, (state) => (
+        state.stage === "result" ? { ...state, reviewedIds: [], notice: STALE_NOTICE } : { ...state, stage: "stale", notice: STALE_NOTICE }
+      ));
+      return;
+    }
+
+    switch (event.type) {
+      case "toggle":
+        patchBulkArchive(messageId, (state) => toggleBulkArchiveSelection(state, event.propertyId));
+        return;
+      case "query":
+        patchBulkArchive(messageId, (state) => setBulkArchiveQuery(state, event.value));
+        return;
+      case "select_visible":
+        patchBulkArchive(messageId, selectVisibleBulkArchive);
+        return;
+      case "clear":
+        patchBulkArchive(messageId, clearBulkArchiveSelection);
+        return;
+      case "back":
+        patchBulkArchive(messageId, backToBulkArchiveSelection);
+        return;
+      case "review": {
+        patchBulkArchive(messageId, enterBulkArchiveReview);
+        const reviewed = readBulkArchive(messageId);
+        if (reviewed?.stage === "review") void checkBulkArchiveEligibility(messageId, reviewed.reviewedIds);
+        return;
+      }
+      case "confirm":
+        await runConfirmedBulkArchive(message);
+        return;
+      case "reload":
+        if (current.stage !== "error") return;
+        patchBulkArchive(messageId, (state) => ({ ...state, stage: "loading", notice: null }));
+        await loadBulkArchiveList(messageId, (state, items) => loadedBulkArchiveState(state, items));
+        return;
+      case "retry_pending": {
+        if (current.stage !== "result" || pendingBulkArchiveIds(current).length === 0) return;
+        if (formSubmittingRef.current.has(messageId)) return;
+        formSubmittingRef.current.add(messageId);
+        try {
+          patchBulkArchive(messageId, (state) => ({ ...state, stage: "loading", notice: null }));
+          // Recarrega e reavalia: só pendentes ainda existentes voltam, e sempre para uma nova confirmação explícita.
+          await loadBulkArchiveList(
+            messageId,
+            (state, items) => prepareBulkArchiveRetry({ ...state, stage: "result" }, items),
+            (state) => ({ ...state, stage: "result", notice: "Não foi possível recarregar os imóveis agora. Nada foi alterado; tente de novo." }),
+          );
+        } finally {
+          formSubmittingRef.current.delete(messageId);
+        }
+        const retried = readBulkArchive(messageId);
+        if (retried?.stage === "review") void checkBulkArchiveEligibility(messageId, retried.reviewedIds);
+        return;
+      }
+    }
+  }
+
   function handleActionMenuSelect(item: ImobActionMenuItem) {
     if (item.kind === "prompt") {
       void sendMessageText(item.prompt, { displayText: item.label });
@@ -732,7 +961,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     if (item.form === "owner_edit") openOwnerEditForm("edit");
     else if (item.form === "owner_archive") openOwnerEditForm("archive");
     else if (item.form === "property_edit") openPropertyEditForm("edit");
-    else if (item.form === "property_archive") openPropertyEditForm("archive");
+    else if (item.form === "property_archive") openPropertyBulkArchiveForm();
     else if (item.form.startsWith("tokenization_")) {
       openTokenizationForm(item.form.slice("tokenization_".length) as TokenizationSubject);
     } else if (item.form.startsWith("documents_")) {
@@ -1585,6 +1814,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     handleActionMenuSelect,
     handleStructuredFormAction,
     handleSelectChange,
+    handlePropertyBulkArchiveEvent,
     openRentalContractForm,
     openSaleContractForm,
     openAssetDealForm,

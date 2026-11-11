@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Arquivamento múltiplo de imóveis IMOB (2026-11-11)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Arquivamento múltiplo de imóveis no Front Door | `docs/evidence/imob-bulk-archive/README.md`, `docs/evidence/imob-bulk-archive/exit-codes.txt`, `docs/evidence/imob-bulk-archive/unit-tests.log`, `docs/evidence/imob-bulk-archive/unit-tests-panel-after-plural-fix.log`, `docs/evidence/imob-bulk-archive/api-tests.log`, `docs/evidence/imob-bulk-archive/build.log`, `docs/evidence/imob-bulk-archive/typecheck.log`, `docs/evidence/imob-bulk-archive/browser-results.json`, `docs/evidence/imob-bulk-archive/03-revisao-390.png`, `docs/evidence/imob-bulk-archive/04-resultado-parcial-390.png`, `docs/evidence/imob-bulk-archive/03-revisao-1440.png`, `docs/evidence/imob-bulk-archive/04-resultado-parcial-1440.png` | Suíte focal web com 241 testes e API com 25 aprovados (inclui 17 testes de integração do fluxo e 3 de `archiveProperty`), build exit 0; Chromium em 320, 390, 1024 e 1440 px com painel e reducers reais, fixtures sintéticas e API 100% mockada confirma seleção/busca/revisão sem escrita/confirmação explícita/resultado parcial com bloqueado preservado e retomada só do pendente, alvos de toque de 44 px no mobile e nenhuma mutação IMOB. `tsc` sai com exit 2 por 64 diagnósticos sem linha de base na `main` limpa (nenhum em arquivo criado pela entrega). Não comprova backend real, CI, staging nem produção; nenhum arquivamento real foi executado. Status parcial. |
+
 ## Painel compacto e gestão de conversas IMOB (2026-11-10)
 
 | Assunto | Arquivo | O que prova |

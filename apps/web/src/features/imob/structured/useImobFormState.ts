@@ -12,6 +12,7 @@ import {
 import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
 import { buildImobOwnerOptions, matchOptionByName } from "@/pages/app/imob/propertyCreateForm";
 import { buildImobPropertyOptions } from "@/pages/app/imob/rentalLeaseForm";
+import type { PropertyBulkArchiveState } from "@/pages/app/imob/propertyBulkArchive";
 import { normalizeCepValue, normalizeImobFormValue, planImobCepAutofill, resolveFieldAutofillTarget, type StructuredMessage } from "./types";
 
 /** Coordena o lookup interno e descarta respostas de outra edição ou formulário. */
@@ -96,6 +97,18 @@ export function useImobFormState(messages: StructuredMessage[]) {
   /** Imóvel cuja locação, ao ser salva, abre direto o contrato. */
   const contractAfterLeaseRef = React.useRef<string | null>(null);
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
+  // Arquivamento múltiplo: estado por mensagem (leitura síncrona via ref, como os valores do formulário).
+  const [bulkArchiveByMessageId, setStoredBulkArchive] = React.useState<Record<string, PropertyBulkArchiveState>>({});
+  const bulkArchiveRef = React.useRef(bulkArchiveByMessageId);
+  const setBulkArchiveByMessageId = React.useCallback<React.Dispatch<React.SetStateAction<Record<string, PropertyBulkArchiveState>>>>((update) => {
+    const next = typeof update === "function" ? update(bulkArchiveRef.current) : update;
+    bulkArchiveRef.current = next;
+    setStoredBulkArchive(next);
+  }, []);
+  /** Contexto de autorização em que cada seleção foi carregada; só em memória (o token nunca vai para o estado do painel). */
+  const bulkArchiveScopeRef = React.useRef<Record<string, { token?: string; tenantId: string; workspaceId: string }>>({});
+  /** Mensagens cujo lote em execução deve parar antes da próxima escrita. */
+  const bulkArchiveStopRef = React.useRef<Set<string>>(new Set());
 
   const resolveFormFieldOptions = React.useCallback(
     (field: ImobPresentationFormField): ImobPresentationFormFieldOption[] =>
@@ -260,6 +273,11 @@ export function useImobFormState(messages: StructuredMessage[]) {
     pendingFormPrefillRef,
     contractAfterLeaseRef,
     propertyRecordsRef,
+    bulkArchiveByMessageId,
+    bulkArchiveRef,
+    setBulkArchiveByMessageId,
+    bulkArchiveScopeRef,
+    bulkArchiveStopRef,
     resolveFormFieldOptions,
     resolveFormValuesForMessage: resolveCurrentFormValues,
     updateFormFieldValue,

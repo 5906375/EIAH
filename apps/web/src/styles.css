@@ -417,6 +417,8 @@ body .imob-structured-form.imob-structured-form .imob-form-actions {
     font-size: 16px;
   }
   body .imob-structured-form.imob-structured-form button { min-height: 40px; }
+  /* Arquivamento múltiplo: botões e busca com alvo de toque de 44px (o checkbox é acionado pelo label inteiro). */
+  body .imob-structured-form.imob-structured-form.imob-bulk-archive :is(button, input[type="search"]) { min-height: 44px; }
 }
 
 @layer utilities {

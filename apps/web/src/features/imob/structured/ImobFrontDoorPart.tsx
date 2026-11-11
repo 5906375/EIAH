@@ -55,6 +55,7 @@ export function ImobFrontDoorPart({
           state={imobForms}
           onSelectChange={structuredForms.handleSelectChange}
           onAction={(target, actionId) => structuredForms.handleStructuredFormAction(target, actionId)}
+          onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
         />
       ) : null}
       {isLast && message.quickReplies?.length ? (

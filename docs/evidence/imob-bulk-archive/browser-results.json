@@ -1,0 +1,205 @@
+{
+  "fixture": "painel real + reducers reais, dados sintéticos, API 100% mockada, sem mutações IMOB",
+  "results": [
+    {
+      "width": 320,
+      "height": 700,
+      "status": "pass",
+      "touchTargetsPx": {
+        "input do checkbox (informativo)": 40,
+        "label clicável do checkbox": 59.2,
+        "botão Revisar arquivamento": 44,
+        "botão Selecionar os exibidos": 44,
+        "botão Limpar seleção": 44,
+        "botão Cancelar": 44,
+        "campo de busca": 44
+      },
+      "screenshots": [
+        "01-busca-com-selecao-oculta-320.png",
+        "02-selecao-3-320.png",
+        "03-revisao-320.png",
+        "04-resultado-parcial-320.png",
+        "05-retomada-revisao-320.png"
+      ],
+      "interceptedRequests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 1,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 2,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1
+      },
+      "blockedRequests": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com"
+      ],
+      "pageErrors": [],
+      "checks": [
+        "seleção/desmarcação com contador aria-live",
+        "busca preserva seleção e sinaliza ocultos",
+        "revisão sem escrita e sem confirmação",
+        "elegibilidade sem duplicação para leitores de tela",
+        "confirmação explícita",
+        "resultado parcial com bloqueado preservado",
+        "retomada só do pendente com nova confirmação",
+        "alvos de toque ≥44px no mobile",
+        "sem overflow horizontal"
+      ]
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "status": "pass",
+      "touchTargetsPx": {
+        "input do checkbox (informativo)": 40,
+        "label clicável do checkbox": 59.2,
+        "botão Revisar arquivamento": 44,
+        "botão Selecionar os exibidos": 44,
+        "botão Limpar seleção": 44,
+        "botão Cancelar": 44,
+        "campo de busca": 44
+      },
+      "screenshots": [
+        "01-busca-com-selecao-oculta-390.png",
+        "02-selecao-3-390.png",
+        "03-revisao-390.png",
+        "04-resultado-parcial-390.png",
+        "05-retomada-revisao-390.png"
+      ],
+      "interceptedRequests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 1,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 2,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1
+      },
+      "blockedRequests": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com"
+      ],
+      "pageErrors": [],
+      "checks": [
+        "seleção/desmarcação com contador aria-live",
+        "busca preserva seleção e sinaliza ocultos",
+        "revisão sem escrita e sem confirmação",
+        "elegibilidade sem duplicação para leitores de tela",
+        "confirmação explícita",
+        "resultado parcial com bloqueado preservado",
+        "retomada só do pendente com nova confirmação",
+        "alvos de toque ≥44px no mobile",
+        "sem overflow horizontal"
+      ]
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "status": "pass",
+      "touchTargetsPx": {
+        "input do checkbox (informativo)": 30.8,
+        "label clicável do checkbox": 59.2,
+        "botão Revisar arquivamento": 30.8,
+        "botão Selecionar os exibidos": 30.8,
+        "botão Limpar seleção": 30.8,
+        "botão Cancelar": 30.8,
+        "campo de busca": 32.4
+      },
+      "screenshots": [
+        "01-busca-com-selecao-oculta-1024.png",
+        "02-selecao-3-1024.png",
+        "03-revisao-1024.png",
+        "04-resultado-parcial-1024.png",
+        "05-retomada-revisao-1024.png"
+      ],
+      "interceptedRequests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 1,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 2,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1
+      },
+      "blockedRequests": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com"
+      ],
+      "pageErrors": [],
+      "checks": [
+        "seleção/desmarcação com contador aria-live",
+        "busca preserva seleção e sinaliza ocultos",
+        "revisão sem escrita e sem confirmação",
+        "elegibilidade sem duplicação para leitores de tela",
+        "confirmação explícita",
+        "resultado parcial com bloqueado preservado",
+        "retomada só do pendente com nova confirmação",
+        "alvos de toque ≥44px no mobile",
+        "sem overflow horizontal"
+      ]
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "status": "pass",
+      "touchTargetsPx": {
+        "input do checkbox (informativo)": 30.8,
+        "label clicável do checkbox": 59.2,
+        "botão Revisar arquivamento": 30.8,
+        "botão Selecionar os exibidos": 30.8,
+        "botão Limpar seleção": 30.8,
+        "botão Cancelar": 30.8,
+        "campo de busca": 32.4
+      },
+      "screenshots": [
+        "01-busca-com-selecao-oculta-1440.png",
+        "02-selecao-3-1440.png",
+        "03-revisao-1440.png",
+        "04-resultado-parcial-1440.png",
+        "05-retomada-revisao-1440.png"
+      ],
+      "interceptedRequests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 1,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 2,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1
+      },
+      "blockedRequests": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "fonts.gstatic.com"
+      ],
+      "pageErrors": [],
+      "checks": [
+        "seleção/desmarcação com contador aria-live",
+        "busca preserva seleção e sinaliza ocultos",
+        "revisão sem escrita e sem confirmação",
+        "elegibilidade sem duplicação para leitores de tela",
+        "confirmação explícita",
+        "resultado parcial com bloqueado preservado",
+        "retomada só do pendente com nova confirmação",
+        "alvos de toque ≥44px no mobile",
+        "sem overflow horizontal"
+      ]
+    }
+  ]
+}

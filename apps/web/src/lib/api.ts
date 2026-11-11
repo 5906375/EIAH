@@ -2856,6 +2856,7 @@ export type ImobPresentationForm = {
     | "imob.properties.create"
     | "imob.properties.batch"
     | "imob.properties.update"
+    | "imob.properties.archive_batch"
     | "imob.rentals.create"
     | "imob.tokenization.interest"
     | "imob.documents.link"
