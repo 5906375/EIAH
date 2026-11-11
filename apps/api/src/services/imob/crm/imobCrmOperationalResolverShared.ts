@@ -389,6 +389,8 @@ export type ImobOperationalConsultContext = {
   asksPendingOnly: boolean;
   asksQualifiedOnly: boolean;
   asksReadyForReview: boolean;
+  /** Consulta somente leitura dos imóveis arquivados (nunca um comando de arquivar). */
+  asksArchived: boolean;
   asksEdit: boolean;
   asksDelete: boolean;
   ownerCrudId: string | null;
