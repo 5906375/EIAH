@@ -832,6 +832,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -856,7 +859,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+      DATABASE_URL: postgresql://ci:ci@postgres:5432/eiah_ci?schema=public
       E2E_API_URL: http://127.0.0.1:58080/api
       E2E_WEB_URL: http://127.0.0.1:55173
       E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
@@ -890,14 +893,11 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @repo/db migrate:deploy
 
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Start API
         working-directory: apps/api
         env:
-          REDIS_URL: redis://localhost:6379
-          RUN_EVENTS_REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://redis:6379
+          RUN_EVENTS_REDIS_URL: redis://redis:6379
           NODE_ENV: development
           PORT: '58080'
           FRONTEND_URL: http://127.0.0.1:55173
