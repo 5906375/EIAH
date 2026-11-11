@@ -1,0 +1,3 @@
+vite pid=30578
+4 viewports PASS (320, 390, 1024, 1440)
+vite encerrado (pid 30578); QA_EXIT=0

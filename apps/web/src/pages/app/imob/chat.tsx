@@ -5807,6 +5807,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               onSelectChange={structuredForms.handleSelectChange}
                               onAction={(target, actionId) => handlePresentationFormAction(target as ChatMessage, actionId)}
                               onAttachmentClick={() => setAttachmentMenuOpen(true)}
+                              onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
                             />
                           ) : null}
                         </div>

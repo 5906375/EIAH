@@ -13,6 +13,7 @@ import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/c
 import { resolveImobPropertyUnitIntakeTurn } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
 import { resolveImobSemanticIntent } from "../../../../../api/src/services/imob/imobSemanticIntentResolver";
 import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
+import { buildPropertyBulkArchiveForm } from "@/pages/app/imob/propertyBulkArchive";
 import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -24,7 +25,15 @@ import { detectLauncherRouteIntent, resolveLauncherTurnDecision } from "@/compon
 function fakeState() {
   let values: Record<string, Record<string, string>> = {};
   let errors: Record<string, Record<string, string>> = {};
+  const bulkArchiveRef = { current: {} as Record<string, any> };
   const state = {
+    bulkArchiveRef,
+    get bulkArchiveByMessageId() { return bulkArchiveRef.current; },
+    setBulkArchiveByMessageId: (update: unknown) => {
+      bulkArchiveRef.current = typeof update === "function" ? (update as (prev: Record<string, any>) => Record<string, any>)(bulkArchiveRef.current) : (update as Record<string, any>);
+    },
+    bulkArchiveScopeRef: { current: {} as Record<string, unknown> },
+    bulkArchiveStopRef: { current: new Set<string>() },
     formValuesByMessageId: values,
     setFormValuesByMessageId: (update: unknown) => {
       values = typeof update === "function" ? (update as (prev: typeof values) => typeof values)(values) : (update as typeof values);
@@ -1933,4 +1942,309 @@ test("lease_start_new e lease_register_current reutilizam o formulário de loca�
   assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { propertyId: "property-7" } });
   assert.equal(raw.contractAfterLeaseRef.current, null, "não pula para o contrato");
   assert.deepEqual(sent, [["cadastrar locatário", "Cadastrar locação"]]);
+});
+
+// ---------------------------------------------------------------------------
+// Arquivar imóveis (seleção múltipla): intenção → seleção → prévia sem escrita → confirmação → execução → resultado
+// Fixtures sintéticas e fetch mockado: nenhum arquivamento real é executado.
+// ---------------------------------------------------------------------------
+
+type BulkProperty = Record<string, any>;
+const bulkJson = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const bulkOwner = (id: string) => ({ id, name: `Proprietário Sintético ${id}` });
+const bulkProperty = (id: string, unit: string, owner: { id: string; name: string } | null): BulkProperty => ({
+  id, tenantId: "tenant-bulk", workspaceId: "workspace-bulk", ownerId: owner?.id ?? null, owner, propertyType: "kitnet", goal: "locacao",
+  address: "Rua Sintética, 100", city: "Cidade Exemplo", status: "ready", metadata: { externalPropertyRef: unit },
+});
+const defaultBulkProperties = () => [
+  bulkProperty("p1", "Kitnet 301", bulkOwner("a")),
+  bulkProperty("p2", "Kitnet 302", bulkOwner("b")),
+  bulkProperty("p3", "Kitnet 303", null),
+  bulkProperty("p4", "Apto 101", bulkOwner("a")),
+];
+
+function bulkArchiveHarness(t: TestContext, options: {
+  properties?: BulkProperty[];
+  cases?: Array<{ propertyId: string }>;
+  onDelete?: (id: string, attempt: number) => Response | undefined | Promise<Response | undefined>;
+  listGate?: Promise<void>;
+} = {}) {
+  const saved = { ...getSession() };
+  updateSession({ tenantId: "tenant-bulk", workspaceId: "workspace-bulk", token: "token-sintetico" });
+  t.after(() => updateSession(saved));
+  const properties = options.properties ?? defaultBulkProperties();
+  const calls: Array<{ path: string; method: string; headers: Headers }> = [];
+  const attempts: Record<string, number> = {};
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    calls.push({ path, method, headers: new Headers(init?.headers) });
+    if (path === "/imob/properties" && method === "GET") {
+      await options.listGate;
+      return bulkJson({ ok: true, data: { items: properties.filter((item) => item.status !== "archived") } });
+    }
+    if (path === "/imob/cases" && method === "GET") return bulkJson({ ok: true, data: { items: options.cases ?? [] } });
+    const match = path.match(/^\/imob\/properties\/([^/]+)$/);
+    if (match && method === "DELETE") {
+      const id = decodeURIComponent(match[1]);
+      attempts[id] = (attempts[id] ?? 0) + 1;
+      const custom = await options.onDelete?.(id, attempts[id]);
+      if (custom) return custom;
+      const found = properties.find((item) => item.id === id);
+      if (found) found.status = "archived";
+      return bulkJson({ ok: true, data: found });
+    }
+    throw new Error(`requisição indevida: ${method} ${path}`);
+  });
+  const messages: StructuredMessage[] = [];
+  const persisted: Array<{ message: StructuredMessage; meta: { intent: string; action: string } }> = [];
+  const openForms = new Set<string>();
+  const host: ImobStructuredFormsHost = {
+    activeThreadId: "thread-1",
+    appendMessage: (message) => { messages.push(message); if (message.form) openForms.add(message.id); },
+    updateMessage: (id, patch) => { if ("form" in patch && !patch.form) openForms.delete(id); },
+    patchMessage: () => undefined,
+    persistMessage: (message, meta) => { persisted.push({ message, meta }); },
+    sendText: () => undefined,
+    isFormCurrent: (message) => openForms.has(message.id),
+  };
+  const { state, raw } = fakeState();
+  const forms = createImobStructuredForms(state, host);
+  const item = localItems.find((candidate) => candidate.form === "property_archive")!;
+  const bulk = (message: StructuredMessage) => raw.bulkArchiveRef.current[message.id];
+  const until = async (predicate: () => boolean) => { for (let index = 0; index < 100 && !predicate(); index += 1) await tick(); assert.ok(predicate(), "condição não atingida a tempo"); };
+  const send = (message: StructuredMessage, event: Parameters<typeof forms.handlePropertyBulkArchiveEvent>[1]) => forms.handlePropertyBulkArchiveEvent(message, event);
+  const deletes = () => calls.filter((call) => call.method === "DELETE").map((call) => decodeURIComponent(call.path.split("/").pop()!));
+  async function open() {
+    forms.handleActionMenuSelect(item);
+    const message = messages.at(-1)!;
+    await until(() => bulk(message)?.stage === "select");
+    return message;
+  }
+  async function toReview(message: StructuredMessage, ...ids: string[]) {
+    for (const id of ids) await send(message, { type: "toggle", propertyId: id });
+    await send(message, { type: "review" });
+    assert.equal(bulk(message).stage, "review");
+  }
+  return { properties, calls, messages, persisted, openForms, forms, raw, bulk, until, send, deletes, open, toReview };
+}
+
+test("Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  assert.equal(message.form?.submitTarget, "imob.properties.archive_batch");
+  assert.equal(message.thread?.id, "thread-1");
+  assert.deepEqual(h.bulk(message).candidates.map((candidate: { id: string }) => candidate.id), ["p4", "p1", "p2", "p3"]);
+  assert.deepEqual(h.calls.map((call) => `${call.method} ${call.path}`), ["GET /imob/properties"]);
+  assert.deepEqual(h.bulk(message).selectedIds, []);
+});
+
+test("arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p2");
+  assert.deepEqual(h.deletes(), [], "a revisão não escreve");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p2"]);
+  assert.equal(h.properties.find((item) => item.id === "p2")!.status, "archived");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 0 não processados.");
+  assert.equal(h.openForms.has(message.id), false, "sem pendências o painel é encerrado");
+  assert.deepEqual(h.persisted.map((entry) => entry.meta), [{ intent: "property.bulk_archived", action: "imob.properties.archive" }]);
+});
+
+test("prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada", async (t) => {
+  const h = bulkArchiveHarness(t, { cases: [{ propertyId: "p2" }] });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.until(() => h.bulk(message).eligibilityChecked);
+  assert.deepEqual(h.bulk(message).eligibility, { p1: "no_case_known", p2: "case_linked", p3: "no_case_known" });
+  assert.ok(h.calls.every((call) => call.method === "GET"), "somente leituras até aqui");
+  await h.send(message, { type: "back" });
+  assert.equal(h.bulk(message).stage, "select");
+  assert.deepEqual(h.bulk(message).selectedIds, ["p1", "p2", "p3"], "voltar preserva a seleção para corrigir");
+  await h.send(message, { type: "cancel" });
+  assert.deepEqual(h.deletes(), []);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento cancelado. Nada foi alterado.");
+  assert.equal(h.openForms.has(message.id), false);
+});
+
+test("três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.properties.find((item) => item.id === "p4")!.status, "ready", "o não selecionado permanece ativo");
+  assert.ok(h.calls.every((call) => !call.path.startsWith("/imob/owners")), "arquivar imóvel não arquiva nem altera proprietário");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 3 arquivados · 0 bloqueados · 0 não processados.");
+  assert.deepEqual(h.messages.at(-1)!.card?.lines, ["Kitnet 301 — arquivado", "Kitnet 302 — arquivado", "Kitnet 303 — arquivado"]);
+});
+
+test("um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada", async (t) => {
+  const blocked = bulkJson({ ok: false, error: { code: "PROPERTY_DELETE_BLOCKED" } }, 409);
+  const h = bulkArchiveHarness(t, { onDelete: (id) => (id === "p2" ? undefined : blocked.clone()) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 2 bloqueados · 0 não processados.");
+  assert.deepEqual(h.messages.at(-1)!.card?.lines, [
+    "Kitnet 301 — bloqueado por dependência (locação ou caso ligado)", "Kitnet 302 — arquivado", "Kitnet 303 — bloqueado por dependência (locação ou caso ligado)",
+  ]);
+  assert.equal(h.properties.find((item) => item.id === "p1")!.status, "ready");
+  assert.equal(h.openForms.has(message.id), false, "bloqueados não são retomáveis");
+});
+
+test("falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id, attempt) => (id === "p2" && attempt === 1 ? bulkJson({ error: { code: "UNAVAILABLE" } }, 503) : undefined) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2"], "o terceiro não foi tentado depois da falha sistêmica");
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "failed", p3: "not_processed" });
+  assert.equal(h.bulk(message).stage, "result");
+  assert.equal(h.openForms.has(message.id), true, "o painel permanece para retomar");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 1 não processado · 1 com falha.");
+  assert.equal(h.persisted.length, 1);
+
+  await h.send(message, { type: "retry_pending" });
+  await h.until(() => h.bulk(message)?.stage === "review");
+  assert.deepEqual(h.bulk(message).reviewedIds, ["p2", "p3"], "p1 já arquivado não volta");
+  assert.deepEqual(h.deletes(), ["p1", "p2"], "retomar apenas recarrega e pede confirmação; não escreve");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p2", "p3"]);
+  assert.equal(h.deletes().filter((id) => id === "p1").length, 1, "arquivado nunca é repetido");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 3 arquivados · 0 bloqueados · 0 não processados.");
+  assert.equal(h.openForms.has(message.id), false);
+});
+
+test("proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await Promise.all([h.send(message, { type: "confirm" }), h.send(message, { type: "confirm" }), h.send(message, { type: "confirm" })]);
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.messages.filter((entry) => entry.card).length, 1, "um único resultado registrado");
+});
+
+test("a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1");
+  await h.send(message, { type: "toggle", propertyId: "p2" }); // ignorado na etapa de revisão
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+});
+
+test("autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: () => bulkJson({ ok: false, error: { code: "FORBIDDEN" } }, 403) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2"]);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 0 arquivados · 0 bloqueados · 0 não processados · 2 sem acesso.");
+  assert.equal(h.persisted.length, 0, "nada mudou: nada é gravado no histórico da conversa");
+  assert.equal(h.properties.every((item) => item.status === "ready"), true);
+});
+
+test("imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id) => (id === "p1" ? bulkJson({ error: { code: "PROPERTY_NOT_FOUND" } }, 404) : undefined) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  await h.send(message, { type: "confirm" });
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 0 não processados · 1 não encontrado.");
+  const deleteCall = h.calls.find((call) => call.method === "DELETE")!;
+  assert.equal(deleteCall.headers.get("x-tenant-id"), "tenant-bulk");
+  assert.equal(deleteCall.headers.get("x-workspace-id"), "workspace-bulk");
+});
+
+test("mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id) => { if (id === "p1") updateSession({ workspaceId: "workspace-outro" }); return undefined; } });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "not_processed", p3: "not_processed" });
+  assert.match(h.bulk(message).notice, /mudou durante a operação/);
+  assert.deepEqual(h.bulk(message).reviewedIds, [], "seleção antiga não é reaproveitável");
+  assert.equal(h.messages.filter((entry) => entry.card).length, 0, "nada é registrado na conversa de outro contexto");
+  await h.send(message, { type: "retry_pending" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+});
+
+test("mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  updateSession({ token: "outro-token-sintetico" });
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), []);
+  assert.equal(h.bulk(message).stage, "stale");
+  await h.send(message, { type: "toggle", propertyId: "p3" });
+  assert.deepEqual(h.deletes(), []);
+});
+
+test("lista que chega depois da troca de workspace não é aplicada", async (t) => {
+  let release!: () => void;
+  const h = bulkArchiveHarness(t, { listGate: new Promise<void>((resolve) => { release = resolve; }) });
+  h.forms.handleActionMenuSelect(localItems.find((candidate) => candidate.form === "property_archive")!);
+  const message = h.messages.at(-1)!;
+  updateSession({ workspaceId: "workspace-outro" });
+  release();
+  for (let index = 0; index < 10; index += 1) await tick();
+  assert.equal(h.bulk(message).stage, "loading");
+  assert.deepEqual(h.bulk(message).candidates, []);
+});
+
+test("interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis", async (t) => {
+  let message!: StructuredMessage;
+  const h = bulkArchiveHarness(t, { onDelete: (id) => { if (id === "p1") void h.send(message, { type: "cancel" }); return undefined; } });
+  message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "not_processed", p3: "not_processed" });
+  assert.match(h.bulk(message).notice, /interrompida/);
+  assert.equal(h.openForms.has(message.id), true);
+});
+
+test("mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const restored: StructuredMessage = { id: "restored-1", role: "assistant", text: "", form: buildPropertyBulkArchiveForm() };
+  h.openForms.add(restored.id);
+  await h.send(restored, { type: "confirm" });
+  await h.send(restored, { type: "review" });
+  assert.equal(h.raw.bulkArchiveRef.current[restored.id].stage, "stale");
+  assert.deepEqual(h.calls, []);
+});
+
+test("falha ao carregar a lista oferece nova tentativa sem alterar nada", async (t) => {
+  let fail = true;
+  const h = bulkArchiveHarness(t);
+  const original = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    if (fail && (init?.method ?? "GET") === "GET") return bulkJson({ error: { code: "UNAVAILABLE" } }, 503);
+    return original(input, init);
+  });
+  h.forms.handleActionMenuSelect(localItems.find((candidate) => candidate.form === "property_archive")!);
+  const message = h.messages.at(-1)!;
+  await h.until(() => h.bulk(message)?.stage === "error");
+  fail = false;
+  await h.send(message, { type: "reload" });
+  assert.equal(h.bulk(message).stage, "select");
+  assert.deepEqual(h.deletes(), []);
+});
+
+test("painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p3");
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, {
+    message, isLast: true,
+    frontDoor: { imobForms: { ...h.raw, bulkArchiveByMessageId: h.raw.bulkArchiveRef.current }, structuredForms: h.forms } as never,
+  }));
+  assert.match(html, /Confirmar arquivamento de 2 imóveis/);
+  assert.match(html, /Sem proprietário vinculado/);
+  assert.match(html, /Nada foi arquivado ainda/);
+  assert.equal((html.match(/type="checkbox"/g) ?? []).length, 0);
 });

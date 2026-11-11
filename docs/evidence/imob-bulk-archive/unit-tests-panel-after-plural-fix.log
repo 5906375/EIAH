@@ -1,0 +1,154 @@
+TAP version 13
+# Subtest: candidatos: arquivados não entram; proprietário vem só do vínculo; sem inferência por endereço
+ok 1 - candidatos: arquivados não entram; proprietário vem só do vínculo; sem inferência por endereço
+  ---
+  duration_ms: 25.40645
+  type: 'test'
+  ...
+# Subtest: filtro ignora caixa e acentos e busca em unidade, proprietário e endereço
+ok 2 - filtro ignora caixa e acentos e busca em unidade, proprietário e endereço
+  ---
+  duration_ms: 0.630211
+  type: 'test'
+  ...
+# Subtest: seleção, desmarcação, id desconhecido ignorado e limpeza
+ok 3 - seleção, desmarcação, id desconhecido ignorado e limpeza
+  ---
+  duration_ms: 0.412564
+  type: 'test'
+  ...
+# Subtest: selecionar todos age só sobre o que o filtro exibe e sinaliza o que está fora do filtro
+ok 4 - selecionar todos age só sobre o que o filtro exibe e sinaliza o que está fora do filtro
+  ---
+  duration_ms: 0.377754
+  type: 'test'
+  ...
+# Subtest: lista no limite do servidor é sinalizada como possivelmente incompleta
+ok 5 - lista no limite do servidor é sinalizada como possivelmente incompleta
+  ---
+  duration_ms: 2.185003
+  type: 'test'
+  ...
+# Subtest: revisão congela o lote exato, não escreve e permite voltar e corrigir
+ok 6 - revisão congela o lote exato, não escreve e permite voltar e corrigir
+  ---
+  duration_ms: 0.412613
+  type: 'test'
+  ...
+# Subtest: elegibilidade preliminar é informativa e pode ficar desconhecida
+ok 7 - elegibilidade preliminar é informativa e pode ficar desconhecida
+  ---
+  duration_ms: 0.410726
+  type: 'test'
+  ...
+# Subtest: classificação das falhas: item bloqueado/ausente/negado segue; falha sistêmica interrompe
+ok 8 - classificação das falhas: item bloqueado/ausente/negado segue; falha sistêmica interrompe
+  ---
+  duration_ms: 0.149692
+  type: 'test'
+  ...
+# Subtest: três arquivamentos bem-sucedidos: um pedido por imóvel, em sequência, só os confirmados
+ok 9 - três arquivamentos bem-sucedidos: um pedido por imóvel, em sequência, só os confirmados
+  ---
+  duration_ms: 0.394516
+  type: 'test'
+  ...
+# Subtest: um sucesso e dois bloqueios por dependência: bloqueio de um item não impede os seguintes
+ok 10 - um sucesso e dois bloqueios por dependência: bloqueio de um item não impede os seguintes
+  ---
+  duration_ms: 0.486424
+  type: 'test'
+  ...
+# Subtest: falha sistêmica no meio: preserva os arquivados e marca o resto como não processado, sem tentar
+ok 11 - falha sistêmica no meio: preserva os arquivados e marca o resto como não processado, sem tentar
+  ---
+  duration_ms: 0.129874
+  type: 'test'
+  ...
+# Subtest: contexto que deixa de valer (sessão, formulário, interrupção) para antes da próxima escrita
+ok 12 - contexto que deixa de valer (sessão, formulário, interrupção) para antes da próxima escrita
+  ---
+  duration_ms: 0.200791
+  type: 'test'
+  ...
+# Subtest: ids repetidos no lote não geram pedido duplicado
+ok 13 - ids repetidos no lote não geram pedido duplicado
+  ---
+  duration_ms: 0.144056
+  type: 'test'
+  ...
+# Subtest: resumo: pluralização e categorias extras só quando existem
+ok 14 - resumo: pluralização e categorias extras só quando existem
+  ---
+  duration_ms: 0.086352
+  type: 'test'
+  ...
+# Subtest: falha parcial: resultados preservados, só falha/não processado são retomáveis e nunca um arquivado
+ok 15 - falha parcial: resultados preservados, só falha/não processado são retomáveis e nunca um arquivado
+  ---
+  duration_ms: 0.401305
+  type: 'test'
+  ...
+# Subtest: retomada: recarrega, descarta o que sumiu e volta à revisão sem executar
+ok 16 - retomada: recarrega, descarta o que sumiu e volta à revisão sem executar
+  ---
+  duration_ms: 0.386586
+  type: 'test'
+  ...
+# Subtest: texto persistido na conversa traz totais e não expõe nomes de proprietários
+ok 17 - texto persistido na conversa traz totais e não expõe nomes de proprietários
+  ---
+  duration_ms: 1.400304
+  type: 'test'
+  ...
+# Subtest: formulário marca o tipo da mensagem e o item de menu 'Arquivar imóvel' continua o mesmo
+ok 18 - formulário marca o tipo da mensagem e o item de menu 'Arquivar imóvel' continua o mesmo
+  ---
+  duration_ms: 0.194515
+  type: 'test'
+  ...
+# Subtest: painel: seleção usa checkboxes com rótulo, mostra proprietário/endereço e 'Sem proprietário vinculado'
+ok 19 - painel: seleção usa checkboxes com rótulo, mostra proprietário/endereço e 'Sem proprietário vinculado'
+  ---
+  duration_ms: 4.210427
+  type: 'test'
+  ...
+# Subtest: painel: o botão de selecionar exibidos concorda em número (1 exibido / N exibidos)
+ok 20 - painel: o botão de selecionar exibidos concorda em número (1 exibido / N exibidos)
+  ---
+  duration_ms: 1.6799
+  type: 'test'
+  ...
+# Subtest: painel: sem seleção o botão de revisar fica desabilitado; lista truncada é sinalizada
+ok 21 - painel: sem seleção o botão de revisar fica desabilitado; lista truncada é sinalizada
+  ---
+  duration_ms: 11.340355
+  type: 'test'
+  ...
+# Subtest: painel: revisão lista o lote, avisa que nada foi arquivado e só então oferece confirmar N
+ok 22 - painel: revisão lista o lote, avisa que nada foi arquivado e só então oferece confirmar N
+  ---
+  duration_ms: 1.425747
+  type: 'test'
+  ...
+# Subtest: painel: durante a execução só há 'Interromper'; no resultado há resumo, itens e retomada dos pendentes
+ok 23 - painel: durante a execução só há 'Interromper'; no resultado há resumo, itens e retomada dos pendentes
+  ---
+  duration_ms: 1.198715
+  type: 'test'
+  ...
+# Subtest: painel: carregando, erro e contexto obsoleto não oferecem arquivar
+ok 24 - painel: carregando, erro e contexto obsoleto não oferecem arquivar
+  ---
+  duration_ms: 0.411109
+  type: 'test'
+  ...
+1..24
+# tests 24
+# suites 0
+# pass 24
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 346.958289

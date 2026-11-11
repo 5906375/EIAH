@@ -1,5 +1,7 @@
 import { DOCUMENT_ATTACH_ACCEPT } from "@/pages/app/imob/documentAttachForm";
+import { isPropertyBulkArchiveForm, type BulkArchiveEvent } from "@/pages/app/imob/propertyBulkArchive";
 import type { ImobFormState } from "./useImobFormState";
+import { ImobPropertyBulkArchivePanel } from "./ImobPropertyBulkArchivePanel";
 import { normalizeCepValue, type StructuredMessage } from "./types";
 
 type Props = {
@@ -9,10 +11,21 @@ type Props = {
   onSelectChange: (message: StructuredMessage, fieldName: string, value: string) => void;
   onAction: (message: StructuredMessage, actionId: "cancel" | "submit" | "archive") => unknown;
   onAttachmentClick?: () => void;
+  /** Eventos do painel de arquivamento múltiplo; o runtime (não este card) decide e executa. */
+  onBulkArchive?: (message: StructuredMessage, event: BulkArchiveEvent) => unknown;
 };
 
 /** Formulário do IMOB dentro de uma mensagem do chat (mesmo visual nos dois chats). */
-export function ImobFormCard({ message, state, onSelectChange, onAction, onAttachmentClick }: Props) {
+export function ImobFormCard({ message, state, onSelectChange, onAction, onAttachmentClick, onBulkArchive }: Props) {
+  if (isPropertyBulkArchiveForm(message.form) && onBulkArchive) {
+    return (
+      <ImobPropertyBulkArchivePanel
+        messageId={message.id}
+        state={state.bulkArchiveByMessageId[message.id]}
+        onEvent={(event) => onBulkArchive(message, event)}
+      />
+    );
+  }
   const {
     formFilesRef,
     imobOwnerOptions,
