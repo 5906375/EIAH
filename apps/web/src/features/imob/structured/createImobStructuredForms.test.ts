@@ -2248,3 +2248,59 @@ test("painel renderizado no Front Door usa o estado do runtime e a revisão exib
   assert.match(html, /Nada foi arquivado ainda/);
   assert.equal((html.match(/type="checkbox"/g) ?? []).length, 0);
 });
+
+// ARCHIVED-READ Front Door: consulta de imóveis arquivados no harness do Front Door (decisão de handoff, encaminhamento e render).
+// A resposta do servidor usa a forma que o engine produz para a consulta (validada nos testes da API com a cadeia governada real).
+test("ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura", async (t) => {
+  const phrase = "listar imóveis arquivados";
+  const requests: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    requests.push(`${init?.method ?? "GET"} ${new URL(String(input)).pathname}`);
+    throw new Error("nenhuma requisição é esperada: a resposta vem do resolve-turn injetado");
+  });
+  const base = proposalTurn();
+  const archivedTurn: ImobResolveTurnResponse = {
+    ...base,
+    mode: "consult",
+    action: "crm.property.list",
+    threadLabel: "Imóvel",
+    conversationState: { ...base.conversationState, operational: null },
+    presentation: {
+      text: "Encontrei 2 imóvel(is) arquivado(s) neste workspace.\nConsulta somente leitura: imóveis arquivados saem das listas ativas e o histórico fica guardado.",
+      owner: "Corretor",
+      nextStep: "Consulta somente leitura; nenhum imóvel foi alterado.",
+      dedupeKey: "crm.property.list:archived",
+      card: {
+        title: "Imóveis arquivados",
+        lines: [
+          "Kitnet 301 | locacao | Cidade Exemplo | arquivado em 11/11/2026 | Proprietário: Sem proprietário vinculado",
+          "Kitnet 302 | locacao | Cidade Exemplo | arquivado em 10/11/2026 | Proprietário: Proprietário Sintético",
+        ],
+        ctas: [],
+      },
+    },
+  };
+  const harness = frontDoorHarness(async () => ({ ok: true, data: archivedTurn }));
+
+  // 1) A primeira resposta visível é o aviso de handoff (por desenho, ADR-010); a frase original segue para o IMOB.
+  const decision = await sendFrontDoorTurn(harness, phrase, { activeDomain: "core" });
+  assert.equal(decision?.kind, "vertical_handoff");
+  assert.match(decision?.content ?? "", /Verificando o acesso ao IMOB/);
+  assert.equal(decision?.verticalHandoffForwardInput, phrase);
+
+  // 2) O turno encaminhado chega ao resolve-turn com a frase original e a resposta final é a listagem, não a saudação.
+  assert.equal(await harness.forwardToImob(decision!.verticalHandoffForwardInput!), true);
+  assert.equal(harness.calls.length, 1);
+  assert.equal(harness.calls[0].message, phrase);
+  const message = harness.messages().at(-1)!;
+  assert.doesNotMatch(message.text ?? "", /Sigo com o IMOB/);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Imóveis arquivados/);
+  assert.match(html, /Kitnet 301/);
+  assert.match(html, /Kitnet 302/);
+  assert.match(html, /Sem proprietário vinculado/);
+  assert.match(html, /Consulta somente leitura/);
+  assert.doesNotMatch(html, /<button|Restaurar|Desarquivar/, "sem CTAs de escrita na resposta");
+  // O harness não comprova escrita no servidor (resolve-turn é injetado): isso é coberto pelos testes da API (sem escrita no banco).
+  assert.deepEqual(requests, [], "nenhuma requisição de rede pelo cliente");
+});

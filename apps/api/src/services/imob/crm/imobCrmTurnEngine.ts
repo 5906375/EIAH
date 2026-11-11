@@ -27,6 +27,7 @@ import type {
   ImobCrmTurnEntitlements,
 } from "./imobCrmAgentContract";
 import { ImobCrmRepository } from "./imobCrmRepository";
+import { isArchivedPropertyConsultText } from "./imobCrmGovernedOperationalContext";
 import type { OperationalResolution, ResolverHelpers, ThreadStateLike } from "./imobCrmOperationalResolverShared";
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
@@ -763,6 +764,8 @@ function hasStrongBusinessReadIntent(message: string) {
     || intent.intentId === "next_best_action"
   )) return true;
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // Consulta somente leitura de im\u00f3veis arquivados: leitura de neg\u00f3cio (n\u00e3o \u00e9 transi\u00e7\u00e3o do fluxo de cadastro em andamento).
+  if (isArchivedPropertyConsultText(normalized)) return true;
   if (
     normalized.includes("o que falta")
     || normalized.includes("pendencia")
@@ -1494,6 +1497,9 @@ function stripLegacyCardProof(card: Record<string, unknown> | null) {
 
 function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Record<string, unknown> {
   const isMarketScanSelection = isMarketScanSelectionResolution(data);
+  // Consulta de lista somente leitura (ex.: imóveis arquivados): o estado de cadastro carregado na conversa é só contexto, nunca
+  // um desfecho. Sem isso a lista seria apresentada como "cadastro processado com sucesso" (variante success_*) e perderia o card.
+  const isReadOnlyList = asString(data.mode) === "consult" && (asString(data.action) ?? "").endsWith(".list");
   const originalPresentation = asObject(data.presentation) ?? {};
   const presentation = isMarketScanSelection
     ? stripMarketScanSelectionLegacyPresentation(originalPresentation)
@@ -1505,8 +1511,8 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
   const inferredCopyState = inferImobCrmCopyStateFromResolution(normalizedData);
   const copyState = isMarketScanSelection ? null : inferredCopyState;
   const proof = isMarketScanSelection ? null : resolveImobProofSurfaceFromResolution(normalizedData);
-  const blocks = isMarketScanSelection ? [] : buildImobPresentationBlocks(normalizedData, copyState);
-  const outcome = inferOperationalOutcomeFromResolution(normalizedData, copyState);
+  const blocks = isMarketScanSelection || isReadOnlyList ? [] : buildImobPresentationBlocks(normalizedData, copyState);
+  const outcome = isReadOnlyList ? null : inferOperationalOutcomeFromResolution(normalizedData, copyState);
   const hasForm = Boolean(asObject(presentation.form));
   const snapshotVariant = inferCanonicalSnapshotVariant({
     mode: asString(normalizedData.mode) ?? "",
