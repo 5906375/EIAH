@@ -1,0 +1,6 @@
+{
+  "ok": true,
+  "check": "check:chat-launcher-render-only",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": []
+}

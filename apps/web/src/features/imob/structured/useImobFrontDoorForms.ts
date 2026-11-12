@@ -1,6 +1,7 @@
 import React from "react";
 import { apiClaimImobTurn, apiResolveImobTurn, type ImobPresentationWidget } from "@/lib/api";
 import { getSession } from "@/state/sessionStore";
+import { trackAsyncMethods, type PendingTrack } from "@/lib/frontDoorPendingWork";
 import { buildProposalFormContinuation, buildProposalTextContinuation, hasPendingProposalReview, isConversationalProposalForm } from "@/pages/app/imob/proposalForm";
 import { useImobFormState, type ImobFormState } from "./useImobFormState";
 import { createImobStructuredForms } from "./createImobStructuredForms";
@@ -17,7 +18,6 @@ import type { ImobConversationPersistence, PersistedTag, ResumedThread } from ".
  */
 
 export const FRONT_DOOR_IMOB_THREAD = { id: "frontdoor-imob", label: "IMOB", status: "active" as const };
-
 export type FrontDoorMessageLike = {
   id: string;
   role: "user" | "assistant" | "system";
@@ -50,6 +50,8 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
   getConversationScopeKey?: () => string;
   /** Histórico persistido do IMOB (opcional): sem ele o comportamento é o anterior (sessão do launcher). */
   persistence?: Pick<ImobConversationPersistence, "persistUser" | "persistAssistant" | "resumed">;
+  /** Trabalho pendente compartilhado do front door: cada solicitação assíncrona do adaptador (turno, reivindicação, formulário) é registrada nele. */
+  trackPending?: PendingTrack;
 }) {
   const { messages, setMessages, getConversationGeneration } = params;
   const persistenceRef = React.useRef(params.persistence);
@@ -136,6 +138,7 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
     persistUser: (key, text) => persistenceRef.current?.persistUser(key, text),
     persistAssistant: (message, meta) => persistenceRef.current?.persistAssistant(message, meta),
     getResumedThread: () => persistenceRef.current?.resumed ?? null,
+    trackPending: params.trackPending,
   });
 
   return { imobForms, structuredForms, forwardToImob, consumeOperationalTurn, getConversationState };
@@ -162,8 +165,11 @@ export function createImobFrontDoorForms(params: {
   persistAssistant?: (message: StructuredMessage, meta?: { intent?: string; action?: string }) => void;
   /** Thread do histórico retomada pelo usuário (cartão "Histórico IMOB"): serve de contexto quando não há contexto vivo. */
   getResumedThread?: () => ResumedThread | null;
+  /** Trabalho pendente compartilhado do front door: toda solicitação assíncrona do adaptador é registrada nele (sem ele, nada muda). */
+  trackPending?: PendingTrack;
 }) {
   const { imobForms, getMessages, appendStructured, patchStructured, echoUser } = params;
+  const track: PendingTrack = params.trackPending ?? ((work) => work());
   const resolveTurn = params.resolveTurn ?? apiResolveImobTurn;
   const originRef = `v1:${makeStructuredId("review")}`;
   const getContinuityContextRef = params.getContinuityContextRef ?? (() => originRef);
@@ -235,7 +241,12 @@ export function createImobFrontDoorForms(params: {
     finally { imobForms.formSubmittingRef.current.delete(context.id); }
   }
 
-  async function forwardToImob(text: string, options?: { displayText?: string; continuityReplyRef?: string; claim?: boolean }, continuation?: {
+  /** Toda solicitação ao IMOB feita pelo front door (turno, reivindicação, continuação de formulário) é trabalho pendente compartilhado. */
+  function forwardToImob(...args: Parameters<typeof forwardToImobRequest>): Promise<boolean> {
+    return track(() => forwardToImobRequest(...args));
+  }
+
+  async function forwardToImobRequest(text: string, options?: { displayText?: string; continuityReplyRef?: string; claim?: boolean }, continuation?: {
     message: StructuredMessage;
     request: Extract<ReturnType<typeof buildProposalFormContinuation>, { ok: true }>["request"];
   }): Promise<boolean> {
@@ -363,7 +374,8 @@ export function createImobFrontDoorForms(params: {
         ? { ...state, operational: { ...state.operational, continuity: null } } : state ?? null;
     },
     consumeOperationalTurn,
-    structuredForms: {
+    // Cada operação assíncrona de formulário/ação (salvar, carregar listas, arquivar…) é trabalho pendente compartilhado; as síncronas passam direto.
+    structuredForms: trackAsyncMethods({
       ...structuredForms,
       async handleStructuredFormAction(incoming: StructuredMessage, actionId: "cancel" | "submit" | "archive"): Promise<boolean> {
         if (!isConversationalProposalForm(incoming.form)) return structuredForms.handleStructuredFormAction(incoming, actionId);
@@ -398,7 +410,7 @@ export function createImobFrontDoorForms(params: {
         }
         return true;
       },
-    },
+    }, track),
   };
 }
 
