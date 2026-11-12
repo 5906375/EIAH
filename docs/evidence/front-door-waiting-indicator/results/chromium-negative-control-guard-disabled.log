@@ -1,0 +1,26 @@
+DIAG {"errors":[],"blocked":[],"handoffCalls":["imob","imob"],"resolveCalls":["listar imóveis arquivados"],"ownerCalls":0,"waiting":null}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: cenários reprovados: X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença) | C2 320: o indicador não pode reaparecer na conversa nova (1 registro(s) com presença)
++ actual - expected
+
++ [
++   'X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
++   'C2 320: o indicador não pode reaparecer na conversa nova (1 registro(s) com presença)'
++ ]
+- []
+
+    at file://<repo>/scripts/qa/waiting-indicator.mjs:351:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
+    'C2 320: o indicador não pode reaparecer na conversa nova (1 registro(s) com presença)'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual'
+}
+
+Node.js v22.17.1

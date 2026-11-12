@@ -1,0 +1,28 @@
+DIAG {"errors":[],"blocked":[],"handoffCalls":["imob","imob","imob","imob"],"resolveCalls":["listar imóveis arquivados"],"ownerCalls":0,"waiting":null}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: cenários reprovados: X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença) | X 390: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença) | X 1440: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)
++ actual - expected
+
++ [
++   'X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
++   'X 390: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
++   'X 1440: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)'
++ ]
+- []
+
+    at file://<repo>/scripts/qa/waiting-indicator.mjs:329:10 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
+    'X 390: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)',
+    'X 1440: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual'
+}
+
+Node.js v22.17.1

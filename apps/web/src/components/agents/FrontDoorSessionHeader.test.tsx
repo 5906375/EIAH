@@ -8,6 +8,8 @@ import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
 import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
 import { appendedAssistantReplyId, replyScrollTop } from "./conversationScroll";
+import FrontDoorWaitingIndicator, { FRONT_DOOR_WAITING_LABEL } from "./FrontDoorWaitingIndicator";
+import { createPendingWorkTracker } from "@/lib/frontDoorPendingWork";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
@@ -137,8 +139,11 @@ for (const change of ["none", "conversation", "user", "workspace", "agent", "new
     let timer: (() => void) | undefined;
     let finish: ((value: any) => void) | undefined;
     let syncs = 0;
+    // Mesmo estado compartilhado do launcher: a avaliação de entrada (inclui o handoff) é espera real da conversa.
+    const tracker = createPendingWorkTracker(() => String(conversationGenerationRef.current));
     const dependencies = {
       window: { setTimeout: (callback: () => void) => { timer = callback; return 1; }, clearTimeout: () => undefined },
+      pendingWork: { tracker },
       conversationGenerationRef, navigationRequestGenerationRef, getSession,
       launcherContext: { domainHint: "imob" }, isUnifiedEiahMode: true,
       imobFrontDoor: { getConversationState: () => null, consumeOperationalTurn: async () => undefined },
@@ -154,6 +159,7 @@ for (const change of ["none", "conversation", "user", "workspace", "agent", "new
     timer!();
     await new Promise((resolve) => setImmediate(resolve));
     assert.ok(finish);
+    if (change !== "conversation") assert.equal(tracker.pendingCount(), 1, "a avaliação inicial do handoff é espera pendente");
     if (change === "conversation") conversationGenerationRef.current += 1;
     if (change === "user") updateSession({ userId: "user-other" });
     if (change === "workspace") updateSession({ workspaceId: "workspace-other" });
@@ -163,6 +169,7 @@ for (const change of ["none", "conversation", "user", "workspace", "agent", "new
       vertical: { id: "imob", label: "IMOB", registryVersion: "test" }, capability: { id: "knowledge.search", mode: "read_only" },
       outcome: "allowed", reasonCode: "VERTICAL_HANDOFF_ALLOWED", presentation: { source: "operational", variant: "chat_card" } } });
     await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(tracker.pendingCount(), 0, "terminada (ou descartada) a avaliação, não resta espera");
     assert.equal(syncs, change === "none" ? 1 : 0);
     assert.equal(messages.length, change === "none" ? 1 : 0);
     assert.ok(messages.every((message) => message.role === "assistant"));
@@ -249,6 +256,43 @@ test("resposta digitada respeita a pausa de rolagem enquanto o usuário lê acim
   }
 });
 
+test("digitação do aviso: contexto que muda durante ou ao fim da digitação interrompe, remove só a mensagem parcial e devolve false", async () => {
+  let initializer: ts.Expression | undefined;
+  function findTyping(node: ts.Node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(launcherSource) === "pushAssistantMessageWithTyping") initializer = node.initializer;
+    ts.forEachChild(node, findTyping);
+  }
+  findTyping(launcherSource);
+  assert.ok(initializer);
+  const factory = new Function("useCallback", "setMessages", "scrollRef", "followConversationEnd", "requestAnimationFrame", "window",
+    ts.transpileModule(`return (${initializer.getText(launcherSource)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText);
+  type Row = { id: string; content?: string; status?: string };
+  const CONTENT = "um dois"; // três trechos: "um", " ", "dois"
+  // `staleOnCall`: a partir de qual consulta de isCurrent o contexto passa a ser outro (1 = antes do 1º trecho; 4 = só na checagem final, depois do último await).
+  for (const staleOnCall of [1, 2, 3, 4, Infinity]) {
+    let messages: Row[] = [{ id: "synthetic-existing", content: "mensagem de outra origem", status: "done" }, { id: "assistant-other", content: "outra", status: "done" }];
+    const setMessages = (update: Row[] | ((previous: Row[]) => Row[])) => { messages = typeof update === "function" ? update(messages) : update; };
+    let calls = 0;
+    const typeReply = factory((fn: unknown) => fn, setMessages, { current: null }, { current: false }, (fn: () => void) => fn(), { setTimeout: (fn: () => void) => fn() });
+    const typed = await typeReply({ idPrefix: "synthetic", content: CONTENT, isCurrent: () => ++calls < staleOnCall });
+    if (staleOnCall === Infinity) {
+      assert.equal(typed, true);
+      assert.equal(messages.length, 3);
+      assert.equal(messages.at(-1)?.content, CONTENT);
+      assert.equal(messages.at(-1)?.status, "done");
+    } else {
+      assert.equal(typed, false, `contexto mudou na consulta ${staleOnCall}`);
+      assert.deepEqual(messages.map((message) => message.id), ["synthetic-existing", "assistant-other"], "só a mensagem parcial desta invocação é removida");
+    }
+    assert.deepEqual(messages.slice(0, 2).map((message) => message.content), ["mensagem de outra origem", "outra"], "as outras mensagens ficam intactas");
+  }
+  // Sem isCurrent o comportamento de antes é o mesmo (devolve true e conclui).
+  let plain: Row[] = [];
+  const plainType = factory((fn: unknown) => fn, (update: (previous: Row[]) => Row[]) => { plain = update(plain); }, { current: null }, { current: false }, (fn: () => void) => fn(), { setTimeout: (fn: () => void) => fn() });
+  assert.equal(await plainType({ idPrefix: "synthetic", content: CONTENT }), true);
+  assert.equal(plain.length, 1);
+});
+
 test("resposta do assistente anexada: qualquer vertical e formato, só uma mensagem nova ao fim com a lista anterior intacta", () => {
   const previous = ["u1", "a1"];
   const base = [{ id: "u1", role: "user" }, { id: "a1", role: "assistant" }];
@@ -302,4 +346,13 @@ test("launcher só acompanha a resposta anexada quando o leitor está no fim, pa
   assert.match(source, /message\.role === "user"\) \{ followConversationEnd\.current = true; readerLeftEnd\.current = false; \}/, "enviar retoma");
   // Os pontos de rolagem existentes (envio do usuário e digitação) continuam como estavam.
   assert.equal((source.match(/followConversationEnd\.current = true/g) ?? []).length, 1);
+});
+
+test("indicador de espera: texto exato, um único role=status e nada na marcação que mude a cada pulsação", () => {
+  const html = renderToStaticMarkup(React.createElement(FrontDoorWaitingIndicator));
+  assert.equal(FRONT_DOOR_WAITING_LABEL, "Buscando informação...");
+  assert.equal((html.match(/role="status"/g) ?? []).length, 1, "um só elemento de status");
+  assert.equal((html.match(/Buscando informação\.\.\./g) ?? []).length, 1, "o texto aparece uma vez");
+  assert.match(html, /<span class="front-door-waiting-label">Buscando informação\.\.\.<\/span>/, "só o rótulo pulsa (opacidade via CSS); o texto é estático");
+  assert.doesNotMatch(html, /aria-live|aria-busy/, "sem região que reanuncie a cada atualização");
 });

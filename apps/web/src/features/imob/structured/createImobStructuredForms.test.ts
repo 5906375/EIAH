@@ -7,6 +7,7 @@ import { createImobStructuredForms } from "./createImobStructuredForms";
 import type { ImobFormState } from "./useImobFormState";
 import type { ImobStructuredFormsHost, StructuredMessage } from "./types";
 import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD } from "./useImobFrontDoorForms";
+import { createPendingWorkTracker } from "@/lib/frontDoorPendingWork";
 import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";
 import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobProposalReviewContinuity";
 import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
@@ -169,7 +170,7 @@ function proposalTurn() {
 }
 
 function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,
-  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"> = {},
+  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId" | "trackPending"> = {},
   // P11: por padrão a vertical NÃO reivindica o turno (os testes antigos seguem herméticos, sem rede).
   claim: NonNullable<Parameters<typeof createImobFrontDoorForms>[0]["claimTurn"]> = async () => ({ ok: true, claimed: false, data: null })) {
   const { state, raw, getValues, getErrors } = fakeState();
@@ -2303,4 +2304,122 @@ test("ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encami
   assert.doesNotMatch(html, /<button|Restaurar|Desarquivar/, "sem CTAs de escrita na resposta");
   // O harness não comprova escrita no servidor (resolve-turn é injetado): isso é coberto pelos testes da API (sem escrita no banco).
   assert.deepEqual(requests, [], "nenhuma requisição de rede pelo cliente");
+});
+
+// Espera pelo resultado: estado compartilhado do Front Door (lib/frontDoorPendingWork), com promessas controladas e sem timers.
+// Estes testes cobrem o ADAPTADOR IMOB ligado ao estado compartilhado; a regra transversal é provada em lib/frontDoorPendingWork.test.ts.
+function waitingHarness(resolve: (message: string) => Promise<{ ok: true; data: ImobResolveTurnResponse }>, generation = { current: 0 }) {
+  const tracker = createPendingWorkTracker(() => String(generation.current));
+  const events: string[] = [];
+  const view: { harness?: ReturnType<typeof frontDoorHarness> } = {};
+  // Cada mudança registra quantas solicitações estão pendentes e quantas mensagens já existem: a espera só pode acabar com a resposta na lista.
+  tracker.subscribe(() => events.push(`${tracker.pendingCount()}@${view.harness?.messages().length ?? 0}`));
+  const harness = frontDoorHarness(async (request) => resolve(request.message), generation, false, { trackPending: tracker.track });
+  view.harness = harness;
+  return { harness, tracker, events };
+}
+function archivedReply(text: string) {
+  const base = proposalTurn();
+  return { ok: true as const, data: { ...base, mode: "consult", action: "crm.property.list", conversationState: { ...base.conversationState, operational: null },
+    presentation: { text, owner: "Corretor", nextStep: "Consulta somente leitura.", dedupeKey: "crm.property.list:archived",
+      card: { title: "Imóveis arquivados", lines: ["Unidade 301 | locacao | Cidade Exemplo | arquivado em 11/11/2026 | Proprietário: Sem proprietário vinculado"], ctas: [] } } } as unknown as ImobResolveTurnResponse };
+}
+const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (error: Error) => void; const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; }); return { promise, resolve, reject }; };
+
+test("espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta", async () => {
+  const gate = deferred<ReturnType<typeof archivedReply>>();
+  const { harness, tracker, events } = waitingHarness(() => gate.promise);
+  const pending = harness.forwardToImob("listar imóveis arquivados");
+  assert.deepEqual(events, ["1@0"], "a espera começa quando a solicitação sai");
+  // O aviso de handoff e o card de contexto entram na lista enquanto a consulta segue pendente: a espera continua.
+  harness.setMessages([{ id: "handoff", role: "assistant", text: "Sigo com o IMOB nesta conversa." } as StructuredMessage, { id: "ctx", role: "assistant", text: "IMOB · Nesta conversa" } as StructuredMessage]);
+  assert.equal(tracker.pendingCount(), 1, "intermediárias não encerram a espera");
+  gate.resolve(archivedReply("Encontrei 1 imóvel(is) arquivado(s) neste workspace."));
+  assert.equal(await pending, true);
+  assert.deepEqual(events, ["1@0", "0@3"], "a espera termina com a resposta efetiva já na lista (2 intermediárias + 1 resposta)");
+  assert.match(harness.messages().at(-1)!.text ?? "", /arquivado/);
+});
+
+test("espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa", async () => {
+  const gate = deferred<ReturnType<typeof archivedReply>>();
+  const { harness, tracker, events } = waitingHarness(() => gate.promise);
+  const pending = harness.forwardToImob("listar imóveis arquivados");
+  assert.deepEqual(events, ["1@0"]);
+  gate.reject(new Error("falha de rede sintética"));
+  assert.equal(await pending, false);
+  assert.deepEqual(events, ["1@0", "0@1"]);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.match(harness.messages().at(-1)!.text ?? "", /Não consegui abrir o formulário do IMOB/);
+});
+
+test("espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual", async () => {
+  const generation = { current: 0 };
+  const gates: Record<string, ReturnType<typeof deferred<ReturnType<typeof archivedReply>>>> = { antiga: deferred(), nova: deferred() };
+  const { harness, tracker } = waitingHarness((message) => gates[message].promise, generation);
+  const antiga = harness.forwardToImob("antiga");
+  assert.equal(tracker.pendingCount(), 1);
+  generation.current += 1; // troca de conversa (o launcher incrementa a geração): a espera da anterior deixa de valer na hora
+  assert.equal(tracker.pendingCount(), 0, "a espera da conversa anterior não vale mais");
+  const nova = harness.forwardToImob("nova");
+  assert.equal(tracker.pendingCount(), 1, "só a nova solicitação conta na conversa atual");
+  // A resposta atrasada da conversa anterior chega primeiro: é descartada e NÃO encerra a espera da atual.
+  gates.antiga.resolve(archivedReply("RESPOSTA DA CONVERSA ANTERIOR"));
+  assert.equal(await antiga, false);
+  assert.equal(tracker.pendingCount(), 1, "resposta atrasada não encerra a espera da conversa atual");
+  assert.equal(harness.messages().length, 0, "nada da conversa anterior aparece");
+  gates.nova.resolve(archivedReply("RESPOSTA DA CONVERSA ATUAL"));
+  assert.equal(await nova, true);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.messages().map((message) => message.text), ["RESPOSTA DA CONVERSA ATUAL"]);
+});
+
+test("espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente", async () => {
+  const gates: Record<string, ReturnType<typeof deferred<ReturnType<typeof archivedReply>>>> = { primeira: deferred(), segunda: deferred() };
+  const { harness, tracker } = waitingHarness((message) => gates[message].promise);
+  const primeira = harness.forwardToImob("primeira");
+  const segunda = harness.forwardToImob("segunda");
+  assert.equal(tracker.pendingCount(), 2, "cada solicitação tem identidade própria");
+  gates.primeira.resolve(archivedReply("PRIMEIRA (obsoleta)"));
+  assert.equal(await primeira, false, "a resposta da solicitação superada é descartada");
+  assert.equal(tracker.pendingCount(), 1, "a mais antiga terminou, a mais nova continua pendente e a espera continua visível");
+  gates.segunda.resolve(archivedReply("SEGUNDA"));
+  assert.equal(await segunda, true);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.messages().map((message) => message.text), ["SEGUNDA"]);
+});
+
+test("espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual", async () => {
+  const gate = deferred<{ ok: true; claimed: false; data: null }>();
+  const tracker = createPendingWorkTracker(() => "c");
+  const harness = frontDoorHarness(async () => archivedReply("x"), { current: 0 }, false, { trackPending: tracker.track }, () => gate.promise);
+  const pending = harness.forwardToImob("reivindicação", { claim: true });
+  assert.equal(tracker.pendingCount(), 1, "a reivindicação em andamento conta como trabalho pendente");
+  gate.resolve({ ok: true, claimed: false, data: null });
+  assert.equal(await pending, false, "claim não reivindicado");
+  assert.equal(tracker.pendingCount(), 0);
+});
+
+test("espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta", async () => {
+  const gate = deferred<void>();
+  let count = 0;
+  const tracker = createPendingWorkTracker(() => "f");
+  const harness = frontDoorHarness(async () => {
+    if (++count === 1) return { ok: true, data: proposalTurn() };
+    await gate.promise;
+    return { ok: true, data: { ...proposalTurn(), mode: "execute" } };
+  }, { current: 0 }, false, { trackPending: tracker.track });
+  await harness.forwardToImob("gerar proposta");
+  assert.equal(tracker.pendingCount(), 0, "sem pendência depois da primeira resposta");
+  const message = harness.messages()[0];
+  harness.fill(message);
+  const pending = harness.structuredForms.handleStructuredFormAction(message, "submit");
+  assert.ok(tracker.pendingCount() >= 1, "o envio do formulário está pendente enquanto aguarda o servidor");
+  gate.resolve();
+  await pending;
+  assert.equal(tracker.pendingCount(), 0, "terminou a ação, terminou a espera");
+});
+
+test("espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual", async () => {
+  const harness = frontDoorHarness(async () => archivedReply("Encontrei 1 imóvel(is) arquivado(s)."));
+  assert.equal(await harness.forwardToImob("comum"), true);
 });

@@ -1,0 +1,148 @@
+TAP version 13
+# Subtest: solicitações têm identidade própria: uma terminar não oculta outra pendente
+ok 1 - solicitações têm identidade própria: uma terminar não oculta outra pendente
+  ---
+  duration_ms: 1.230422
+  type: 'test'
+  ...
+# Subtest: a mais antiga terminando depois da mais nova também não apaga a mais nova
+ok 2 - a mais antiga terminando depois da mais nova também não apaga a mais nova
+  ---
+  duration_ms: 0.282628
+  type: 'test'
+  ...
+# Subtest: erro e rejeição encerram a espera e o erro chega a quem chamou
+ok 3 - erro e rejeição encerram a espera e o erro chega a quem chamou
+  ---
+  duration_ms: 0.508682
+  type: 'test'
+  ...
+# Subtest: trabalho que lança de forma síncrona não deixa espera pendurada
+ok 4 - trabalho que lança de forma síncrona não deixa espera pendurada
+  ---
+  duration_ms: 0.215243
+  type: 'test'
+  ...
+# Subtest: troca de conversa: a espera da anterior deixa de contar na hora e o fim tardio dela não afeta a atual
+ok 5 - troca de conversa: a espera da anterior deixa de contar na hora e o fim tardio dela não afeta a atual
+  ---
+  duration_ms: 0.32787
+  type: 'test'
+  ...
+# Subtest: voltar a um escopo anterior não ressuscita solicitação já podada
+ok 6 - voltar a um escopo anterior não ressuscita solicitação já podada
+  ---
+  duration_ms: 0.177988
+  type: 'test'
+  ...
+# Subtest: end é idempotente e a assinatura é notificada só quando o estado muda
+ok 7 - end é idempotente e a assinatura é notificada só quando o estado muda
+  ---
+  duration_ms: 0.980831
+  type: 'test'
+  ...
+# Subtest: trackAsyncMethods: assíncronos viram espera; síncronos e valores passam direto
+ok 8 - trackAsyncMethods: assíncronos viram espera; síncronos e valores passam direto
+  ---
+  duration_ms: 0.286216
+  type: 'test'
+  ...
+# Subtest: trackAsyncMethods: método assíncrono que rejeita encerra a espera e propaga o erro
+ok 9 - trackAsyncMethods: método assíncrono que rejeita encerra a espera e propaga o erro
+  ---
+  duration_ms: 0.304008
+  type: 'test'
+  ...
+# Subtest: decisão do turno: a espera cobre a avaliação e passa SEM intervalo para o encaminhamento (mensagens intermediárias não a encerram)
+ok 10 - decisão do turno: a espera cobre a avaliação e passa SEM intervalo para o encaminhamento (mensagens intermediárias não a encerram)
+  ---
+  duration_ms: 0.514509
+  type: 'test'
+  ...
+# Subtest: decisão do turno: a espera já existe enquanto a cadeia ainda é computada (begin antes de decide)
+ok 11 - decisão do turno: a espera já existe enquanto a cadeia ainda é computada (begin antes de decide)
+  ---
+  duration_ms: 0.540332
+  type: 'test'
+  ...
+# Subtest: decisão do turno sem encaminhamento: a espera termina com a decisão; erro também termina
+ok 12 - decisão do turno sem encaminhamento: a espera termina com a decisão; erro também termina
+  ---
+  duration_ms: 0.201768
+  type: 'test'
+  ...
+# Subtest: ponte do handover é solta em qualquer saída do turno (finally)
+ok 13 - ponte do handover é solta em qualquer saída do turno (finally)
+  ---
+  duration_ms: 0.108206
+  type: 'test'
+  ...
+# Subtest: isFrontDoorWaiting: trabalho rastreado ou run ainda sem texto; run com texto em streaming deixa de mostrar
+ok 14 - isFrontDoorWaiting: trabalho rastreado ou run ainda sem texto; run com texto em streaming deixa de mostrar
+  ---
+  duration_ms: 0.101484
+  type: 'test'
+  ...
+# Subtest: independência de agente/vertical: o mesmo mecanismo serve a qualquer origem de solicitação
+ok 15 - independência de agente/vertical: o mesmo mecanismo serve a qualquer origem de solicitação
+  ---
+  duration_ms: 0.512085
+  type: 'test'
+  ...
+# Subtest: escopo: hidratação inicial da sessão não esconde a solicitação que acabou de começar
+ok 16 - escopo: hidratação inicial da sessão não esconde a solicitação que acabou de começar
+  ---
+  duration_ms: 0.229155
+  type: 'test'
+  ...
+# Subtest: escopo: troca real de usuário não herda pendências anteriores e o fim tardio delas não afeta o contexto novo
+ok 17 - escopo: troca real de usuário não herda pendências anteriores e o fim tardio delas não afeta o contexto novo
+  ---
+  duration_ms: 0.144187
+  type: 'test'
+  ...
+# Subtest: escopo: troca real de agente e de conversa (geração) também isolam
+ok 18 - escopo: troca real de agente e de conversa (geração) também isolam
+  ---
+  duration_ms: 0.138667
+  type: 'test'
+  ...
+# Subtest: escopo: logout/invalidação invalida pendências e voltar ao mesmo usuário não as ressuscita
+ok 19 - escopo: logout/invalidação invalida pendências e voltar ao mesmo usuário não as ressuscita
+  ---
+  duration_ms: 0.125186
+  type: 'test'
+  ...
+# Subtest: escopo: remoção do usuário com sessão ativa também invalida; rotação de token não
+ok 20 - escopo: remoção do usuário com sessão ativa também invalida; rotação de token não
+  ---
+  duration_ms: 0.092276
+  type: 'test'
+  ...
+# Subtest: chave de escopo só avança: nunca repete um valor antigo
+ok 21 - chave de escopo só avança: nunca repete um valor antigo
+  ---
+  duration_ms: 0.074857
+  type: 'test'
+  ...
+# Subtest: decisão tardia: a ponte do handoff nasce no escopo de origem e não cria espera no contexto novo
+ok 22 - decisão tardia: a ponte do handoff nasce no escopo de origem e não cria espera no contexto novo
+  ---
+  duration_ms: 0.13031
+  type: 'test'
+  ...
+# Subtest: decisão tardia na MESMA conversa: a ponte conta normalmente
+ok 23 - decisão tardia na MESMA conversa: a ponte conta normalmente
+  ---
+  duration_ms: 1.217084
+  type: 'test'
+  ...
+1..23
+# tests 23
+# suites 0
+# pass 23
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 288.41874

@@ -1,0 +1,49 @@
+{
+  "fixture": "sessão e API sintéticas, tudo mockado, execução LOCAL (não é validação em staging)",
+  "suite": "PARCIAL (execução filtrada; não representa a suíte completa)",
+  "filters": {
+    "QA_ONLY": [
+      "C2",
+      "X"
+    ],
+    "QA_WIDTHS": [
+      320
+    ]
+  },
+  "executedWidths": [
+    320
+  ],
+  "executedScenarios": [
+    "X",
+    "C2"
+  ],
+  "failures": [
+    "X 320: o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)",
+    "C2 320: o indicador não pode reaparecer na conversa nova (1 registro(s) com presença)"
+  ],
+  "results": [
+    {
+      "width": 320,
+      "scenarios": {
+        "X": {
+          "status": "FAILED",
+          "message": "o indicador não pode reaparecer na janela de observação (1 registro(s) com presença)",
+          "resolveCalls": 1,
+          "waiting": 1,
+          "observation": "janela de 90 quadros (não determinística)"
+        },
+        "C2": {
+          "status": "FAILED",
+          "message": "o indicador não pode reaparecer na conversa nova (1 registro(s) com presença)",
+          "resolveCalls": 1,
+          "waiting": 1,
+          "observation": "janela de 90 quadros (não determinística)"
+        }
+      },
+      "executed": [
+        "X",
+        "C2"
+      ]
+    }
+  ]
+}

@@ -99,6 +99,8 @@ import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
 import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
 import { appendedAssistantReplyId, replyScrollTop } from "./conversationScroll";
+import FrontDoorWaitingIndicator from "./FrontDoorWaitingIndicator";
+import { createScopeKeyer, isFrontDoorWaiting, trackDecision, useFrontDoorPendingWork } from "@/lib/frontDoorPendingWork";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -552,11 +554,28 @@ export default function ChatAgentLauncher({
     scopeKey: `${session.tenantId ?? ""}:${effectiveWorkspaceId ?? ""}:${session.userId ?? ""}`,
     active: showImobSurface, messages, setMessages,
   });
+  // Trabalho pendente compartilhado do Front Door (qualquer agente ou vertical): cada solicitação tem identidade própria e vale só para a
+  // conversa em que nasceu. A geração da conversa já muda com tenant, workspace, agente e tópico (via threadKey); o que ela não cobre (usuário,
+  // sessão ativa, agente em conversa única) entra pela chave de escopo, que distingue hidratação de troca real e de logout/remoção. Nada aqui conhece vertical.
+  const scopeKeyerRef = useRef(createScopeKeyer());
+  const pendingWork = useFrontDoorPendingWork(() => `${conversationGenerationRef.current}:${scopeKeyerRef.current({ user: session.userId, session: session.token ? "active" : undefined, agent: activeAgentId })}`);
   const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({
     messages, setMessages, getConversationGeneration: () => conversationGenerationRef.current,
     getConversationScopeKey: () => activeAgentId ?? FALLBACK_AGENT.id,
     persistence: imobPersistence,
+    trackPending: pendingWork.tracker.track,
   });
+  // Um só indicador de espera para a mesma solicitação: trabalho pendente compartilhado ou run em andamento ainda sem texto aparecendo.
+  // Aparece no fim da conversa, então só acompanha quem já estava no fim (mesma regra das respostas anexadas).
+  const showWaiting = isFrontDoorWaiting({ pendingCount: pendingWork.pendingCount, isStreaming, hasStreamingMessage: messages.some((message) => message.status === "streaming") });
+  const waitingIndicatorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    const indicator = waitingIndicatorRef.current;
+    if (!showWaiting || !viewport || !indicator || readerLeftEnd.current) return;
+    const destination = replyScrollTop({ top: 0, height: indicator.offsetHeight }, { height: viewport.clientHeight, scrollTop: viewport.scrollTop, scrollHeight: viewport.scrollHeight });
+    if (destination !== null) viewport.scrollTo({ top: destination, behavior: "auto" });
+  }, [showWaiting]);
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&
     normalizeAgentKey(activeAgent?.id ?? FALLBACK_AGENT.id) === "eiah";
@@ -773,11 +792,15 @@ export default function ChatAgentLauncher({
       content: string;
       runId?: string | null;
       presentationSnapshot?: MessagePresentationSnapshot;
-    }) => {
+      /** Se informado e o contexto do turno mudar durante a digitação, a digitação para e a mensagem parcial é removida. Devolve false nesse caso. */
+      isCurrent?: () => boolean;
+    }): Promise<boolean> => {
       const chunks = params.content
         .split(/(\s+)/)
         .filter((chunk) => chunk.length > 0);
-      const messageId = `${params.idPrefix}-${Date.now()}`;
+      // Sufixo aleatório: o id é exclusivo desta invocação, então remover a mensagem parcial nunca atinge outra mensagem.
+      const messageId = `${params.idPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const discard = () => setMessages((prev) => prev.filter((message) => message.id !== messageId));
 
       setMessages((prev) => [
         ...prev,
@@ -793,6 +816,7 @@ export default function ChatAgentLauncher({
 
       let rendered = "";
       for (const chunk of chunks) {
+        if (params.isCurrent && !params.isCurrent()) { discard(); return false; }
         rendered += chunk;
         setMessages((prev) =>
           prev.map((message) =>
@@ -812,6 +836,8 @@ export default function ChatAgentLauncher({
         // Respostas curtas ficam naturais; respostas longas continuam rápidas.
         await new Promise((resolve) => window.setTimeout(resolve, chunk.trim() ? 18 : 8));
       }
+      // Também depois do último await: não finaliza nem devolve sucesso se o contexto mudou no término da digitação.
+      if (params.isCurrent && !params.isCurrent()) { discard(); return false; }
 
       setMessages((prev) =>
         prev.map((message) =>
@@ -824,6 +850,7 @@ export default function ChatAgentLauncher({
             : message
         )
       );
+      return true;
     },
     []
   );
@@ -1111,11 +1138,18 @@ export default function ChatAgentLauncher({
     }
   };
 
-  const handleSend = async () => {
+  // `handover`: espera que passa da decisão do turno para o encaminhamento adiante (cobre a digitação das mensagens intermediárias).
+  const sendTurn = async (handover: { release: () => void }) => {
     const trimmed = input.trim();
     const artifactText = pastedArtifactText.trim();
     const hasAttachmentPayload = Boolean(selectedAttachment) || Boolean(artifactText);
     if ((!trimmed && !hasAttachmentPayload) || isStreaming) return;
+    // Contexto de origem do turno: a mesma chave do estado de espera (conversa, usuário, sessão e agente; hidratação da sessão não conta como troca).
+    // Garantia efetiva: se o contexto mudar durante a decisão ou a digitação do aviso, o turno para ali; não encaminha a consulta, não conclui a digitação
+    // (a mensagem parcial é removida) e não executa o restante do turno, incluindo persistHelpdeskSession. NÃO desfaz o que já ocorreu antes da troca
+    // (mensagem do usuário, upload, requisições em andamento). Toda saída passa pelo finally de `handleSend`, que solta só a ponte deste turno.
+    const turnScope = pendingWork.tracker.scope();
+    const turnIsCurrent = () => pendingWork.tracker.scope() === turnScope;
     const resolvedAgentId = activeAgentId ?? FALLBACK_AGENT.id;
     let uploadedArtifacts: UploadedDocumentInfo[] = [];
     if (attachmentIntake.enabled && selectedAttachment) {
@@ -1188,7 +1222,8 @@ export default function ChatAgentLauncher({
     });
     navigationRequestGenerationRef.current += 1;
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    // A espera pela decisão (avaliação do handoff, ativação, cobrança, reivindicação) é trabalho pendente desde a mensagem do usuário.
+    const turnDecision = await trackDecision(pendingWork.tracker, handover, async () => enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1220,7 +1255,8 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    )))));
+    ))))));
+    if (!turnIsCurrent()) return;
     if (turnDecision?.turnConsumed) {
       clearAttachmentComposer();
       return;
@@ -1263,13 +1299,17 @@ export default function ChatAgentLauncher({
         clearAttachmentComposer();
         return;
       }
-      await pushAssistantMessageWithTyping({
+      const typed = await pushAssistantMessageWithTyping({
         idPrefix: `assistant-${turnDecision.kind}`,
         content: turnDecision.content,
         presentationSnapshot: localSnapshot,
+        isCurrent: turnIsCurrent,
       });
+      if (!typed || !turnIsCurrent()) return;
       if (turnDecision.verticalHandoffForwardInput) {
         void imobFrontDoor.forwardToImob(turnDecision.verticalHandoffForwardInput);
+        // O encaminhamento já está registrado como pendente (sem intervalo): solta a espera que cobriu a digitação do aviso de handoff.
+        handover.release();
       }
       persistHelpdeskSession({
         message: turnInput,
@@ -1383,6 +1423,16 @@ export default function ChatAgentLauncher({
     }
   };
 
+  // Envio de mensagem, quick reply e ação de cartão passam todos por aqui. A ponte de espera é solta em qualquer saída do turno.
+  const handleSend = async () => {
+    const handover = { release: () => {} };
+    try {
+      await sendTurn(handover);
+    } finally {
+      handover.release();
+    }
+  };
+
   useEffect(() => {
     if (!autoSendInput || input !== autoSendInput || isStreaming) return;
     setAutoSendInput(null);
@@ -1393,7 +1443,7 @@ export default function ChatAgentLauncher({
   const handleApprove = async () => {
     if (!runId) return;
     try {
-      const response = await apiApproveRun(runId, { parentRunId: runId });
+      const response = await pendingWork.tracker.track(() => apiApproveRun(runId, { parentRunId: runId }));
       conversation.markApproved();
       pushMessage({
         id: `system-approve-${runId}`,
@@ -1414,11 +1464,11 @@ export default function ChatAgentLauncher({
       return;
     }
     try {
-      await apiAdoptRecommendation(targetRunId, {
+      await pendingWork.tracker.track(() => apiAdoptRecommendation(targetRunId, {
         key: rec.key,
         tatica: rec.tatica,
         adopted: true,
-      });
+      }));
       setCopyToast("Recomendacao marcada como adotada.");
     } catch {
       setCopyToast("Falha ao marcar recomendacao.");
@@ -1692,13 +1742,16 @@ export default function ChatAgentLauncher({
     const timer = window.setTimeout(() => {
       void (async () => {
         if (!isCurrent()) return;
-        const decision = await resolveLauncherNavigationDecision({
-          domainHint: launcherContext?.domainHint,
-          entryHint: launcherContext?.entryHint,
-          isUnifiedEiah: isUnifiedEiahMode,
-          continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
+        // A avaliação de entrada (inclui o handoff) também é espera real do Front Door: usa o mesmo estado compartilhado.
+        const resolved = await pendingWork.tracker.track(async () => {
+          const decision = await resolveLauncherNavigationDecision({
+            domainHint: launcherContext?.domainHint,
+            entryHint: launcherContext?.entryHint,
+            isUnifiedEiah: isUnifiedEiahMode,
+            continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
+          });
+          return enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
         });
-        const resolved = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
         if (!isCurrent() || !resolved?.content) return;
         const snapshot = attachPreDuimpCardToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
           selectedAgent: selectedCatalogAgent, routeIntent: resolved.presentationRouteIntent,
@@ -2177,11 +2230,7 @@ export default function ChatAgentLauncher({
                       </div>
                     );
                   })}
-                {isStreaming ? (
-                  <div className="max-w-[85%] px-4 py-3 text-sm text-muted-foreground">
-                    Pensando...
-                  </div>
-                ) : null}
+                {showWaiting ? <FrontDoorWaitingIndicator ref={waitingIndicatorRef} /> : null}
               </div>
             </div>
 
