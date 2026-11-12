@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
 import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
+import { appendedAssistantReplyId, replyScrollTop } from "./conversationScroll";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import { getSession, updateSession, type AppSessionState } from "@/state/sessionStore";
@@ -246,4 +247,59 @@ test("resposta digitada respeita a pausa de rolagem enquanto o usuário lê acim
     if (pause) assert.equal(scrolls, 1, "novos trechos não puxam o leitor ao fim");
     else assert.ok(scrolls > 5, "acompanha resposta quando o usuário permanece no fim");
   }
+});
+
+test("resposta do assistente anexada: qualquer vertical e formato, só uma mensagem nova ao fim com a lista anterior intacta", () => {
+  const previous = ["u1", "a1"];
+  const base = [{ id: "u1", role: "user" }, { id: "a1", role: "assistant" }];
+  // Formatos e verticais distintos entram igualmente: card estruturado do IMOB, texto comum, aviso, mensagem de run, Logística.
+  for (const reply of [
+    { id: "a2", role: "assistant", status: "done", imobStructured: { text: "Imóveis arquivados" } },
+    { id: "a2", role: "assistant", status: "done" },
+    { id: "a2", role: "assistant", status: "done", presentationSnapshot: { verticalContext: "LOGISTICA" } },
+    { id: "a2", role: "assistant" },
+  ]) assert.equal(appendedAssistantReplyId(previous, [...base, reply]), "a2");
+  // Mensagem do usuário não é resposta (o envio do usuário já tem o próprio acompanhamento).
+  assert.equal(appendedAssistantReplyId(previous, [...base, { id: "u2", role: "user" }]), null);
+  // Digitação progressiva (nasce vazia, em streaming): acompanha o fim por conta própria, sem rolagem concorrente.
+  assert.equal(appendedAssistantReplyId(previous, [...base, { id: "a2", role: "assistant", status: "streaming" }]), null);
+  // Hidratação (lista anterior vazia), nova conversa, troca de conversa (ids diferentes) e várias mensagens de uma vez não rolam sozinhas.
+  assert.equal(appendedAssistantReplyId([], [{ id: "h1", role: "assistant", status: "done" }]), null);
+  assert.equal(appendedAssistantReplyId([], [{ id: "h1", role: "assistant" }, { id: "a2", role: "assistant" }]), null);
+  assert.equal(appendedAssistantReplyId(previous, [{ id: "x1", role: "user" }, { id: "x2", role: "assistant" }, { id: "a2", role: "assistant" }]), null);
+  assert.equal(appendedAssistantReplyId(previous, [...base, { id: "a2", role: "assistant" }, { id: "a3", role: "assistant" }]), null);
+  assert.equal(appendedAssistantReplyId(["u1"], []), null);
+  // Atualização de mensagens existentes (run, formulário, fim da digitação) mantém a quantidade e também não rola.
+  assert.equal(appendedAssistantReplyId(["u1", "a1", "a2"], [...base, { id: "a2", role: "assistant", status: "done" }]), null);
+});
+
+test("destino da rolagem: fim se cabe; início se é mais alta; nada se a conversa acabou de hidratar (fim a mais de uma tela)", () => {
+  // Leitor no fim antes da resposta: distância até o fim (já sem a resposta) = scrollHeight - scrollTop - altura - resposta ≈ 16.
+  const atEnd = (reply: number) => ({ height: 400, scrollTop: 1800, scrollHeight: 1800 + 400 + 16 + reply });
+  assert.equal(replyScrollTop({ top: 416, height: 200 }, atEnd(200)), 2416, "cabe: vai ao fim");
+  assert.equal(replyScrollTop({ top: 416, height: 400 }, atEnd(400)), 2616, "exatamente do tamanho da área: fim");
+  assert.equal(replyScrollTop({ top: 416, height: 1500 }, atEnd(1500)), 2216, "mais alta: alinha o início (scrollTop + top)");
+  assert.equal(replyScrollTop({ top: -50, height: 1500 }, { ...atEnd(1500), scrollTop: 20 }), null, "fim a mais de uma tela: não mexe");
+  assert.equal(replyScrollTop({ top: 2000, height: 200 }, { height: 400, scrollTop: 0, scrollHeight: 2600 }), null, "histórico recém-hidratado no topo: não mexe");
+  // Bloco que cresce depois da última rolagem (ex.: card do handoff ao fim da digitação) não pode impedir o acompanhamento.
+  assert.equal(replyScrollTop({ top: 500, height: 200 }, { height: 400, scrollTop: 1000, scrollHeight: 2000 }), 2000, "exatamente uma tela do fim: acompanha");
+  assert.equal(replyScrollTop({ top: 500, height: 200 }, { height: 400, scrollTop: 1000, scrollHeight: 2001 }), null, "1 px além de uma tela: não mexe");
+  assert.equal(replyScrollTop({ top: -5, height: 1500 }, { height: 400, scrollTop: 0, scrollHeight: 1900 }), 0, "início nunca negativo");
+});
+
+test("launcher só acompanha a resposta anexada quando o leitor está no fim, para qualquer vertical (rolagem manual preservada)", () => {
+  const source = readFileSync(new URL("./ChatAgentLauncher.tsx", import.meta.url), "utf8");
+  const start = source.indexOf("appendedAssistantReplyId(previousMessageIds.current, messages)");
+  assert.ok(start > 0, "efeito de rolagem da resposta anexada presente");
+  const effect = source.slice(start, source.indexOf("}, [messages]);", start));
+  assert.match(effect, /readerLeftEnd\.current\) return;/, "leitor que subiu por gesto não é puxado");
+  assert.match(effect, /replyScrollTop\(/);
+  assert.match(effect, /destination !== null/, "sem destino, nada rola");
+  assert.doesNotMatch(effect, /imobStructured|vertical/i, "regra genérica: nada específico de vertical");
+  // A intenção do leitor só nasce de gesto deliberado (roda para cima, toque, teclas de subida) e é limpa ao voltar ao fim ou ao enviar.
+  assert.equal((source.match(/readerLeftEnd\.current = true/g) ?? []).length, 3, "roda, toque e teclas");
+  assert.match(source, /if \(followConversationEnd\.current\) readerLeftEnd\.current = false;/, "voltar ao fim retoma");
+  assert.match(source, /message\.role === "user"\) \{ followConversationEnd\.current = true; readerLeftEnd\.current = false; \}/, "enviar retoma");
+  // Os pontos de rolagem existentes (envio do usuário e digitação) continuam como estavam.
+  assert.equal((source.match(/followConversationEnd\.current = true/g) ?? []).length, 1);
 });

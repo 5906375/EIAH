@@ -1,0 +1,198 @@
+TAP version 13
+# Subtest: título único segue imob, com agente EIAH
+ok 1 - título único segue imob, com agente EIAH
+  ---
+  duration_ms: 53.405518
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente Especialista
+ok 2 - título único segue imob, com agente Especialista
+  ---
+  duration_ms: 1.788321
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente ausente
+ok 3 - título único segue imob, com agente ausente
+  ---
+  duration_ms: 1.255535
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente EIAH
+ok 4 - título único segue logistica, com agente EIAH
+  ---
+  duration_ms: 1.108723
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente Especialista
+ok 5 - título único segue logistica, com agente Especialista
+  ---
+  duration_ms: 1.369916
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente ausente
+ok 6 - título único segue logistica, com agente ausente
+  ---
+  duration_ms: 0.899854
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente EIAH
+ok 7 - título único segue core, com agente EIAH
+  ---
+  duration_ms: 0.912237
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente Especialista
+ok 8 - título único segue core, com agente Especialista
+  ---
+  duration_ms: 0.846069
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente ausente
+ok 9 - título único segue core, com agente ausente
+  ---
+  duration_ms: 2.441294
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente EIAH
+ok 10 - título único segue domínio inicial, com agente EIAH
+  ---
+  duration_ms: 1.296527
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente Especialista
+ok 11 - título único segue domínio inicial, com agente Especialista
+  ---
+  duration_ms: 0.851507
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente ausente
+ok 12 - título único segue domínio inicial, com agente ausente
+  ---
+  duration_ms: 0.700925
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta imob e preserva o controle de agente
+ok 13 - cabeçalho projeta imob e preserva o controle de agente
+  ---
+  duration_ms: 0.614314
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core e preserva o controle de agente
+ok 14 - cabeçalho projeta core e preserva o controle de agente
+  ---
+  duration_ms: 0.176457
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core inicial e preserva o controle de agente
+ok 15 - cabeçalho projeta core inicial e preserva o controle de agente
+  ---
+  duration_ms: 0.179287
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: none
+ok 16 - entrada Marketplace renderiza somente resposta atual: none
+  ---
+  duration_ms: 27.717521
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: conversation
+ok 17 - entrada Marketplace renderiza somente resposta atual: conversation
+  ---
+  duration_ms: 8.840779
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: user
+ok 18 - entrada Marketplace renderiza somente resposta atual: user
+  ---
+  duration_ms: 24.104084
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: workspace
+ok 19 - entrada Marketplace renderiza somente resposta atual: workspace
+  ---
+  duration_ms: 21.679849
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: agent
+ok 20 - entrada Marketplace renderiza somente resposta atual: agent
+  ---
+  duration_ms: 15.627882
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: new_turn
+ok 21 - entrada Marketplace renderiza somente resposta atual: new_turn
+  ---
+  duration_ms: 14.308118
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+ok 22 - barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+  ---
+  duration_ms: 1.725871
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente EIAH
+ok 23 - barra real aparece em conversa vazia IMOB, independente do agente EIAH
+  ---
+  duration_ms: 0.644438
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente J_360
+ok 24 - barra real aparece em conversa vazia IMOB, independente do agente J_360
+  ---
+  duration_ms: 0.461618
+  type: 'test'
+  ...
+# Subtest: AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+ok 25 - AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+  ---
+  duration_ms: 0.730432
+  type: 'test'
+  ...
+# Subtest: snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+ok 26 - snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+  ---
+  duration_ms: 0.404827
+  type: 'test'
+  ...
+# Subtest: handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+ok 27 - handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+  ---
+  duration_ms: 9.996127
+  type: 'test'
+  ...
+# Subtest: resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima
+ok 28 - resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima
+  ---
+  duration_ms: 18.002854
+  type: 'test'
+  ...
+# Subtest: resposta do assistente anexada: qualquer vertical e formato, só uma mensagem nova ao fim com a lista anterior intacta
+ok 29 - resposta do assistente anexada: qualquer vertical e formato, só uma mensagem nova ao fim com a lista anterior intacta
+  ---
+  duration_ms: 0.34315
+  type: 'test'
+  ...
+# Subtest: destino da rolagem: fim se cabe; início se é mais alta; nada se a conversa acabou de hidratar (fim a mais de uma tela)
+ok 30 - destino da rolagem: fim se cabe; início se é mais alta; nada se a conversa acabou de hidratar (fim a mais de uma tela)
+  ---
+  duration_ms: 0.353463
+  type: 'test'
+  ...
+# Subtest: launcher só acompanha a resposta anexada quando o leitor está no fim, para qualquer vertical (rolagem manual preservada)
+ok 31 - launcher só acompanha a resposta anexada quando o leitor está no fim, para qualquer vertical (rolagem manual preservada)
+  ---
+  duration_ms: 1.454604
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2751.361653
+
+TEST_EXIT_CODE=0

@@ -1,0 +1,42 @@
+CODIGO_AVALIADO: HEAD=c5607c8d | launcher=016d4d107bef | conversationScroll=498b2643efb7 | teste=8542c711bbfd
+GATE: scripts/checkChatRuntimeEntrypointDebt.ts
+{
+  "ok": true,
+  "check": "check:chat-runtime-entrypoint-debt",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": [],
+  "summary": {
+    "deepImportsBlocked": [
+      "imobContextResolver",
+      "legalContextResolver",
+      "proposalDomainResolver",
+      "specialistDecisionResolver",
+      "specialistExplainCatalog",
+      "platformHelpResolver",
+      "agentPresentationResolver",
+      "helpDictionaryResolver",
+      "eiahTutorContracts"
+    ],
+    "directDecisionCallsBlocked": [
+      "resolveSpecialistAvailability",
+      "canSuggestAgent",
+      "canHandoffToAgent",
+      "buildSuggestedAgentReply",
+      "buildSpecialistExplainReply",
+      "resolveSpecialistExplainTarget",
+      "resolveImobJourneyStage",
+      "resolveLegalJourneyStage",
+      "resolveImobVerticalContext",
+      "resolveLegalVerticalContext",
+      "shouldRouteToImob",
+      "isLegalRoutingQuestion"
+    ],
+    "literalPatternsBlocked": [
+      "defaultNextStep",
+      "quickReplies: [",
+      "const ...quickReplies... = ["
+    ]
+  }
+}
+
+GATE_EXIT_CODE=0

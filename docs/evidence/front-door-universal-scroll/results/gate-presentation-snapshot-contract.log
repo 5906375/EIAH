@@ -1,0 +1,16 @@
+CODIGO_AVALIADO: HEAD=c5607c8d | launcher=016d4d107bef | conversationScroll=498b2643efb7 | teste=8542c711bbfd
+GATE: scripts/checkPresentationSnapshotContract.ts
+{
+  "ok": true,
+  "contract": "presentation-snapshot",
+  "version": "v1",
+  "checkedFiles": [
+    "contracts/presentation-snapshot.v1.schema.json",
+    "contracts/presentation-snapshot.v1.baseline.json",
+    "apps/web/src/components/agents/chatPresentationSnapshot.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.test.ts"
+  ]
+}
+
+GATE_EXIT_CODE=0

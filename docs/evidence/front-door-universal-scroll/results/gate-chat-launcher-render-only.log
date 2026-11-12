@@ -1,0 +1,10 @@
+CODIGO_AVALIADO: HEAD=c5607c8d | launcher=016d4d107bef | conversationScroll=498b2643efb7 | teste=8542c711bbfd
+GATE: scripts/checkChatLauncherRenderOnly.ts
+{
+  "ok": true,
+  "check": "check:chat-launcher-render-only",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": []
+}
+
+GATE_EXIT_CODE=0
