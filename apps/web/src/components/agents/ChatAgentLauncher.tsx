@@ -98,6 +98,7 @@ import { isImobSurfaceAvailable } from "@/lib/entitlements";
 import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
 import FrontDoorSidebar from "./FrontDoorSidebar";
 import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
+import { appendedAssistantReplyId, replyScrollTop } from "./conversationScroll";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -477,6 +478,26 @@ export default function ChatAgentLauncher({
   const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const followConversationEnd = useRef(true);
+  // Intenção do leitor: só gesto deliberado (roda, toque, teclas de subida) a liga; voltar ao fim ou enviar mensagem a desliga. Ao
+  // contrário de followConversationEnd, não é alterada quando o conteúdo cresce sem rolagem (ex.: o card do handoff ao fim da digitação).
+  const readerLeftEnd = useRef(false);
+  // Resposta do assistente anexada à conversa sem passar pela digitação (resposta estruturada do IMOB, avisos, runs) ficava abaixo da
+  // dobra. Vale para qualquer vertical e formato; só acompanha quem estava no fim (a leitura manual e a hidratação não mudam) e,
+  // sendo mais alta que a área visível, mostra o início dela. A digitação progressiva continua acompanhando o fim por conta própria.
+  const previousMessageIds = useRef<string[]>([]);
+  useEffect(() => {
+    const replyId = appendedAssistantReplyId(previousMessageIds.current, messages);
+    previousMessageIds.current = messages.map((message) => message.id);
+    const viewport = scrollRef.current;
+    if (!replyId || !viewport || readerLeftEnd.current) return;
+    const target = Array.from(viewport.querySelectorAll<HTMLElement>("[data-message-id]")).find((element) => element.dataset.messageId === replyId);
+    if (!target) return;
+    // A entrada anima com translateY: mede sem esse deslocamento para o início não ficar cortado depois da animação.
+    const shift = new DOMMatrixReadOnly(getComputedStyle(target).transform).m42;
+    const top = target.getBoundingClientRect().top - viewport.getBoundingClientRect().top - shift;
+    const destination = replyScrollTop({ top, height: target.offsetHeight }, { height: viewport.clientHeight, scrollTop: viewport.scrollTop, scrollHeight: viewport.scrollHeight });
+    if (destination !== null) viewport.scrollTo({ top: destination, behavior: "auto" });
+  }, [messages]);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     const textarea = composerInputRef.current;
@@ -739,7 +760,7 @@ export default function ChatAgentLauncher({
   }, [activeAgentId, pendingAgentReplayInput]);
 
   const pushMessage = (message: ChatMessage) => {
-    if (message.role === "user") followConversationEnd.current = true;
+    if (message.role === "user") { followConversationEnd.current = true; readerLeftEnd.current = false; }
     setMessages((prev) => [...prev, message]);
     requestAnimationFrame(() => {
       if (followConversationEnd.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "auto" });
@@ -1934,13 +1955,14 @@ export default function ChatAgentLauncher({
               onScroll={(event) => {
                 const viewport = event.currentTarget;
                 followConversationEnd.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 48;
+                if (followConversationEnd.current) readerLeftEnd.current = false;
               }}
               onWheel={(event) => {
-                if (event.deltaY < 0) followConversationEnd.current = false;
+                if (event.deltaY < 0) { followConversationEnd.current = false; readerLeftEnd.current = true; }
               }}
-              onTouchMove={() => { followConversationEnd.current = false; }}
+              onTouchMove={() => { followConversationEnd.current = false; readerLeftEnd.current = true; }}
               onKeyDown={(event) => {
-                if (["ArrowUp", "PageUp", "Home"].includes(event.key)) followConversationEnd.current = false;
+                if (["ArrowUp", "PageUp", "Home"].includes(event.key)) { followConversationEnd.current = false; readerLeftEnd.current = true; }
               }}
               tabIndex={0}
               className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:p-2"
