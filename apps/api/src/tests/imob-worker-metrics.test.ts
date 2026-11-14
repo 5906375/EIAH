@@ -26,6 +26,7 @@ import {
 } from "../workers/imobWorkerMetrics.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import type { ImobWorkerDeps } from "../workers/imobPostRunMutationWorker.js";
+import { NO_EVALUATION_GRANT } from "../services/products/verticalEvaluationContract.js";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,8 @@ function makeDeps(overrides: Partial<{
     mutationServiceFactory: (_p) => ({
       updateCase: async () => overrides.updateCaseResult ?? { status: "updated", data: makeUpdatedCase() },
     }),
+    // workspace sem avaliação gratuita (legado); o gate real é coberto em imob-post-run-evaluation-gate
+    evaluationGrantGateFn: async () => NO_EVALUATION_GRANT,
   };
 }
 

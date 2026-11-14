@@ -822,6 +822,11 @@ jobs:
       - name: Run assignment fail-closed suite
         run: pnpm test:assignment-fail-closed
 
+      # Dublês injetados; sem Redis nem banco. A fila IMOB é criada no primeiro uso (não na importação), então o processo encerra
+      # sozinho: não usa --test-force-exit.
+      - name: Run evaluation worker gate suite (dublês injetados, sem Redis)
+        run: pnpm test:evaluation-worker-gate
+
       - name: Run IMOB asset destination unit suite
         run: pnpm test:imob-asset-destination
 
@@ -1725,4 +1730,12 @@ jobs:
 
       - name: Run LOGISTICA/Oraculo integration suite (upload security, activation channels, persistence integrity, J-360 isolation)
         run: pnpm test:logistica-core:integration
+        timeout-minutes: 10
+
+      # Avaliação gratuita IMOB com Prisma/PostgreSQL reais (ciclo, rotas autenticadas, datas/::timestamp, atomicidade, concorrência com
+      # sessões independentes). A oferta só é habilitada nas fixtures; a composição de produção segue desligada. Sem --test-force-exit.
+      - name: Run vertical evaluation integration suite (PostgreSQL real, concorrência real)
+        run: pnpm test:vertical-evaluation:integration
+        env:
+          EIAH_DISPOSABLE_INFRA: "1"
         timeout-minutes: 10

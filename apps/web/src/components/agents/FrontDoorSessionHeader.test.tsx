@@ -16,6 +16,7 @@ import { getSession, updateSession, type AppSessionState } from "@/state/session
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import { IMOB_ACTION_MENUS } from "@/features/imob/imobActionMenus";
 import { createLauncherPresentationSnapshot, resolveLauncherNavigationDecision } from "./chatLauncherEngine";
+import { credentialOf, sameCredential } from "./runLifecycle";
 import { attachVerticalHandoffToSnapshot, enrichLauncherDecisionWithVerticalHandoff } from "./verticalHandoffEngine";
 import { attachPreDuimpCardToSnapshot } from "./preDuimpConversationEngine";
 
@@ -212,15 +213,23 @@ test("snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revog
   assert.equal(surfaceHtml({ ...availableSession, accessGate: { reasonCode: "IMOB_ENTITLEMENT_MISSING" } }, history), "");
 });
 
-test("handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot", () => {
+test("handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot", async () => {
   updateSession(availableSession);
   const before = getSession();
   let messages: unknown[] = [{ presentationSnapshot: { verticalContext: "IMOB" } }];
   const removedKeys: string[] = [];
+  let abandoned = 0;
+  let abandonResult: string | null = null; // o que a API respondeu ao pedido de cancelamento (null = nada em andamento)
+  let scopeNow = "scope-test"; // escopo ATUAL: mudar depois da chamada simula troca de contexto antes da resposta da API
+  const notices: unknown[] = [];
   const environment: Record<string, unknown> = {
     session: before, updateSession, conversationGenerationRef: { current: 0 }, imobPersistence: { startNew: () => undefined }, threadKey: "thread-test", baseLedger: () => [],
     setMessages: (next: unknown[]) => { messages = next; },
     window: { sessionStorage: { removeItem: (key: string) => removedKeys.push(key) } },
+    // Run acompanhada: o aviso da conversa nova diz o resultado REAL do pedido (aceito, falha, já terminada); descarte local não avisa.
+    abandonTracking: async () => { abandoned += 1; return abandonResult; }, pushMessage: (message: unknown) => { notices.push(message); },
+    describeAbandonResult: (result: string) => (result === "discarded_locally" ? null : `aviso:${result}`),
+    pendingWork: { tracker: { scope: () => scopeNow } }, getSession, credentialOf, sameCredential,
   };
   for (const name of ["stopStreaming", "setRunId", "onRunIdChange", "setLedger", "onLedgerChange", "setEvidenceEvent", "setCopyToast", "setLastRouteIntent", "clearAttachmentComposer", "setAttachmentDocumentType", "setAttachmentAnalysisMode"]) environment[name] = () => undefined;
   for (const name of ["seenEventsRef", "lastEventIdRef", "runSummaryLoadedRef", "runPromptRef", "runIntentRef", "runPresentationRef", "runGuardrailRef"]) environment[name] = { current: null };
@@ -230,6 +239,27 @@ test("handler real de Nova conversa limpa histórico e preserva domínio/superf�
   assert.equal(getSession(), before);
   assert.equal(getSession().activeDomain, "imob");
   assert.ok(surfaceHtml(getSession(), messages).includes("Negócios"));
+  await Promise.resolve();
+  assert.equal(abandoned, 1, "o abandono de uma run em andamento é tratado em um único ponto");
+  assert.equal(notices.length, 0, "sem run em andamento não há aviso");
+  // O aviso diz o que a API respondeu, só DEPOIS da resposta; descarte local e nada em andamento não avisam.
+  const handler = new Function("environment", `with (environment) { ${transpileReturn(newConversationInitializer!)} }`)(environment);
+  for (const [result, expected] of [["cancel_accepted", "aviso:cancel_accepted"], ["cancel_failed", "aviso:cancel_failed"], ["cancel_already_finished", "aviso:cancel_already_finished"], ["discarded_locally", null], [null, null]] as const) {
+    abandonResult = result;
+    const before = notices.length;
+    handler();
+    assert.equal(notices.length, before, "nada é anunciado antes da resposta da API");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    if (expected === null) assert.equal(notices.length, before, `${result}: sem aviso`);
+    else { assert.equal(notices.length, before + 1, `${result}: um aviso`); assert.equal((notices[notices.length - 1] as { content: string }).content, expected); }
+  }
+  // Resposta tardia: se o escopo mudou depois do pedido (outra conversa/usuário), o aviso NÃO entra no contexto novo.
+  abandonResult = "cancel_accepted";
+  const beforeLate = notices.length;
+  handler();
+  scopeNow = "outro-escopo";
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(notices.length, beforeLate, "aviso de abandono não vaza para outro contexto");
 });
 
 test("resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima", async () => {

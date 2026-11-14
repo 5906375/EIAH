@@ -1,0 +1,20 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+src/services/imob/crm/imobCrmTurnEngine.ts(5,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/crm/imobCrmTurnEngine.ts(5,44): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/imobAgentContract.ts(10,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobConversationContract.ts(644,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobConversationState.ts(1,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(663,28): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(2,36): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobSemanticIntentResolver.ts(2,70): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,94): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,124): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobSemanticIntentResolver.ts(352,41): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(363,88): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/api@ typecheck: `tsc -p tsconfig.build.json --noEmit`
+Exit status 2

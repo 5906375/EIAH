@@ -42,6 +42,7 @@ import { chatVerticalsRouter } from "./routes/chatVerticals";
 import { verticalAccessRouter } from "./routes/verticalAccess";
 import { frontDoorAccessRouter } from "./routes/frontDoorAccess";
 import { frontDoorBillingRouter } from "./routes/frontDoorBilling";
+import { frontDoorIntakeRouter } from "./routes/frontDoorIntake";
 import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRuntimeShadow";
 import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
 import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
@@ -148,6 +149,7 @@ app.use("/api", chatVerticalsRouter);
 app.use("/api", verticalAccessRouter);
 app.use("/api", frontDoorAccessRouter);
 app.use("/api", frontDoorBillingRouter);
+app.use("/api", frontDoorIntakeRouter);
 if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
   app.use("/api", chatVerticalImobRuntimeShadowRouter);
 }

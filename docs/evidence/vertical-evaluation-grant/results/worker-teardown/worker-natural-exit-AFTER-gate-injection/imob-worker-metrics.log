@@ -1,0 +1,230 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+TAP version 13
+# {"level":40,"time":"2026-11-14T12:57:27.808Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","actionId":"owner.register","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# Subtest: [T-M1] mutation_applied increments correct counters
+    # Subtest: should increment JOBS_RECEIVED and MUTATIONS_APPLIED on happy path
+    not ok 1 - should increment JOBS_RECEIVED and MUTATIONS_APPLIED on happy path
+      ---
+      duration_ms: 9.839577
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:2582'
+      failureType: 'testCodeFailure'
+      error: |-
+        expected imob_post_run_mutations_applied_total{actionId="owner.register",requiresTxId="true",terminal="false"}=1
+        
+        undefined !== 1
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 1
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:141:12)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async Promise.all (index 0)
+        async Suite.run (node:internal/test_runner/test:1442:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+      ...
+    # Subtest: should count terminal action commission.settle with terminal=true
+    not ok 2 - should count terminal action commission.settle with terminal=true
+      ---
+      duration_ms: 0.532918
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:3220'
+      failureType: 'testCodeFailure'
+      error: |-
+        expected imob_post_run_mutations_applied_total{actionId="commission.settle",requiresTxId="true",terminal="true"}=1
+        
+        undefined !== 1
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 1
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:156:12)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+      ...
+    1..2
+not ok 1 - [T-M1] mutation_applied increments correct counters
+  ---
+  duration_ms: 11.283311
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:2472'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T-M2] simulated skip increments correct counter
+    # Subtest: should increment SKIPS{reason=simulated} when run output is simulated
+    ok 1 - should increment SKIPS{reason=simulated} when run output is simulated
+      ---
+      duration_ms: 0.528313
+      type: 'test'
+      ...
+    1..1
+ok 2 - [T-M2] simulated skip increments correct counter
+  ---
+  duration_ms: 0.679588
+  type: 'suite'
+  ...
+# Subtest: [T-M3] run_not_success skip increments correct counter
+    # Subtest: should increment SKIPS{reason=run_not_success} when run.status=error
+    ok 1 - should increment SKIPS{reason=run_not_success} when run.status=error
+      ---
+      duration_ms: 0.554413
+      type: 'test'
+      ...
+    # Subtest: should also skip when run.status=pending
+    ok 2 - should also skip when run.status=pending
+      ---
+      duration_ms: 0.389588
+      type: 'test'
+      ...
+    1..2
+ok 3 - [T-M3] run_not_success skip increments correct counter
+  ---
+  duration_ms: 1.250639
+  type: 'suite'
+  ...
+# Subtest: [T-M4] already_processed increments correct counter
+    # Subtest: should increment SKIPS{reason=already_processed} on duplicate job
+    not ok 1 - should increment SKIPS{reason=already_processed} on duplicate job
+      ---
+      duration_ms: 0.652703
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:5256'
+      failureType: 'testCodeFailure'
+      error: |-
+        expected imob_post_run_skips_total{actionId="owner.register",reason="already_processed"}=1
+        
+        undefined !== 1
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 1
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:217:12)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async Promise.all (index 0)
+        async Suite.run (node:internal/test_runner/test:1442:7)
+        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+      ...
+    1..1
+not ok 4 - [T-M4] already_processed increments correct counter
+  ---
+  duration_ms: 0.852844
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:5146'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T-M5] worker failure counter (direct incrementCounter)
+    # Subtest: should increment FAILURES counter when called directly
+    ok 1 - should increment FAILURES counter when called directly
+      ---
+      duration_ms: 0.47831
+      type: 'test'
+      ...
+    # Subtest: should increment receipt_required_no_tx_id skip for HIGH tier without txId
+    not ok 2 - should increment receipt_required_no_tx_id skip for HIGH tier without txId
+      ---
+      duration_ms: 1.712268
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:6230'
+      failureType: 'testCodeFailure'
+      error: |-
+        expected imob_post_run_skips_total{actionId="owner.register",reason="receipt_required_no_tx_id"}=1
+        
+        undefined !== 1
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 1
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:248:12)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async Suite.processPendingSubtests (node:internal/test_runner/test:744:7)
+      ...
+    # Subtest: should increment run_not_found skip when run is null
+    ok 3 - should increment run_not_found skip when run is null
+      ---
+      duration_ms: 3.608052
+      type: 'test'
+      ...
+    1..3
+not ok 5 - [T-M5] worker failure counter (direct incrementCounter)
+  ---
+  duration_ms: 6.185429
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-worker-metrics.test.ts:1:5627'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T-M6] no PII in counter keys
+    # Subtest: should not include caseId, tenantId, workspaceId or ownerResponsible in any counter key
+    ok 1 - should not include caseId, tenantId, workspaceId or ownerResponsible in any counter key
+      ---
+      duration_ms: 0.445862
+      type: 'test'
+      ...
+    # Subtest: should not include PII for simulated path either
+    ok 2 - should not include PII for simulated path either
+      ---
+      duration_ms: 0.203011
+      type: 'test'
+      ...
+    1..2
+ok 6 - [T-M6] no PII in counter keys
+  ---
+  duration_ms: 0.729219
+  type: 'suite'
+  ...
+# Subtest: [T-M7] renderCountersAsPrometheusText emits valid format
+    # Subtest: should return empty string when no counters exist
+    ok 1 - should return empty string when no counters exist
+      ---
+      duration_ms: 0.123359
+      type: 'test'
+      ...
+    # Subtest: should emit one line per counter key in Prometheus text format
+    ok 2 - should emit one line per counter key in Prometheus text format
+      ---
+      duration_ms: 0.31551
+      type: 'test'
+      ...
+    # Subtest: should accumulate counter increments (idempotent key)
+    ok 3 - should accumulate counter increments (idempotent key)
+      ---
+      duration_ms: 0.10401
+      type: 'test'
+      ...
+    1..3
+ok 7 - [T-M7] renderCountersAsPrometheusText emits valid format
+  ---
+  duration_ms: 0.615984
+  type: 'suite'
+  ...
+# {"level":40,"time":"2026-11-14T12:57:27.817Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"commission.settle","actionId":"commission.settle","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# {"level":40,"time":"2026-11-14T12:57:27.818Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","msg":"imob-worker.skipped_simulated_run"}
+# {"level":30,"time":"2026-11-14T12:57:27.819Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","runStatus":"error","msg":"imob-worker.run_not_success_skip"}
+# {"level":30,"time":"2026-11-14T12:57:27.819Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","runStatus":"pending","msg":"imob-worker.run_not_success_skip"}
+# {"level":40,"time":"2026-11-14T12:57:27.820Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","actionId":"owner.register","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# {"level":40,"time":"2026-11-14T12:57:27.822Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","actionId":"owner.register","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# {"level":40,"time":"2026-11-14T12:57:27.826Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","msg":"imob-worker.run_not_found"}
+# {"level":40,"time":"2026-11-14T12:57:27.827Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","actionId":"owner.register","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# {"level":40,"time":"2026-11-14T12:57:27.827Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-metrics-01","tenantId":"tenant-metrics-test","workspaceId":"ws-metrics-test","caseId":"case-metrics-test","actionId":"owner.register","msg":"imob-worker.skipped_simulated_run"}
+1..7
+# tests 14
+# suites 7
+# pass 10
+# fail 4
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 631.015198

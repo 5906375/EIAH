@@ -1,0 +1,115 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+TAP version 13
+# Subtest: duas ativações simultâneas: ambas bloqueadas no lock; efeito único (um início, uma instalação, um evento, políticas sem duplicata)
+ok 1 - duas ativações simultâneas: ambas bloqueadas no lock; efeito único (um início, uma instalação, um evento, políticas sem duplicata)
+  ---
+  duration_ms: 231.770062
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (aceite limpo e novo hash): a versão antiga NÃO ativa
+ok 2 - versão alterada por outra transação antes da ativação (aceite limpo e novo hash): a versão antiga NÃO ativa
+  ---
+  duration_ms: 46.322236
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (novo hash com aceite antigo): a versão antiga NÃO ativa
+ok 3 - versão alterada por outra transação antes da ativação (novo hash com aceite antigo): a versão antiga NÃO ativa
+  ---
+  duration_ms: 41.928712
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (aceite apontando para hash antigo): a versão antiga NÃO ativa
+ok 4 - versão alterada por outra transação antes da ativação (aceite apontando para hash antigo): a versão antiga NÃO ativa
+  ---
+  duration_ms: 39.533406
+  type: 'test'
+  ...
+# Subtest: reproposta (antes do aceite) concorrente ao aceite da versão antiga: o aceite antigo é recusado; só a versão nova, depois de aceita, ativa
+ok 5 - reproposta (antes do aceite) concorrente ao aceite da versão antiga: o aceite antigo é recusado; só a versão nova, depois de aceita, ativa
+  ---
+  duration_ms: 69.749997
+  type: 'test'
+  ...
+# Subtest: recusa do solicitante concorrente à ativação: a ativação enfileirada depois é negada; nada ativado
+ok 6 - recusa do solicitante concorrente à ativação: a ativação enfileirada depois é negada; nada ativado
+  ---
+  duration_ms: 46.012155
+  type: 'test'
+  ...
+# Subtest: ordem inversa: ativação primeiro e reproposta depois — a reproposta é negada (grant já ativo) e não reescreve o grant
+ok 7 - ordem inversa: ativação primeiro e reproposta depois — a reproposta é negada (grant já ativo) e não reescreve o grant
+  ---
+  duration_ms: 60.276499
+  type: 'test'
+  ...
+# Subtest: grant renovado entre a leitura (encerrado) e o UPDATE do pedido: a nova versão NÃO é sobrescrita
+ok 8 - grant renovado entre a leitura (encerrado) e o UPDATE do pedido: a nova versão NÃO é sobrescrita
+  ---
+  duration_ms: 57.262879
+  type: 'test'
+  ...
+# Subtest: controle: sem renovação, o mesmo pedido padrão sobre grant encerrado reescreve a linha normalmente (o guard não bloqueia o caso legítimo)
+ok 9 - controle: sem renovação, o mesmo pedido padrão sobre grant encerrado reescreve a linha normalmente (o guard não bloqueia o caso legítimo)
+  ---
+  duration_ms: 49.320071
+  type: 'test'
+  ...
+# Subtest: fechamentos simultâneos: 4 leituras vencidas ao mesmo tempo ⇒ uma transição, um evento e um aviso
+ok 10 - fechamentos simultâneos: 4 leituras vencidas ao mesmo tempo ⇒ uma transição, um evento e um aviso
+  ---
+  duration_ms: 60.462601
+  type: 'test'
+  ...
+# Subtest: pedidos concorrentes sobre acesso aprovado e sobre pedido aberto: ninguém reescreve a linha
+ok 11 - pedidos concorrentes sobre acesso aprovado e sobre pedido aberto: ninguém reescreve a linha
+  ---
+  duration_ms: 57.256594
+  type: 'test'
+  ...
+# Subtest: pedidos concorrentes sobre pedido recusado: exatamente uma reescrita; as demais veem o pedido aberto
+ok 12 - pedidos concorrentes sobre pedido recusado: exatamente uma reescrita; as demais veem o pedido aberto
+  ---
+  duration_ms: 45.866486
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# INSERT-RACE padrão: fulfilled=1 rejected=3 ["\\nInvalid `prisma.$executeRaw()` invocation:\\n\\n\\nRaw query failed. Code: `23505`. M"]
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_scope_key"`
+# INSERT-RACE avaliação: fulfilled=1 rejected=3 ["\\nInvalid `prisma.$executeRaw()` invocation:\\n\\n\\nRaw query failed. Code: `23505`. M"]
+# Subtest: primeiros pedidos simultâneos (sem linha prévia), com e sem avaliação: sem linha duplicada e sem estado inconsistente
+ok 13 - primeiros pedidos simultâneos (sem linha prévia), com e sem avaliação: sem linha duplicada e sem estado inconsistente
+  ---
+  duration_ms: 45.001499
+  type: 'test'
+  ...
+# Subtest: mecanismo: o segurador do lock é uma sessão distinta das do pool e o monitor enxerga o bloqueio no servidor
+ok 14 - mecanismo: o segurador do lock é uma sessão distinta das do pool e o monitor enxerga o bloqueio no servidor
+  ---
+  duration_ms: 32.977328
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1480.414508

@@ -1,0 +1,6 @@
+{"target":"./apps/api/src/queues/imobRunCompletedQueue.ts","exports":6,"resources":{"PipeWrap":2},"sockets":["?:?","?:?"]}
+exit=0 <- apps/api/src/queues/imobRunCompletedQueue.ts (DEPOIS do fix)
+{"target":"./apps/api/src/workers/imobPostRunMutationWorker.ts","exports":6,"resources":{"PipeWrap":2},"sockets":["?:?","?:?"]}
+exit=0 <- apps/api/src/workers/imobPostRunMutationWorker.ts (DEPOIS do fix)
+{"target":"./apps/api/src/routes/imob.ts","exports":2,"resources":{"PipeWrap":2},"sockets":["?:?","?:?"]}
+exit=0 <- apps/api/src/routes/imob.ts (DEPOIS do fix)

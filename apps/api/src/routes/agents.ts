@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { publishRun } from "@eiah/core";
 import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
+import { filterActionsByEvaluationGate, productForAction } from "../services/products/verticalEvaluationContract";
 import { enforceTenant } from "../middlewares/enforceTenant";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, listAgents, resolveAgentId } from "../services/agents";
@@ -313,8 +315,14 @@ async function resolveAllowedActions(req: TenantAwareRequest) {
       .map(({ actionName }) => actionName),
   );
 
-  if (allowed.size > 0) {
-    return allowed;
+  // Avaliação gratuita: policies provisionadas na ativação persistem depois do fim da validade; por isso as actions do IMOB só valem
+  // enquanto o grant de avaliação (se houver) está ativo e válido AGORA. A leitura só ocorre se há action do IMOB e só restringe
+  // workspaces com grant: sem grant, o conjunto sai idêntico (comportamento legado).
+  const gated = [...allowed].some((action) => productForAction(action) === "IMOB")
+    ? filterActionsByEvaluationGate(allowed, await readEvaluationGrantGate({ prisma: req.prisma as never, tenantId, workspaceId }))
+    : allowed;
+  if (gated.size > 0) {
+    return gated;
   }
 
   throw new PolicyNotFoundError({

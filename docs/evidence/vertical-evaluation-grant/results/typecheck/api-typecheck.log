@@ -1,0 +1,254 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+src/middlewares/enforceTenant.ts(143,47): error TS7006: Parameter 'disconnectError' implicitly has an 'any' type.
+src/routes/billing.ts(1718,43): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/billing.ts(1718,48): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/billing.ts(1719,38): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/billing.ts(1719,43): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/billing.ts(1771,25): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/delegations.ts(239,37): error TS7031: Binding element 'marketplace' implicitly has an 'any' type.
+src/routes/delegations.ts(259,26): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/routes/delegations.ts(262,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/governance.ts(214,24): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/governance.ts(300,39): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/governance.ts(420,32): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/governance.ts(768,18): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/help.ts(524,37): error TS7006: Parameter 'run' implicitly has an 'any' type.
+src/routes/help.ts(537,50): error TS2339: Property 'agent' does not exist on type '{}'.
+src/routes/help.ts(538,51): error TS2339: Property 'status' does not exist on type '{}'.
+src/routes/imob.ts(1182,13): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(1183,14): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/imob.ts(1255,46): error TS7006: Parameter 'run' implicitly has an 'any' type.
+src/routes/imob.ts(1995,51): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2153,27): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2474,38): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2475,44): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2476,42): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2477,48): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2478,43): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2480,58): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2483,35): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2506,11): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2522,12): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/imob.ts(2522,15): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/routes/imob.ts(2579,34): error TS7006: Parameter 'run' implicitly has an 'any' type.
+src/routes/imob.ts(2592,60): error TS7006: Parameter 'run' implicitly has an 'any' type.
+src/routes/imob.ts(2598,18): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/imob.ts(2599,19): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/imob.ts(2622,14): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(2623,14): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(3020,14): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3022,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3412,26): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(3564,35): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3628,37): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3704,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3705,12): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/imob.ts(3719,14): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3720,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3791,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3792,12): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/imob.ts(3806,14): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3807,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3880,49): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3933,42): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/imob.ts(3963,25): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(3970,35): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imob.ts(3977,31): error TS7031: Binding element 'metadata' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(243,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(389,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(541,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(661,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(663,32): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(732,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(759,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(786,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(813,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(821,37): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(829,15): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(830,18): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(838,62): error TS2322: Type 'Set<unknown>' is not assignable to type 'Set<string>'.
+  Type 'unknown' is not assignable to type 'string'.
+src/routes/imobCrmRouter.ts(861,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(864,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(969,31): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(1659,46): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(1666,42): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/imobCrmRouter.ts(1667,47): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/marketplace.ts(173,25): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/marketplace.ts(216,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/marketplace.ts(612,68): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/onboarding-context.ts(31,30): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/onboarding.ts(72,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(68,32): error TS7006: Parameter 'record' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(71,23): error TS7031: Binding element 'state' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(71,145): error TS7031: Binding element 'record' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(71,153): error TS7031: Binding element 'state' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(72,33): error TS7031: Binding element 'state' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(72,125): error TS7031: Binding element 'record' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(72,133): error TS7031: Binding element 'state' implicitly has an 'any' type.
+src/routes/profile.ts(107,22): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/routes/profile.ts(179,6): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(182,6): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(198,11): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(209,14): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(210,70): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/routes/profile.ts(210,75): error TS7006: Parameter 'source' implicitly has an 'any' type.
+src/routes/profile.ts(214,69): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(214,76): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(226,13): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(237,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(238,76): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/routes/profile.ts(238,81): error TS7006: Parameter 'source' implicitly has an 'any' type.
+src/routes/profile.ts(242,81): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(242,88): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(254,13): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(267,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(268,74): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/routes/profile.ts(268,79): error TS7006: Parameter 'surface' implicitly has an 'any' type.
+src/routes/profile.ts(272,73): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(272,80): error TS2571: Object is of type 'unknown'.
+src/routes/profile.ts(280,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(283,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(286,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(289,40): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(318,63): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/profile.ts(399,33): error TS7006: Parameter 'workspace' implicitly has an 'any' type.
+src/routes/profile.ts(517,44): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/routes/runs.ts(149,30): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/runs.ts(149,58): error TS2345: Argument of type '{} | null' is not assignable to parameter of type '{ archiveRef: string; archivedAt: Date; } | null | undefined'.
+  Type '{}' is missing the following properties from type '{ archiveRef: string; archivedAt: Date; }': archiveRef, archivedAt
+src/routes/runs.ts(182,37): error TS2345: Argument of type '{} | null' is not assignable to parameter of type '{ archiveRef: string; archivedAt: Date; } | null | undefined'.
+  Type '{}' is missing the following properties from type '{ archiveRef: string; archivedAt: Date; }': archiveRef, archivedAt
+src/routes/runs.ts(1519,29): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/routes/session.ts(174,68): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/routes/session.ts(175,110): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/routes/session.ts(352,59): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/session.ts(383,64): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/session.ts(582,59): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/verticalAccess.ts(306,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/workspaces.ts(104,60): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/routes/workspaces.ts(176,25): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/agents.ts(1291,28): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/services/agents.ts(1306,47): error TS7006: Parameter 'delegation' implicitly has an 'any' type.
+src/services/agents.ts(1322,14): error TS7006: Parameter 'plan' implicitly has an 'any' type.
+src/services/agents.ts(1323,11): error TS7006: Parameter 'plan' implicitly has an 'any' type.
+src/services/agents.ts(1490,63): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/services/agents.ts(1495,44): error TS7006: Parameter 'delegation' implicitly has an 'any' type.
+src/services/agents.ts(1505,47): error TS7006: Parameter 'delegation' implicitly has an 'any' type.
+src/services/billing.ts(240,42): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/services/billing.ts(240,47): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/billing.ts(246,48): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/billing.ts(391,58): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/chat/workspaceVerticalRegistry.ts(33,45): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(60,34): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(83,6): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(85,49): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(87,6): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(114,39): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(123,44): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(143,44): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(157,38): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/services/evidenceBundle.ts(172,34): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(37,11): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(38,14): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(42,25): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(53,57): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(53,62): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(57,59): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(57,64): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(61,60): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(61,65): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(66,59): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(66,64): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(71,63): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(71,68): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(76,62): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/services/frictionEventAggregator.ts(76,67): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/imob/crm/imobAssetDealService.ts(181,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobAssetDealService.ts(229,27): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDedupe.ts(178,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDedupe.ts(180,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDedupe.ts(225,29): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDedupe.ts(227,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDocumentService.ts(511,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDocumentService.ts(552,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDocumentService.ts(686,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmDocumentService.ts(716,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(124,17): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(125,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(126,14): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(126,17): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(133,32): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmFollowUpService.ts(134,37): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2047,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2047,108): error TS7006: Parameter 'pending' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2048,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2049,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2060,58): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2069,26): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2070,99): error TS7006: Parameter 'pending' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2086,38): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2095,60): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2104,27): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2104,186): error TS7006: Parameter 'pending' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2106,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2126,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2127,16): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2137,68): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2146,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmLegacyResolverCompat.ts(2148,45): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmMutationService.ts(680,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmMutationService.ts(804,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmMutationService.ts(950,59): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobCrmTurnEngine.ts(5,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/crm/imobCrmTurnEngine.ts(5,44): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/crm/imobDocumentLinkService.ts(95,56): error TS7006: Parameter 'upload' implicitly has an 'any' type.
+src/services/imob/crm/imobDocumentLinkService.ts(174,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobRentalLeaseService.ts(380,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobRentalLeaseService.ts(424,43): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/crm/imobRentalLeaseService.ts(473,28): error TS7006: Parameter 'lease' implicitly has an 'any' type.
+src/services/imob/imobAgentContract.ts(10,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobChatConversationManagement.ts(28,37): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/imob/imobConversationContract.ts(644,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobConversationState.ts(1,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(663,28): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobKnowledgeSearch.ts(380,20): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(2,36): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobSemanticIntentResolver.ts(2,70): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,94): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,124): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobSemanticIntentResolver.ts(352,41): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(363,88): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/logistica/oraculo/preparationRepository.ts(45,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/logistica/oraculo/preparationRepository.ts(54,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/logistica/oraculo/preparationRepository.ts(127,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/logistica/preDuimpGovernedCaseRepository.ts(422,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/logistica/preDuimpGovernedCaseRepository.ts(555,22): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/logistica/preDuimpGovernedCaseRepository.ts(578,34): error TS7006: Parameter 'transaction' implicitly has an 'any' type.
+src/services/memory.ts(254,16): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/products/productActivation.ts(179,45): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/products/verticalAccessApproval.ts(409,36): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/services/products/verticalAccessApproval.ts(946,20): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/runArchiveService.ts(112,20): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/runArchiveService.ts(136,28): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/services/runArchiveService.ts(202,26): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/runs.ts(172,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/workspaceActionPolicyProvisioning.ts(27,19): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/services/workspaceActionPolicyProvisioning.ts(38,33): error TS2322: Type '{} | null' is not assignable to type 'boolean'.
+  Type 'null' is not assignable to type 'boolean'.
+src/services/workspaceAgentAssignments.ts(122,5): error TS7006: Parameter 'assignment' implicitly has an 'any' type.
+src/services/workspaceAgentAssignments.ts(125,27): error TS7006: Parameter 'assignment' implicitly has an 'any' type.
+src/services/workspaceAgentAssignments.ts(209,57): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/services/workspaceAgentAssignments.ts(210,62): error TS7006: Parameter 'candidate' implicitly has an 'any' type.
+src/services/workspaceResponsibility.ts(521,48): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/workspaceResponsibility.ts(522,41): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/workspaceResponsibility.ts(523,42): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/workspaceResponsibility.ts(524,24): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/workspaceResponsibility.ts(542,34): error TS7006: Parameter 'item' implicitly has an 'any' type.
+/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/api@ typecheck: `tsc -p tsconfig.build.json --noEmit`
+Exit status 2

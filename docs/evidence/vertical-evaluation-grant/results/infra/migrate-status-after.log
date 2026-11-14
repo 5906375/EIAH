@@ -1,0 +1,9 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "eiah_logistica_core_evaldisp_92581871", schema "public" at "127.0.0.1:55432"
+
+36 migrations found in prisma/migrations
+
+Database schema is up to date!

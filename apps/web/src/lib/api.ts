@@ -1139,7 +1139,13 @@ export type VerticalAccessClientStatus =
   | "aguardando_humano"
   | "aprovado"
   | "recusado"
-  | "revogado";
+  | "revogado"
+  // Avaliação gratuita: `pre_ativacao` = decisão da EIAH e/ou aceite, SEM uso; `encerrado` = fim regular por validade.
+  | "pre_ativacao"
+  | "encerrado";
+
+/** Fase da avaliação gratuita (derivada no servidor). Pedido, aprovação, aceite e ativação são fases distintas. */
+export type EvaluationPhaseClient = "requested" | "terms_pending_acceptance" | "accepted_pending_activation" | "active" | "ended";
 
 /** ADR-011 §2.5: modos de revogação escolhidos pelo administrador EIAH. */
 export type VerticalRevocationMode = "somente_leitura" | "bloqueio_total" | "sem_nova_ativacao";
@@ -1152,13 +1158,18 @@ export type VerticalAccessClientView = {
   revocationMode: VerticalRevocationMode | null;
   requestedAt: string | null;
   decidedAt: string | null;
+  /** A oferta só aparece (`offerAvailable`) quando habilitada por configuração autorizada; nunca revela o motivo de estar desligada. */
+  evaluation?: { offerAvailable: boolean; phase: EvaluationPhaseClient | null };
 };
+
+/** Pedido de avaliação: qualificação já confirmada pela pessoa (o servidor revalida tudo). */
+export type EvaluationRequestBody = { problem: string; teamSize: number; expectedOutcome: string; additionalInfo?: string; confirmed: true };
 
 export async function apiGetVerticalAccess(vertical: "IMOB" | "LOGISTICA" = "IMOB") {
   return http<{ ok: true; data: VerticalAccessClientView }>(`/vertical-access?vertical=${vertical}`);
 }
 
-export async function apiRequestVerticalAccess(body: { vertical: "IMOB" | "LOGISTICA"; channel?: "marketplace" | "chat" }) {
+export async function apiRequestVerticalAccess(body: { vertical: "IMOB" | "LOGISTICA"; channel?: "marketplace" | "chat"; evaluation?: EvaluationRequestBody }) {
   return http<{ ok: true; data: VerticalAccessClientView & { outcome: "requested" | "already_requested" | "already_approved" } }>(
     `/vertical-access/request`,
     { method: "POST", body: JSON.stringify(body) },
@@ -1185,15 +1196,37 @@ export type VerticalApprovalAdminItem = {
   recommendation: "recomendado" | "revisar" | "nao_recomendado" | null;
   scoreReasons: VerticalApprovalScoreReason[] | null;
   scoreRuleVersion: string | null;
+  /** Avaliação gratuita: presentes só em pedidos de avaliação. */
+  grantKind?: "evaluation" | null;
+  evaluationPhase?: EvaluationPhaseClient | null;
+  requestContext?: { problem?: string; teamSize?: number; expectedOutcome?: string; additionalInfo?: string } | null;
+  grantTerms?: { durationDays?: number; allowedActions?: string[]; closureMode?: string } | null;
+  grantAcceptedAt?: string | null;
+  grantStartedAt?: string | null;
+  grantValidUntil?: string | null;
+  grantClosedReason?: string | null;
+};
+
+/** Estado da oferta de avaliação, visível só ao administrador (motivos de bloqueio incluídos). */
+export type EvaluationOfferAdminView = {
+  state: "disabled" | "blocked" | "enabled";
+  reasons: string[];
+  limits: { maxDurationDays: number; allowedActions: string[]; closureModes: Array<"somente_leitura" | "bloqueio_total">; conditionsVersion: string } | null;
 };
 
 export async function apiListVerticalApprovals() {
-  return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[] } }>(`/admin/vertical-approvals`);
+  return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[]; evaluationOffer?: EvaluationOfferAdminView } }>(`/admin/vertical-approvals`);
 }
 
 export async function apiDecideVerticalApproval(
   approvalId: string,
-  body: { decision: "aprovar" | "recusar"; note?: string; channel?: "tela" | "chat" },
+  body: {
+    decision: "aprovar" | "recusar";
+    note?: string;
+    channel?: "tela" | "chat";
+    /** Só em pedido de avaliação: o que o administrador decide (limites vêm da configuração do servidor). */
+    evaluation?: { durationDays: number; allowedActions: string[]; closureMode: "somente_leitura" | "bloqueio_total" };
+  },
 ) {
   return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/decision`, {
     method: "POST",
@@ -1209,6 +1242,44 @@ export async function apiChangeVerticalApprovalRevocation(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+/** Avaliação: condições propostas pela EIAH (texto composto no servidor). `available:false` = nada a mostrar ou versão não vigente. */
+export type EvaluationTermsView =
+  | { phase: EvaluationPhaseClient | null; available: false; stale?: boolean }
+  | { phase: EvaluationPhaseClient | null; available: true; termsHash: string; accepted: boolean; requesterIsViewer: boolean; text: string[] };
+
+export async function apiGetEvaluationTerms() {
+  return http<{ ok: true; data: EvaluationTermsView }>(`/vertical-access/evaluation/terms`);
+}
+
+/** O aceite NÃO ativa nem libera uso (`activated:false`): a ativação é um passo seguinte, com confirmação própria. */
+export async function apiAcceptEvaluationTerms(body: { termsHash: string }) {
+  return http<{ ok: true; data: { outcome: "accepted" | "already_accepted"; activated: false } }>(`/vertical-access/evaluation/accept`, {
+    method: "POST",
+    body: JSON.stringify({ vertical: "IMOB", termsHash: body.termsHash, confirmed: true }),
+  });
+}
+
+export async function apiDeclineEvaluationTerms() {
+  return http<{ ok: true; data: { outcome: "declined" | "already_declined" } }>(`/vertical-access/evaluation/decline`, {
+    method: "POST",
+    body: JSON.stringify({ vertical: "IMOB", confirmed: true }),
+  });
+}
+
+/** Qualificação do pedido de avaliação: o provider só interpreta; o servidor valida e compõe a resposta. Nunca envia o pedido. */
+export type EvaluationIntakeDraft = { problem?: string; teamSize?: number; expectedOutcome?: string; additionalInfo?: string };
+export type EvaluationIntakeResult = {
+  outcome: "need_more" | "confirm" | "answered" | "clarify" | "out_of_context" | "leave" | "not_permitted" | "offer_unavailable" | "unavailable" | "timeout" | "invalid";
+  content: string;
+  endsContext: boolean;
+  draft: EvaluationIntakeDraft;
+  missing: Array<"problem" | "teamSize" | "expectedOutcome">;
+};
+
+export async function apiEvaluationIntake(body: { message: string; stage: "qualifying" | "confirm"; draft?: EvaluationIntakeDraft }, signal?: AbortSignal) {
+  return http<{ ok: true; data: EvaluationIntakeResult }>(`/front-door/intake/evaluation`, { method: "POST", body: JSON.stringify(body), signal });
 }
 
 /** ADR-011 §2.4: avisos da liberação no app (sem score nem billing), lidos por pessoa. */
@@ -5484,6 +5555,22 @@ export async function apiPayFrontDoorFirstMonth(body: { confirmed: true }) {
   }>(`/front-door/billing/first-payment`, { method: "POST", body: JSON.stringify(body) });
 }
 
+/** Intake contextual do Front Door na escolha de plano: o provider só interpreta; a resposta vem do catálogo; a consulta nunca tem efeito. */
+export type FrontDoorIntakeOutcome = "answered" | "clarify" | "out_of_context" | "leave" | "not_permitted" | "context_mismatch" | "unavailable" | "timeout" | "invalid";
+export type FrontDoorIntakeResult = {
+  outcome: FrontDoorIntakeOutcome;
+  content: string;
+  endsContext: boolean;
+  interpretation?: { intent: string; topic: string | null; confidence: number };
+};
+
+export async function apiFrontDoorIntake(
+  body: { message: string; context: { verticalId: "imob" | "log"; step: "intro" | "offer" | "confirm_account" | "pay_offer" | "request_offer" | "activation_proposed"; planLabel?: string } },
+  signal?: AbortSignal,
+) {
+  return http<{ ok: true; data: FrontDoorIntakeResult }>(`/front-door/intake`, { method: "POST", body: JSON.stringify(body), signal });
+}
+
 export async function apiGetProfile(window: "7d" | "30d" = "7d") {
   const qs = new URLSearchParams({ window });
   return http<ProfileResponse>(`/profile/me?${qs.toString()}`, { method: "GET" });
@@ -5985,12 +6072,27 @@ export async function apiRequestChatVerticalHandoff(body: {
 export type ChatVerticalActivationPreview =
   | { status: "already_active"; verticalId: string; registryVersion: string }
   | { status: "not_permitted"; verticalId: string }
-  | { status: "approval_required"; verticalId: string; approval: VerticalApprovalBlock; canRequest?: boolean }
+  | {
+      status: "approval_required";
+      verticalId: string;
+      approval: VerticalApprovalBlock;
+      canRequest?: boolean;
+      /** A avaliação só é anunciada quando a oferta está habilitada e este workspace pode pedi-la. */
+      evaluationOffer?: boolean;
+      evaluationPhase?: EvaluationPhaseClient | null;
+    }
+  | { status: "evaluation_terms"; verticalId: string; terms: { termsHash: string; text: string[]; accepted: boolean; requesterIsViewer: boolean } }
   | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
 
 /** ADR-011: liberação da vertical pela EIAH antes de ativar. */
 export type VerticalApprovalBlock = {
-  code: "VERTICAL_NOT_APPROVED" | "VERTICAL_APPROVAL_PENDING" | "VERTICAL_APPROVAL_REFUSED" | "VERTICAL_APPROVAL_REVOKED";
+  code:
+    | "VERTICAL_NOT_APPROVED"
+    | "VERTICAL_APPROVAL_PENDING"
+    | "VERTICAL_APPROVAL_REFUSED"
+    | "VERTICAL_APPROVAL_REVOKED"
+    | "VERTICAL_EVALUATION_NOT_ACTIVATABLE"
+    | "VERTICAL_EVALUATION_ENDED";
   message: string;
   accessStatus: string | null;
 };

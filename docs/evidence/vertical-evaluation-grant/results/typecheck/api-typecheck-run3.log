@@ -1,0 +1,4 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
