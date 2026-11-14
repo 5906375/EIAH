@@ -1,0 +1,40 @@
+# Resumo derivado dos logs copiados (gerado por leitura; nenhuma suíte foi reexecutada para produzi-lo)
+# arquivo | exit | tests | pass | fail | cancelled | skipped   (exit 'sem arquivo .exit' = código observado só no terminal da execução)
+results/infra/migrate-deploy-recreated-db.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/infra/migrate-deploy.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/infra/migrate-status-after.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/infra/migrate-status-before.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/infra/migrate-status-recreated-db.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/infra/negative-control-guard-wrong-port.out.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=0 not_ok=0 (contagem de linhas top-level)
+results/integration/A-official-script-integration.log | exit=0 | 28 | 28 | 0 | 0 | 0
+results/integration/B-service-double.log | exit=0 | 18 | 18 | 0 | 0 | 0
+results/integration/C-legacy-group-ADAPTED.log | exit=0 | 31 | 31 | 0 | 0 | 0
+results/integration/concurrency-run3-BEFORE-insert-fix.log | exit=0 | 14 | 14 | 0 | 0 | 0
+results/integration/lifecycle-run3-TZ-America_Sao_Paulo.log | exit=0 | 13 | 13 | 0 | 0 | 0
+results/integration/lifecycle-run3-TZ-Asia_Tokyo.log | exit=0 | 13 | 13 | 0 | 0 | 0
+results/integration/lifecycle-run3-TZ-UTC.log | exit=0 | 13 | 13 | 0 | 0 | 0
+results/integration/official-script-integration-BEFORE-insert-fix.log | exit=0 | 27 | 27 | 0 | 0 | 0
+results/regression/affected-real-infra.log | exit=124 | SEM resumo TAP (processo interrompido por timeout externo) | ok=110 not_ok=0 (contagem de linhas top-level)
+results/regression/affected-remaining-real-infra.log | exit=1 | 504 | 497 | 7 | 0 | 0
+results/regression/clientview-fix-rerun.log | exit=0 | 34 | 34 | 0 | 0 | 0
+results/typecheck/api-typecheck-run2.log | exit=2 | tsc errors=13
+results/typecheck/api-typecheck-run3.log | exit=0 | tsc errors=0
+results/typecheck/api-typecheck.log | exit=2 | tsc errors=243
+results/worker-teardown/baseline-head/metrics-HEAD-worker-HEAD-test.log | exit=sem arquivo .exit | 14 | 10 | 4 | 0 | 0
+results/worker-teardown/ci-like-natural-exit/gate-run1.log | exit=sem arquivo .exit | 3 | 3 | 0 | 0 | 0
+results/worker-teardown/ci-like-natural-exit/gate-run2.log | exit=sem arquivo .exit | 3 | 3 | 0 | 0 | 0
+results/worker-teardown/ci-like-natural-exit/gate-run3.log | exit=sem arquivo .exit | 3 | 3 | 0 | 0 | 0
+results/worker-teardown/ci-like-natural-exit/official-script.log | exit=0 | 3 | 3 | 0 | 0 | 0
+results/worker-teardown/legacy-authz-imob-installation-run2-after-fix.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=8 not_ok=0 (contagem de linhas top-level)
+results/worker-teardown/legacy-authz-imob-installation-run6-trace2.log | exit=sem arquivo .exit | SEM resumo TAP (processo interrompido por timeout externo) | ok=8 not_ok=0 (contagem de linhas top-level)
+results/worker-teardown/legacy-authz-imob-installation.log | exit=124 | SEM resumo TAP (processo interrompido por timeout externo) | ok=8 not_ok=0 (contagem de linhas top-level)
+results/worker-teardown/worker-natural-exit-AFTER-gate-injection/imob-post-run-mutation-worker.log | exit=0 | 28 | 28 | 0 | 0 | 0
+results/worker-teardown/worker-natural-exit-AFTER-gate-injection/imob-worker-metrics.log | exit=1 | 14 | 10 | 4 | 0 | 0
+results/worker-teardown/worker-natural-exit-BEFORE-gate-injection/imob-post-run-evaluation-gate.log | exit=0 | 3 | 3 | 0 | 0 | 0
+results/worker-teardown/worker-natural-exit-BEFORE-gate-injection/imob-post-run-mutation-worker.log | exit=1 | 28 | 17 | 11 | 0 | 0
+results/worker-teardown/worker-natural-exit-BEFORE-gate-injection/imob-worker-foundation-phase4-1b.log | exit=0 | 17 | 17 | 0 | 0 | 0
+results/worker-teardown/worker-natural-exit-BEFORE-gate-injection/imob-worker-metrics.log | exit=1 | 14 | 4 | 10 | 0 | 0
+results/regression/front-door-intake-run1-BEFORE-fixture-fix.log | exit=1 | 13 | 12 | 1 | 0 | 0
+results/regression/front-door-intake-run2-AFTER-fixture-fix.log | exit=0 | 13 | 13 | 0 | 0 | 0
+results/regression/orphan-check-run2.log | exit=0 (observado no terminal) | check:orphan-tests ok=true blockingOrphanCount=0
+# builds de preparação do typecheck (exit 0 observado no terminal de cada comando; sem arquivo .exit): db-tsup, db-dts, db-postbuild, core-build, providers-build, contracts-build

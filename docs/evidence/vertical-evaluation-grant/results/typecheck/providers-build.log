@@ -1,0 +1,8 @@
+
+> @eiah/providers@0.1.0 prebuild /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/providers
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/providers@0.1.0 build /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/providers
+> tsc -p tsconfig.json
+

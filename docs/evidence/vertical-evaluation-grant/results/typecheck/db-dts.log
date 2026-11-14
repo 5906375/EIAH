@@ -1,0 +1,4 @@
+
+> @repo/db@1.0.0 build:dts /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db
+> tsc --build tsconfig.json --force
+

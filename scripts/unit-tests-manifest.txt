@@ -276,3 +276,10 @@ apps/web/src/components/agents/conversationSequence.test.ts
 apps/api/src/tests/imob-chat-conversation-management.test.ts
 apps/web/src/pages/app/imob/propertyBulkArchive.test.ts
 apps/web/src/lib/frontDoorPendingWork.test.ts
+apps/api/src/tests/front-door-intake.test.ts
+apps/web/src/components/agents/frontDoorIntakeEngine.test.ts
+apps/web/src/components/agents/runLifecycle.test.ts
+apps/api/src/tests/vertical-evaluation-contract.test.ts
+apps/api/src/tests/vertical-evaluation-guards.test.ts
+apps/api/src/tests/front-door-evaluation-intake.test.ts
+apps/web/src/components/agents/verticalEvaluationEngine.test.ts

@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Avaliação gratuita IMOB — validação com PostgreSQL/Redis/Prisma reais (2026-11-14) — PARCIAL
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Avaliação gratuita da vertical IMOB (oferta desligada, 8 decisões obrigatórias `pending`, sem concessão real): ciclo pedido → decisão → aceite → ativação → fim, atomicidade, datas/`::timestamp`, rotas autenticadas e concorrência com sessões independentes em PostgreSQL 16.16 + Redis 7.4.2 descartáveis locais; teardown do worker; typecheck oficial do `@eiah/api` | `docs/evidence/vertical-evaluation-grant/README.md`, `docs/evidence/vertical-evaluation-grant/results/SUMMARY-exit-codes.txt`, `docs/evidence/vertical-evaluation-grant/results/integration/A-official-script-integration.log`, `docs/evidence/vertical-evaluation-grant/results/integration/B-service-double.log`, `docs/evidence/vertical-evaluation-grant/results/integration/C-legacy-group-ADAPTED.log`, `docs/evidence/vertical-evaluation-grant/results/typecheck/api-typecheck-run3.log`, `docs/evidence/vertical-evaluation-grant/results/worker-teardown/ci-like-natural-exit/official-script.log`, `docs/evidence/vertical-evaluation-grant/results/infra/migrate-status-recreated-db.log` | Execução local, sem CI, staging ou deploy: script oficial de integração 28/28 (exit 0), serviço com dublê 18/18, grupo legado 31/31 (execução ADAPTADA com `--test-force-exit`), gate do worker 3/3 sem force-exit, 36 migrations aplicadas só em banco descartável, typecheck oficial exit 0. **Não prova**: CI no GitHub, typecheck dos arquivos de teste (excluídos do `tsconfig.build.json`), provider real, staging, Agent Protocol via HTTP, `runWorker` com fila real, prontidão operacional nem habilitação da oferta. Limitações e execuções adaptadas listadas no README. |
+
 ## Indicador de espera do Front Door (2026-11-12)
 
 | Assunto | Arquivo | O que prova |

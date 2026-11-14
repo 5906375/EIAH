@@ -1,0 +1,461 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+TAP version 13
+# {"level":40,"time":"2026-11-14T12:52:18.401Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"","actionId":"owner.register","msg":"imob-worker.missing_required_fields"}
+# Subtest: [T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 12 IMOB_DISPATCHER_ACTION_IDS
+    # Subtest: should have exactly 12 keys in IMOB_RUN_OUTCOME_MAP
+    ok 1 - should have exactly 12 keys in IMOB_RUN_OUTCOME_MAP
+      ---
+      duration_ms: 0.403772
+      type: 'test'
+      ...
+    # Subtest: should have an outcome entry for every IMOB_DISPATCHER_ACTION_IDS member
+    ok 2 - should have an outcome entry for every IMOB_DISPATCHER_ACTION_IDS member
+      ---
+      duration_ms: 0.174396
+      type: 'test'
+      ...
+    # Subtest: commission.settle should be the only terminal action
+    ok 3 - commission.settle should be the only terminal action
+      ---
+      duration_ms: 0.782138
+      type: 'test'
+      ...
+    # Subtest: commission.settle outcome should have stage=done and status=done
+    ok 4 - commission.settle outcome should have stage=done and status=done
+      ---
+      duration_ms: 0.114593
+      type: 'test'
+      ...
+    1..4
+ok 1 - [T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 12 IMOB_DISPATCHER_ACTION_IDS
+  ---
+  duration_ms: 2.113041
+  type: 'suite'
+  ...
+# Subtest: [T2] Phase 4.1c — computeNextPendingItems semantics
+    # Subtest: should remove exact matches by substring (case-insensitive)
+    ok 1 - should remove exact matches by substring (case-insensitive)
+      ---
+      duration_ms: 0.157429
+      type: 'test'
+      ...
+    # Subtest: should add new items without duplicates
+    ok 2 - should add new items without duplicates
+      ---
+      duration_ms: 0.102138
+      type: 'test'
+      ...
+    # Subtest: should not duplicate an item already present
+    ok 3 - should not duplicate an item already present
+      ---
+      duration_ms: 0.119682
+      type: 'test'
+      ...
+    # Subtest: should return empty array when isTerminal=true pattern (cleared)
+    ok 4 - should return empty array when isTerminal=true pattern (cleared)
+      ---
+      duration_ms: 0.211371
+      type: 'test'
+      ...
+    # Subtest: should handle remove that partially matches existing items
+    ok 5 - should handle remove that partially matches existing items
+      ---
+      duration_ms: 0.179047
+      type: 'test'
+      ...
+    1..5
+ok 2 - [T2] Phase 4.1c — computeNextPendingItems semantics
+  ---
+  duration_ms: 1.095965
+  type: 'suite'
+  ...
+# Subtest: [T3] Phase 4.1c — resolveImobReceiptPaths with and without txId
+    # Subtest: should return receiptPath when txId is present
+    ok 1 - should return receiptPath when txId is present
+      ---
+      duration_ms: 0.142502
+      type: 'test'
+      ...
+    # Subtest: should return null receiptPath when txId is null
+    ok 2 - should return null receiptPath when txId is null
+      ---
+      duration_ms: 0.070571
+      type: 'test'
+      ...
+    # Subtest: should URL-encode special characters in txId and runId
+    ok 3 - should URL-encode special characters in txId and runId
+      ---
+      duration_ms: 0.056262
+      type: 'test'
+      ...
+    1..3
+ok 3 - [T3] Phase 4.1c — resolveImobReceiptPaths with and without txId
+  ---
+  duration_ms: 0.371024
+  type: 'suite'
+  ...
+# Subtest: [T4] Phase 4.1c — processImobRunCompletedJob skips on missing required fields
+    # Subtest: should return without calling getRun when caseId is empty
+    ok 1 - should return without calling getRun when caseId is empty
+      ---
+      duration_ms: 5.796763
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when actionId is empty string
+    ok 2 - should return without calling getRun when actionId is empty string
+      ---
+      duration_ms: 0.19493
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when runId is missing
+    ok 3 - should return without calling getRun when runId is missing
+      ---
+      duration_ms: 0.177451
+      type: 'test'
+      ...
+    1..3
+ok 4 - [T4] Phase 4.1c — processImobRunCompletedJob skips on missing required fields
+  ---
+  duration_ms: 6.313243
+  type: 'suite'
+  ...
+# Subtest: [T5] Phase 4.1c — processImobRunCompletedJob skips on unknown actionId
+    # Subtest: should return without calling getRun when actionId is not in IMOB_DISPATCHER_ACTION_IDS
+    ok 1 - should return without calling getRun when actionId is not in IMOB_DISPATCHER_ACTION_IDS
+      ---
+      duration_ms: 0.19274
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when actionId is an injection attempt
+    ok 2 - should return without calling getRun when actionId is an injection attempt
+      ---
+      duration_ms: 0.138507
+      type: 'test'
+      ...
+    1..2
+ok 5 - [T5] Phase 4.1c — processImobRunCompletedJob skips on unknown actionId
+  ---
+  duration_ms: 0.45365
+  type: 'suite'
+  ...
+# Subtest: [T6] Phase 4.1c — processImobRunCompletedJob skips mutation when run.status !== success
+    # Subtest: should NOT call updateCase when run.status is 'failed'
+    not ok 1 - should NOT call updateCase when run.status is 'failed'
+      ---
+      duration_ms: 0.527612
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:8233'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:308:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    # Subtest: should NOT call updateCase when run.status is 'pending'
+    not ok 2 - should NOT call updateCase when run.status is 'pending'
+      ---
+      duration_ms: 0.260675
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:8730'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:320:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Suite.processPendingSubtests (node:internal/test_runner/test:744:18)
+      ...
+    1..2
+not ok 6 - [T6] Phase 4.1c — processImobRunCompletedJob skips mutation when run.status !== success
+  ---
+  duration_ms: 0.883172
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:8124'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T7] Phase 4.1c — processImobRunCompletedJob skips mutation when simulated=true
+    # Subtest: should NOT call updateCase when run.response.outputs[].data.simulated=true
+    not ok 1 - should NOT call updateCase when run.response.outputs[].data.simulated=true
+      ---
+      duration_ms: 0.225354
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:9336'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:342:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    1..1
+not ok 7 - [T7] Phase 4.1c — processImobRunCompletedJob skips mutation when simulated=true
+  ---
+  duration_ms: 0.27692
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:9235'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T8] Phase 4.1c — processImobRunCompletedJob skips mutation when requiresTxId=true and no txId
+    # Subtest: should NOT call updateCase for owner.register (requiresTxId=true) when txId=null
+    not ok 1 - should NOT call updateCase for owner.register (requiresTxId=true) when txId=null
+      ---
+      duration_ms: 0.343571
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:10118'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:358:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    # Subtest: should call updateCase for lead.qualify (requiresTxId=false) even when txId=null
+    not ok 2 - should call updateCase for lead.qualify (requiresTxId=false) even when txId=null
+      ---
+      duration_ms: 0.219789
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:10700'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:370:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Suite.processPendingSubtests (node:internal/test_runner/test:744:18)
+      ...
+    1..2
+not ok 8 - [T8] Phase 4.1c — processImobRunCompletedJob skips mutation when requiresTxId=true and no txId
+  ---
+  duration_ms: 0.628347
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:10002'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T8b] Phase 4.1c — processImobRunCompletedJob blocks HIGH mutation when approval is absent or invalid
+    # Subtest: should NOT call updateCase for contract.prepare when approval is missing
+    not ok 1 - should NOT call updateCase for contract.prepare when approval is missing
+      ---
+      duration_ms: 0.219334
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:11407'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:400:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    # Subtest: should NOT call updateCase for commission.settle when approval is expired
+    not ok 2 - should NOT call updateCase for commission.settle when approval is expired
+      ---
+      duration_ms: 0.177085
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:12268'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:432:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Suite.processPendingSubtests (node:internal/test_runner/test:744:18)
+      ...
+    1..2
+not ok 9 - [T8b] Phase 4.1c — processImobRunCompletedJob blocks HIGH mutation when approval is absent or invalid
+  ---
+  duration_ms: 0.475597
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:11284'
+  failureType: 'subtestsFailed'
+  error: '2 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T9] Phase 4.1c — processImobRunCompletedJob skips mutation when already processed
+    # Subtest: should NOT call updateCase when an ImobCaseEvent with same runId+type already exists
+    not ok 1 - should NOT call updateCase when an ImobCaseEvent with same runId+type already exists
+      ---
+      duration_ms: 0.411376
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:13240'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:451:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    1..1
+not ok 10 - [T9] Phase 4.1c — processImobRunCompletedJob skips mutation when already processed
+  ---
+  duration_ms: 0.467619
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:13136'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: [T10] Phase 4.1c — processImobRunCompletedJob calls updateCase on happy path
+    # Subtest: should call updateCase with correct stage/status from outcome map for owner.register
+    not ok 1 - should call updateCase with correct stage/status from outcome map for owner.register
+      ---
+      duration_ms: 0.399685
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:13958'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:476:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Test.start (node:internal/test_runner/test:944:17)
+      ...
+    # Subtest: should clear pendingItems for commission.settle (terminal action)
+    not ok 2 - should clear pendingItems for commission.settle (terminal action)
+      ---
+      duration_ms: 0.426377
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:15350'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:520:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Suite.processPendingSubtests (node:internal/test_runner/test:744:18)
+      ...
+    # Subtest: should NOT call updateCase when commission.settle and ownerResponsible is null
+    not ok 3 - should NOT call updateCase when commission.settle and ownerResponsible is null
+      ---
+      duration_ms: 0.246234
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:16470'
+      failureType: 'testCodeFailure'
+      error: 'prisma.$executeRawUnsafe is not a function'
+      code: 'ERR_TEST_FAILURE'
+      name: 'TypeError'
+      stack: |-
+        runIdempotentDdl (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/idempotentDdl.ts:24:20)
+        ensureVerticalAccessStore (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:182:11)
+        readVerticalAccess (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalAccessApproval.ts:382:9)
+        readEvaluationGrantGate (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/products/verticalEvaluation.ts:205:21)
+        scope (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:248:63)
+        processImobRunCompletedJob (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/workers/imobPostRunMutationWorker.ts:284:32)
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:542:11)
+        Test.runInAsyncScope (node:async_hooks:214:14)
+        Test.run (node:internal/test_runner/test:1047:25)
+        Suite.processPendingSubtests (node:internal/test_runner/test:744:18)
+      ...
+    1..3
+not ok 11 - [T10] Phase 4.1c — processImobRunCompletedJob calls updateCase on happy path
+  ---
+  duration_ms: 1.202149
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-post-run-mutation-worker.test.ts:1:13860'
+  failureType: 'subtestsFailed'
+  error: '3 subtests failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# {"level":40,"time":"2026-11-14T12:52:18.406Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"","msg":"imob-worker.missing_required_fields"}
+# {"level":40,"time":"2026-11-14T12:52:18.407Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","msg":"imob-worker.missing_required_fields"}
+# {"level":40,"time":"2026-11-14T12:52:18.407Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"unknown.action.not.canonical","actionId":"unknown.action.not.canonical","msg":"imob-worker.unknown_action_id"}
+# {"level":40,"time":"2026-11-14T12:52:18.407Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"'; DROP TABLE imob_cases; --","actionId":"'; DROP TABLE imob_cases; --","msg":"imob-worker.unknown_action_id"}
+1..11
+# tests 28
+# suites 11
+# pass 17
+# fail 11
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 567.222601

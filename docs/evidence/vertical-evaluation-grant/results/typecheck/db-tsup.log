@@ -1,0 +1,11 @@
+CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/tsup.config.ts
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/client.js                 2.21 KB
+ESM dist/index.js                  407.00 B
+ESM dist/middleware/tenantGuard.js 3.74 KB
+ESM ⚡️ Build success in 16ms

@@ -5,6 +5,7 @@ import { selfServiceConfigs } from "@/pages/self-service/config";
 import {
   apiApproveRun,
   apiAdoptRecommendation,
+  apiCancelRun,
   apiCreateSession,
   apiFinalizeConversation,
   apiGetBillingReconciliationSummary,
@@ -82,7 +83,32 @@ import {
   attachFrontDoorBillingToSnapshot,
   billingCardRows,
   enrichLauncherDecisionWithFrontDoorBilling,
+  findPendingFrontDoorActivationInMessages,
+  findPendingFrontDoorBillingInMessages,
 } from "@/components/agents/frontDoorBillingEngine";
+import { enrichLauncherDecisionWithFrontDoorIntake } from "@/components/agents/frontDoorIntakeEngine";
+import {
+  cancelOutcomeOfStatus,
+  createRunTracking,
+  credentialOf,
+  describeAbandonResult,
+  describeCancelOutcome,
+  describeRunSettlement,
+  GOVERNANCE_VERIFY_ATTEMPTS,
+  GOVERNANCE_VERIFY_DELAY_MS,
+  readPersistedTracking,
+  reasonCodeOfRun,
+  RUN_POLL_MAX_CONSECUTIVE_FAILURES,
+  RUN_TRACKING_TIMEOUT_MS,
+  terminalOfRunStatus,
+  sameCredential,
+  type AbandonResult,
+  type CredentialSnapshot,
+  type PersistedRunTracking,
+  type RunSettlement,
+  type RunTerminal,
+  type RunTracking,
+} from "@/components/agents/runLifecycle";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -127,6 +153,8 @@ type ChatMessage = {
 type ThreadSnapshot = {
   messages: ChatMessage[];
   runId: string | null;
+  /** Run acompanhada quando a conversa foi guardada: permite retomar o acompanhamento ao recarregar, em vez de abandoná-la em silêncio. */
+  tracking?: PersistedRunTracking | null;
 };
 
 type RunFinanceSummary = {
@@ -461,6 +489,15 @@ export default function ChatAgentLauncher({
   const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null);
   const [pendingAgentReplayInput, setPendingAgentReplayInput] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  // Run acompanhada agora (identidade, contexto de origem, desfecho e pedido de cancelamento): lógica pura em runLifecycle.ts.
+  const runTrackingRef = useRef<RunTracking | null>(null);
+  const trackingTimerRef = useRef<number | null>(null);
+  const pollFailuresRef = useRef(0);
+  const [trackedRun, setTrackedRun] = useState<PersistedRunTracking | null>(null);
+  // Cancelamento em fases: idle → sending (tentativa iniciada) → accepted (API aceitou). A confirmação só vem do estado do servidor.
+  const [cancelPhase, setCancelPhase] = useState<"idle" | "sending" | "accepted">("idle");
+  // Só quem criou a run (credencial conhecida) vê a ação de cancelar; run retomada de criador desconhecido é só acompanhada.
+  const [cancelAvailable, setCancelAvailable] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
   const seenEventsRef = useRef<Set<string>>(new Set());
   const lastEventIdRef = useRef<string | null>(null);
@@ -636,6 +673,9 @@ export default function ChatAgentLauncher({
       setMessages(parsed.messages ?? []);
       setRunId(parsed.runId ?? null);
       onRunIdChange?.(parsed.runId ?? null);
+      // Run que estava sendo acompanhada ao recarregar: o estado real dela é lido e o acompanhamento é retomado ou o desfecho é dito.
+      const persistedTracking = readPersistedTracking(parsed.tracking);
+      if (persistedTracking) void resumeTrackingRef.current(persistedTracking, parsed.messages ?? []);
     } catch {
       setMessages([]);
       setRunId(null);
@@ -647,9 +687,9 @@ export default function ChatAgentLauncher({
     if (typeof window === "undefined") return;
     // A primeira renderização da nova chave ainda contém mensagens da chave anterior.
     if (skipHistoryPersistRef.current) { skipHistoryPersistRef.current = false; return; }
-    const payload: ThreadSnapshot = { messages, runId };
+    const payload: ThreadSnapshot = { messages, runId, tracking: trackedRun };
     window.sessionStorage.setItem(threadKey, JSON.stringify(payload));
-  }, [threadKey, messages, runId]);
+  }, [threadKey, messages, runId, trackedRun]);
 
   const explicitRunIds = useMemo(
     () =>
@@ -960,6 +1000,15 @@ export default function ChatAgentLauncher({
   );
 
   const stopStreaming = () => {
+    if (trackingTimerRef.current !== null) {
+      window.clearTimeout(trackingTimerRef.current);
+      trackingTimerRef.current = null;
+    }
+    runTrackingRef.current = null;
+    pollFailuresRef.current = 0;
+    setTrackedRun(null);
+    setCancelPhase("idle");
+    setCancelAvailable(false);
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -973,6 +1022,14 @@ export default function ChatAgentLauncher({
   };
 
   const handleIncomingEvent = (event: RunEvent) => {
+    // Só a run acompanhada, no contexto em que nasceu: evento de outra run, de contexto obsoleto, duplicado ou tardio é descartado.
+    const tracking = runTrackingRef.current;
+    if (!tracking) return;
+    const decision = tracking.accept(event, pendingWork.tracker.scope());
+    if (decision.action === "ignore") {
+      if (decision.reason === "stale_context") void abandonTracking();
+      return;
+    }
     if (seenEventsRef.current.has(event.id)) return;
     seenEventsRef.current.add(event.id);
     lastEventIdRef.current = event.id;
@@ -1009,20 +1066,189 @@ export default function ChatAgentLauncher({
       });
     }
 
-    if (event.type === "run.orchestrator.finished") {
-      setIsStreaming(false);
-    }
+    // Encerramento por estado terminal REAL (concluída, falha, cancelamento confirmado, bloqueio). `run.orchestrator.finished` é só progresso.
+    if (decision.action === "settle") void concludeTracking(tracking, decision.terminal, decision.reasonCode);
+    // Bloqueio por governança: o evento sozinho não encerra (em modo permissivo a run continua); o estado persistido decide.
+    if (decision.action === "verify_status") void verifyGovernanceBlock(tracking);
+  };
 
-    if (event.type === "run.completed") {
-      void fetchRunSummary(event.runId);
+  // --- Ciclo de vida da run acompanhada (regras puras em runLifecycle.ts; aqui só se liga SSE, polling e API e se apresenta o estado) ---
+  const releaseTracking = (tracking: RunTracking) => {
+    if (runTrackingRef.current === tracking) stopStreaming();
+  };
+
+  const pushSettlementMessage = (settlement: RunSettlement, tracking: RunTracking, reasonCode?: string | null) => {
+    const text = describeRunSettlement(settlement, { cancelRequested: tracking.cancelRequested, reasonCode });
+    if (text) pushMessage({ id: `assistant-run-${settlement}-${tracking.runId}`, role: "assistant", content: text, status: "done" });
+  };
+
+  /** Desfecho terminal vindo do servidor. O resultado de uma execução concluída é carregado ANTES de encerrar a espera (nada se perde). */
+  const concludeTracking = async (tracking: RunTracking, terminal: RunTerminal, reasonCode: string | null) => {
+    // Identidade e contexto: só encerra a run que ainda é a acompanhada, no contexto em que nasceu (resposta tardia não encerra outra run).
+    if (runTrackingRef.current !== tracking || pendingWork.tracker.scope() !== tracking.contextId || !tracking.settle(terminal)) return;
+    if (trackingTimerRef.current !== null) { window.clearTimeout(trackingTimerRef.current); trackingTimerRef.current = null; }
+    const stillCurrent = () => pendingWork.tracker.scope() === tracking.contextId;
+    if (terminal === "completed") {
+      const loaded = await fetchRunSummary(tracking.runId, stillCurrent);
+      if (!loaded && stillCurrent()) {
+        pushMessage({ id: `assistant-run-noresult-${tracking.runId}`, role: "assistant", content: "A execução terminou, mas não consegui carregar o resultado dela agora.", status: "done" });
+      }
+    }
+    if (stillCurrent()) pushSettlementMessage(terminal, tracking, reasonCode);
+    releaseTracking(tracking);
+  };
+
+  /** Fim da espera LOCAL (limite de tempo, ação do usuário ou conexão perdida). A execução NÃO é cancelada no servidor. */
+  const settleLocally = (settlement: "timed_out" | "interrupted_locally" | "connection_lost") => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || !tracking.settle(settlement)) return;
+    if (pendingWork.tracker.scope() === tracking.contextId) pushSettlementMessage(settlement, tracking);
+    releaseTracking(tracking);
+  };
+
+  /** Rede de segurança: estado persistido da run quando um evento terminal não chegou (SSE caído, evento perdido). */
+  const checkRunStatus = async (tracking: RunTracking): Promise<boolean> => {
+    try {
+      const run = await apiGetRun(tracking.runId);
+      // A resposta pode chegar tarde: revalida identidade e contexto DEPOIS da consulta e antes de concluir.
+      if (runTrackingRef.current !== tracking || tracking.settlement || pendingWork.tracker.scope() !== tracking.contextId) return false;
+      const terminal = terminalOfRunStatus(run as { status?: string; errorCode?: string | null });
+      if (!terminal) return false;
+      await concludeTracking(tracking, terminal, reasonCodeOfRun(run as { errorCode?: string | null }));
+      return true;
+    } catch {
+      return false;
     }
   };
 
-  const fetchRunSummary = async (targetRunId?: string | null) => {
-    if (!targetRunId || runSummaryLoadedRef.current === targetRunId) return;
+  // Esgotar as tentativas NÃO classifica a run: o acompanhamento normal e o limite de espera seguem valendo.
+  const verifyingBlockRef = useRef<RunTracking | null>(null);
+  const verifyGovernanceBlock = async (tracking: RunTracking) => {
+    if (verifyingBlockRef.current === tracking) return;
+    verifyingBlockRef.current = tracking;
+    try {
+      for (let attempt = 0; attempt < GOVERNANCE_VERIFY_ATTEMPTS; attempt += 1) {
+        if (runTrackingRef.current !== tracking || tracking.settlement) return;
+        if (await checkRunStatus(tracking)) return;
+        await new Promise((resolve) => window.setTimeout(resolve, GOVERNANCE_VERIFY_DELAY_MS));
+      }
+    } finally {
+      if (verifyingBlockRef.current === tracking) verifyingBlockRef.current = null;
+    }
+  };
+
+  const onTrackingTimeout = async () => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || tracking.settlement) return;
+    if (await checkRunStatus(tracking)) return;
+    settleLocally("timed_out");
+  };
+
+  const beginTracking = (targetRunId: string, credential?: CredentialSnapshot) => {
+    const tracking = createRunTracking({ runId: targetRunId, contextId: pendingWork.tracker.scope(), credential });
+    runTrackingRef.current = tracking;
+    pollFailuresRef.current = 0;
+    setCancelPhase("idle");
+    setCancelAvailable(tracking.mayCancelWith(credentialOf(getSession())));
+    setTrackedRun({ runId: tracking.runId, startedAt: tracking.startedAt });
+    if (trackingTimerRef.current !== null) window.clearTimeout(trackingTimerRef.current);
+    trackingTimerRef.current = window.setTimeout(() => void onTrackingTimeout(), RUN_TRACKING_TIMEOUT_MS);
+    return tracking;
+  };
+
+  /** Pedido de cancelamento à API: devolve o que a API respondeu (aceito, já terminada ou falha). Nunca engole o erro. */
+  const requestRunCancel = async (targetRunId: string): Promise<"sent" | "already_finished" | "failed"> => {
+    try {
+      await apiCancelRun(targetRunId);
+      return "sent";
+    } catch (error) {
+      const outcome = cancelOutcomeOfStatus(error instanceof ApiError ? error.status : null);
+      if (outcome === "failed") console.warn("[ChatAgentLauncher] pedido de cancelamento falhou", error instanceof ApiError ? error.status : "sem resposta");
+      return outcome;
+    }
+  };
+
+  /**
+   * Contexto da run mudou (nova conversa, troca de usuário/sessão/workspace/agente). A interface é limpa na hora; depois:
+   *  - mesma credencial que criou a run: o cancelamento é PEDIDO e o resultado real (aceito, já terminada, falha) é devolvido;
+   *  - credencial diferente ou desconhecida: NADA é pedido (a API usaria a credencial do contexto novo); só descarte local, e a run segue no servidor.
+   */
+  const abandonTracking = async (): Promise<AbandonResult | null> => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || !tracking.settle("interrupted_locally")) return null;
+    const mayCancel = tracking.mayCancelWith(credentialOf(getSession()));
+    releaseTracking(tracking);
+    if (!mayCancel) return "discarded_locally";
+    const outcome = await requestRunCancel(tracking.runId);
+    return outcome === "sent" ? "cancel_accepted" : outcome === "already_finished" ? "cancel_already_finished" : "cancel_failed";
+  };
+
+  /** Pedido de cancelamento pelo mecanismo existente (`POST /runs/:id/cancel`). Enviar o pedido não confirma o cancelamento. */
+  const handleCancelRun = async () => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || tracking.settlement || tracking.cancelRequested) return;
+    // Credencial trocada antes do efeito de abandono rodar (ou criador desconhecido): não pede cancelamento com a credencial de outro contexto.
+    if (!tracking.mayCancelWith(credentialOf(getSession()))) { void abandonTracking(); return; }
+    tracking.markCancelRequested();
+    setCancelPhase("sending");
+    const outcome = await requestRunCancel(tracking.runId);
+    // A resposta pode chegar tarde: só atualiza a conversa se ainda for ESTA run, no contexto dela e com a credencial que a criou.
+    if (runTrackingRef.current !== tracking || pendingWork.tracker.scope() !== tracking.contextId || !tracking.mayCancelWith(credentialOf(getSession()))) return;
+    if (outcome === "failed") { tracking.clearCancelRequested(); setCancelPhase("idle"); } else setCancelPhase("accepted");
+    pushMessage({ id: `assistant-cancel-${outcome}-${Date.now()}`, role: "assistant", content: describeCancelOutcome(outcome), status: "done" });
+    // 409: a run já terminou; o estado terminal confirma o desfecho real (evento ou status).
+    if (outcome === "already_finished") void checkRunStatus(tracking);
+  };
+
+  /** Retomada depois de recarregar: lê o estado real da run em vez de deixá-la abandonada em silêncio. */
+  const resumeTracking = async (persisted: PersistedRunTracking, restored: ChatMessage[]) => {
+    // Sessão e escopo ANTES da consulta; depois dela, a resposta só vale se ambos continuam os mesmos (não é atribuída a um contexto novo).
+    const resumeScope = pendingWork.tracker.scope();
+    const resumeCredential = credentialOf(getSession());
+    try {
+      const run = await apiGetRun(persisted.runId);
+      if (pendingWork.tracker.scope() !== resumeScope || !sameCredential(resumeCredential, credentialOf(getSession()))) return;
+      // GET /runs/:id é autorizado por tenant/workspace, não por criador: o sucesso da consulta NÃO prova quem criou a run. O criador vem do
+      // próprio registro (`userId`); run de outro usuário não é acompanhada, e sem criador conhecido é só acompanhada (sem ação de cancelar).
+      if (run.userId && resumeCredential.userId && run.userId !== resumeCredential.userId) return;
+      const creatorIsCurrentUser = Boolean(run.userId) && run.userId === resumeCredential.userId;
+      const terminal = terminalOfRunStatus(run as { status?: string; errorCode?: string | null });
+      if (!terminal) {
+        setIsStreaming(true);
+        beginTracking(persisted.runId, creatorIsCurrentUser ? resumeCredential : undefined);
+        await startSse(persisted.runId);
+        return;
+      }
+      const tracking = createRunTracking({ runId: persisted.runId, contextId: pendingWork.tracker.scope() });
+      tracking.settle(terminal);
+      if (terminal === "completed" && !restored.some((message) => message.id === `assistant-summary-${persisted.runId}`)) {
+        if (!(await fetchRunSummary(persisted.runId))) {
+          pushMessage({ id: `assistant-run-noresult-${persisted.runId}`, role: "assistant", content: "A execução terminou, mas não consegui carregar o resultado dela agora.", status: "done" });
+        }
+      }
+      pushSettlementMessage(terminal, tracking);
+    } catch {
+      pushMessage({ id: `assistant-run-resume-failed-${persisted.runId}`, role: "assistant", content: "Não consegui verificar a execução da conversa anterior. Ela pode ter continuado no servidor.", status: "done" });
+    }
+  };
+  const resumeTrackingRef = useRef(resumeTracking);
+  resumeTrackingRef.current = resumeTracking;
+
+  // Troca real de contexto (usuário, agente, conversa) com uma run acompanhada: o cancelamento é pedido e o indicador não vaza para o contexto novo.
+  const trackingScope = pendingWork.tracker.scope();
+  useEffect(() => {
+    const tracking = runTrackingRef.current;
+    if (tracking && !tracking.settlement && tracking.contextId !== trackingScope) void abandonTracking();
+  }, [trackingScope]);
+
+  /** `isCurrent`: quando informado e falso depois da consulta, o resultado não é anexado (outro contexto). Devolve se o resultado foi carregado. */
+  const fetchRunSummary = async (targetRunId?: string | null, isCurrent: () => boolean = () => true): Promise<boolean> => {
+    if (!targetRunId) return false;
+    if (runSummaryLoadedRef.current === targetRunId) return true;
     runSummaryLoadedRef.current = targetRunId;
     try {
       const run = await apiGetRun(targetRunId);
+      if (!isCurrent()) return true;
       const responseText =
         typeof run.response === "string"
           ? run.response
@@ -1084,23 +1310,34 @@ export default function ChatAgentLauncher({
           proposalDomain: summarySnapshot.proposalDomain ?? null,
           conversationStage: summarySnapshot.conversationStage ?? null,
         });
+        return true;
       }
+      return false;
     } catch (error) {
       console.warn("[ChatAgentLauncher] falha ao buscar resumo do run", error);
+      runSummaryLoadedRef.current = null; // permite nova tentativa
+      return false;
     }
   };
 
   const startPolling = (targetRunId: string) => {
     updateSseStatus("polling");
     const poll = async () => {
+      const tracking = runTrackingRef.current;
+      if (!tracking || tracking.runId !== targetRunId || tracking.settlement) return;
       try {
         const response = await apiListRunEvents(targetRunId, {
           cursor: lastEventIdRef.current ?? undefined,
         });
+        pollFailuresRef.current = 0;
         response.items.forEach(handleIncomingEvent);
+        // Evento terminal que não veio: o estado persistido da run encerra o acompanhamento.
+        if (!tracking.settlement) await checkRunStatus(tracking);
       } catch {
         updateSseStatus("error");
-        setIsStreaming(false);
+        pollFailuresRef.current += 1;
+        // Sem conexão com o servidor por várias consultas seguidas: para de aguardar COM aviso (a execução não é cancelada).
+        if (pollFailuresRef.current >= RUN_POLL_MAX_CONSECUTIVE_FAILURES) settleLocally("connection_lost");
       }
     };
     poll();
@@ -1150,6 +1387,8 @@ export default function ChatAgentLauncher({
     // (mensagem do usuário, upload, requisições em andamento). Toda saída passa pelo finally de `handleSend`, que solta só a ponte deste turno.
     const turnScope = pendingWork.tracker.scope();
     const turnIsCurrent = () => pendingWork.tracker.scope() === turnScope;
+    // Credencial no INÍCIO do turno (antes do POST que cria a run): se a sessão mudar durante o POST, a resposta tardia não é atribuída à sessão nova.
+    const creationCredential = credentialOf(getSession());
     const resolvedAgentId = activeAgentId ?? FALLBACK_AGENT.id;
     let uploadedArtifacts: UploadedDocumentInfo[] = [];
     if (attachmentIntake.enabled && selectedAttachment) {
@@ -1223,7 +1462,7 @@ export default function ChatAgentLauncher({
     navigationRequestGenerationRef.current += 1;
     const localIntentResult = conversation.analyze(effectiveInput);
     // A espera pela decisão (avaliação do handoff, ativação, cobrança, reivindicação) é trabalho pendente desde a mensagem do usuário.
-    const turnDecision = await trackDecision(pendingWork.tracker, handover, async () => enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    const turnDecision = await trackDecision(pendingWork.tracker, handover, async () => enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorIntake(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1239,6 +1478,9 @@ export default function ChatAgentLauncher({
         previousUserMessage: lastUserMessage,
         previousAssistantMessage: lastAssistantMessage,
         previousAssistantSnapshot: lastAssistantSnapshot,
+        // A etapa de billing pendente é da conversa, não só da última mensagem: respostas intermediárias não a apagam.
+        pendingFrontDoorBilling: findPendingFrontDoorBillingInMessages(messages),
+        pendingFrontDoorActivation: findPendingFrontDoorActivationInMessages(messages),
         imobOperationalContinuation: {
           threadState: imobFrontDoor.getConversationState(),
           available: showImobSurface,
@@ -1255,7 +1497,7 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    ))))));
+    )))))));
     if (!turnIsCurrent()) return;
     if (turnDecision?.turnConsumed) {
       clearAttachmentComposer();
@@ -1373,6 +1615,26 @@ export default function ChatAgentLauncher({
         metadata: preparedRun.metadata,
       });
       const created = response.data;
+      if (!sameCredential(creationCredential, credentialOf(getSession()))) {
+        // A sessão mudou durante a criação: a run pertence à credencial anterior. Não é acompanhada nem atribuída à sessão nova, e nada é
+        // cancelado com a credencial do contexto novo (descarte local; a run segue no servidor).
+        if (!runTrackingRef.current) setIsStreaming(false);
+        return;
+      }
+      if (!turnIsCurrent()) {
+        // Mesma credencial, mas a conversa ou o agente mudou durante a criação: não acompanha; o cancelamento é pedido e o resultado real é dito
+        // só se o contexto atual ainda for o mesmo de quando o pedido saiu (escopo e credencial, não só a geração).
+        if (!runTrackingRef.current) setIsStreaming(false);
+        const requestScope = pendingWork.tracker.scope();
+        const requestCredential = credentialOf(getSession());
+        void requestRunCancel(created.id).then((outcome) => {
+          const text = describeAbandonResult(outcome === "sent" ? "cancel_accepted" : outcome === "already_finished" ? "cancel_already_finished" : "cancel_failed");
+          if (text && pendingWork.tracker.scope() === requestScope && sameCredential(requestCredential, credentialOf(getSession()))) {
+            pushMessage({ id: `assistant-abandoned-run-${created.id}`, role: "assistant", content: text, status: "done" });
+          }
+        });
+        return;
+      }
       setRunId(created.id);
       onRunIdChange?.(created.id);
       runPromptRef.current[created.id] = turnInput;
@@ -1395,10 +1657,16 @@ export default function ChatAgentLauncher({
         role: "system",
         content: `Run criada: ${created.id}. Aguardando eventos...`,
       });
+      beginTracking(created.id, creationCredential);
       await startSse(created.id);
       clearAttachmentComposer();
     } catch (error) {
-      setIsStreaming(false);
+      // Erro de um turno cujo contexto já mudou não vira mensagem no contexto novo nem derruba o acompanhamento dele.
+      if (!turnIsCurrent() || !sameCredential(creationCredential, credentialOf(getSession()))) {
+        if (!runTrackingRef.current) setIsStreaming(false);
+        return;
+      }
+      stopStreaming();
       updateSseStatus("error");
       const message = formatLauncherError(error);
       pushMessage({
@@ -1513,7 +1781,11 @@ export default function ChatAgentLauncher({
   };
 
   const handleNewConversation = () => {
+    // Run em andamento da conversa que está sendo deixada: o cancelamento é pedido e o resultado REAL (aceito, falha, já terminada) é dito na conversa nova.
+    const abandoning = abandonTracking();
     conversationGenerationRef.current += 1;
+    const resetScope = pendingWork.tracker.scope();
+    const resetCredential = credentialOf(getSession());
     imobPersistence.startNew();
     stopStreaming();
     setMessages([]);
@@ -1538,6 +1810,14 @@ export default function ChatAgentLauncher({
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(threadKey);
     }
+    // Mensagens de papel "system" não aparecem na conversa (só a identidade): o aviso é do assistente para ser visto. Só entra se o contexto
+    // (escopo e credencial) ainda for o da conversa nova quando a API responder.
+    void abandoning.then((result) => {
+      const text = result ? describeAbandonResult(result) : null;
+      if (text && pendingWork.tracker.scope() === resetScope && sameCredential(resetCredential, credentialOf(getSession()))) {
+        pushMessage({ id: `assistant-abandoned-run-${Date.now()}`, role: "assistant", content: text, status: "done" });
+      }
+    });
   };
 
   const loadGovernanceReport = async () => {
@@ -2230,7 +2510,22 @@ export default function ChatAgentLauncher({
                       </div>
                     );
                   })}
-                {showWaiting ? <FrontDoorWaitingIndicator ref={waitingIndicatorRef} /> : null}
+                {showWaiting ? (
+                  <FrontDoorWaitingIndicator
+                    ref={waitingIndicatorRef}
+                    {...(trackedRun
+                      ? {
+                          actions: [
+                            ...(cancelAvailable
+                              ? [{ label: cancelPhase === "accepted" ? "Cancelamento solicitado" : cancelPhase === "sending" ? "Enviando pedido..." : "Cancelar execução", onClick: () => void handleCancelRun(), disabled: cancelPhase !== "idle" }]
+                              : []),
+                            { label: "Parar de aguardar", onClick: () => settleLocally("interrupted_locally") },
+                          ],
+                          note: cancelPhase === "sending" ? "Enviando o pedido de cancelamento ao servidor..." : cancelPhase === "accepted" ? "O servidor aceitou o pedido; aguardando a confirmação do cancelamento." : undefined,
+                        }
+                      : {})}
+                  />
+                ) : null}
               </div>
             </div>
 

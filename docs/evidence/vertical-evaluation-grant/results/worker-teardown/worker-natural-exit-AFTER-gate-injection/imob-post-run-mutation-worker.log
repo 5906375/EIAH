@@ -1,0 +1,272 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+TAP version 13
+# {"level":40,"time":"2026-11-14T12:57:27.075Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"","actionId":"owner.register","msg":"imob-worker.missing_required_fields"}
+# Subtest: [T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 12 IMOB_DISPATCHER_ACTION_IDS
+    # Subtest: should have exactly 12 keys in IMOB_RUN_OUTCOME_MAP
+    ok 1 - should have exactly 12 keys in IMOB_RUN_OUTCOME_MAP
+      ---
+      duration_ms: 0.529713
+      type: 'test'
+      ...
+    # Subtest: should have an outcome entry for every IMOB_DISPATCHER_ACTION_IDS member
+    ok 2 - should have an outcome entry for every IMOB_DISPATCHER_ACTION_IDS member
+      ---
+      duration_ms: 0.322922
+      type: 'test'
+      ...
+    # Subtest: commission.settle should be the only terminal action
+    ok 3 - commission.settle should be the only terminal action
+      ---
+      duration_ms: 0.765839
+      type: 'test'
+      ...
+    # Subtest: commission.settle outcome should have stage=done and status=done
+    ok 4 - commission.settle outcome should have stage=done and status=done
+      ---
+      duration_ms: 0.111206
+      type: 'test'
+      ...
+    1..4
+ok 1 - [T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 12 IMOB_DISPATCHER_ACTION_IDS
+  ---
+  duration_ms: 2.539903
+  type: 'suite'
+  ...
+# Subtest: [T2] Phase 4.1c — computeNextPendingItems semantics
+    # Subtest: should remove exact matches by substring (case-insensitive)
+    ok 1 - should remove exact matches by substring (case-insensitive)
+      ---
+      duration_ms: 0.21894
+      type: 'test'
+      ...
+    # Subtest: should add new items without duplicates
+    ok 2 - should add new items without duplicates
+      ---
+      duration_ms: 0.087569
+      type: 'test'
+      ...
+    # Subtest: should not duplicate an item already present
+    ok 3 - should not duplicate an item already present
+      ---
+      duration_ms: 0.14733
+      type: 'test'
+      ...
+    # Subtest: should return empty array when isTerminal=true pattern (cleared)
+    ok 4 - should return empty array when isTerminal=true pattern (cleared)
+      ---
+      duration_ms: 0.247987
+      type: 'test'
+      ...
+    # Subtest: should handle remove that partially matches existing items
+    ok 5 - should handle remove that partially matches existing items
+      ---
+      duration_ms: 0.125739
+      type: 'test'
+      ...
+    1..5
+ok 2 - [T2] Phase 4.1c — computeNextPendingItems semantics
+  ---
+  duration_ms: 1.190883
+  type: 'suite'
+  ...
+# Subtest: [T3] Phase 4.1c — resolveImobReceiptPaths with and without txId
+    # Subtest: should return receiptPath when txId is present
+    ok 1 - should return receiptPath when txId is present
+      ---
+      duration_ms: 0.193956
+      type: 'test'
+      ...
+    # Subtest: should return null receiptPath when txId is null
+    ok 2 - should return null receiptPath when txId is null
+      ---
+      duration_ms: 0.076397
+      type: 'test'
+      ...
+    # Subtest: should URL-encode special characters in txId and runId
+    ok 3 - should URL-encode special characters in txId and runId
+      ---
+      duration_ms: 0.061344
+      type: 'test'
+      ...
+    1..3
+ok 3 - [T3] Phase 4.1c — resolveImobReceiptPaths with and without txId
+  ---
+  duration_ms: 0.446925
+  type: 'suite'
+  ...
+# Subtest: [T4] Phase 4.1c — processImobRunCompletedJob skips on missing required fields
+    # Subtest: should return without calling getRun when caseId is empty
+    ok 1 - should return without calling getRun when caseId is empty
+      ---
+      duration_ms: 7.138237
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when actionId is empty string
+    ok 2 - should return without calling getRun when actionId is empty string
+      ---
+      duration_ms: 0.27157
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when runId is missing
+    ok 3 - should return without calling getRun when runId is missing
+      ---
+      duration_ms: 0.188696
+      type: 'test'
+      ...
+    1..3
+ok 4 - [T4] Phase 4.1c — processImobRunCompletedJob skips on missing required fields
+  ---
+  duration_ms: 7.779416
+  type: 'suite'
+  ...
+# Subtest: [T5] Phase 4.1c — processImobRunCompletedJob skips on unknown actionId
+    # Subtest: should return without calling getRun when actionId is not in IMOB_DISPATCHER_ACTION_IDS
+    ok 1 - should return without calling getRun when actionId is not in IMOB_DISPATCHER_ACTION_IDS
+      ---
+      duration_ms: 0.284451
+      type: 'test'
+      ...
+    # Subtest: should return without calling getRun when actionId is an injection attempt
+    ok 2 - should return without calling getRun when actionId is an injection attempt
+      ---
+      duration_ms: 0.212642
+      type: 'test'
+      ...
+    1..2
+ok 5 - [T5] Phase 4.1c — processImobRunCompletedJob skips on unknown actionId
+  ---
+  duration_ms: 0.62817
+  type: 'suite'
+  ...
+# Subtest: [T6] Phase 4.1c — processImobRunCompletedJob skips mutation when run.status !== success
+    # Subtest: should NOT call updateCase when run.status is 'failed'
+    ok 1 - should NOT call updateCase when run.status is 'failed'
+      ---
+      duration_ms: 0.445009
+      type: 'test'
+      ...
+    # Subtest: should NOT call updateCase when run.status is 'pending'
+    ok 2 - should NOT call updateCase when run.status is 'pending'
+      ---
+      duration_ms: 0.253028
+      type: 'test'
+      ...
+    1..2
+ok 6 - [T6] Phase 4.1c — processImobRunCompletedJob skips mutation when run.status !== success
+  ---
+  duration_ms: 0.769569
+  type: 'suite'
+  ...
+# Subtest: [T7] Phase 4.1c — processImobRunCompletedJob skips mutation when simulated=true
+    # Subtest: should NOT call updateCase when run.response.outputs[].data.simulated=true
+    ok 1 - should NOT call updateCase when run.response.outputs[].data.simulated=true
+      ---
+      duration_ms: 0.347009
+      type: 'test'
+      ...
+    1..1
+ok 7 - [T7] Phase 4.1c — processImobRunCompletedJob skips mutation when simulated=true
+  ---
+  duration_ms: 0.447665
+  type: 'suite'
+  ...
+# Subtest: [T8] Phase 4.1c — processImobRunCompletedJob skips mutation when requiresTxId=true and no txId
+    # Subtest: should NOT call updateCase for owner.register (requiresTxId=true) when txId=null
+    ok 1 - should NOT call updateCase for owner.register (requiresTxId=true) when txId=null
+      ---
+      duration_ms: 0.462736
+      type: 'test'
+      ...
+    # Subtest: should call updateCase for lead.qualify (requiresTxId=false) even when txId=null
+    ok 2 - should call updateCase for lead.qualify (requiresTxId=false) even when txId=null
+      ---
+      duration_ms: 1.238486
+      type: 'test'
+      ...
+    1..2
+ok 8 - [T8] Phase 4.1c — processImobRunCompletedJob skips mutation when requiresTxId=true and no txId
+  ---
+  duration_ms: 1.784778
+  type: 'suite'
+  ...
+# Subtest: [T8b] Phase 4.1c — processImobRunCompletedJob blocks HIGH mutation when approval is absent or invalid
+    # Subtest: should NOT call updateCase for contract.prepare when approval is missing
+    ok 1 - should NOT call updateCase for contract.prepare when approval is missing
+      ---
+      duration_ms: 0.419957
+      type: 'test'
+      ...
+    # Subtest: should NOT call updateCase for commission.settle when approval is expired
+    ok 2 - should NOT call updateCase for commission.settle when approval is expired
+      ---
+      duration_ms: 0.336179
+      type: 'test'
+      ...
+    1..2
+ok 9 - [T8b] Phase 4.1c — processImobRunCompletedJob blocks HIGH mutation when approval is absent or invalid
+  ---
+  duration_ms: 0.839024
+  type: 'suite'
+  ...
+# Subtest: [T9] Phase 4.1c — processImobRunCompletedJob skips mutation when already processed
+    # Subtest: should NOT call updateCase when an ImobCaseEvent with same runId+type already exists
+    ok 1 - should NOT call updateCase when an ImobCaseEvent with same runId+type already exists
+      ---
+      duration_ms: 0.301859
+      type: 'test'
+      ...
+    1..1
+ok 10 - [T9] Phase 4.1c — processImobRunCompletedJob skips mutation when already processed
+  ---
+  duration_ms: 0.366351
+  type: 'suite'
+  ...
+# Subtest: [T10] Phase 4.1c — processImobRunCompletedJob calls updateCase on happy path
+    # Subtest: should call updateCase with correct stage/status from outcome map for owner.register
+    ok 1 - should call updateCase with correct stage/status from outcome map for owner.register
+      ---
+      duration_ms: 0.419234
+      type: 'test'
+      ...
+    # Subtest: should clear pendingItems for commission.settle (terminal action)
+    ok 2 - should clear pendingItems for commission.settle (terminal action)
+      ---
+      duration_ms: 0.399834
+      type: 'test'
+      ...
+    # Subtest: should NOT call updateCase when commission.settle and ownerResponsible is null
+    ok 3 - should NOT call updateCase when commission.settle and ownerResponsible is null
+      ---
+      duration_ms: 0.256083
+      type: 'test'
+      ...
+    1..3
+ok 11 - [T10] Phase 4.1c — processImobRunCompletedJob calls updateCase on happy path
+  ---
+  duration_ms: 1.164094
+  type: 'suite'
+  ...
+# {"level":40,"time":"2026-11-14T12:57:27.082Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"","msg":"imob-worker.missing_required_fields"}
+# {"level":40,"time":"2026-11-14T12:57:27.082Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","msg":"imob-worker.missing_required_fields"}
+# {"level":40,"time":"2026-11-14T12:57:27.083Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"unknown.action.not.canonical","actionId":"unknown.action.not.canonical","msg":"imob-worker.unknown_action_id"}
+# {"level":40,"time":"2026-11-14T12:57:27.083Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"'; DROP TABLE imob_cases; --","actionId":"'; DROP TABLE imob_cases; --","msg":"imob-worker.unknown_action_id"}
+# {"level":30,"time":"2026-11-14T12:57:27.083Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","runStatus":"failed","msg":"imob-worker.run_not_success_skip"}
+# {"level":30,"time":"2026-11-14T12:57:27.084Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","runStatus":"pending","msg":"imob-worker.run_not_success_skip"}
+# {"level":40,"time":"2026-11-14T12:57:27.084Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","msg":"imob-worker.skipped_simulated_run"}
+# {"level":40,"time":"2026-11-14T12:57:27.085Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","actionId":"owner.register","msg":"imob-worker.receipt_required_no_tx_id"}
+# {"level":30,"time":"2026-11-14T12:57:27.086Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"lead.qualify","actionId":"lead.qualify","outcomeStage":"visit_scheduling","outcomeStatus":"ready_for_review","isTerminal":false,"canonicalJourneyType":"property_capture","receiptPath":null,"bundlePath":"/api/runs/run-001/bundle","msg":"imob-worker.mutation_applied"}
+# {"level":40,"time":"2026-11-14T12:57:27.086Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"contract.prepare","actionId":"contract.prepare","reasonCode":"APPROVAL_REQUIRED","msg":"imob-worker.approval_blocked"}
+# {"level":40,"time":"2026-11-14T12:57:27.087Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"commission.settle","actionId":"commission.settle","reasonCode":"APPROVAL_EXPIRED","msg":"imob-worker.approval_blocked"}
+# {"level":30,"time":"2026-11-14T12:57:27.087Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","msg":"imob-worker.already_processed_skip"}
+# {"level":30,"time":"2026-11-14T12:57:27.088Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"owner.register","actionId":"owner.register","outcomeStage":"property_collecting","outcomeStatus":"ready_for_review","isTerminal":false,"canonicalJourneyType":"property_capture","receiptPath":"/api/ledger/tx-abc","bundlePath":"/api/runs/run-001/bundle","msg":"imob-worker.mutation_applied"}
+# {"level":30,"time":"2026-11-14T12:57:27.088Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"commission.settle","actionId":"commission.settle","outcomeStage":"done","outcomeStatus":"done","isTerminal":true,"canonicalJourneyType":"property_capture","receiptPath":"/api/ledger/tx-com-001","bundlePath":"/api/runs/run-001/bundle","msg":"imob-worker.mutation_applied"}
+# {"level":40,"time":"2026-11-14T12:57:27.089Z","service":"eiah","env":"test","component":"imob-post-run-mutation-worker","runId":"run-001","tenantId":"t-001","workspaceId":"w-001","caseId":"case-001","actionId":"commission.settle","msg":"imob-worker.commission_settle_missing_owner_responsible"}
+1..11
+# tests 28
+# suites 11
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 701.13936

@@ -1,0 +1,37 @@
+
+> eiah-builder@ test:evaluation-worker-gate /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> TSX_TSCONFIG_PATH=tsconfig.base.json DATABASE_URL=postgresql://user:pass@127.0.0.1:1/test node --import tsx --test apps/api/src/tests/imob-post-run-evaluation-gate.test.ts
+
+TAP version 13
+# {"level":40,"time":"2026-11-14T13:03:49.836Z","service":"eiah","env":"development","component":"imob-post-run-mutation-worker","runId":"run-1","tenantId":"t-1","workspaceId":"w-1","caseId":"case-1","actionId":"owner.register","usage":"blocked","msg":"imob-worker.evaluation_access_not_active"}
+# Subtest: avaliação encerrada: o worker não muta, registra o bloqueio e conclui o job (sem retry)
+ok 1 - avaliação encerrada: o worker não muta, registra o bloqueio e conclui o job (sem retry)
+  ---
+  duration_ms: 7.361045
+  type: 'test'
+  ...
+# Subtest: avaliação encerrada bloqueia também o ramo de intake (criação de caso)
+ok 2 - avaliação encerrada bloqueia também o ramo de intake (criação de caso)
+  ---
+  duration_ms: 0.321745
+  type: 'test'
+  ...
+# Subtest: sem grant de avaliação ou com grant ativo: comportamento legado (o fluxo segue até buscar o run)
+ok 3 - sem grant de avaliação ou com grant ativo: comportamento legado (o fluxo segue até buscar o run)
+  ---
+  duration_ms: 0.404249
+  type: 'test'
+  ...
+# {"level":40,"time":"2026-11-14T13:03:49.842Z","service":"eiah","env":"development","component":"imob-post-run-mutation-worker","runId":"run-1","tenantId":"t-1","workspaceId":"w-1","caseId":"case-1","actionId":"owner.register","usage":"read_only","msg":"imob-worker.evaluation_access_not_active"}
+# {"level":40,"time":"2026-11-14T13:03:49.843Z","service":"eiah","env":"development","component":"imob-post-run-mutation-worker","runId":"run-1","tenantId":"t-1","workspaceId":"w-1","caseId":"case-1","actionId":"imob.contract.intake","usage":"blocked","msg":"imob-worker.evaluation_access_not_active"}
+# {"level":40,"time":"2026-11-14T13:03:49.843Z","service":"eiah","env":"development","component":"imob-post-run-mutation-worker","runId":"run-1","tenantId":"t-1","workspaceId":"w-1","caseId":"case-1","actionId":"owner.register","msg":"imob-worker.run_not_found"}
+# {"level":40,"time":"2026-11-14T13:03:49.843Z","service":"eiah","env":"development","component":"imob-post-run-mutation-worker","runId":"run-1","tenantId":"t-1","workspaceId":"w-1","caseId":"case-1","actionId":"owner.register","msg":"imob-worker.run_not_found"}
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 769.46612

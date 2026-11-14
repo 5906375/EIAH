@@ -811,6 +811,10 @@ function launcherEnvironment(harness: ReturnType<typeof frontDoorHarness>, stora
     skipHistoryPersistRef: { current: false }, runId: null, messages: [],
     conversationGenerationRef: harness.conversationGenerationRef, setMessages: harness.setMessages, imobPersistence: { startNew: () => undefined },
     threadKey: "", baseLedger: () => [],
+    // Acompanhamento de run (ciclo de vida): sem run em andamento, nada a cancelar, avisar ou retomar nestes cenários de IMOB.
+    runTrackingRef: { current: null }, abandonTracking: async () => null, pushMessage: () => undefined, describeAbandonResult: () => null, trackedRun: null,
+    pendingWork: { tracker: { scope: () => "scope-forms-test" } }, getSession: () => ({ token: null }), credentialOf: () => ({ token: null, tenantId: null, workspaceId: null, userId: null }), sameCredential: () => true,
+    readPersistedTracking: () => null, resumeTrackingRef: { current: () => undefined },
     window: { sessionStorage: { getItem: (key: string) => storage.get(key), setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } },
   };
   for (const key of ["stopStreaming", "setRunId", "onRunIdChange", "setLedger", "onLedgerChange", "setEvidenceEvent", "setCopyToast", "setLastRouteIntent", "clearAttachmentComposer", "setAttachmentDocumentType", "setAttachmentAnalysisMode"]) env[key] = () => undefined;

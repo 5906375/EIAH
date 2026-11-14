@@ -19,10 +19,14 @@ import {
 } from "@/components/agents/verticalActivationEngine";
 import { describeAccessCreationHint, isAccessCreationRequest } from "@/components/agents/frontDoorAccessEngine";
 import {
+  isInterpretableBilling,
+  resolveActivationLeaveStep,
   resolveFrontDoorBillingStep,
+  type ActivationPending,
   type FrontDoorBillingRequest,
   type FrontDoorBillingSnapshot,
 } from "@/components/agents/frontDoorBillingEngine";
+import type { FrontDoorIntakeRequest } from "@/components/agents/frontDoorIntakeEngine";
 import {
   resolveNoticeAckStep,
   type VerticalAccessNoticeAckRequest,
@@ -322,6 +326,8 @@ export type LauncherLocalDecision = {
   /** Conta de billing e primeira mensalidade simulada antes do pedido de liberação (ADR-011 §2.8). */
   frontDoorBillingRequest?: FrontDoorBillingRequest;
   frontDoorBilling?: FrontDoorBillingSnapshot;
+  /** Pergunta livre durante a escolha de plano: interpretada no contexto pelo runtime central (engine de intake), sem efeito. */
+  frontDoorIntakeRequest?: FrontDoorIntakeRequest;
 };
 
 export function fallbackHelpMarkdown() {
@@ -2129,6 +2135,10 @@ export async function resolveLauncherTurnDecision(params: {
   previousUserMessage?: string | null;
   previousAssistantMessage?: string | null;
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+  /** Etapa de billing pendente da CONVERSA (não só da última mensagem); ausente = usa o snapshot da última mensagem do assistente. */
+  pendingFrontDoorBilling?: FrontDoorBillingSnapshot | null;
+  /** Proposta de ativação / pedido de liberação pendente SEM cartão de billing (da conversa, não só da última mensagem). */
+  pendingFrontDoorActivation?: ActivationPending | null;
   accessContext?: LauncherAccessContext | null;
   imobOperationalContinuation?: {
     threadState?: ImobThreadConversationState | null;
@@ -2140,8 +2150,11 @@ export async function resolveLauncherTurnDecision(params: {
   // Intenções explícitas usam os mesmos catálogos de help; fallback não encerra coleta.
   const activationStep = params.isUnifiedEiah
     ? resolveVerticalActivationStep(params.input, params.previousAssistantSnapshot?.verticalActivation) : null;
+  const pendingBilling = params.pendingFrontDoorBilling !== undefined
+    ? params.pendingFrontDoorBilling : params.previousAssistantSnapshot?.frontDoorBilling;
   const billingStep = params.isUnifiedEiah
-    ? resolveFrontDoorBillingStep(params.input, params.previousAssistantSnapshot?.frontDoorBilling) : null;
+    ? (resolveFrontDoorBillingStep(params.input, pendingBilling) ?? resolveActivationLeaveStep(params.input, params.pendingFrontDoorActivation))
+    : null;
   const approvalChatStep = params.isUnifiedEiah
     ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat) : null;
   const noticeAck = params.isUnifiedEiah
@@ -2254,7 +2267,9 @@ export async function resolveLauncherTurnDecision(params: {
     return {
       kind: `vertical_activation_${activationStep.step}`,
       shouldCreateRun: false,
-      content: `Verificando a ativação de ${activationStep.verticalId === "log" ? "Logística & Comex" : "IMOB"} neste workspace.`,
+      content: activationStep.step.startsWith("evaluation_")
+        ? "Analisando sua mensagem sobre a avaliação do IMOB."
+        : `Verificando a ativação de ${activationStep.verticalId === "log" ? "Logística & Comex" : "IMOB"} neste workspace.`,
       launcherRouteIntent: activationRoute,
       presentationRouteIntent: activationRoute,
       eiahMode: "help",
@@ -2337,6 +2352,25 @@ export async function resolveLauncherTurnDecision(params: {
       persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
       verticalHandoffRequest: { ...IMOB_CRM_HANDOFF_REQUEST },
       verticalHandoffForwardInput: params.input,
+    };
+  }
+  // Pergunta livre durante a escolha de plano: o intake contextual interpreta (provider pelo runtime central), a API responde com o
+  // catálogo autorizado. Sem regex, sem lista de frases e sem ajuda genérica: não é palavra-chave, é "há etapa de billing pendente".
+  // Fica depois dos passos exatos e dos pedidos explícitos de transição acima, que continuam valendo.
+  // Etapa pendente interpretável: billing ou, se não há billing, a proposta de ativação/pedido de liberação sem cartão de billing.
+  const pendingForIntake = isInterpretableBilling(pendingBilling) ? pendingBilling : (params.pendingFrontDoorActivation ?? null);
+  if (params.isUnifiedEiah && pendingForIntake && params.trimmedInput.trim()) {
+    return {
+      kind: "front_door_intake",
+      shouldCreateRun: false,
+      content: "Entendendo sua pergunta no contexto da escolha de plano.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_intake", confidenceFloor: 0.8 },
+      frontDoorIntakeRequest: { message: params.trimmedInput.trim(), pending: pendingForIntake },
     };
   }
   const localDecision = resolveLauncherLocalDecision({

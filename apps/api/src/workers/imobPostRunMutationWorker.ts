@@ -20,9 +20,11 @@ import { getRedisConnection } from "@eiah/core/queue/connection";
 import {
   IMOB_RUN_COMPLETED_QUEUE_NAME,
   type ImobRunCompletedJobPayload,
-} from "../queues/imobRunCompletedQueue";
+} from "../queues/imobRunCompletedQueueContract";
 import { getRun } from "../services/runs";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
+import type { EvaluationGrantGate } from "../services/products/verticalEvaluationContract";
 import {
   buildImobCanonicalCase,
   shouldSkipImobPostRunMutationForSimulatedOutput,
@@ -227,6 +229,8 @@ export type ImobWorkerDeps = {
   prisma: typeof prismaGlobal;
   mutationServiceFactory: (p: typeof prismaGlobal) => Pick<ImobCrmMutationService, "updateCase">;
   resolveIntakeRuntimePolicyFn: typeof resolveImobContractIntakeRuntimePolicy;
+  /** Gate da avaliação gratuita (padrão: leitura real). Injetável para teste; só atua em workspaces com grant de avaliação. */
+  evaluationGrantGateFn: (scope: { tenantId: string; workspaceId: string }) => Promise<EvaluationGrantGate>;
 };
 
 // ─── Core job processor (exported for testing) ────────────────────────────────
@@ -240,6 +244,8 @@ export async function processImobRunCompletedJob(
   const _getRunFn = deps?.getRunFn ?? getRun;
   const _prisma = deps?.prisma ?? prismaGlobal;
   const _resolveIntakeRuntimePolicy = deps?.resolveIntakeRuntimePolicyFn ?? resolveImobContractIntakeRuntimePolicy;
+  const _evaluationGate = deps?.evaluationGrantGateFn
+    ?? ((scope: { tenantId: string; workspaceId: string }) => readEvaluationGrantGate({ prisma: _prisma as never, ...scope }));
   const _mutationService =
     deps?.mutationServiceFactory
       ? deps.mutationServiceFactory(_prisma)
@@ -269,6 +275,18 @@ export async function processImobRunCompletedJob(
   if (!outcome) {
     logger.warn({ actionId }, "imob-worker.no_outcome_for_action");
     incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId, reason: "no_outcome_for_action" });
+    return;
+  }
+
+  // Avaliação gratuita (efeito DIFERIDO): o run pode ter sido aceito antes do fim da validade, mas a escrita acontece agora.
+  // Reconfere o grant no momento da escrita, nos DOIS ramos (intake e mutação de caso): se o acesso não está ativo e válido,
+  // registra o bloqueio, não muta e conclui o job (sem retry). Sem grant de avaliação: nada muda (comportamento legado).
+  const evaluationGate = await _evaluationGate({ tenantId, workspaceId });
+  if (evaluationGate.applies && !evaluationGate.allowed) {
+    logger.warn({ usage: evaluationGate.usage }, "imob-worker.evaluation_access_not_active");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId, reason: "evaluation_access_not_active" });
+    await recordCaseEvent(_prisma, caseId, tenantId, workspaceId, runId, "case.action.blocked", actionId,
+      `Ação ${actionId} não aplicada: o acesso da avaliação não está ativo.`, { actionId, evaluationGate: "access_not_active", usage: evaluationGate.usage });
     return;
   }
 
