@@ -1,0 +1,60 @@
+TAP version 13
+# Subtest: controle: o bloqueio de @repo/db é efetivo (o módulo que o importa de fato falha)
+not ok 1 - controle: o bloqueio de @repo/db é efetivo (o módulo que o importa de fato falha)
+  ---
+  duration_ms: 169.786561
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-turn-engine-no-db-import.test.ts:4:645'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /DB_IMPORT_BLOCKED:@repo\/db/. Input:
+    
+    ''
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: ''
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-turn-engine-no-db-import.test.ts:25:10)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: motor de turno do IMOB e vocabulário de capacidades carregam sem @repo/db
+not ok 2 - motor de turno do IMOB e vocabulário de capacidades carregam sem @repo/db
+  ---
+  duration_ms: 152.265623
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-turn-engine-no-db-import.test.ts:4:925'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /IMPORT_OK/. Input:
+    
+    ''
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: ''
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-turn-engine-no-db-import.test.ts:32:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 0
+# fail 2
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 328.34703

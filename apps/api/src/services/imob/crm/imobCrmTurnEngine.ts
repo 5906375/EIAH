@@ -1,4 +1,6 @@
 import { interpretTransversalTurn } from "../imobTransversalTurn";
+import { interpretImobPropertyCapture, type ImobPropertyCaptureDeps } from "../intake/imobPropertyCaptureIntake";
+import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
 import { buildCaseBindingDenialText, buildInviteClarificationResolution, buildInviteGuidanceResolution, buildTransversalTurnText, type CaseBindingDenialCode } from "../imobTransversalTurnCopy";
 import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
 import { resolveImobSemanticIntent, resolveImobPropertyUnitIntake, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
@@ -1790,6 +1792,14 @@ export async function resolveImobPropertyUnitIntakeTurn(message: string, previou
       ? `Identifiquei: ${propertyUnitIntake.unitLabels.join(", ")}. Confira antes de cadastrar; nada foi gravado.`
       : propertyUnitIntake.status === "needs_clarification" ? propertyUnitIntake.message : IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification },
   };
+}
+
+/** Pending form intake returns before case resolution, operational dispatch or persistence. */
+export async function resolveImobPropertyCaptureTurn(input: unknown, deps: ImobPropertyCaptureDeps) {
+  const request = imobPropertyCaptureRequestSchema.parse(input);
+  const propertyCapture = await interpretImobPropertyCapture(request, deps);
+  return { mode: "consult" as const, action: "property.draft.intake", threadLabel: "Captação", propertyCapture,
+    conversationState: createEmptyImobCrmThreadState(), presentation: { text: propertyCapture.content } };
 }
 
 export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) {

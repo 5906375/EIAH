@@ -83,7 +83,10 @@ import {
   resolveLegacyCrmFallbackDecision,
   type LegacyCrmFallbackDecision,
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
-import { resolveImobCrmTurnEngine, resolveImobPropertyUnitIntakeTurn, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { resolveImobCrmTurnEngine, resolveImobPropertyUnitIntakeTurn, resolveImobPropertyCaptureTurn, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
+import { executeLlmStep } from "../orchestrator/llmExecutor";
+import { getAgentProfile } from "../services/agents";
 import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
 import { evaluateImobFrontDoorCapabilityAccess, IMOB_CASE_CONSULT_CAPABILITY } from "../services/chat/verticalRegistryComposition";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
@@ -1719,6 +1722,26 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
   if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
     return;
+  }
+
+  // Contextual continuation of an editable property form. The client supplies draft DATA, never access or authority.
+  // As with field intake, return before resolving cases, recipes or operational mutations.
+  if (body.intake === "property_draft") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    const parsed = imobPropertyCaptureRequestSchema.safeParse(body.propertyCapture);
+    if (!parsed.success || parsed.data.message !== message) return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_INVALID" } });
+    return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      interpret: async ({ systemPrompt, userPrompt }) => {
+        // Same coordinator and provider registry as the contextual Front Door intake; IMOB owns the domain contract.
+        const profile = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);
+        if (!profile || profile.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
+        const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
+          knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
+          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true } });
+        return result.outputText;
+      },
+    }) });
   }
 
   // Intake de campo: auth/escopo, revogação, instalação, vínculo ativo e imob.chat.use já passaram; exige REAL_ESTATE_CORE.

@@ -31,6 +31,8 @@ export type StructuredCard = {
 export type StructuredQuickReply = { id: string; label: string; reply?: string; onSelect?: () => void };
 
 export type StructuredMessage = {
+  /** Pending editable property form; a topic change pauses interpretation without losing the form values. */
+  propertyCaptureContext?: "active" | "paused";
   /** Resultado efêmero do campo, reutilizável somente enquanto sua identificação não mudar. */
   propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   id: string;

@@ -1,0 +1,70 @@
+▲ [WARNING] Unrecognized target environment "ES2024" [tsconfig.json]
+
+    ../../tsconfig.json:5:18:
+      5 │         "target": "ES2024",
+        ╵                   ~~~~~~~~
+
+
+  VITE v5.4.21  ready in 141 ms
+
+  ➜  Local:   http://127.0.0.1:55173/
+Error:   Failed to scan for dependencies from entries:
+  /__w/EIAH/EIAH/apps/web/index.html
+
+  ✘ [ERROR] No matching export in "../../packages/contracts/src/browser.ts" for import "IMOB_PROPERTY_CAPTURE_POLICY"
+
+    src/components/agents/chatLauncherEngine.ts:30:9:
+      30 │ import { IMOB_PROPERTY_CAPTURE_POLICY } from "@eiah/contracts";
+         ╵          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "../../packages/contracts/src/browser.ts" for import "IMOB_PROPERTY_CAPTURE_FIELDS"
+
+    src/features/imob/structured/useImobFrontDoorForms.ts:10:9:
+      10 │ import { IMOB_PROPERTY_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLIC...
+         ╵          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "../../packages/contracts/src/browser.ts" for import "IMOB_PROPERTY_CAPTURE_POLICY"
+
+    src/features/imob/structured/useImobFrontDoorForms.ts:10:39:
+      10 │ ...Y_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLICY as propertyPolic...
+         ╵                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+✘ [ERROR] No matching export in "../../packages/contracts/src/browser.ts" for import "imobPropertyCaptureResultSchema"
+
+    src/features/imob/structured/useImobFrontDoorForms.ts:10:87:
+      10 │ ...propertyPolicy, imobPropertyCaptureResultSchema } from "@eiah/c...
+         ╵                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+    at failureErrorWithLog (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1472:15)
+    at /__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:945:25
+    at runOnEndCallbacks (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:1315:45)
+    at buildResponseToResult (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:943:7)
+    at /__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:955:9
+    at new Promise (<anonymous>)
+    at requestCallbacks.on-end (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:954:54)
+    at handleRequest (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:647:17)
+    at handleIncomingPacket (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:672:7)
+    at Socket.readFromStdout (/__w/EIAH/EIAH/node_modules/.pnpm/esbuild@0.21.5/node_modules/esbuild/lib/main.js:600:7)
+Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+6:14:42 PM [vite] warning: Unrecognized target environment "ES2024"
+1  |  export * from './masking/index';
+   |                               ^
+2  |
+
+  Plugin: vite:esbuild
+  File: /__w/EIAH/EIAH/packages/utils/src/index.ts
+6:14:42 PM [vite] warning: Unrecognized target environment "ES2024"
+1  |  /**
+2  |   * PII Masking Utility - EIAH_Builder
+   |                           ^
+3  |   * FASE 3: Governança Cognitiva & Compliance
+4  |   */
+
+  Plugin: vite:esbuild
+  File: /__w/EIAH/EIAH/packages/utils/src/masking/index.ts

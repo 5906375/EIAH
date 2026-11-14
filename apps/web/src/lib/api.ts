@@ -3297,6 +3297,7 @@ export type ImobOperationalPresentation = {
 };
 
 export type ImobResolveTurnResponse = {
+  propertyCapture?: import("@eiah/contracts").ImobPropertyCaptureResult;
   propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
   action: string;
@@ -3538,7 +3539,8 @@ export async function apiCreateImobChatTelemetry(
 
 export async function apiResolveImobTurn(body: {
   /** Intake consultivo do mesmo runtime IMOB, antes de enviar o cadastro estruturado. */
-  intake?: "property_units";
+  intake?: "property_units" | "property_draft";
+  propertyCapture?: import("@eiah/contracts").ImobPropertyCaptureRequest;
   message: string;
   threadLabel?: string | null;
   threadId?: string | null;
@@ -3549,10 +3551,11 @@ export async function apiResolveImobTurn(body: {
   continuityReplyRef?: string | null;
   /** Explicit support for conversational continuity v1, scoped to this live interaction. */
   continuityContextRef?: string | null;
-}) {
+}, signal?: AbortSignal) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
     method: "POST",
     body: JSON.stringify(body),
+    signal,
   });
 }
 
