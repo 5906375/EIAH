@@ -27,6 +27,7 @@ import {
   type FrontDoorBillingSnapshot,
 } from "@/components/agents/frontDoorBillingEngine";
 import type { FrontDoorIntakeRequest } from "@/components/agents/frontDoorIntakeEngine";
+import { IMOB_PROPERTY_CAPTURE_POLICY } from "@eiah/contracts";
 import {
   resolveNoticeAckStep,
   type VerticalAccessNoticeAckRequest,
@@ -2141,6 +2142,7 @@ export async function resolveLauncherTurnDecision(params: {
   pendingFrontDoorActivation?: ActivationPending | null;
   accessContext?: LauncherAccessContext | null;
   imobOperationalContinuation?: {
+    propertyCaptureContext?: "active" | "paused" | null;
     threadState?: ImobThreadConversationState | null;
     available: boolean;
     consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
@@ -2160,6 +2162,14 @@ export async function resolveLauncherTurnDecision(params: {
   const noticeAck = params.isUnifiedEiah
     ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice) : null;
   const continuation = params.imobOperationalContinuation;
+  // An open property form belongs to IMOB before isolated help/legal/handoff heuristics.
+  // Semantic continuation (including topic changes) is resolved by the contextual provider intake in the vertical engine.
+  if (continuation?.available && (continuation.propertyCaptureContext === "active"
+    || continuation.propertyCaptureContext === "paused" && params.trimmedInput === IMOB_PROPERTY_CAPTURE_POLICY.resumeReply)) {
+    await continuation.consume("continue", params.trimmedInput);
+    return { kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+      launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow" };
+  }
   const explicitVerticalTransfer = params.isUnifiedEiah || hasPendingProposalReview(continuation?.threadState)
     ? resolveExplicitVerticalHandoffRequest(params.input) : null;
   if (continuation?.threadState?.operational) {

@@ -1,0 +1,13 @@
+[96mapps/web/src/components/agents/ChatAgentLauncher.tsx[0m:[93m272[0m:[93m22[0m - [91merror[0m[90m TS2339: [0mProperty 'env' does not exist on type 'ImportMeta'.
+
+[7m272[0m   typeof import.meta.env.VITE_CHAT_ROLLOUT_STAGE === "string" &&
+[7m   [0m [91m                     ~~~[0m
+[96mapps/web/src/components/agents/ChatAgentLauncher.tsx[0m:[93m273[0m:[93m15[0m - [91merror[0m[90m TS2339: [0mProperty 'env' does not exist on type 'ImportMeta'.
+
+[7m273[0m   import.meta.env.VITE_CHAT_ROLLOUT_STAGE.trim().length > 0
+[7m   [0m [91m              ~~~[0m
+[96mapps/web/src/components/agents/ChatAgentLauncher.tsx[0m:[93m274[0m:[93m19[0m - [91merror[0m[90m TS2339: [0mProperty 'env' does not exist on type 'ImportMeta'.
+
+[7m274[0m     ? import.meta.env.VITE_CHAT_ROLLOUT_STAGE.trim().toLowerCase()
+[7m   [0m [91m                  ~~~[0m
+{"check":"typecheck-focused","roots":11,"focusedDiagnostics":3,"dependencyDiagnostics":18,"scope":"Changed production roots; dependency diagnostics excluded and not certified"}

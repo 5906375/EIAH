@@ -1482,6 +1482,7 @@ export default function ChatAgentLauncher({
         pendingFrontDoorBilling: findPendingFrontDoorBillingInMessages(messages),
         pendingFrontDoorActivation: findPendingFrontDoorActivationInMessages(messages),
         imobOperationalContinuation: {
+          propertyCaptureContext: imobFrontDoor.getPropertyCaptureContext(),
           threadState: imobFrontDoor.getConversationState(),
           available: showImobSurface,
           consume: imobFrontDoor.consumeOperationalTurn,

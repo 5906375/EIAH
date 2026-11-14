@@ -1147,7 +1147,7 @@ function buildOwnerCreateForm(ownerDraft?: {
   };
 }
 
-function buildPropertyCreateForm(propertyDraft?: {
+export function buildPropertyCreateForm(propertyDraft?: {
   propertyType?: string | null;
   goal?: "locacao" | "venda" | "aluguel_por_temporada" | null;
   cep?: string | null;

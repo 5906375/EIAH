@@ -75,8 +75,12 @@ export function createImobCepLookup(dependencies: {
 export function useImobFormState(messages: StructuredMessage[]) {
   const [formValuesByMessageId, setStoredFormValues] = React.useState<Record<string, Record<string, string>>>({});
   const formValuesRef = React.useRef(formValuesByMessageId);
+  const formRevisionRef = React.useRef<Record<string, number>>({});
   const setFormValuesByMessageId = React.useCallback<React.Dispatch<React.SetStateAction<typeof formValuesByMessageId>>>((update) => {
     const next = typeof update === "function" ? update(formValuesRef.current) : update;
+    for (const id of new Set([...Object.keys(next), ...Object.keys(formValuesRef.current)])) {
+      if (next[id] !== formValuesRef.current[id]) formRevisionRef.current[id] = (formRevisionRef.current[id] ?? 0) + 1;
+    }
     formValuesRef.current = next;
     setStoredFormValues(next);
   }, []);
@@ -166,6 +170,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
       }
 
       for (const field of form.fields) {
+        if (localOverrides && Object.hasOwn(localOverrides, field.name)) continue;
         if (normalizeImobFormValue(values[field.name] ?? "")) continue;
         for (let index = messages.length - 1; index >= 0; index -= 1) {
           const candidate = messages[index];
@@ -258,6 +263,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
   }, []);
 
   return {
+    getFormRevision: (messageId: string) => formRevisionRef.current[messageId] ?? 0,
     formValuesByMessageId,
     setFormValuesByMessageId,
     formErrorsByMessageId,
