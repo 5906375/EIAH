@@ -1,3 +1,172 @@
+# Plano vigente — instrumentação correlacionada do intake IMOB
+
+Preparado em 2026-11-16 por Codex, sem subagentes. **Somente preparação; nenhum stage/commit/push/deploy executado.** Esta é a seleção vigente. Todo o plano anterior permanece integralmente após o marcador de histórico, sem validade executável para esta entrega.
+
+## Estado conferido e prontidão
+
+- Branch `fix/llm-provider-failure-propagation`; HEAD `a047a1b20a6dd0558fbe3a374b49e7aa4480a475`; upstream `origin/fix/llm-provider-failure-propagation`. Stage vazio; sem fetch nem alteração de histórico nesta preparação.
+- **40 caminhos únicos: 26 normais e 14 logs publicáveis ignorados.** Seis fontes de instrumentação, três testes já registrados, duas documentações, este plano e pacote de evidências. Nenhuma nova fonte/teste mudou após as aprovações reutilizadas.
+- Seleção coerente para um único commit revisável, condicionada aos bytes staged e hooks normais. **Bloqueio local de empacotamento removido:** contracts build e novo build API autorizados passaram com exit 0; fontes/configurações intactas. A falha API anterior fica histórica. Não presumir aprovação integral ou CI.
+- CLAUDE.md, CODEX.md, changes.diff e todos os logs originais locais ficam excluídos. Sem .gitignore alterado, diretórios implícitos ou temporários na seleção.
+
+## Escopo e dependências
+
+A API usa o engine/intake existente, executeLlmStep, runCompletion, registry/router e adaptador compartilhados com runs; não há novo runtime nem conversão de perguntas em runs. A instrumentação reutiliza x-trace-id do middleware, classifica falha pré-provider por etapa e separa despacho de transporte/resposta/validação. Mantém mensagem pública, domínio, autorização, seleção, retries, fallback e billing.
+
+A leitura do Render já concluída encontrou API live em 64fe82d, consumidor de runs desabilitado e nenhum worker separado visível no workspace acessível. Intake usa EIAH; runs usam agente da execução e executeCapability. Presença das variáveis de provider e perfil/modelo efetivo daquele turno não foram verificados. Nenhuma configuração foi alterada e esses fatos não provam a causa histórica.
+
+Os três arquivos de teste já são registrados por test:llm-provider-failure e test:ci-unit-suite; scripts/workflow/manifesto não mudaram. Os wrappers de evidência reutilizam ../typecheck-deltas.mjs e ../package-smoke.mjs do HEAD (não adicionar novamente), e a fixture atual já está versionada em packages/providers/tests/fixtures/. Sem alteração de contrato público, engine/launcher, modelos ou finanças.
+
+## Resultados reais, reaproveitamento e limites
+
+| Verificação | Resultado | Exit | Alcance |
+| --- | --- | --- | --- |
+| Providers, runtime, intake/rota | APROVADO, reutilizado | 0 | 5/5, 8/8 e 16/16; dublês/transporte sintético, sem novas execuções nesta preparação |
+| ProviderBoundary | APROVADO, reutilizado | 0 | 1/1, gate oficial; EPERM inicial preservado |
+| Core/providers builds | APROVADO | 0 | Processos concluídos e recuperados, sem repetição |
+| Smoke de dist | APROVADO | 0 | Novos exports/declarations e etapas do transporte sintético; falha inicial do verificador preservada |
+| Typecheck focal | REPROVADO | 1 | 17 raízes; 2 diagnósticos focais antigos +16 de dependências, zero introduzido contra HEAD virtual; EPERM anterior à compilação preservado |
+| Build API anterior (histórico) | REPROVADO | 2 | 24 diagnósticos, primeiro TS2305 por exports IMOB ausentes em contracts dist local; fonte exporta; tsup não executou. Sem baseline do build completo |
+| Build contracts e novo build API | APROVADO | 0 | Sequência posterior autorizada; exports confirmados no dist ignorado; API passou tipagem oficial e tsup; zero diagnósticos restantes nesse build |
+| Provider real, navegador, HTTP/banco, CI remoto, deploy | NÃO EXECUTADO | — | Não autorizados/validados nesta etapa |
+
+A ausência de diagnósticos introduzidos vale somente para a comparação focal; não classifica todos os diagnósticos do build API. Não corrigir erros antigos nem gates para obter aprovação. Causa específica de staging e vínculo da chave à organização abastecida continuam não comprovados. Status técnico PARCIAL; demais políticas transversais PROPOSTA. P1 e oferta de avaliação preservados.
+
+## Evidências, proveniência e hashes
+
+O pacote intake-observability/README.md descreve cada execução; results.json distingue a fase inicial da preparação. preparation-typecheck.json preserva todos os diagnósticos atuais/baseline. operational-comparison.json é projeção somente dos campos permitidos das consultas já realizadas, sem nova consulta após retomada ou leitura de segredos.
+
+Todos os 14 originais .log ficam locais. A entrega usa published/*.log: substitui somente o caminho literal do repositório por <REPO> e omite payloads inline data-URL do código do checker. results.json → publication.logs registra contagem de cada transformação e hashes antes/depois. Demais bytes, ANSI, erros, quebras de linha e falhas históricas permanecem; não são cópias apresentadas como originais. Nenhum prompt/rascunho/resposta bruta real integra o pacote.
+
+Campos log e evidenceSha256 históricos nos registros descrevem originais locais; resolver a evidência entregável pelo mapeamento publication.logs, sem exigir stage dos originais. source-hashes.json é fotografia inicial: nove fontes/testes não mudaram; hash documental anterior é histórico. preparation-manifest.json lista os 40 caminhos/flags e SHA-256 dos outros 39; ele próprio é conferido por igualdade com a cópia revisada. Não há gzip nesta seleção.
+
+## Adição normal — 26 caminhos (somente proposta)
+
+```bash
+git add -- \
+  'apps/api/src/orchestrator/llmExecutor.ts' \
+  'apps/api/src/routes/imob.ts' \
+  'apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts' \
+  'apps/api/src/tests/imob-property-capture-intake.test.ts' \
+  'apps/api/src/tests/llm-provider-failure.test.ts' \
+  'docs/EVIDENCE_INDEX.md' \
+  'docs/architecture/agent-chat-runtime.md' \
+  'ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/README.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/dependency-preparation.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/operational-comparison.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-preparation.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/preparation-executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/preparation-manifest.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/preparation-typecheck.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/provider-boundary-sandbox.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/results.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/source-hashes.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/typecheck-preparation.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/verification-first.json' \
+  'packages/core/src/llm/LLMProviderError.ts' \
+  'packages/core/src/llm/completionEngine.ts' \
+  'packages/providers/src/OpenAIProvider.ts' \
+  'packages/providers/tests/openai-provider-failure.test.ts'
+```
+
+## Adição forçada — 14 caminhos ignorados (somente proposta)
+
+```bash
+git add -f -- \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/affected-tests-first.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/api-build-after-contracts.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/api-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/contracts-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/core-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/intake-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/packaging-smoke-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/packaging-smoke.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/preparation-typecheck-outside.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/preparation-typecheck.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/provider-boundary.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/providers-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/providers-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/published/runtime-final.log'
+```
+
+## Exclusões explícitas
+
+- `CLAUDE.md`
+- `CODEX.md`
+- `ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/affected-tests-first.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/api-build-after-contracts.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/api-build.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/contracts-build.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/core-build.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/intake-final.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-smoke-final.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-smoke.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/preparation-typecheck-outside.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/preparation-typecheck.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/provider-boundary.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/providers-build.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/providers-final.log`
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/runtime-final.log`
+
+Também excluídos: originais históricos de outros pacotes, .env/segredos, caches, dist, node_modules e temporários, sem inventário de seus valores. Nenhum original é removido. A seleção não readiciona arquivos já versionados sem diff, incluindo fixtures/scripts antigos de apoio.
+
+## Verificações dos bytes staged — somente após autorização
+
+1. Conferir branch/HEAD e preservação dos hashes de CLAUDE.md, CODEX.md e changes.diff conforme results.json. Exigir conjunto staged igual aos 40 caminhos do manifesto, sem extras/ausências, e os três protegidos fora do índice. Usar apenas os dois comandos explícitos acima, nunca git add . / -A / -N.
+2. Ler preparation-manifest.json do índice. Calcular SHA-256 dos bytes de git show :<caminho> para as 39 entradas files; conferir o manifesto também contra a cópia revisada do working tree. Não usar arquivos locais como substitutos dos bytes staged.
+3. Resolver README, results, Evidence Index e dependências pelos bytes staged/HEAD. Campos de proveniência dos originais excluídos são resolvidos pelo mapeamento publication.logs. Conferir os hashes das cópias publicáveis e das fontes; não exigir hash documental histórico igual à documentação atual.
+4. Conferir padrões de credenciais/dados sensíveis no conjunto staged sem ler ambientes ou secrets. Não normalizar originais ou omitir falhas. Confirmar gate/registro CI intactos.
+5. Exigir git diff --cached --check exit 0. Stage vazio agora não comprova a aprovação futura. Se uma verificação/hook falhar, registrar causa/exit e parar antes de prosseguir; nunca contornar hooks.
+6. Não repetir testes/builds válidos. Contracts dist e novo build API já foram autorizados e concluídos com exit 0; não repeti-los sem mudança concreta. Isso não é aprovação de CI remoto/deploy.
+
+## Título e corpo sugeridos
+
+```text
+chore(imob): correlate property intake provider diagnostics
+
+Carry HTTP correlation through the existing IMOB engine/intake and central
+executor; distinguish profile/policy/provider resolution, adapter dispatch,
+transport attempt, response receipt and parsing/validation. Sanitize generic
+failures by controlled stage without raw errors, prompts, drafts or secrets.
+
+Preserve public responses, authorization, provider selection, retries,
+fallback and billing. Do not create another runtime or operational run.
+
+Reuse passing doubles/synthetic tests: providers 5/5, runtime 8/8,
+intake/route 16/16 and ProviderBoundary 1/1. Core/providers builds and
+formal-dist smoke passed locally. Evidence includes historical failures,
+original-log hashes and explicitly sanitized public copies.
+
+Technical status PARCIAL. Focal typecheck FAILED: 17 roots, 2 old focal
+and 16 dependency diagnostics, no introduced diagnostics versus virtual HEAD.
+The initial API build failed with exit 2 and 24 type diagnostics against stale
+local compiled contracts. After the authorized documented contracts build,
+required exports were confirmed and the official API typecheck plus tsup build
+passed with exit 0 and no remaining diagnostics. Preserve the original failure;
+the separate focal typecheck remains failed and is not replaced by this build.
+
+No real provider, browser, HTTP/database, remote CI or deployment validation.
+Historical staging cause remains unproven. API live at 64fe82d has its run
+consumer disabled; no separate worker is visible in the accessible workspace;
+provider-variable presence is unverified. No infrastructure/financial changes.
+Other transversal policies remain PROPOSTA; real retest requires separate
+explicit authorization and must not save a property.
+```
+
+## Menor sequência posterior (não executada)
+
+1. Preparação da dependência e build API já passaram, sem mudar fontes/configuração. Aguardar autorização específica para stage/commit/publicação e executar as conferências dos bytes staged e hooks normais.
+2. Após autorização específica de stage/commit/publicação e gates, versionar a seleção e entregar API + core/providers à eiah-api-staging. Web não mudou; nenhum worker de runs separado foi identificado. Não habilitar consumidor nem criar serviço/runtime.
+3. Conferir SHA implantado e API do bundle. Antes de qualquer chamada real, informar finalidade, ambiente, provider/modelo efetivo permitido, solicitação lógica prevista, tentativas/retries/fallback e custo/teto disponível, e obter autorização. Só então usar fixture sintética, recolher x-trace-id e confrontar cada etapa até intake, sem salvar imóvel. Timeout não comprova cancelamento físico.
+
+---
+
+# Histórico — plano Δ1–Δ3 e anteriores preservado integralmente; não executar
+
 # Plano vigente — propagação de falhas IMOB Δ1–Δ3
 
 Preparação revisável em 2026-11-16 por Codex, sem subagentes. **Nenhum stage ou commit executado.** Esta seção rege a próxima seleção; as seções anteriores estão preservadas integralmente após o marcador de histórico, inclusive seus títulos, comandos e contagens já superados.

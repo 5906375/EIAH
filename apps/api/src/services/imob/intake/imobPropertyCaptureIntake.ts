@@ -8,7 +8,7 @@ import { buildPropertyCreateForm } from "../imobTurnResolver";
 import { imobDraftReviewRef } from "../crm/imobProposalReviewContinuity";
 import type { ImobPresentationForm } from "../imobConversationContract";
 import { IMOB_PROPERTY_CAPTURE_SYSTEM_PROMPT } from "../imobAgentContract";
-import { isLLMProviderError, type LLMFailureDiagnostic } from "@eiah/core/llm/LLMProviderError";
+import { isLLMProviderError, llmFailureDiagnostic, llmDiagnosticIdentifier, type LLMFailureDiagnostic } from "@eiah/core/llm/LLMProviderError";
 
 const interpretationSchema = z.object({
   intent: z.enum(["continue", "clarify", "confirm_changes", "reject_changes", "pause", "resume", "change_subject"]),
@@ -43,8 +43,12 @@ export type ImobPropertyCaptureDiagnostic = {
   stage: "request_schema" | "provider_unavailable" | "provider_timeout" | "json_parse" | "model_schema" | "field_validation" | "evidence_mismatch" | "proposal_stale" | "accepted";
   outcome: ImobPropertyCaptureResult["outcome"];
   providerFailure?: Readonly<LLMFailureDiagnostic>;
+  traceId?: string;
+  internalFailure?: ReturnType<typeof llmFailureDiagnostic>;
 };
 export type ImobPropertyCaptureDeps = {
+  /** HTTP middleware correlation, carried unchanged through the engine. Not supplied by draft data. */
+  traceId?: string;
   interpret: (prompts: { systemPrompt: string; userPrompt: string }) => Promise<string>;
   /** Derived by the route from authenticated server facts, never from the request. */
   scope?: { tenantId: string; workspaceId: string; userId?: string | null };
@@ -82,10 +86,12 @@ function describeChanges(proposal: ImobPropertyCaptureProposal) {
 }
 
 export async function interpretImobPropertyCapture(request: ImobPropertyCaptureRequest, deps: ImobPropertyCaptureDeps): Promise<ImobPropertyCaptureResult> {
+  const traceId = llmDiagnosticIdentifier(deps.traceId);
   const checked = imobPropertyCaptureRequestSchema.safeParse(request);
-  const emit = (stage: ImobPropertyCaptureDiagnostic["stage"], result: ImobPropertyCaptureResult, providerFailure?: Readonly<LLMFailureDiagnostic>) => {
+  const emit = (stage: ImobPropertyCaptureDiagnostic["stage"], result: ImobPropertyCaptureResult, providerFailure?: Readonly<LLMFailureDiagnostic>, internalFailure?: ReturnType<typeof llmFailureDiagnostic>) => {
     // Observability must never convert a safe response into a transport failure or include raw prompts/output.
-    try { deps.observe?.({ stage, outcome: result.outcome, ...(providerFailure ? { providerFailure } : {}) }); } catch { /* best effort */ }
+    try { deps.observe?.({ stage, outcome: result.outcome, ...(traceId ? { traceId } : {}),
+      ...(providerFailure ? { providerFailure } : {}), ...(internalFailure ? { internalFailure } : {}) }); } catch { /* best effort */ }
     return result;
   };
   if (!checked.success) return emit("request_schema", { outcome: "invalid", patch: {}, content: policy.invalid });
@@ -112,7 +118,8 @@ export async function interpretImobPropertyCapture(request: ImobPropertyCaptureR
     ]);
   } catch (error) {
     return error === timeout ? failure("timeout", "provider_timeout")
-      : emit("provider_unavailable", result("unavailable", policy.unavailable), isLLMProviderError(error) ? error.diagnostic : undefined);
+      : emit("provider_unavailable", result("unavailable", policy.unavailable), isLLMProviderError(error) ? error.diagnostic : undefined,
+        isLLMProviderError(error) ? undefined : llmFailureDiagnostic(error, "interpretation"));
   }
   finally { if (timer) clearTimeout(timer); }
   let json: unknown;

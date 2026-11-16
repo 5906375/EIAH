@@ -1,4 +1,4 @@
-import test, { before, after } from "node:test";
+import test, { before, after, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import https from "node:https";
@@ -20,9 +20,19 @@ const quotaFailure = (req: ChatCompletionRequest) => new LLMProviderError({ prov
 const noIdentity: ChatCompletionResponse = { id: "", output: "conteúdo sintético", raw: {}, finishReason: "stop", provider: "openai", model: "gpt-4.1", usage: null };
 const success: ChatCompletionResponse = { ...noIdentity, id: "completion_synthetic", completionId: "completion_synthetic", requestId: "completion_synthetic",
   usage: { promptTokens: 12, completionTokens: 7, totalTokens: 19, cachedTokens: undefined } };
-const request = { model: "openai:gpt-4.1", messages: [{ role: "user" as const, content: "dados sintéticos" }], metadata: { traceId: "diagnostic-test-correlation" } };
+const request = { model: "openai:gpt-4.1", messages: [{ role: "user" as const, content: "dados sintéticos" }], metadata: { traceId: "diagnostic-test-correlation", source: "imob-property-capture-intake" } };
 const profile = { model: "openai:gpt-4.1", systemPrompt: "fixture", knowledgePolicy: { llmUsageMode: "grounded_reasoning" as const, maskingPolicy: "required" as const } };
 const execute = () => executeLlmStep({ profile, userPrompt: "dados sintéticos", metadata: request.metadata });
+const diagnosticMetadata = { ...request.metadata, source: "imob-property-capture-intake" };
+function captureDiagnostics(t: TestContext) {
+  const root = getRootStructuredLogger();
+  const streamSymbol = Object.getOwnPropertySymbols(root).find((key) => key.description === "pino.stream");
+  assert.ok(streamSymbol);
+  const stream: { write: (line: string) => unknown } = Reflect.get(root, streamSymbol);
+  const events: Array<Record<string, unknown>> = [];
+  t.mock.method(stream, "write", (line: string) => events.push(JSON.parse(line)));
+  return events;
+}
 const draft: ImobPropertyCaptureRequest = { message: "São dois quartos e uma vaga. Pode me orientar no restante?", operation: "property.create", step: "editing_form",
   draft: { propertyType: "apartamento", goal: "locacao", city: "Balneário Camboriú", bedrooms: "", garageSpots: "" },
   origin: { formId: "synthetic-form", contextRef: "synthetic-context", draftVersion: 0, threadId: "synthetic-thread", caseId: null }, pendingProposal: null, history: [] };
@@ -73,6 +83,75 @@ test("runtime: transitório esgota somente o limite existente e preserva a falha
     assert.equal(error.diagnostic.providerRequestId, "req_synthetic_3"); return true;
   });
   assert.equal(calls, 3);
+});
+
+test("diagnóstico: política e seleção falham com etapa/correlação, antes de despacho ou transporte", async (t) => {
+  const events = captureDiagnostics(t);
+  let calls = 0;
+  register(async () => { calls++; return success; });
+  await assert.rejects(executeLlmStep({ profile: { ...profile, knowledgePolicy: { llmUsageMode: "none" } },
+    userPrompt: "private synthetic prompt", metadata: diagnosticMetadata }));
+  const policyFailure = events.find((event) => event.msg === "llm.executor.failure");
+  assert.ok(policyFailure);
+  assert.equal(policyFailure.stage, "policy_check");
+  assert.equal(policyFailure.traceId, request.metadata.traceId);
+  assert.deepEqual(policyFailure.failure, { category: "internal", code: "policy_check_failed" });
+  events.length = 0;
+  await assert.rejects(executeLlmStep({ profile, userPrompt: "private synthetic prompt",
+    metadata: { ...diagnosticMetadata, provider: "synthetic-unregistered" } }));
+  const failure = events.find((event) => event.msg === "llm.completion.error");
+  assert.ok(failure);
+  assert.equal(failure.stage, "provider_resolution");
+  assert.equal(failure.traceId, request.metadata.traceId);
+  assert.equal(failure.attempt, 0);
+  assert.deepEqual(failure.failure, { category: "internal", code: "provider_resolution_failed" });
+  assert.equal(calls, 0);
+  assert.equal(events.some((event) => event.msg === "llm.completion.attempt" || event.msg === "llm.transport" || event.msg === "llm.completion.success"), false);
+  assert.doesNotMatch(JSON.stringify(events), /private synthetic prompt/);
+});
+
+test("diagnóstico: erro genérico mantém retry existente sem vazar mensagem/stack nem emitir sucesso", async (t) => {
+  const events = captureDiagnostics(t);
+  const secret = "Bearer synthetic-private-executor-secret";
+  let calls = 0;
+  register(async () => { calls++; throw Object.assign(new Error(secret), { token: secret, code: secret }); });
+  await assert.rejects(executeLlmStep({ profile, userPrompt: secret, metadata: diagnosticMetadata }));
+  assert.equal(calls, 3);
+  assert.equal(events.filter((event) => event.msg === "llm.completion.attempt").length, 3);
+  const terminal = events.filter((event) => event.msg === "llm.completion.error" || event.msg === "llm.completion.success");
+  assert.equal(terminal.length, 1);
+  assert.equal(terminal[0].msg, "llm.completion.error");
+  assert.deepEqual(terminal[0].failure, { category: "internal", code: "provider_execution_failed" });
+  assert.equal(events.some((event) => event.msg === "llm.transport"), false, "registry double is not a transport attempt");
+  assert.doesNotMatch(JSON.stringify(events), /synthetic-private-executor-secret|Bearer|"stack"|"token"/);
+});
+
+test("diagnóstico: sucesso correlacionado chega ao intake sem fabricar modelo/IDs e sem escrita", async (t) => {
+  const events = captureDiagnostics(t);
+  const inputSnapshot = JSON.stringify(draft);
+  register(async (req) => {
+    assert.equal(req.metadata?.traceId, request.metadata.traceId);
+    return { ...noIdentity, output: JSON.stringify({ intent: "continue", confidence: 0.98, changes: [
+      { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
+      { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
+    ] }) };
+  });
+  const diagnostics: unknown[] = [];
+  const result = await resolveImobPropertyCaptureTurn(draft, { traceId: request.metadata.traceId,
+    scope: { tenantId: "synthetic-tenant", workspaceId: "synthetic-workspace" },
+    observe: (event) => diagnostics.push(event),
+    interpret: async () => (await executeLlmStep({ profile, userPrompt: draft.message, metadata: diagnosticMetadata })).outputText });
+  assert.deepEqual(diagnostics, [{ stage: "accepted", outcome: "proposed", traceId: request.metadata.traceId }]);
+  assert.equal(result.propertyCapture.outcome, "proposed");
+  assert.deepEqual(result.propertyCapture.proposal?.changes, { bedrooms: "2", garageSpots: "1" });
+  assert.deepEqual(result.propertyCapture.patch, {});
+  assert.equal("executionRequest" in result, false);
+  assert.equal(JSON.stringify(draft), inputSnapshot);
+  const terminal = events.filter((event) => event.msg === "llm.completion.error" || event.msg === "llm.completion.success");
+  assert.equal(terminal.length, 1);
+  assert.equal(terminal[0].traceId, request.metadata.traceId);
+  for (const absent of ["modelUsed", "providerRequestId", "completionId"]) assert.equal(Object.hasOwn(terminal[0], absent), false);
+  assert.equal(events.some((event) => event.msg === "llm.transport"), false);
 });
 
 test("runtime: rate limit e transitório podem recuperar com a mesma policy; sucesso mantém conteúdo e uso", async () => {
