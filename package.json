@@ -162,7 +162,7 @@
     "ape:cycle:weekly": "node scripts/ci/ape_cycle_weekly.cjs",
     "audit:criticality": "pnpm exec tsx scripts/auditCriticalityCoverage.ts --out artifacts/criticality-coverage.json --allowlist scripts/criticality-allowlist.txt",
     "test:action-runner-gates": "node --import tsx --test apps/workers/action-runner/src/index.test.ts",
-    "test:llm-provider-failure": "TSX_TSCONFIG_PATH=tsconfig.base.json node --import tsx apps/api/src/tests/llm-provider-failure.test.ts",
+    "test:llm-provider-failure": "TSX_TSCONFIG_PATH=tsconfig.base.json node --import tsx --test packages/providers/tests/openai-provider-failure.test.ts apps/api/src/tests/llm-provider-failure.test.ts",
     "test:mcp-runner": "node --import tsx --test packages/mcp-runner/src/executor/MCPCircuitBreaker.test.ts packages/mcp-runner/src/validator/SchemaValidator.test.ts packages/mcp-runner/src/executor/MCPExecutor.test.ts packages/mcp-runner/src/registry/ToolRegistry.test.ts",
     "test:neon-preview-schema": "node --import tsx --test scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
     "notify:e2e-high-non-delivery": "node --import tsx scripts/notify/escalationNotice.ts",

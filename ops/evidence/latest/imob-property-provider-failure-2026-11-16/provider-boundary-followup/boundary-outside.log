@@ -1,0 +1,20 @@
+
+> eiah-builder@ check:provider-boundary /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> pnpm --filter @eiah/api exec tsx --test src/tests/provider-boundary-enforcement.test.ts
+
+TAP version 13
+# Subtest: vendor-specific provider imports stay centralized in the engine boundary
+ok 1 - vendor-specific provider imports stay centralized in the engine boundary
+  ---
+  duration_ms: 281.737916
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 493.949885
