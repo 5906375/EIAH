@@ -4,6 +4,11 @@ import { renderRecipeOrchestrationHtmlSection } from "./recipeOrchestrationRende
 
 type PlainObject = Record<string, unknown>;
 
+export const J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE =
+  "Fonte não fornecida — análise sem documento anexado real.";
+export const J360_LEGAL_SOURCE_UNKNOWN_MESSAGE =
+  "Origem da fonte não registrada nesta versão do relatório.";
+
 function isPlainObject(value: unknown): value is PlainObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -63,12 +68,21 @@ function renderEvidenceList(
     <summary>Ver evidências referenciadas (${evidenceRefs.length})</summary>
     <ul class="evidence-list">
       ${evidenceRefs
-        .map(
-          (ref) =>
-            `<li><strong>${escapeHtml(ref.document)}</strong>${ref.page ? ` · p. ${escapeHtml(ref.page)}` : ""}${
+        .map((ref) => {
+          if (ref.sourceStatus === "not_provided") {
+            return `<li class="evidence-missing"><strong>${J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE}</strong>${
               ref.section ? ` · ${escapeHtml(ref.section)}` : ""
-            }${ref.excerpt ? `<br /><small>${escapeHtml(ref.excerpt)}</small>` : ""}</li>`
-        )
+            }${ref.excerpt ? `<br /><small>${escapeHtml(ref.excerpt)}</small>` : ""}</li>`;
+          }
+          if (ref.sourceStatus === "unknown") {
+            return `<li class="evidence-unknown"><strong>${J360_LEGAL_SOURCE_UNKNOWN_MESSAGE}</strong>${
+              ref.section ? ` · ${escapeHtml(ref.section)}` : ""
+            }${ref.excerpt ? `<br /><small>${escapeHtml(ref.excerpt)}</small>` : ""}</li>`;
+          }
+          return `<li><strong>${escapeHtml(ref.document)}</strong>${ref.page ? ` · p. ${escapeHtml(ref.page)}` : ""}${
+            ref.section ? ` · ${escapeHtml(ref.section)}` : ""
+          }${ref.excerpt ? `<br /><small>${escapeHtml(ref.excerpt)}</small>` : ""}</li>`;
+        })
         .join("")}
     </ul>
   </details>`;
@@ -343,6 +357,10 @@ function buildJ360BaseHtml(params: {
         .evidence-details summary { cursor: pointer; list-style: none; padding: 10px 12px; font-weight: 600; color: ${brandAccent}; }
         .evidence-details summary::-webkit-details-marker { display: none; }
         .evidence-list { margin: 0; padding: 0 16px 12px 32px; }
+        .evidence-missing { color: #b45309; }
+        .evidence-missing strong { color: #b45309; }
+        .evidence-unknown { color: #475569; }
+        .evidence-unknown strong { color: #475569; }
         .evidence-empty { margin-top: 8px; color: #64748b; font-size: 0.9rem; }
         .pdf-footer { display: ${pdfMode ? "flex" : "none"}; justify-content: space-between; gap: 12px; font-size: 10pt; color: #475569; border-top: 1px solid #cbd5e1; padding-top: 10px; margin-top: 8px; }
         .technical-appendix { border-style: dashed; border-color: #cbd5e1; background: ${pdfMode ? "#ffffff" : "#f8fafc"}; }

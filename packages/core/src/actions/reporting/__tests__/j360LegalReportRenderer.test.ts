@@ -5,8 +5,13 @@ import {
   buildJ360LandingPageHtml,
   buildJ360PdfHtml,
   extractJ360LegalReport,
+  J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE,
+  J360_LEGAL_SOURCE_UNKNOWN_MESSAGE,
   shouldUseJ360LegalRenderer,
 } from "../j360LegalReportRenderer";
+import { J360LegalReportSchema } from "../j360LegalReportSchema";
+import { buildJ360LandingTemplateHtml } from "../renderJ360LandingPage/v1/template";
+import { buildJ360PdfTemplateHtml } from "../renderJ360Pdf/v1/template";
 
 const payload = {
   metadata: {
@@ -85,6 +90,7 @@ const payload = {
           evidenceRefs: [
             {
               document: "Politica de Premiacao Treviso.pdf",
+              sourceStatus: "provided",
               page: "2",
               section: "Natureza juridica da premiacao",
             },
@@ -121,6 +127,7 @@ const payload = {
           evidenceRefs: [
             {
               document: "Politica de Premiacao Treviso.pdf",
+              sourceStatus: "provided",
               page: "3",
               section: "Base de cálculo, coerência e ambiguidades",
             },
@@ -185,6 +192,46 @@ test("buildJ360LandingPageHtml renders clear legal sections", () => {
   assert.match(html, /IX<\/span>[\s\S]*Matriz de cobertura do parecer/i);
   assert.match(html, /Evidência referenciada/i);
   assert.doesNotMatch(html, /Deck no Figma|Deck no Canva|piloto supervisionado|API healthcheck/i);
+  // E: documento real (sourceStatus "provided") continua sendo apresentado normalmente na lista de evidências.
+  assert.match(html, /<li><strong>Politica de Premiacao Treviso\.pdf<\/strong>/i);
+  assert.doesNotMatch(html, /Fonte não fornecida/i);
+});
+
+test("buildJ360LandingPageHtml flags evidence as not provided when no real document is resolved", () => {
+  const notProvidedPayload = {
+    ...payload,
+    metadata: {
+      ...payload.metadata,
+      j360LegalReport: {
+        ...payload.metadata.j360LegalReport,
+        riskMatrix: [
+          {
+            risk: "habitualidade",
+            severity: "high",
+            relatedClause: null,
+            impact: "pode haver passivo trabalhista",
+            mitigation: "explicitar desempenho extraordinario",
+            evidenceRefs: [
+              {
+                document: null,
+                sourceStatus: "not_provided",
+                page: null,
+                section: null,
+                excerpt: null,
+              },
+            ],
+          },
+        ],
+      },
+    },
+  };
+
+  const html = buildJ360LandingPageHtml(notProvidedPayload as any);
+  // C: o placeholder fictício nunca é apresentado como se fosse uma evidência real.
+  assert.doesNotMatch(html, /Documento jurídico anexado/i);
+  // D: aviso explícito de ausência de fonte é exibido no lugar do placeholder.
+  assert.match(html, /Fonte não fornecida/i);
+  assert.match(html, /análise sem documento anexado real/i);
 });
 
 test("buildJ360PdfHtml renders coverage matrix", () => {
@@ -201,4 +248,95 @@ test("buildJ360PdfHtml renders coverage matrix", () => {
   assert.match(html, /Parecer preliminar estruturado em formato documental, pronto para impressão e arquivo\./i);
   assert.match(html, /Versão do relatório/i);
   assert.doesNotMatch(html, /Deck no Figma|Deck no Canva|piloto supervisionado|API healthcheck/i);
+});
+
+function payloadWithEvidenceStatus(sourceStatus: "provided" | "not_provided" | "unknown") {
+  const evidenceRef =
+    sourceStatus === "provided"
+      ? {
+          document: "Politica de Premiacao Treviso.pdf",
+          sourceStatus,
+          page: "3",
+          section: "Base de cálculo",
+          excerpt: null,
+        }
+      : {
+          document: null,
+          sourceStatus,
+          page: null,
+          section: null,
+          excerpt: null,
+        };
+
+  return {
+    ...payload,
+    metadata: {
+      ...payload.metadata,
+      j360LegalReport: {
+        ...payload.metadata.j360LegalReport,
+        fundamentos: payload.metadata.j360LegalReport.fundamentos.map((item) => ({
+          ...item,
+          evidenceRefs: [evidenceRef],
+        })),
+        riskMatrix: payload.metadata.j360LegalReport.riskMatrix.map((item) => ({
+          ...item,
+          evidenceRefs: [evidenceRef],
+        })),
+      },
+    },
+  };
+}
+
+test("legacy evidence source parses as unknown without inferring from document", () => {
+  const legacyReport = JSON.parse(JSON.stringify(payload.metadata.j360LegalReport));
+  delete legacyReport.riskMatrix[0].evidenceRefs[0].sourceStatus;
+  delete legacyReport.fundamentos[0].evidenceRefs[0].sourceStatus;
+
+  const parsed = J360LegalReportSchema.parse(legacyReport);
+
+  assert.equal(parsed.riskMatrix[0]?.evidenceRefs[0]?.sourceStatus, "unknown");
+  assert.equal(parsed.fundamentos[0]?.evidenceRefs[0]?.sourceStatus, "unknown");
+  assert.equal(parsed.riskMatrix[0]?.evidenceRefs[0]?.document, "Politica de Premiacao Treviso.pdf");
+});
+
+test("legacy parse followed by serialization does not write back sourceStatus", () => {
+  const legacyReport = JSON.parse(JSON.stringify(payload.metadata.j360LegalReport));
+  delete legacyReport.riskMatrix[0].evidenceRefs[0].sourceStatus;
+  delete legacyReport.fundamentos[0].evidenceRefs[0].sourceStatus;
+
+  const serialized = JSON.stringify(J360LegalReportSchema.parse(legacyReport));
+
+  assert.doesNotMatch(serialized, /"sourceStatus"/);
+});
+
+test("core landing and PDF render all source states without collapsing unknown", () => {
+  const renderers = [
+    buildJ360LandingPageHtml,
+    buildJ360PdfHtml,
+  ];
+
+  for (const render of renderers) {
+    const providedHtml = render(payloadWithEvidenceStatus("provided") as any);
+    const notProvidedHtml = render(payloadWithEvidenceStatus("not_provided") as any);
+    const unknownHtml = render(payloadWithEvidenceStatus("unknown") as any);
+
+    assert.match(providedHtml, /Politica de Premiacao Treviso\.pdf/);
+    assert.doesNotMatch(providedHtml, new RegExp(J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE));
+    assert.doesNotMatch(providedHtml, new RegExp(J360_LEGAL_SOURCE_UNKNOWN_MESSAGE));
+    assert.match(notProvidedHtml, new RegExp(J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE));
+    assert.doesNotMatch(notProvidedHtml, new RegExp(J360_LEGAL_SOURCE_UNKNOWN_MESSAGE));
+    assert.match(unknownHtml, new RegExp(J360_LEGAL_SOURCE_UNKNOWN_MESSAGE));
+    assert.doesNotMatch(unknownHtml, new RegExp(J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE));
+  }
+});
+
+test("thin landing and PDF template wrappers preserve unknown source semantics", () => {
+  const unknownPayload = payloadWithEvidenceStatus("unknown") as any;
+  const landingHtml = buildJ360LandingTemplateHtml(unknownPayload);
+  const pdfHtml = buildJ360PdfTemplateHtml(unknownPayload);
+
+  for (const html of [landingHtml, pdfHtml]) {
+    assert.match(html, new RegExp(J360_LEGAL_SOURCE_UNKNOWN_MESSAGE));
+    assert.doesNotMatch(html, new RegExp(J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE));
+  }
 });
