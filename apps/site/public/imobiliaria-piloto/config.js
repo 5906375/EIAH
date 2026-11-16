@@ -1,13 +1,12 @@
-// Somente informações públicas. Nunca inserir tokens, credenciais ou IDs de acesso.
-// Manter contatos desativados até configurar e validar os dados reais.
+// Configuração pública. Nunca inserir credenciais ou documentos pessoais.
 window.IMOB_PILOT_CONFIG = Object.freeze({
-  nome: "Imobiliária piloto — prévia",
-  sigla: "IP",
-  creci: "CRECI pendente",
-  cnpj: "CNPJ pendente",
-  endereco: "Endereço comercial pendente",
-  telefone: "Contato pendente",
-  whatsapp: "",
+  nome: "EIAH Imóveis",
+  sigla: "EIAH",
+  creci: "Lene · CRECI 66990F",
+  cnpj: "",
+  endereco: "Atendimento com Lene · combine pelo WhatsApp",
+  telefone: "(47) 99994-1470",
+  whatsapp: "5547999941470",
   email: "",
-  contactsEnabled: false,
+  contactsEnabled: true,
 });

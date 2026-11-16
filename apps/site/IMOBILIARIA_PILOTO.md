@@ -1,23 +1,47 @@
-# Demonstração e imobiliária piloto
+# EIAH Imóveis — demonstração e operação piloto
 
-## Rotas
+## Rotas e identidade
 
-- `/imobiliarias/`: demonstração comercial EIAH com dados fictícios e contatos desativados.
-- `/imobiliaria-piloto/`: cópia de preparação, ainda com imóveis ilustrativos, sem cliente real definido.
+- `/imobiliarias/`: demonstração comercial EIAH, com dados fictícios e contatos desativados.
+- `/imobiliaria-piloto/`: EIAH Imóveis, logo oficial EIAH, contato Lene, CRECI 66990F, WhatsApp +55 47 99994-1470.
+- `/imobiliaria-piloto/autorizar/`: formulário para preparar o termo de autorização de divulgação.
 
-A pasta `public/` já é servida pelo Worker `eiah-site`. Estas rotas não alteram a landing nem exigem outro Worker. A presença no repositório não comprova publicação.
+A configuração pública está em `public/imobiliaria-piloto/config.js`. CNPJ, e-mail e endereço comercial não foram fornecidos e não são inventados. O nome civil completo da responsável e a UF do CRECI precisam ser conferidos na versão assinada. CRECI informado pelo usuário; não houve validação do registro no conselho.
 
-## Preparação para operação real
+A pasta `public/` já é servida pelo Worker `eiah-site`. Estas rotas não alteram landing, Worker nem configuração Cloudflare. Código no repositório não comprova publicação.
 
-1. Informar nome, logo, CRECI, CNPJ, contatos e endereço comercial autorizados.
-2. Editar `public/imobiliaria-piloto/config.js` e substituir a lista `IMOVEIS` no HTML por anúncios autorizados, com fotos e valores conferidos.
-3. Conferir endereço público restrito a bairro/cidade e remover a identificação de prévia somente após revisão dos dados.
-4. Habilitar os contatos somente com número e e-mail reais validados. Formulários continuam demonstrativos mesmo com `contactsEnabled: true`.
-5. Implementar e validar separadamente o recebimento público: vínculo server-side à empresa/workspace e imóvel, validação, proteção contra abuso, deduplicação, criação de interessado/caso nos serviços IMOB existentes e confirmação baseada na gravação real.
-6. Conferir desktop/celular, busca, filtros, comparação, favoritos, simulação e contato. Publicar pelo procedimento Cloudflare existente e conferir as duas rotas após deploy.
+## Autorização de divulgação
 
-Não há integração ao Front Door/IMOB, sincronização de carteira, reservas de temporada nem tokenização nesta entrega. Busca é interpretação local; não é chamada a modelo generativo. Simulação não é proposta de crédito. `noindex,nofollow` não é controle de acesso. Não colocar credenciais ou IDs que concedam acesso nos arquivos públicos.
+O visitante escolhe o vínculo (proprietário, coproprietário, corretor, gestor ou representante), informa titulares e imóvel, preço, prazo, canais e restrições. Representantes e coproprietários devem descrever a origem dos poderes. Corretores informam CRECI/UF. Nenhum canal ou declaração vem pré-marcado.
 
-## Manutenção
+O termo identifica a versão, o horário de geração, os limites de uso do material, localização pública restrita ao bairro/cidade e contato para retirada. Não estabelece exclusividade ou comissão. Preço de temporada é por diária; locação é aluguel mensal base.
 
-A cópia piloto preserva o HTML original. Mudanças comuns futuras devem ser reconciliadas entre as duas rotas; a configuração pública da piloto fica separada. Favoritos da piloto usam namespace próprio no navegador.
+A geração é local. Não há upload, POST, banco, protocolo de recebimento, assinatura verificada, registro de caso IMOB nem publicação automática. Os campos não são salvos no armazenamento do navegador. O visitante pode baixar texto ou imprimir/salvar PDF, assinar e encaminhar o documento à Lene pelo canal combinado. O link do WhatsApp contém somente mensagem genérica, sem dados do formulário; o arquivo deve ser anexado pelo visitante. Alterar um campo invalida a prévia anterior.
+
+Antes de publicar um anúncio: conferir documento assinado, identificação das partes, poderes, anuência de outros titulares quando aplicável, direitos sobre materiais, condições, preço, canais e vigência. Rever juridicamente o modelo para o uso pretendido. Não tratar simples marcação de checkbox como comprovação de assinatura ou de poderes.
+
+Referências consultadas em 16/11/2026:
+
+- [Lei 6.530/1978, texto atualizado na Câmara](https://www2.camara.leg.br/legin/fed/lei/1970-1979/lei-6530-12-maio-1978-365766-normaatualizada-pl.html), especialmente art. 20, III e IV.
+- [Direitos dos titulares — ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados/direito-dos-titulares).
+
+## Carteira e continuidade
+
+A lista `IMOVEIS` da piloto está vazia. Os exemplos continuam somente na demonstração. Insira ofertas reais após conferir a autorização; não publique dados pessoais, endereço completo ou documentação do proprietário.
+
+Próxima integração: recebimento público autenticado/protegido contra abuso, vínculo server-side à empresa/workspace e imóvel, validação, deduplicação e confirmação da gravação nos serviços IMOB existentes. Também definir retenção e acesso aos registros recebidos. Não colocar credenciais ou identificadores que concedam acesso no site.
+
+A busca atual é interpretação local, sem chamada a modelo generativo. Não há gestão completa de temporada, sincronização de carteira ou tokenização. `noindex,nofollow` não é controle de acesso.
+
+## Validação realizada nesta unidade
+
+- Sintaxe JavaScript de config, módulos e script inline.
+- Exercícios de geração do termo: canais, representação, CRECI, datas, preço e declarações; rejeição de entradas inválidas.
+- Navegador: identidade e logo visíveis, formulário, campos condicionais de gestor, geração com dados fictícios e invalidação da prévia após edição.
+- Check documental canônico e `git diff --check`.
+
+Não realizados: assinatura efetiva, transmissão ao WhatsApp, recebimento no IMOB, validação do CRECI, revisão jurídica, testes em dispositivo móvel real e deploy Cloudflare.
+
+## Manutenção e publicação
+
+A cópia preserva a demonstração. Reconciliar melhorias comuns entre as rotas; favoritos da piloto usam namespace próprio. Publicar pelo fluxo Cloudflare existente após revisão, conferir as rotas e preservar rollback. Não habilitar anúncios a partir de autorizações vencidas ou não conferidas.
