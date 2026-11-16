@@ -3,10 +3,10 @@
 ## Rotas e identidade
 
 - `/imobiliarias/`: demonstração comercial EIAH, com dados fictícios e contatos desativados.
-- `/imobiliaria-piloto/`: EIAH Imóveis, logo oficial EIAH, contato Lene, CRECI 66990F, WhatsApp +55 47 99994-1470.
+- `/imobiliaria-piloto/`: EIAH Imóveis, logo oficial EIAH, responsável Carlos A. Merlo, CRECI-SC 66990F; contato de atendimento Lene, WhatsApp +55 47 99994-1470.
 - `/imobiliaria-piloto/autorizar/`: formulário para preparar o termo de autorização de divulgação.
 
-A configuração pública está em `public/imobiliaria-piloto/config.js`. CNPJ, e-mail e endereço comercial não foram fornecidos e não são inventados. O nome civil completo da responsável e a UF do CRECI precisam ser conferidos na versão assinada. CRECI informado pelo usuário; não houve validação do registro no conselho.
+A configuração pública está em `public/imobiliaria-piloto/config.js`. CNPJ, e-mail e endereço comercial não foram fornecidos e não são inventados. Nome do responsável e UF fornecidos pelo usuário: Carlos A. Merlo, SC. A abreviação foi preservada conforme informada. CRECI informado pelo usuário; não houve validação do registro no conselho.
 
 A pasta `public/` já é servida pelo Worker `eiah-site`. Estas rotas não alteram landing, Worker nem configuração Cloudflare. Código no repositório não comprova publicação.
 
@@ -16,7 +16,7 @@ O visitante escolhe o vínculo (proprietário, coproprietário, corretor, gestor
 
 O termo identifica a versão, o horário de geração, os limites de uso do material, localização pública restrita ao bairro/cidade e contato para retirada. Não estabelece exclusividade ou comissão. Preço de temporada é por diária; locação é aluguel mensal base.
 
-A geração é local. Não há upload, POST, banco, protocolo de recebimento, assinatura verificada, registro de caso IMOB nem publicação automática. Os campos não são salvos no armazenamento do navegador. O visitante pode baixar texto ou imprimir/salvar PDF, assinar e encaminhar o documento à Lene pelo canal combinado. O link do WhatsApp contém somente mensagem genérica, sem dados do formulário; o arquivo deve ser anexado pelo visitante. Alterar um campo invalida a prévia anterior.
+A geração é local. Não há upload, POST, banco, protocolo de recebimento, assinatura verificada, registro de caso IMOB nem publicação automática. Os campos não são salvos no armazenamento do navegador. O visitante pode baixar texto ou imprimir/salvar PDF, assinar e encaminhar o documento à Lene pelo canal combinado. O termo v2 identifica Carlos A. Merlo como responsável e Lene como contato de atendimento. O link do WhatsApp contém somente mensagem genérica, sem dados do formulário; o arquivo deve ser anexado pelo visitante. Alterar um campo invalida a prévia anterior.
 
 Antes de publicar um anúncio: conferir documento assinado, identificação das partes, poderes, anuência de outros titulares quando aplicável, direitos sobre materiais, condições, preço, canais e vigência. Rever juridicamente o modelo para o uso pretendido. Não tratar simples marcação de checkbox como comprovação de assinatura ou de poderes.
 

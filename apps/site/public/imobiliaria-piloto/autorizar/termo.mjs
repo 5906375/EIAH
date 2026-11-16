@@ -1,4 +1,4 @@
-export const TERM_VERSION = 'eiah-imoveis-divulgacao-v1-2026-11-16';
+export const TERM_VERSION = 'eiah-imoveis-divulgacao-v2-2026-11-16';
 export const CHANNELS = Object.freeze({ site: 'Site EIAH Imóveis', instagram: 'Instagram EIAH', facebook: 'Facebook EIAH', linkedin: 'LinkedIn EIAH', whatsapp: 'Apresentação a interessados pelo WhatsApp', portais: 'Portais imobiliários identificados nas observações' });
 export const ROLES = Object.freeze({ proprietario: 'Proprietário(a)', coproprietario: 'Coproprietário(a)', corretor: 'Corretor(a)', gestor: 'Gestor(a)', representante: 'Representante / procurador(a)' });
 export const PURPOSES = Object.freeze({ venda: 'Venda', locacao: 'Locação', temporada: 'Locação por temporada' });
@@ -34,7 +34,8 @@ Telefone: ${data.phone}${data.email ? `\nE-mail: ${data.email}` : ''}
 Qualidade: ${ROLES[data.role]}${data.creci ? `\nCRECI do autorizante: ${data.creci}` : ''}
 Proprietário(s) / titular(es) representado(s): ${data.ownerName}
 Origem dos poderes / autorização: ${data.authority || 'Declaração de propriedade, sujeita à conferência documental.'}
-Destinatária: Lene, CRECI 66990F, contato (47) 99994-1470, sob a identificação comercial EIAH Imóveis. A identificação civil completa da responsável deve constar na versão assinada.
+Destinatário / responsável: Carlos A. Merlo, CRECI-SC 66990F, sob a identificação comercial EIAH Imóveis.
+Contato de atendimento: Lene · (47) 99994-1470.
 
 2. IMÓVEL E OFERTA
 Identificação / endereço completo (uso reservado à conferência): ${data.property}
@@ -44,32 +45,32 @@ Valor autorizado para anúncio: ${currency}${data.purpose === 'temporada' ? ' po
 Condomínio, IPTU, taxas, condições e restrições devem ser conferidos antes da publicação.
 
 3. ALCANCE DA AUTORIZAÇÃO
-Autorizo a EIAH Imóveis, por intermédio da responsável acima identificada, a divulgar este imóvel, suas características, o valor acima e as fotografias, vídeos e textos que eu fornecer e tiver direito de autorizar, exclusivamente nos seguintes canais:
+Autorizo a EIAH Imóveis, por intermédio do responsável acima identificado, a divulgar este imóvel, suas características, o valor acima e as fotografias, vídeos e textos que eu fornecer e tiver direito de autorizar, exclusivamente nos seguintes canais:
 ${channels.map(k => '- ' + CHANNELS[k]).join('\n')}
 A divulgação pública deve limitar a localização ao bairro e cidade. Endereço completo, nome, telefone, e-mail e documentos do proprietário/autorizante não integram a autorização de publicação.
 Permito ajustes de formato, recorte e correção de texto que não alterem as características reais do imóvel. Outros canais, mudança de preço ou ampliação material do uso exigem nova autorização.
 
 4. PRAZO E CANCELAMENTO
-Esta autorização começa com sua assinatura e é válida até ${date}. Posso solicitar a retirada dos anúncios ou alteração pelo contato da Lene: (47) 99994-1470. A solicitação será conferida e a retirada será providenciada nos canais sob gestão da responsável, com informação sobre eventuais limitações de plataformas de terceiros.
+Esta autorização começa com sua assinatura e é válida até ${date}. Posso solicitar a retirada dos anúncios ou alteração pelo contato da Lene: (47) 99994-1470. A solicitação será conferida e a retirada será providenciada nos canais sob gestão do responsável, com informação sobre eventuais limitações de plataformas de terceiros.
 
 5. DECLARAÇÕES E LIMITES
 Declaro que sou titular com poderes para autorizar ou possuo autorização válida e suficiente dos titulares, inclusive para compartilhar o material com a EIAH Imóveis. Apresentarei comprovação de propriedade, representação, anuência de outros titulares e direitos sobre o material quando solicitada. Ser corretor, gestor ou coproprietário, por si só, não comprova poderes suficientes para esta divulgação.
 Declaro que as informações e materiais são verdadeiros e que comunicarei alterações de disponibilidade e condições. Evitarei fornecer imagens de pessoas identificáveis ou documentos pessoais para publicação sem autorização própria.
 Este termo trata de divulgação, sem estabelecer exclusividade, comissão, administração, garantia de resultado ou poderes para assinar contratos, receber valores ou transferir direitos. Eventual intermediação, remuneração e demais serviços serão ajustados por instrumento próprio. Não autoriza tokenização nem emissão de ativos digitais.
-A assinatura e a documentação serão conferidas pela responsável antes de publicar. O preenchimento e a geração deste arquivo não publicam anúncio nem comprovam recebimento, identidade, titularidade ou assinatura.
+A assinatura e a documentação serão conferidas pelo responsável antes de publicar. O preenchimento e a geração deste arquivo não publicam anúncio nem comprovam recebimento, identidade, titularidade ou assinatura.
 
 6. DADOS PESSOAIS
-Os dados preenchidos neste formulário são usados localmente para gerar este termo; não são enviados pelo formulário nem salvos no armazenamento do navegador. Após o envio voluntário do documento assinado à responsável, serão usados para conferir a autorização, tratar o anúncio e manter o registro necessário, com acesso limitado aos envolvidos. O envio pelo WhatsApp utiliza também os serviços e as regras de privacidade dessa plataforma. Para informações, correção, retirada da divulgação e exercício de direitos sobre dados, contate Lene em (47) 99994-1470. Não há autorização para campanhas de marketing a terceiros neste termo.
+Os dados preenchidos neste formulário são usados localmente para gerar este termo; não são enviados pelo formulário nem salvos no armazenamento do navegador. Após o envio voluntário do documento assinado ao responsável, serão usados para conferir a autorização, tratar o anúncio e manter o registro necessário, com acesso limitado aos envolvidos. O envio pelo WhatsApp utiliza também os serviços e as regras de privacidade dessa plataforma. Para informações, correção, retirada da divulgação e exercício de direitos sobre dados, contate Lene em (47) 99994-1470. Não há autorização para campanhas de marketing a terceiros neste termo.
 
 7. OBSERVAÇÕES E RESTRIÇÕES
 ${data.notes || 'Nenhuma observação adicional informada.'}
 
 Local e data da assinatura: ______________________________________
-Nome civil completo da responsável / UF do CRECI: __________________
+Responsável: Carlos A. Merlo · CRECI-SC 66990F
 Assinatura do autorizante: ________________________________________
 Assinatura de outros titulares / representantes, quando necessária:
 _________________________________________________________________
 
-Após assinar, encaminhe este termo e a comprovação de poderes à responsável por canal combinado. Guarde uma cópia. Modelo inicial sujeito à revisão jurídica e à conferência das partes antes do uso operacional.`;
+Após assinar, encaminhe este termo e a comprovação de poderes ao responsável por canal combinado. Guarde uma cópia. Modelo inicial sujeito à revisão jurídica e à conferência das partes antes do uso operacional.`;
   return Object.freeze({ text, version: TERM_VERSION, generatedAt: now.toISOString(), endDate: data.endDate });
 }

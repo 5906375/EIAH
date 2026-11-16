@@ -2,7 +2,7 @@
 window.IMOB_PILOT_CONFIG = Object.freeze({
   nome: "EIAH Imóveis",
   sigla: "EIAH",
-  creci: "Lene · CRECI 66990F",
+  creci: "Carlos A. Merlo · CRECI-SC 66990F",
   cnpj: "",
   endereco: "Atendimento com Lene · combine pelo WhatsApp",
   telefone: "(47) 99994-1470",
