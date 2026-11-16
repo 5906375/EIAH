@@ -1,6 +1,7 @@
 import test, { type TestContext } from "node:test";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { LLMProviderError } from "@eiah/core/llm/LLMProviderError";
 import assert from "node:assert/strict";
 import { IMOB_ACTION_MENUS, type ImobActionMenuItem } from "@/features/imob/imobActionMenus";
 import { createImobStructuredForms } from "./createImobStructuredForms";
@@ -2605,12 +2606,43 @@ test("cadastro: falhas, timeout do cliente e payload inválido encerram espera e
     assert.equal(tracker.pendingCount(), 0);
     assert.equal(harness.getPropertyCaptureContext(), "active");
     assert.deepEqual(harness.getValues()[form.id], { city: "Balneário Camboriú" });
-    assert.match(harness.messages().at(-1)!.text, /preservados.*sem gravar/);
+    assert.equal(harness.messages().at(-1)!.text, propertyPolicy[mode === "error" ? "unavailable" : mode === "timeout" ? "timeout" : "invalid"]);
     const message: any = toLauncherMessage(harness.messages().at(-1)!);
     assert.equal(resolveSnapshotInputPlaceholder(message.presentationSnapshot), propertyPolicy.placeholder);
   }
 });
 
+
+test("cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita", async (t) => {
+  const tracker = createPendingWorkTracker(() => "property-failure-scope");
+  const network: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: any) => { network.push(String(input)); throw new Error("nenhuma escrita ou rede permitida"); });
+  let fail = false;
+  let reject!: (error: Error) => void;
+  const delayed = new Promise<string>((_, no) => { reject = no; });
+  const harness = propertyHarness(async () => fail ? delayed : interpretedProperty("", [
+    { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
+    { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
+  ]), { trackPending: tracker.track });
+  harness.edit({ address: "Rua Sintética", ownerId: "synthetic-owner" });
+  await harness.consumeOperationalTurn("continue", "São dois quartos e uma vaga.");
+  const proposal = structuredClone(harness.messages().find((message) => message.id === harness.form.id)!.propertyCaptureProposal);
+  assert.ok(proposal);
+  const values = structuredClone(harness.getValues());
+  fail = true;
+  const pending = harness.consumeOperationalTurn("continue", "Pode aplicar a proposta?");
+  assert.ok(tracker.pendingCount() > 0);
+  reject(new LLMProviderError({ provider: "openai", model: "gpt-4.1", code: "credit_balance_exhausted", providerType: "insufficient_quota", httpStatus: 429 }));
+  assert.equal(await pending, true, "turno consumido no IMOB; não libera roteamento para outro domínio");
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.getValues(), values);
+  assert.deepEqual(harness.messages().find((message) => message.id === harness.form.id)!.propertyCaptureProposal, proposal);
+  assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.equal(harness.messages().at(-1)!.text, propertyPolicy.unavailable);
+  assert.equal(harness.messages().find((message) => message.id === harness.form.id)!.form?.submitTarget, harness.form.form?.submitTarget);
+  assert.deepEqual(network, [], "nenhum save, run ou chamada real");
+  assert.equal(resolveSnapshotInputPlaceholder(toLauncherMessage(harness.messages().at(-1)!).presentationSnapshot), propertyPolicy.confirmationPlaceholder);
+});
 
 test("cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa", async () => {
   let step = "propose";

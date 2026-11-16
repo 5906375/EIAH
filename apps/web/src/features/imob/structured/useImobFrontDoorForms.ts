@@ -26,6 +26,8 @@ export type FrontDoorMessageLike = {
   role: "user" | "assistant" | "system";
   content: string;
   imobStructured?: StructuredMessage;
+  /** Produced by toLauncherMessage and rendered by the launcher. */
+  presentationSnapshot?: MessagePresentationSnapshot;
   /** Gravado no histórico persistido do IMOB (FD-IMOB-PERSISTENCE-001); evita gravar de novo ao restaurar. */
   imobPersisted?: PersistedTag;
 };

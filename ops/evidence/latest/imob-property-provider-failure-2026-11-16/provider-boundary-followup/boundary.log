@@ -1,0 +1,28 @@
+
+> eiah-builder@ check:provider-boundary /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> pnpm --filter @eiah/api exec tsx --test src/tests/provider-boundary-enforcement.test.ts
+
+node:net:1918
+      const error = new UVExceptionWithHostPort(rval, 'listen', address, port);
+                    ^
+
+Error: listen EPERM: operation not permitted /tmp/tsx-1000/83.pipe
+    at Server.setupListenHandle [as _listen2] (node:net:1918:21)
+    at listenInCluster (node:net:1997:12)
+    at Server.listen (node:net:2119:5)
+    at file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:53:31537
+    at new Promise (<anonymous>)
+    at createIpcServer (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:53:31515)
+    at async file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/tsx@4.21.0/node_modules/tsx/dist/cli.mjs:55:459 {
+  code: 'EPERM',
+  errno: -1,
+  syscall: 'listen',
+  address: '/tmp/tsx-1000/83.pipe',
+  port: -1
+}
+
+Node.js v22.17.1
+undefined
+/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: tsx --test src/tests/provider-boundary-enforcement.test.ts
+ ELIFECYCLE  Command failed with exit code 1.

@@ -1,0 +1,17 @@
+{
+  "ok": false,
+  "check": "check:evidence-index",
+  "message": "EVIDENCE_INDEX has missing file references",
+  "details": {
+    "missingCount": 7,
+    "missingRefs": [
+      "packages/mcp-runner/src/registry/ToolRegistry.test.ts@676a788f85f0eb03b78a19341ced28e08a58ea89",
+      "apps/api/src/workers/runWorkerActionResolution.ts@8f9852f75ec6830a34fa2ed14538032a7d03c847",
+      "apps/api/src/services/executionEvidence.ts@8bb81684a16f52cfb18a97b488ac0a2c1b6dd54c",
+      "packages/mcp-runner/src/executor/dbAllowlist.ts@c99e6bb76fbeab2cd716cea3124e4fb7a39f5b08",
+      "packages/db/prisma/migrations/20260723120000_tool_contract_tenant_name_version_unique/migration.sql@aee58604bfa8bf9afd9d17add4b7dbf45d9c9220",
+      "ops/evidence/latest/ape-weekly-cycle-run47-2026-07-23.md@db02d53335e500d99ffa55bbdad07c6aff32325c",
+      "scripts/checkEvidenceIndex.ts@aee58604bfa8bf9afd9d17add4b7dbf45d9c9220"
+    ]
+  }
+}

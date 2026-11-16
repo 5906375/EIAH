@@ -35,6 +35,10 @@ export type CapabilityResult = {
   output: Record<string, unknown>;
   providerUsed?: string;
   modelUsed?: string;
+  modelRequested?: string;
+  completionId?: string;
+  providerRequestId?: string;
+  /** Legacy accounting reference; not necessarily a provider request ID. */
   requestId?: string;
   usage?: ChatCompletionUsage | null;
   normalized: boolean;
@@ -156,6 +160,19 @@ function buildCapabilityMetadata(
   };
 }
 
+function isDeterministicResult(result: LlmExecutorResult) {
+  return typeof result.rawResponse === "object" && result.rawResponse !== null
+    && "mode" in result.rawResponse && result.rawResponse.mode === "deterministic_only";
+}
+
+// Integration failure before metering: never return success after silently dropping usage.
+// Resolving ID-less metering requires a separate financial contract; do not invent a key here.
+class CapabilityUsageIdentityUnavailableError extends Error {
+  readonly retryable = false;
+  readonly generationCompleted = true;
+  constructor() { super("capability_usage_identity_unavailable"); this.name = "CapabilityUsageIdentityUnavailableError"; }
+}
+
 function normalizeCapabilityResult(
   route: CapabilityExecutionRoute,
   attemptedRoutes: CapabilityExecutionRoute[],
@@ -176,15 +193,18 @@ function normalizeCapabilityResult(
     "model" in llmResult.rawResponse &&
     typeof (llmResult.rawResponse as { model?: unknown }).model === "string"
       ? ((llmResult.rawResponse as { model: string }).model as string)
-      : stripProviderPrefix(route.model);
+      : llmResult.modelUsed;
 
   return {
     status: fallbackUsed ? "fallback_used" : "ok",
     output: {
       text: llmResult.outputText,
     },
-    providerUsed,
-    modelUsed,
+    providerUsed: isDeterministicResult(llmResult) ? undefined : providerUsed,
+    modelUsed: isDeterministicResult(llmResult) ? undefined : modelUsed,
+    modelRequested: stripProviderPrefix(route.model),
+    completionId: llmResult.completionId,
+    providerRequestId: llmResult.providerRequestId,
     requestId: llmResult.requestId,
     usage: llmResult.usage ?? null,
     normalized: true,
@@ -313,10 +333,16 @@ export async function executeCapability(params: CapabilityExecutionParams): Prom
         metadata: buildCapabilityMetadata(params, route, plan, index),
       });
 
+      if (!isDeterministicResult(result) && typeof params.request.context.runId === "string" && params.request.context.runId.trim()
+        && params.request.policyContext?.tenantId && params.request.policyContext.workspaceId
+        && !result.requestId?.trim()) throw new CapabilityUsageIdentityUnavailableError();
+
       await recordCapabilityUsage(params, route, result);
 
       return normalizeCapabilityResult(route, attemptedRoutes, result, index > 0);
     } catch (error) {
+      // Repeating generation cannot repair the missing accounting identity.
+      if (error instanceof CapabilityUsageIdentityUnavailableError) throw error;
       lastError = error;
       if (index === plan.routes.length - 1) {
         throw error;

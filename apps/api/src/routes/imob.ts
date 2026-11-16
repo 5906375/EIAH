@@ -1741,7 +1741,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
         if (!profile || profile.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
         const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
           knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
-          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true } });
+          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId: crypto.randomUUID() } });
         return result.outputText;
       },
     }) });

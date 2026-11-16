@@ -8,6 +8,7 @@ import { buildPropertyCreateForm } from "../imobTurnResolver";
 import { imobDraftReviewRef } from "../crm/imobProposalReviewContinuity";
 import type { ImobPresentationForm } from "../imobConversationContract";
 import { IMOB_PROPERTY_CAPTURE_SYSTEM_PROMPT } from "../imobAgentContract";
+import { isLLMProviderError, type LLMFailureDiagnostic } from "@eiah/core/llm/LLMProviderError";
 
 const interpretationSchema = z.object({
   intent: z.enum(["continue", "clarify", "confirm_changes", "reject_changes", "pause", "resume", "change_subject"]),
@@ -41,6 +42,7 @@ function validField(field: string, value: string) {
 export type ImobPropertyCaptureDiagnostic = {
   stage: "request_schema" | "provider_unavailable" | "provider_timeout" | "json_parse" | "model_schema" | "field_validation" | "evidence_mismatch" | "proposal_stale" | "accepted";
   outcome: ImobPropertyCaptureResult["outcome"];
+  providerFailure?: Readonly<LLMFailureDiagnostic>;
 };
 export type ImobPropertyCaptureDeps = {
   interpret: (prompts: { systemPrompt: string; userPrompt: string }) => Promise<string>;
@@ -81,9 +83,9 @@ function describeChanges(proposal: ImobPropertyCaptureProposal) {
 
 export async function interpretImobPropertyCapture(request: ImobPropertyCaptureRequest, deps: ImobPropertyCaptureDeps): Promise<ImobPropertyCaptureResult> {
   const checked = imobPropertyCaptureRequestSchema.safeParse(request);
-  const emit = (stage: ImobPropertyCaptureDiagnostic["stage"], result: ImobPropertyCaptureResult) => {
+  const emit = (stage: ImobPropertyCaptureDiagnostic["stage"], result: ImobPropertyCaptureResult, providerFailure?: Readonly<LLMFailureDiagnostic>) => {
     // Observability must never convert a safe response into a transport failure or include raw prompts/output.
-    try { deps.observe?.({ stage, outcome: result.outcome }); } catch { /* best effort */ }
+    try { deps.observe?.({ stage, outcome: result.outcome, ...(providerFailure ? { providerFailure } : {}) }); } catch { /* best effort */ }
     return result;
   };
   if (!checked.success) return emit("request_schema", { outcome: "invalid", patch: {}, content: policy.invalid });
@@ -108,7 +110,10 @@ export async function interpretImobPropertyCapture(request: ImobPropertyCaptureR
       }) }),
       new Promise<never>((_, reject) => { timer = setTimeout(() => reject(timeout), deps.timeoutMs ?? policy.timeoutMs); }),
     ]);
-  } catch (error) { return failure(error === timeout ? "timeout" : "unavailable", error === timeout ? "provider_timeout" : "provider_unavailable"); }
+  } catch (error) {
+    return error === timeout ? failure("timeout", "provider_timeout")
+      : emit("provider_unavailable", result("unavailable", policy.unavailable), isLLMProviderError(error) ? error.diagnostic : undefined);
+  }
   finally { if (timer) clearTimeout(timer); }
   let json: unknown;
   try { json = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "")); }
