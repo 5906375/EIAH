@@ -91,6 +91,15 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
         run: pnpm test:action-runner-gates
 
+      - name: Run LLM provider failure propagation tests (synthetic transport only)
+        run: pnpm test:llm-provider-failure
+
+      - name: Run capability metadata regression (deterministic only)
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
+          TSX_TSCONFIG_PATH: tsconfig.base.json
+        run: node --import tsx --test-name-pattern=^executeCapability apps/api/src/tests/capability-execution.test.ts
+
       - name: Run Tests
         env:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public

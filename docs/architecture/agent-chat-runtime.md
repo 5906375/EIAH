@@ -506,3 +506,214 @@ Backlog documental futuro:
 - `vertical-context-imob.md`
 - `vertical-context-legal.md`
 - `chat-rollout-metrics.md`
+
+## PROPOSTA — contrato transversal de execução de IA da EIAH
+
+Data: **2026-11-16**. Estado: **PROPOSTA, pendente de ratificação**.
+
+Esta seção propõe um contrato comportamental transversal para os agentes atuais e futuros. Não constitui schema executável, contrato público novo, autorização de fallback, política comercial, alteração de billing ou prova de conformidade dos runtimes. As diretrizes vigentes nas seções anteriores continuam válidas. Nesta seção, requisitos adicionais são condições propostas para adoção futura, não decisões já ratificadas.
+
+A fonte documental é estendida aqui para evitar documento concorrente. Não se cria ADR nem se reserva número de ADR. A implementação de propagação de falhas foi pausada durante a revisão e retomada somente no recorte Δ1–Δ3 autorizado abaixo; seus tipos locais não são o contrato transversal definitivo.
+
+### Fontes reutilizadas e fronteira entre norma e implementação
+
+| Fonte existente | Papel preservado | Limite observado |
+| --- | --- | --- |
+| [Roadmap vigente](../../ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md), [AGENTS](../../AGENTS.md), seções anteriores deste documento | Arquitetura agent-driven, linguagem natural, governança e separação entre interpretação e efeitos | Não declaram todos os runtimes conformes nem autorizam operação de verticais contextuais |
+| [Presentation snapshot v1](./presentation-snapshot-v1.md) | Resultado de apresentação resolvido pelo engine; launcher renderiza | Snapshot apresentado não prova conclusão de execução |
+| [Perfis e disponibilidade](../../apps/api/src/services/agents.ts), [perfil EIAH](../../packages/core/src/actions/agents/eiahAction.ts), [executor](../../apps/api/src/orchestrator/llmExecutor.ts) | Perfil disponível no workspace, knowledge policy, masking e chamada ao runtime central | Perfil canônico de diagnóstico não prova perfil efetivo de staging; política de conhecimento não substitui autorização financeira |
+| [Tipos LLM](../../packages/core/src/llm/types.ts), [LLMProvider](../../packages/core/src/llm/LLMProvider.ts), [router](../../packages/core/src/llm/LLMRouter.ts), [registry](../../packages/core/src/llm/LLMRegistry.ts), [completion](../../packages/core/src/llm/completionEngine.ts) | Transporte interno existente, seleção e execução de providers | Contrato versionado atual de completion representa sucesso; não possui envelope completo de falhas e estágios. O patch local acrescenta exceção, ainda não ratificada como padrão transversal |
+| [Capability execution](../../apps/api/src/services/capabilityExecution.ts) | CapabilityRequest/Result, plano de rotas, policy de roteamento e registro de uso | Possui fallback declarado por capacidade, inclusive para outros providers; sua existência no código não demonstra autorização para todo contexto. O intake de cadastro não chama esse fallback |
+| [Front Door intake](../../apps/api/src/services/frontDoorIntake.ts) e [rota](../../apps/api/src/routes/frontDoorIntake.ts) | answered/clarify/not_permitted/unavailable/timeout/invalid e validação com catálogo autorizado | Não é execução de contratação, pagamento, ativação ou concessão |
+| [Contrato IMOB](../../apps/api/src/services/imob/imobAgentContract.ts), [captura do rascunho](../../packages/contracts/src/imobPropertyCapture.ts), [engine](../../apps/api/src/services/imob/crm/imobCrmTurnEngine.ts), [runtime governado](./imob-crm-governed-runtime.md) | Intenção contextual, proposta, confirmação, continuidade e autorização de domínio | updated no intake significa atualização de rascunho; created/updated no fluxo operacional têm semântica própria. Não intercambiar essas provas |
+| [Catálogo de reason codes](../ops/reason-codes-catalog.md) e [fonte executável](../../packages/core/src/reasons/reasonCatalog.ts), [retry](../../packages/core/src/utils/retry.ts) | Ratificação de reason codes e mecanismo central existente de repetição | Categorias técnicas desta proposta não são reason codes active; não promovê-las por documentação ou teste |
+| [Política operacional de billing](../operations/eiah-billing-operational-policy.md), [semântica de custo](../../apps/api/src/types/costSemanticsContract.ts), [billing](../../apps/api/src/services/billing.ts) | Separação entre custo operacional, consumo do workspace, breakdown, ledger e reconciliação | Não autoriza inferir cobrança ou gratuidade de uma recusa do provider |
+| [Agent Protocol](../ops/agent-protocol-api-contract.md) | Contratos públicos de negociação/execução e provas aplicáveis | Esta proposta não altera protocolo, receipt, ledger ou versionamento público |
+
+**Regras vigentes:** agente define; engine executa; launcher renderiza; entrada semântica é interpretada no contexto; validadores protegem invariantes; identidade e escopo não vêm do modelo; efeitos sensíveis exigem gates; ambiguidade material exige clarificação/HITL. A separação entre confirmação do rascunho e gravação já pertence ao contrato IMOB versionado.
+
+**Proposta adicional:** uniformizar as fronteiras de resultado, falha, seleção, repetição e observabilidade abaixo, estendendo as fontes existentes. Não substituir todos os contratos de domínio por um enum genérico ou caminho paralelo de execução.
+
+### Matriz de responsabilidades
+
+| Camada | Responsabilidade proposta | Autoridade que não recebe |
+| --- | --- | --- |
+| Agente/vertical | Declarar finalidade, interpretação, contexto necessário, resultados admissíveis, política de ambiguidade e mensagens seguras | Conceder permissão, inventar dado canônico ou declarar efeito pela narrativa do modelo |
+| Front Door e engine conversacional | Resolver agente/contexto, coordenar intake, continuidade e apresentação; vincular resposta ao turno atual; encerrar espera | Inventar fallback, oferta, ação, permissão ou cobrança na UI |
+| Borda autenticada | Derivar identidade/escopo, validar acesso, entitlement e contratos de transporte; recuperar perfil autorizado | Confiar em tenant/workspace/permissão ou seleção operacional arbitrária do body |
+| Intake do domínio | Minimizar contexto, pedir interpretação, validar schema e invariantes, resolver esclarecimento/proposta e desfecho técnico | Transformar erro de provider em conteúdo ou executar escrita silenciosa |
+| Executor/runtime central | Aplicar policies, executar seleção autorizada, controlar tentativas, deadline, erro e correlação | Considerar promise resolvida, HTTP exitoso ou string presente como prova universal de sucesso |
+| Adaptador do provider | Mediar transporte; verificar status e erro estruturado antes da extração; preservar metadados disponíveis de forma sanitizada | Criar request ID, tokens, custo, texto de sucesso ou retry/fallback autônomo |
+| Validadores, domínio e executor de efeitos | Revalidar autorização, integridade, consentimento, idempotência e invariantes; executar e produzir prova verificável quando exigida | Aceitar interpretação, confirmação de draft ou texto de sucesso como autorização suficiente |
+| Billing e reconciliação existentes | Aplicar contratos financeiros vigentes, reservas quando existentes, uso e lançamento idempotente com proveniência | Deduzir consumo ou débito a partir de mensagem do chat |
+| Launcher/formulário | Coletar entradas e ações implementadas; renderizar payload e estado de espera resolvidos | Decidir comportamento cognitivo, explicar falha por outra chamada à IA ou reconstruir autoridade |
+
+### A–C. Autoridade, contexto e linguagem
+
+O agente interpreta e propõe. O resultado de um modelo é dado não confiável, sujeito ao contrato do domínio; não concede permissões, não confirma execução e não substitui validação determinística ou aprovação humana exigida.
+
+O contexto pertinente inclui agente e versão do contrato, vertical, capacidade/operação, etapa, mensagem atual, histórico relevante, rascunho atual e proposta pendente quando houver. Cada agente declara o subconjunto necessário; ausência material leva a esclarecimento ou bloqueio, não a invenção. Exemplos de mensagens não são gramática de produção. Perguntas, correções, recusa e confirmação são interpretadas em relação à proposta e ao turno; campos canônicos e ações explícitas continuam verificáveis.
+
+Identidade, tenant, workspace, permissões, entitlement, disponibilidade, orçamento autorizado e perfil efetivo são fatos de servidor/fonte autorizada. Contexto enviado pelo navegador é revalidado e nunca adquire autoridade por estar no prompt. Referências de origem, versão e proposta correlacionam o draft; não funcionam como credencial. Segredos e headers de autenticação ficam fora do contexto do modelo.
+
+A minimização aplica-se antes do provider: enviar somente os fatos necessários, com masking e proveniência conforme policy. Identificadores de correlação ficam no runtime/log, sem necessidade de entrar no conteúdo do prompt. Dados sintéticos de diagnóstico não autorizam efeitos em um workspace real.
+
+### D. Resultados e transições
+
+As famílias abaixo são semântica proposta para mapear contratos existentes, não novos valores que os consumidores já aceitem.
+
+| Família | Correspondência existente | Evidência e transição permitida |
+| --- | --- | --- |
+| Resposta válida | answered; output validado da capacidade | Validação exigida pelo agente concluída; pode apresentar resposta. Não comprova efeito |
+| Esclarecimento/revisão | clarify; proposed; waiting_input | Ambiguidade, dados ausentes ou proposta aguardando revisão. Preservar trabalho; não autorizar gravação |
+| Recusa/bloqueio | not_permitted; blocked; rejected conforme domínio | Distinguir recusa do usuário, recusa de segurança do modelo e bloqueio de autorização. Modelo não concede nem revoga acesso |
+| Falha técnica | unavailable; timeout; invalid; error conforme fronteira | Encerrar tentativa com etapa e causa conhecida; preservar contexto. Falha antes de conteúdo não entra no parser |
+| Efeito/execução | updated do draft; created/updated operacional; execução do Agent Protocol | Declarar explicitamente o objeto e a fase afetados. Efeito persistido exige retorno/prova do domínio e gates aplicáveis |
+
+Transições propostas:
+
+1. Recepção → validação do contexto/autorização → solicitação elegível. Bloqueio prévio termina sem provider nem efeito solicitado.
+2. Solicitação → resposta de transporte **ou** falha técnica. HTTP exitoso com error estruturado continua sendo falha.
+3. Resposta recebida → extração → parsing → schema → validação do domínio → resposta, esclarecimento, recusa ou proposta. Cada etapa informa seu próprio resultado; uma não implica aprovação da seguinte.
+4. Proposta vigente → confirmação contextual inequívoca → revalidação da correlação → atualização exclusiva do rascunho. Dúvida, recusa, versão divergente ou troca de contexto não aplicam campos.
+5. Ação explícita separada de gravação → nova autorização de domínio → execução → resultado verificável. Não derivar gravação de confirmação do draft.
+6. Timeout após possível envio/efeito → resultado desconhecido quando não houver prova de cancelamento/conclusão. Conciliar antes de repetir efeito ou declarar ausência de escrita.
+
+Texto vazio não satisfaz um contrato que exige resposta textual ou JSON válido. Ausência de exceção não comprova sucesso. Em capacidades legitimamente não textuais, o contrato específico define o payload válido; não impor texto artificial a ferramentas, streaming ou outras modalidades. Conteúdo válido não confirma execução de domínio.
+
+### E. Seleção e execução de providers
+
+O servidor resolve o perfil disponível e a policy da capacidade, respeitando configuração, permissões, tratamento de dados e orçamento vigente. O router/registry executa essa decisão; UI, prompt e saída do modelo não a substituem. Chave presente comprova configuração, não autorização para qualquer capacidade, dado ou gasto.
+
+O código atual aceita metadata interna de provider, prefixo do modelo e defaults; capabilityExecution também monta rotas conforme policy. A precedência transversal entre perfil, escolha contratual do cliente e capacidade precisa de ratificação e mapeamento explícito. Não criar parâmetro HTTP público para diagnóstico nem tratar override interno como permissão automática.
+
+Registrar separadamente provider/modelo solicitados, rota selecionada e provider/modelo efetivamente confirmados pelo retorno. Modelo repetido do pedido é **solicitado**, não geração comprovada. ID de completion, request ID do provider e correlação da aplicação são conceitos distintos. Campo ausente permanece ausente/desconhecido; não preencher com nome do provider, zero ou estimativa sem origem.
+
+### F–H. Falhas, retry e fallback
+
+As categorias são propostas internas para classificação, sem promoção ao catálogo de reason codes. O mapper público continua usando os códigos ratificados aplicáveis; novas emissões que exijam reason code seguem o processo vigente de proposta e aprovação.
+
+| Categoria proposta | Sinais e distinções | Conduta proposta |
+| --- | --- | --- |
+| Crédito/quota financeira do provider | Campos estruturados como insufficient_quota/credit_balance_exhausted; status isolado não basta | Intervenção operacional; sem retry automático dessa falha. Não confundir com limite do workspace |
+| Rate limit | Código/tipo estruturado de limitação de taxa, com contexto do status | Retry somente se a policy vigente permitir e houver capacidade no orçamento de tentativas/tempo |
+| Autenticação/permissão | Recusa de credencial/permissão pelo provider ou bloqueio de acesso na borda, diferenciados por origem | Preservar o bloqueio; não repetir automaticamente sem mudança autorizada da condição |
+| Indisponibilidade transitória | Transporte/serviço temporariamente indisponível, com sinais estruturados disponíveis | Retry elegível apenas pelos limites existentes; não generalizar todo erro desconhecido como transitório |
+| Timeout | Deadline excedido na camada identificada | Encerrar espera; registrar cancelamento confirmado ou chamada/efeito possivelmente ainda ativo; não reenviar cegamente |
+| Resposta inválida | Extração, parsing, schema ou validação rejeitados, cada qual com etapa explícita | Não virar sucesso vazio; não flexibilizar schema. Política de eventual nova tentativa depende de aprovação específica |
+| Falha interna | Falha no runtime/adaptador/integração sem causa técnica comprovada mais específica | Categoria explícita com sanitização; não inventar quota, rate limit ou transitoriedade |
+
+O adaptador deve examinar status e error estruturado antes da extração. Erro financeiro pode compartilhar HTTP 429 com rate limit; a causa estruturada tem precedência quando confiável. Guardar código/tipo/status/request ID disponíveis sem mensagens brutas, headers sensíveis ou credenciais. A procedência da falha — plataforma, workspace, integração do cliente ou desconhecida — não pode ser inferida de um código de quota sozinho.
+
+**Retry:** o runtime central deve ser o coordenador das tentativas dentro de uma solicitação lógica. Intake e UI não iniciam ciclos automáticos adicionais; retries internos de SDK/transportes, quando existentes, precisam ser declarados e contabilizados no mesmo orçamento. Número de tentativas, backoff, timeout e orçamento vêm de políticas existentes; esta proposta não fixa valores nem amplia limites. Nova tentativa manual é uma nova solicitação lógica, sujeita à mesma autorização e correlação, não garantia de recuperação.
+
+Deadline deve ter tratamento coordenado entre camadas; terminar uma promise por race não comprova interrupção do request. A política concreta de cancelamento e orçamento entre camadas fica pendente, sem modificar os timeouts atuais nesta etapa.
+
+**Fallback:** só pode usar alternativa previamente autorizada, configurada e compatível com capacidade, contexto, residência/tratamento de dados e orçamento. Escolha contratual explícita de provider pelo cliente não pode ser substituída silenciosamente. A alternativa usada e sua razão devem ser observáveis; sem elegibilidade demonstrada, terminar com desfecho explícito. Não inventar autorização porque uma rota alternativa aparece na tabela de código. Política de fallback de conhecimento (block/approved_snapshot/human_review) não equivale a permissão para trocar provider.
+
+### I–J. Efeitos, continuidade e comunicação
+
+Os controles existentes de draft/origem/versão, proposta e turno são a base a estender: resposta tardia não altera novo contexto, edição manual não pode ser sobrescrita, confirmação só aplica a proposta vigente integralmente e duplicação não pode produzir efeito adicional. Identidade, sessão, tenant/workspace, conversa e vertical devem permanecer coerentes. Durabilidade/idempotência de execução são garantias do domínio, não de um token consultivo no navegador.
+
+Falha de assistência preserva formulário, rascunho e proposta ainda vigente; não aplica parte da proposta, não troca domínio, não salva e encerra a espera correspondente. Uma proposta já invalidada por edição/troca de contexto não é ressuscitada para cumprir a preservação. A mensagem deve refletir se a operação realmente não começou, ficou pendente ou tem resultado desconhecido.
+
+O contrato do agente define a comunicação; engine/intake a compõem deterministicamente, sem outra chamada à IA. Launcher apenas apresenta texto e ações efetivamente implementadas. Não prometer prazo de recuperação ou ausência de cobrança sem suporte nos contratos vigentes.
+
+Exemplos ilustrativos, dependentes dos fatos comprovados:
+
+| Situação | Mensagem ao usuário | Diagnóstico ao operador |
+| --- | --- | --- |
+| Assistência indisponível antes de qualquer aplicação/escrita | “A assistência por IA está indisponível neste momento. Seu formulário e a proposta pendente foram mantidos; nenhuma alteração foi aplicada. Você pode continuar preenchendo manualmente ou retomar depois.” | Estágio, categoria, origem conhecida, correlação e intervenção necessária. Não pedir que o usuário compre créditos para resolver saldo da conta operada pela EIAH |
+| Limite contratado do workspace confirmado pela fonte financeira | “O limite de uso deste workspace foi atingido. Seu trabalho foi mantido. Consulte o administrador do workspace.” | Identificar o gate e a fonte autorizada do limite; não atribuir o bloqueio à conta operacional do provider |
+| Integração própria do cliente comprovadamente identificada e recusada | “A integração de IA configurada para este workspace não está disponível. Seu trabalho foi mantido. O administrador pode verificar a configuração.” | Registrar propriedade/origem confirmada da integração e código sanitizado. Não expor chave nem assumir que o usuário atual pode corrigi-la |
+| Resultado de efeito desconhecido após timeout | “Ainda não foi possível confirmar o resultado desta operação. Vamos verificar seu estado antes de tentar novamente.” | Estado indeterminado e referência para conciliação, sem afirmar que nada foi gravado. Só oferecer verificação automática se ela estiver implementada |
+
+### K–L. Contabilização e observabilidade
+
+Uma **solicitação lógica** é o pedido de assistência da aplicação. Ela pode gerar **chamadas físicas** por retry/fallback. Esses contadores não são tokens, custo do provider, reserva financeira ou débito da EIAH. São dimensões independentes, vinculadas por correlação e proveniência quando disponíveis.
+
+Uso informado pelo provider deve manter origem e unidade. Ausência de usage/custo não significa zero. Uma chamada recusada não recebe geração/uso fictícios nem lançamento de “sucesso”; a eventual cobrança ou liberação de reserva depende do contrato financeiro vigente. Não prometer gratuidade, estorno ou ausência de cobrança por inferência. Reservas inexistentes no caminho atual não são criadas por esta proposta.
+
+Na implementação inspecionada, o intake do cadastro retorna antes do dispatch operacional e chama executeLlmStep diretamente, sem reserva/chargeRun nesse caminho. Em capabilityExecution, recordCapabilityUsage ocorre após retorno bem-sucedido do executor e exige run/escopo/request ID; chargeRun e reconciliação pertencem a billing/worker. A remoção do request ID fictício pode afetar o registro de uso quando um retorno não fornece ID real: é impacto a revisar com o dono financeiro, não motivo para fabricar ID nem para alterar billing agora. Não se demonstrou a contabilização implantada de todos os caminhos.
+
+Metadados propostos, sempre com disponibilidade/proveniência explícitas:
+
+| Grupo | Informação a correlacionar |
+| --- | --- |
+| Aplicação | Correlação lógica, turno/contexto/versão, horário e duração por etapa, agente/contrato/capacidade; escopo apenas em log interno autorizado |
+| Tentativas | Índice e motivo de retry/fallback, camada que iniciou, limites efetivos e contagem física medida ou explicitamente desconhecida |
+| Provider | Solicitado/selecionado/confirmado, modelo solicitado/confirmado, status e request ID reais quando fornecidos, motivo de término recebido |
+| Resultado | Transporte, geração, extração, parsing, schema, domínio, confirmação e efeito com resultados separados; motivo de bloqueio/falha e necessidade de intervenção |
+| Financeiro | Uso reportado, estimado ou ausente; origem de custo, reserva quando houver, lançamento/reconciliação pelos contratos existentes |
+
+Nenhum log de sucesso de completion comprova aprovação de schema ou efeito. Nenhum array de observação vazio comprova zero chamadas se o observador não mediu o transporte. Dados brutos sintéticos podem ser preservados como evidência com proveniência; credenciais, headers de autorização, prompts e dados reais desnecessários não entram na telemetria padrão. Retenção e visibilidade operacionais precisam respeitar a policy aplicável; esta seção não inventa prazo de retenção.
+
+### Incidente ilustrativo e correspondência com o patch pausado
+
+O [diagnóstico real local preservado](../../ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/README.md) recebeu OpenAI insufficient_quota/credit_balance_exhausted. O adaptador retornou string vazia, completion registrou sucesso e o intake rejeitou em json_parse. Foram violadas as fronteiras entre recusa de provider, geração e parsing. O incidente exemplifica o contrato; não define regra exclusiva para OpenAI ou IMOB.
+
+A divergência de deploy web/API em staging é frente separada. A causa da tentativa HTTP específica continua não comprovada. O fluxo de quartos/vaga com provider real **não está aprovado**; staging requer alinhamento da API e reteste separadamente autorizado.
+
+Ponto preservado: branch `feat/imob-guided-property-draft`, HEAD `70e66db4e7eea727f0f3567d8291595b1f86243b`, upstream `origin/feat/imob-guided-property-draft`, stage vazio. CLAUDE.md/CODEX.md, Evidence Index do diagnóstico, changes.diff e logs anteriores continuam locais. Não houve branch/stash/backup de preservação.
+
+| Alteração parcial presente | Relação com regras existentes | O que não está ratificado/completo |
+| --- | --- | --- |
+| OpenAIProvider detecta transporte/status/error antes de conteúdo; não fabrica request ID | Corrige a perda de causa comprovada e evita apresentar falha como interpretação/sucesso | Cobertura dos demais adaptadores, modalidades e distinção de ID/completion/trace em todos os consumidores |
+| Novo LLMProviderError/diagnostic e guard no core | Meio local de preservar causa sanitizada; não existia exceção LLM tipada no contrato de sucesso | Arquivo, nome, categorias, campos e branding não são padrão definitivo; faltam timeout/falha interna e contrato completo de resultados |
+| completionEngine/retry respeitam retryable e propagam causa; logs de falha | Sem retry de quota segue a instrução explícita já dada para o incidente; não reabrir essa decisão | Elegibilidade transversal, cancelamento/deadline, retry multiplicado e fallback de capability precisam de ratificação/adaptação |
+| llmExecutor remove fallback fictício de request ID e trace vazio; rota cria correlação | Não inventar metadados e usar runtime existente | Formato transversal de correlação, origem e impacto nos consumidores financeiros não estão homologados |
+| Intake IMOB mantém unavailable, preserva proposta e não envia erro ao parser; mensagem muda no contrato | Alinha-se à arquitetura vigente; sem regra cognitiva nova no launcher nem nova autorização de escrita | Não prova chat HTTP implantado, mensagens de outras origens financeiras ou conformidade de outros agentes |
+| Fixture derivada, testes, script e step oficial de CI locais | Rastreabilidade do erro real com dublês e cobertura seletiva | Não constituem CI remoto aprovado, aprovação do contrato, build ou homologação financeira |
+
+Resultados anteriores à pausa, recuperados **sem reexecução** de `ops/evidence/latest/imob-property-provider-failure-2026-11-16/`:
+
+| Registro existente | Resultado recuperado | Limite |
+| --- | --- | --- |
+| provider-tests-validated.log | 7 testes, 7 aprovados, 0 falhas/ignorados; comando terminou exit 0 | Transporte sintético; não provider real |
+| intake-tests-direct.log | 13 testes, 13 aprovados, 0 falhas/ignorados; exit 0 | Intake/rota com dublês |
+| adapter-tests-direct.log | 15 casos selecionados, 15 aprovados, 0 falhas/ignorados; exit 0 | Adaptador em memória; não navegador |
+| render-only.log, runtime-entrypoint.log, presentation-contract.log, ci-registration.log | ok:true; chamada conjunta dos três gates exit 0; registro CI exit 0 | Gates locais; não checks remotos nem aprovação transversal |
+| typecheck-first.log | 12 raízes, 3 diagnósticos focais e 16 de dependências; **não aprovado** | Dois acessos antigos a blockers e um acesso novo a presentationSnapshot no teste do adaptador. Sem correção após a pausa |
+| contracts-typecheck.log | Log vazio; processo iniciado antes da pausa terminou | Código de saída não foi preservado separadamente no pacote; não certificar aprovação apenas pelo log vazio |
+
+Os logs first/second/direct/final e a revalidação pontual provider-quota-final preservam falhas intermediárias. Os primeiros comandos com --test resumiram arquivos, sem contagem dos casos; não somar esses resumos aos testes efetivos. A proposta não normaliza nem apaga esses originais. As evidências anteriores de conversa guiada e diagnóstico permanecem históricas, com seus próprios limites; não são aprovação desta seção. O Evidence Index existente não foi atualizado nesta etapa documental.
+
+A [fixture parcial](../../apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json) foi derivada, antes da pausa, de `runtime.syntheticRawResponse.error` do [resultado original local](../../ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/openai-integrated.json), SHA-256 `f77384445eebd224b210fb2d9101e79e7a0b46d7b4a9462172df0b454333bbd7`. Mantém somente type/code; message/param foram omitidos. Status 429 e request IDs usados nos testes são sintéticos, não metadados recuperados do incidente. O original foi preservado.
+
+Os dois comandos de typecheck iniciados antes da solicitação de pausa terminaram; os resultados acima foram lidos sem nova execução. Não foi identificado processo node/tsx/tsc ativo na consulta local, sem ação de encerramento ou presunção de continuidade. Nenhum teste, build, chamada de provider ou patch de produção foi iniciado após a mudança para esta etapa documental. Os artefatos da implementação parcial permanecem para rastreabilidade, sem limpeza ou novo mecanismo de preservação.
+
+### Critérios propostos de conformidade — ainda não executados transversalmente
+
+| Critério verificável | Prova necessária para adoção |
+| --- | --- |
+| Autoridade e isolamento | Permissão/escopo/entitlement negados impedem provider/efeito indevido; modelo não modifica fatos de autorização |
+| Contexto e linguagem | Perguntas, correções e confirmações equivalentes usam histórico/draft/proposta corretos, sem gramática obrigatória; dados canônicos mantêm validação |
+| Falha antes de conteúdo | Quota, rate limit, auth, transporte, timeout e erro interno chegam como falhas com etapa; parsing/schema não recebem recusa como texto vazio |
+| Classificação | Erros estruturados distinguem quota financeira de rate limit mesmo com status igual; origem financeira desconhecida continua desconhecida |
+| Tentativas | Quota não repete; transitórios seguem só limites vigentes; contagem cobre tentativas de todas as camadas e explicita o que não foi medido |
+| Fallback | Alternativa não autorizada/indisponível não executa; escolha do cliente não muda silenciosamente; rota efetiva é rastreável |
+| Continuidade e efeitos | Falha, edição manual, troca de contexto e resposta tardia não sobrescrevem trabalho; draft confirmado não grava; duplicação não repete efeito |
+| Comunicação | Mensagem contextual vem de contrato/engine sem nova IA, sem segredo, prazo inventado, ação inexistente ou pedido de créditos para falha operacional |
+| Contabilização | Sem uso/ID/custo fictícios; teste dos consumidores financeiros verifica ausência de débito de sucesso para recusa, reservas conforme contrato e idempotência, sem supor custo zero |
+| Observabilidade | Transporte, geração, validação e efeito têm estados separados; campos ausentes e falhas do observador são explícitos |
+| Compatibilidade | Mapeamento por contrato/capacidade, política de versionamento, consumidores de IDs e gates oficiais avaliados antes de migração; regressão do sucesso coberta |
+
+### Decisões humanas pendentes, sem reabrir decisões já tomadas
+
+1. **Ratificação arquitetural:** aprovar ou ajustar estas fronteiras como extensão transversal da arquitetura vigente, mantendo os contratos de domínio. Agent-driven, fail-closed, linguagem natural, ausência de escrita silenciosa e proibição de retry de quota já estão decididos; não são perguntas novas.
+2. **Representação e compatibilidade:** decidir o local/formato final da falha no contrato LLM existente (exceção tipada, envelope ou mapeamento), nomes/categorias e migração dos consumidores; o patch local não decide isso. Eventuais reason codes novos precisam do processo humano já definido, sem ativação automática.
+3. **Seleção/fallback:** ratificar a precedência entre perfil, policy de capacidade e escolha contratual do cliente, a fonte autorizadora das alternativas e o tratamento de integração própria. Não conceder autorização geral a providers alternativos nem pedir de novo a execução de chamadas reais nesta etapa.
+4. **Responsabilidade por tentativas:** designar o dono do orçamento lógico compartilhado, cancelamento e interação com retries de transporte/SDK, usando limites existentes; qualquer mudança numérica fica para decisão separada baseada em fonte vigente.
+5. **Governança financeira e observabilidade:** validar com os donos existentes a identificação da conta operadora, os consumidores de request IDs, reservas/cobrança e acesso/retenção de diagnóstico. Não definir preço, grant, recarga ou isenção aqui.
+6. **Adoção e retomada:** decidir o recorte inicial de migração e seus gates, e autorizar separadamente a retomada dos patches pausados. Alinhar/retestar staging e aprovar fluxo real de quartos/vaga permanecem decisões operacionais distintas, não consequências da ratificação documental.
+
+### Autorização delimitada de Δ1–Δ3 — 2026-11-16
+
+O usuário autorizou explicitamente retomar **somente Δ1, Δ2 e Δ3** do mapeamento pontual, sem chamadas reais, alterações financeiras, configuração de providers, novos fallbacks, cancelamento físico transversal ou publicação. Essa autorização resolve a retomada desse recorte; **não ratifica o restante do contrato transversal**, que permanece PROPOSTA. Os registros da pausa acima são históricos e foram preservados.
+
+- **Δ1:** a exceção interna compartilhada LLMProviderError preserva causa estruturada sanitizada; completion respeita sua elegibilidade de retry e intake usa o resultado público unavailable já existente. Não se acrescentaram categorias transversais de timeout/falha interna, novos reason codes ou regras cognitivas no launcher. A mensagem pertence ao contrato IMOB; a espera e a preservação usam os mecanismos existentes.
+- **Δ2:** completionId é a identidade retornada no corpo; providerRequestId é o header real quando fornecido; traceId é correlação da aplicação, sem fallback para completion ID. O campo legado requestId continua sendo **referência de contabilização**, preferindo o completion ID real para preservar a chave de idempotência existente; não deve ser apresentado como request ID do provider. Usa header real somente quando falta completion ID, sem literal fabricado. Modelo solicitado e modelo confirmado são distintos; valores desconhecidos permanecem ausentes.
+- **Compatibilidade:** generateText, executor, normalização e chamada ao writer de breakdown foram exercitados com transporte sintético/dublê. Se uma capacidade com run/escopo recebe geração sem identidade real utilizável, lança CapabilityUsageIdentityUnavailableError, com retryable=false e generationCompleted=true. O erro ocorre depois do executor e é relançado antes do fallback; não repete geração para obter ID. Não altera billing, reservas, cobrança ou a chave do writer. Suportar registro financeiro de consumo sem identidade real exige contrato financeiro separado; permanece bloqueado, sem inventar chave ou custo.
+- **Δ3:** FrontDoorMessageLike declara presentationSnapshot opcional, que toLauncherMessage já produz. A asserção permanece intacta, sem any/cast/supressão. Builds oficiais de core/providers e smoke dos módulos dist passaram. Typecheck focal de 16 raízes continua **reprovado** com dois erros antigos comprovados na baseline HEAD e 16 diagnósticos de dependências, sem diagnósticos introduzidos. Não equivale a aprovação integral da API/web.
+
+Resultados, códigos de saída, reaproveitamento e limites estão no [pacote de execução Δ1–Δ3](../../ops/evidence/latest/imob-property-provider-failure-2026-11-16/README.md). As decisões de seleção/fallback, orçamento/cancelamento global e adoção transversal permanecem em revisão. A ausência de geração válida com provider real e a causa não comprovada da tentativa específica de staging permanecem inalteradas; alinhamento web/API e reteste dependem de etapa separadamente autorizada.

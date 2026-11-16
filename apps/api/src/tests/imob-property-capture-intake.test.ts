@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import crypto from "node:crypto";
 import { imobPropertyCaptureRequestSchema, type ImobPropertyCaptureRequest, type ImobPropertyCaptureProposal } from "@eiah/contracts";
 import { interpretImobPropertyCapture as intake, type ImobPropertyCaptureDeps } from "../services/imob/intake/imobPropertyCaptureIntake";
 import { resolveImobPropertyCaptureTurn } from "../services/imob/crm/imobCrmTurnEngine";
@@ -174,7 +175,8 @@ test("cadastro guiado: indisponibilidade, policy e timeout encerram espera e pre
   ] as const) {
     const result = await interpret(request("Posso perguntar antes de confirmar?", { pendingProposal: proposal }), { interpret: interpretModel, timeoutMs: 5 });
     assert.equal(result.outcome, outcome); assert.deepEqual(result.patch, {}); assert.equal(result.proposal?.ref, proposal.ref);
-    assert.match(result.content, /preservados.*sem gravar/);
+    if (outcome === "unavailable") assert.match(result.content, /assistência por IA está indisponível.*mantidos.*nenhuma alteração foi aplicada.*não foi salvo/);
+    else assert.match(result.content, /preservados.*sem gravar/);
   }
 });
 
@@ -205,6 +207,7 @@ function routeHarness(options: { permission?: boolean; entitlement?: boolean; pr
   visit(source); assert.ok(handler);
   const calls: Array<{ kind: string; input: any }> = [];
   const injected = {
+    crypto,
     asObject: (value: any) => value && typeof value === "object" ? value : null,
     asString: (value: any) => typeof value === "string" ? value.trim() : null,
     readImobWorkspaceAccessProfile: async (input: any) => { calls.push({ kind: "access", input }); return { permissions: ["imob.chat.use"] }; },

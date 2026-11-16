@@ -1,0 +1,143 @@
+{
+  "logicalCorrelationId": "imob-provider-diag-86f766e2-f44f-4869-8cb6-cef593e2b77b",
+  "correlationKind": "operator diagnostic traceId; not an HTTP application request ID",
+  "startedAt": "2026-11-16T11:06:04.968Z",
+  "scope": "isolated application intake/engine and central runtime; not HTTP/staging or tenant authorization proof",
+  "requestedProvider": "openai",
+  "requestedModel": "gpt-4.1",
+  "profileSource": "existing canonical EIAH profile; workspace database profile unavailable",
+  "configurationSource": "existing API local env, read in memory; only OpenAI and existing LLM retry/timeout settings loaded",
+  "logicalRequests": 1,
+  "retryConfiguration": {
+    "LLM_TIMEOUT_MS": "45000",
+    "LLM_RETRIES": "5",
+    "LLM_RETRY_DELAY_MS": "150",
+    "LLM_RETRY_MAX_DELAY_MS": "10000",
+    "LLM_RETRY_BACKOFF_FACTOR": "1.6",
+    "LLM_RETRY_JITTER_RATIO": "0.3"
+  },
+  "fallback": "none in executeLlmStep -> runCompletion -> resolveProvider",
+  "httpAttempts": [],
+  "diagnostics": [
+    {
+      "stage": "json_parse",
+      "outcome": "invalid",
+      "at": "2026-11-16T11:06:06.420Z"
+    }
+  ],
+  "runtime": {
+    "provider": "openai",
+    "model": "gpt-4.1",
+    "traceId": "openai",
+    "requestId": "openai",
+    "tookMs": 981,
+    "durationMs": 981,
+    "usage": null,
+    "outputText": "",
+    "syntheticRawResponse": {
+      "error": {
+        "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+        "type": "insufficient_quota",
+        "param": null,
+        "code": "credit_balance_exhausted"
+      }
+    }
+  },
+  "result": {
+    "mode": "consult",
+    "action": "property.draft.intake",
+    "threadLabel": "Captação",
+    "propertyCapture": {
+      "outcome": "invalid",
+      "content": "Recebi uma interpretação inválida. O cadastro e o formulário foram preservados, sem gravar o imóvel. Tente enviar novamente.",
+      "patch": {},
+      "proposal": null
+    },
+    "conversationState": {
+      "mode": "consult",
+      "pendingSlot": "none",
+      "resultOffset": 0,
+      "slots": {
+        "goal": null,
+        "city": null,
+        "region": null,
+        "neighborhood": null,
+        "budgetMax": null,
+        "bedrooms": null,
+        "bathrooms": null,
+        "propertyType": null
+      },
+      "operational": null
+    },
+    "presentation": {
+      "text": "Recebi uma interpretação inválida. O cadastro e o formulário foram preservados, sem gravar o imóvel. Tente enviar novamente."
+    }
+  },
+  "cost": null,
+  "costNote": "No monetary cost field is exposed by this runtime; no estimate invented",
+  "otherProviders": {
+    "anthropic": "not configured in inspected local API env",
+    "gemini": "not configured in inspected local API env"
+  },
+  "knowledgePolicy": {
+    "deterministicSources": [
+      {
+        "sourceId": "agent.registry",
+        "kind": "db",
+        "authorityLevel": "primary",
+        "required": true,
+        "version": "v1"
+      },
+      {
+        "sourceId": "specialist.source-map",
+        "kind": "snapshot",
+        "authorityLevel": "secondary",
+        "required": false,
+        "version": "v1"
+      }
+    ],
+    "sourcePrecedence": [
+      "agent.registry",
+      "specialist.source-map"
+    ],
+    "conflictResolution": "human_review",
+    "llmUsageMode": "grounded_reasoning",
+    "fallbackPolicy": "human_review",
+    "provenancePolicy": "recommended",
+    "maskingPolicy": "required"
+  },
+  "fixture": {
+    "message": "São dois quartos e uma vaga. Pode me orientar no restante?",
+    "operation": "property.create",
+    "step": "editing_form",
+    "contextState": "active",
+    "pendingProposal": null,
+    "draft": {
+      "propertyType": "apartamento",
+      "goal": "locacao",
+      "city": "Balneário Camboriú",
+      "address": "",
+      "bedrooms": "",
+      "garageSpots": ""
+    },
+    "origin": {
+      "formId": "diagnostic-synthetic-form",
+      "contextRef": "v1:diagnostic-synthetic-origin",
+      "draftVersion": 0,
+      "threadId": "diagnostic-synthetic-thread",
+      "caseId": null
+    },
+    "history": [
+      {
+        "role": "user",
+        "text": "Quero cadastrar um apartamento para locação em Balneário Camboriú."
+      }
+    ]
+  },
+  "centralExecutorCalled": true,
+  "fixtureUnchanged": true,
+  "noAppliedFields": true,
+  "expectedProposal": false,
+  "finishedAt": "2026-11-16T11:06:06.420Z",
+  "exitCode": 2
+}

@@ -32,6 +32,9 @@ export type LlmExecutorResult = {
   provider?: string;
   model?: string;
   requestId?: string;
+  completionId?: string;
+  providerRequestId?: string;
+  modelUsed?: string;
   usage?: ChatCompletionUsage | null;
 };
 
@@ -254,11 +257,14 @@ export async function executeLlmStep({
   return {
     outputText: response.output,
     rawResponse: response.raw,
-    traceId: response.id,
+    traceId: typeof sanitizedMetadata.traceId === "string" && sanitizedMetadata.traceId.trim() ? sanitizedMetadata.traceId : undefined,
     tookMs: Date.now() - startedAt,
     provider: response.provider,
     model: response.model,
-    requestId: response.requestId ?? response.id,
+    requestId: response.requestId,
+    completionId: response.completionId,
+    providerRequestId: response.providerRequestId,
+    modelUsed: response.modelUsed,
     usage: response.usage ?? null,
   };
 }

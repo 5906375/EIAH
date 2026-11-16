@@ -1,5 +1,6 @@
 import { createLogger } from "../logging";
-import { retry } from "../utils/retry";
+import { retry, RetryExhaustedError } from "../utils/retry";
+import { isLLMProviderError } from "./LLMProviderError";
 import { withTimeout } from "../utils/timeout";
 import { normalizeMessages } from "../utils/normalizeMessages";
 import { resolveProvider, stripProviderPrefix } from "./LLMRouter";
@@ -28,6 +29,7 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
     {
       provider: provider.name,
       model,
+      traceId,
     },
     "llm.completion.start"
   );
@@ -45,6 +47,7 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
         provider: provider.name,
         model,
         timeoutMs,
+        traceId,
         retries,
         baseDelayMs,
         maxDelayMs,
@@ -62,6 +65,7 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
         maxDelayMs,
         backoffFactor,
         jitterRatio,
+        shouldRetry: (error) => !isLLMProviderError(error) || error.diagnostic.retryable,
       }
     );
 
@@ -70,23 +74,26 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
         provider: provider.name,
         model,
         latencyMs: Date.now() - startedAt,
-        traceId: traceId ?? result.id,
+        traceId,
+        completionId: result.completionId,
+        providerRequestId: result.providerRequestId,
       },
       "llm.completion.success"
     );
 
     return result;
   } catch (err) {
+    const failure = err instanceof RetryExhaustedError && isLLMProviderError(err.cause) ? err.cause : err;
     logger.error(
       {
         provider: provider.name,
         model,
         latencyMs: Date.now() - startedAt,
         traceId,
-        err,
+        ...(isLLMProviderError(failure) ? { failure: failure.diagnostic } : { err: failure }),
       },
       "llm.completion.error"
     );
-    throw err;
+    throw failure;
   }
 }

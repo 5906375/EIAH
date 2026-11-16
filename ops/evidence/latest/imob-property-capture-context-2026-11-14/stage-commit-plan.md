@@ -1,3 +1,217 @@
+# Plano vigente — propagação de falhas IMOB Δ1–Δ3
+
+Preparação revisável em 2026-11-16 por Codex, sem subagentes. **Nenhum stage ou commit executado.** Esta seção rege a próxima seleção; as seções anteriores estão preservadas integralmente após o marcador de histórico, inclusive seus títulos, comandos e contagens já superados.
+
+## Estado e escopo conferidos
+
+- Branch: `feat/imob-guided-property-draft`.
+- HEAD: `70e66db4e7eea727f0f3567d8291595b1f86243b`.
+- Upstream: `origin/feat/imob-guided-property-draft`, conforme configuração local; sem fetch nem afirmação de sincronismo remoto atualizado.
+- Stage vazio. O diff da entrega contém 11 arquivos de implementação, 7 de testes/fixture/registro CI e 3 de documentação/preparação; os dois pacotes acrescentam 50 caminhos de evidência. Total abaixo: **71 caminhos únicos**.
+- `CLAUDE.md` e `CODEX.md` já estavam modificados, foram preservados byte a byte e permanecem fora da entrega. O diff original da conversa guiada e os logs originais excluídos permanecem locais.
+- Nenhuma fonte de implementação ou teste mudou nesta preparação. Não se reaplicaram patches nem se repetiram suites, builds ou chamadas de provider.
+
+## Classificação de cada arquivo e dependências
+
+Os caminhos dos comandos abaixo são a lista canônica desta seleção; cada grupo é classificado aqui, sem diretórios implícitos:
+
+| Arquivo | Classe e função |
+| --- | --- |
+| `apps/api/src/orchestrator/llmExecutor.ts` | Δ1–Δ2: propagação e IDs do runtime |
+| `apps/api/src/routes/imob.ts` | Δ2: correlação interna do intake |
+| `apps/api/src/services/capabilityExecution.ts` | Δ2: normalização, referência legada e guarda sem replay/fallback |
+| `apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts` | Δ1: unavailable antes do parsing e diagnóstico sanitizado |
+| `apps/web/src/features/imob/structured/useImobFrontDoorForms.ts` | Δ3: tipagem de presentationSnapshot já produzido |
+| `packages/contracts/src/imobPropertyCapture.ts` | Δ1: mensagem contextual do contrato, consumida pelo engine |
+| `packages/core/src/llm/LLMProviderError.ts` | Δ1: exceção interna compartilhada, arquivo novo |
+| `packages/core/src/llm/completionEngine.ts` | Δ1–Δ2: elegibilidade de retry, erro e IDs no log |
+| `packages/core/src/llm/types.ts` | Δ2: campos aditivos e semântica dos identificadores |
+| `packages/core/src/utils/retry.ts` | Δ1: predicado opcional preservando limites existentes |
+| `packages/providers/src/OpenAIProvider.ts` | Δ1–Δ2: status/erro antes da extração e metadados reais |
+| `.github/workflows/ci.yml` | CI: registro oficial dos testes afetados |
+| `apps/api/src/tests/capability-execution.test.ts` | Teste: resultado determinístico não comprova provider/modelo |
+| `apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json` | Fixture nova: type/code derivados do erro real sanitizado |
+| `apps/api/src/tests/imob-property-capture-intake.test.ts` | Teste: contrato unavailable e harness da rota |
+| `apps/api/src/tests/llm-provider-failure.test.ts` | Teste novo: transporte sintético, falhas, IDs e consumidores |
+| `apps/web/src/features/imob/structured/createImobStructuredForms.test.ts` | Teste: preservação do formulário/proposta e término da espera |
+| `package.json` | CI/testes: comando formal da nova suíte sintética |
+| `docs/EVIDENCE_INDEX.md` | Documentação: somente duas entradas de execuções existentes |
+| `docs/architecture/agent-chat-runtime.md` | Documentação: proposta transversal preservada + adoção autorizada Δ1–Δ3 |
+| `ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md` | Documentação: este plano reutilizado, histórico preservado |
+
+Todos os 7 caminhos sob `imob-property-provider-diagnostic-2026-11-16/`, explicitados nos comandos, são **evidências do diagnóstico real anterior**: README, resumo, resultado, snapshot de staging, runner executado, log e manifesto histórico. Não são execução pós-patch. O runner não é chamado pelo CI e não será executado para preparar ou criar o commit.
+
+Todos os 43 caminhos selecionados sob `imob-property-provider-failure-2026-11-16/` são **evidências da correção com transporte sintético e dublês**, incluindo runners focais, diagnóstico comparativo de tipos, consolidação, hashes, resultados finais e falhas intermediárias. Os dois logs gzip são cópias sem perda dos originais locais; os outros logs são os originais textuais. Arquivos novos e ignorados estão explicitados abaixo.
+
+As 11 fontes dependem conjuntamente dos tipos/erro compartilhados, contrato IMOB, adapter, runtime e intake. Os testes novos precisam da fixture e da fonte de erro; package.json e workflow registram sua execução oficial. Engine e launcher já versionados consomem o contrato e o resultado unavailable; não há alteração cognitiva nova no launcher. generateText e recordCapabilityUsage não foram alterados; seus consumidores pertinentes foram exercitados, com writer substituído por dublê. Billing/reservas/cobrança, manifests antigos de testes e exports sem diff já estão no HEAD e não recebem adição redundante.
+
+O conjunto é coerente para **um único commit**: a cadeia de propagação, compatibilidade dos consumidores e suas provas precisam permanecer juntas. Não há dependência de alteração financeira para versionar a guarda segura atual. Metering durável sem identidade real continua bloqueio separado, não entregue nem implicitamente autorizado. A proposta arquitetural é contexto da adoção delimitada; sua inclusão não ratifica o restante.
+
+## Evidências, hashes e proveniência
+
+- Pacotes reutilizados: README/results da correção e README/diagnostic-summary do diagnóstico anterior. As duas linhas novas do Evidence Index apontam para arquivos desta seleção. Referências a fontes estáveis e provas anteriores versionadas são satisfeitas pelo HEAD; referências aos dois logs locais excluídos são somente proveniência e têm cópias gzip entregáveis.
+- Antes desta preparação, **62/62 hashes** do manifesto da correção coincidiam com os bytes locais. Nenhuma fonte/teste mudou depois. O manifesto atual contém **70 hashes dos outros 70 caminhos**, excluindo somente a si próprio; a fotografia anterior está em previousSnapshot, histórica, não usada como lista de stage.
+- O manifesto do diagnóstico real permanece intacto: os 6 artefatos que enumera conservam os hashes; 8 fontes agora corrigidas correspondem ao HEAD anterior, e o hash histórico do Evidence Index coincide com o índice sem a nova linha de correção. São diferenças históricas esperadas, não drift a corrigir reescrevendo o original.
+- `provider-tests-direct.log.gz` e `provider-tests-final.log.gz`: gzip mtime=0, sem alteração dos bytes descomprimidos. Originais contêm respectivamente 4 e 2 linhas com espaços finais, permanecem locais e não entram no stage. Original/cópia, SHA-256 e tratamento exato constam de results.json → packaging.losslessLogs. Nenhum log foi normalizado ou truncado.
+- Fixture de teste: somente error.type/error.code do resultado real sanitizado, cujo SHA-256 é `f77384445eebd224b210fb2d9101e79e7a0b46d7b4a9462172df0b454333bbd7`. Message/param omitidos. Status/IDs dos testes são sintéticos. O runner histórico já sanitizava chave/Bearer/caminhos dos retornos; seu original e resultado foram preservados.
+- Leitura e busca de padrões no escopo selecionado não identificaram valores reais de credenciais ou dados de usuários. Configurações de teste são sintéticas; paths locais e IDs públicos de deploy/correlação permanecem. Não é auditoria exaustiva. Nenhum .env, segredo, cache, dist, node_modules ou temporário integra a seleção.
+
+## Resultados reaproveitados e ressalvas obrigatórias
+
+| Verificação registrada | Resultado | Exit | Alcance |
+| --- | --- | --- | --- |
+| Falhas/consumidores | APROVADO | 0 | 9 executados, 9 aprovados, 0 falhas/ignorados; sintético/dublês |
+| Seleção final afetada de retry/IDs | APROVADO | 0 | 3 executados, 3 aprovados, 0 falhas/ignorados; subconjunto dos nove |
+| Capacidade determinística | APROVADO | 0 | 1 executado/aprovado, 0 falhas/ignorados |
+| Intake/adaptador reaproveitados | APROVADO | 0 | 13/13 e 15/15; execução seletiva, não todos os intakes |
+| Contratos; builds core/providers; smoke dist | APROVADO | 0 | Pacotes/empacotamento focais; não aplicação completa |
+| Registro oficial CI e Evidence Index | APROVADO local | 0 | Não CI remoto; Index fora do sandbox após EPERM preservado |
+| Typecheck focal final | REPROVADO | 1 | 16 raízes; 2 diagnósticos antigos focais, 16 de dependências, 0 introduzidos conforme baseline virtual |
+| Diagnóstico real anterior | REPROVADO funcionalmente | 2 | Quota local, sem proposta; não reteste da correção |
+| Provider real pós-patch, navegador, HTTP com banco | NÃO EXECUTADO | — | Não validados |
+
+Falhas intermediárias permanecem preservadas, inclusive sandbox, tipagem e asserções antigas. Um log vazio sem exit não é promovido a aprovação; os resultados finais com saída/exit próprios estão discriminados em results.json/delta-executions.json. O check textual registrado anteriormente não certifica stage futuro nem logs antes não rastreados.
+
+**Status técnico PARCIAL.** Quota local não comprova quota em staging. A causa da tentativa específica de staging continua não comprovada; não se declara o incidente resolvido nem o fluxo real de quartos/vaga aprovado. Alinhamento web/API e reteste são etapa separada. Nenhuma alteração financeira, novo fallback, orçamento global ou cancelamento físico transversal. Demais políticas continuam PROPOSTA. Oferta de avaliação desligada e ratificação P1 weekly_cycle_evidence_too_old preservadas.
+
+## Lista exata — 39 adições normais
+
+Comando **somente proposto**, a partir da raiz e após autorização:
+
+```bash
+git add -- \
+  '.github/workflows/ci.yml' \
+  'apps/api/src/orchestrator/llmExecutor.ts' \
+  'apps/api/src/routes/imob.ts' \
+  'apps/api/src/services/capabilityExecution.ts' \
+  'apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts' \
+  'apps/api/src/tests/capability-execution.test.ts' \
+  'apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json' \
+  'apps/api/src/tests/imob-property-capture-intake.test.ts' \
+  'apps/api/src/tests/llm-provider-failure.test.ts' \
+  'apps/web/src/features/imob/structured/createImobStructuredForms.test.ts' \
+  'apps/web/src/features/imob/structured/useImobFrontDoorForms.ts' \
+  'docs/EVIDENCE_INDEX.md' \
+  'docs/architecture/agent-chat-runtime.md' \
+  'ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/README.md' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/diagnostic-summary.json' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/openai-integrated.json' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/run-integrated.mjs' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/source-hashes.json' \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/staging-snapshot.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/README.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-typecheck-final.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-typecheck.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-direct.log.gz' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-final.log.gz' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/results.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/source-hashes.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-deltas.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-focused.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/validate-deltas.mjs' \
+  'package.json' \
+  'packages/contracts/src/imobPropertyCapture.ts' \
+  'packages/core/src/llm/LLMProviderError.ts' \
+  'packages/core/src/llm/completionEngine.ts' \
+  'packages/core/src/llm/types.ts' \
+  'packages/core/src/utils/retry.ts' \
+  'packages/providers/src/OpenAIProvider.ts'
+```
+
+## Lista exata — 32 adições forçadas
+
+Todos são arquivos individualmente ignorados por `.gitignore:17:*.log`. Não usar -f em outros caminhos, diretórios ou curingas. As duas cópias .log.gz não são ignoradas e estão na lista normal.
+
+```bash
+git add -f -- \
+  'ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/openai-runtime.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/adapter-tests-direct.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/adapter-tests-first.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/ci-registration.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/contracts-typecheck.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-capability.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-ci-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-contracts.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-core-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-core-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-evidence-index-outside.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-evidence-index.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-final-types.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-first-types.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-first.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-ids-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-outside-types.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-package-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-package-smoke.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-providers-build.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-whitespace-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/delta-whitespace.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-tests-direct.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-tests-first.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/presentation-contract.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-quota-final.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-first.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-second.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-validated.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/render-only.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/runtime-entrypoint.log' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-first.log'
+```
+
+**Total: 71 caminhos únicos = 39 normais + 32 ignorados.** Listas disjuntas; nenhum git add foi executado, inclusive -N.
+
+## Excluídos e preservados
+
+- `CLAUDE.md` e `CODEX.md`: alterações preexistentes. SHA-256 preservados respectivamente `66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37` e `2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525`.
+- `ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff`: original de entrega anterior, sem reaplicação.
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-direct.log` e `ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-final.log`: originais locais, entregues por gzip sem perda.
+- Originais locais anteriores de `imob-property-guided-draft-2026-11-14/intake-first.log`, `forms-first.log` e `web-build.log`: já tratados na entrega anterior; não adicionar de novo.
+- `apps/web/dist/`, `packages/core/dist/`, `packages/providers/dist/`, quaisquer dist/caches/node_modules/ambientes, .env, .agents/.codex, temporários, scratchpad e demais caminhos fora das duas listas. Nenhum arquivo foi removido; nenhuma alteração de .gitignore.
+
+## Verificações futuras — somente após autorização
+
+```bash
+git diff --cached --name-only
+git diff --cached --name-status
+git diff --cached --stat
+git diff --cached --name-only -- CLAUDE.md CODEX.md
+git diff --cached --check
+git diff --cached
+```
+
+1. Exigir igualdade exata entre as duas listas e os 71 caminhos staged, sem extras, omissões ou duplicações. Exigir nenhuma saída para CLAUDE.md/CODEX.md. Reconfirmar branch/HEAD antes de stage.
+2. Ler o manifesto do próprio índice com `git show :ops/evidence/latest/imob-property-provider-failure-2026-11-16/source-hashes.json`. Para cada uma das 70 entradas de files, calcular SHA-256 dos bytes de `git show :<caminho>`; todas devem estar staged. Comparar os bytes do próprio manifesto com a cópia revisada do working tree. previousSnapshot é histórico; não exigir que seus originais locais estejam staged.
+3. Descomprimir os dois gzip **lidos do índice**, conferir SHA-256 e igualdade com os hashes originais declarados em results.json também lido do índice; não normalizar o conteúdo descomprimido. Não há changes.diff novo nesta entrega; o diff consolidado de código é o próprio git diff --cached.
+4. Ler README, results, manifesto e novas referências do Evidence Index pelos bytes staged, resolvendo dependências contra a seleção ou HEAD para arquivos reutilizados. Conferir todos os logs referidos em delta-executions.json, a fixture e sua proveniência. Confirmar os hashes dos seis artefatos do diagnóstico com o manifesto histórico staged; preservar suas diferenças de fontes explicadas acima.
+5. Repetir a inspeção de sensíveis sobre os bytes staged, incluindo gzip descomprimido; conferir que só os 32 logs explicitados receberam -f. Hashes não provam ausência de segredos.
+6. Exigir git diff --cached --check exit 0, inclusive nos novos logs textuais. Nenhum check do stage vazio nesta etapa vale como prova dessa aprovação futura. Se houver divergência, parar antes do commit e explicar a causa.
+7. Se autorizado, criar somente o commit acordado pelo fluxo normal, **sem contornar hooks**. Não repetir suítes aprovadas sem mudança concreta; não enfraquecer gates. Eventual hook reprovado deve ser relatado com saída/exit reais, sem --no-verify.
+
+## Título e corpo sugeridos
+
+```text
+fix(llm): propagate provider failures without replaying completed generations
+
+Conclui somente a adoção autorizada de Δ1–Δ3: propaga erro estruturado sanitizado do adaptador OpenAI pelo runtime central ao intake, sem conteúdo vazio ou sucesso indevido. Quota financeira não recebe retry; erros elegíveis preservam os limites existentes. O intake mantém unavailable e o contrato/engine preserva formulário, rascunho e proposta, encerrando a espera sem escrita.
+
+Distingue correlação interna, completion ID e request ID do provider. Preserva a referência legada de idempotência; identificadores/modelo efetivo/uso ausentes não são inventados. Geração concluída sem identidade de contabilização encerra explicitamente sem retry ou fallback da capacidade. Não altera billing, reservas ou cobrança; metering durável sem identidade continua bloqueio financeiro separado.
+
+Validação com transporte sintético, fixture sanitizada e dublês: 9/9 casos, revalidação final dos 3 afetados e 1/1 capacidade determinística; resultados 13/13 de intake e 15/15 do adaptador reaproveitados. Contratos, builds oficiais core/providers e smoke de módulos empacotados aprovados. Evidências do diagnóstico real anterior e falhas intermediárias preservadas; dois logs publicados em gzip sem perda, com proveniência e hashes.
+
+Status técnico PARCIAL. Typecheck focal de 16 raízes reprovado: dois diagnósticos antigos focais e 16 de dependências, sem diagnósticos introduzidos conforme comparação virtual com HEAD. Provider real pós-patch, navegador e HTTP com banco não validados. A causa da tentativa específica de staging permanece não comprovada; alinhamento web/API e reteste são etapa separada. Demais políticas transversais continuam PROPOSTA. Oferta de avaliação e ratificação P1 preservadas.
+```
+
+## Prontidão
+
+Preparação pronta para revisão/autorização de um único commit, condicionada aos bytes staged e hooks normais. Não há mudança posterior em fonte/teste que invalide as verificações recuperadas; somente plano, documentação de empacotamento, consolidação, manifesto e cópias gzip foram preparados. Limitações operacionais e reprovação focal de tipos permanecem explícitas, sem promessa de CI ou staging corrigido. Sem stage, commit, push, PR, merge, deploy, chamadas reais ou alterações financeiras nesta etapa.
+
+---
+
+# Histórico — plano da conversa guiada e anteriores, preservado integralmente; não executar
+
 # Plano vigente — conversa guiada do cadastro IMOB
 
 Preparado em 2026-11-16 por Codex, sem subagentes. **Somente preparação: nenhum comando de stage ou commit executado.**

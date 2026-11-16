@@ -16,7 +16,7 @@ export const IMOB_PROPERTY_CAPTURE_POLICY = Object.freeze({
   confirmReply: "Quero aplicar essas alterações ao rascunho",
   rejectReply: "Prefiro manter os dados como estão",
   confirmationPlaceholder: "Revise as alterações, tire dúvidas ou diga se deseja aplicá-las ao rascunho",
-  unavailable: "Não consegui interpretar sua mensagem agora. O cadastro e o formulário foram preservados, sem gravar o imóvel. Tente enviar novamente.",
+  unavailable: "A assistência por IA está indisponível neste momento. Seu formulário, rascunho e eventuais alterações propostas foram mantidos; nenhuma alteração foi aplicada e o imóvel não foi salvo. Você pode continuar preenchendo manualmente ou retomar depois.",
   timeout: "A interpretação demorou mais que o limite. O cadastro e o formulário foram preservados, sem gravar o imóvel. Tente enviar novamente.",
   invalid: "Recebi uma interpretação inválida. O cadastro e o formulário foram preservados, sem gravar o imóvel. Tente enviar novamente.",
 } as const);

@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "check": "check:chat-runtime-entrypoint-debt",
+  "checkedFile": "apps/web/src/components/agents/ChatAgentLauncher.tsx",
+  "violations": [],
+  "summary": {
+    "deepImportsBlocked": [
+      "imobContextResolver",
+      "legalContextResolver",
+      "proposalDomainResolver",
+      "specialistDecisionResolver",
+      "specialistExplainCatalog",
+      "platformHelpResolver",
+      "agentPresentationResolver",
+      "helpDictionaryResolver",
+      "eiahTutorContracts"
+    ],
+    "directDecisionCallsBlocked": [
+      "resolveSpecialistAvailability",
+      "canSuggestAgent",
+      "canHandoffToAgent",
+      "buildSuggestedAgentReply",
+      "buildSpecialistExplainReply",
+      "resolveSpecialistExplainTarget",
+      "resolveImobJourneyStage",
+      "resolveLegalJourneyStage",
+      "resolveImobVerticalContext",
+      "resolveLegalVerticalContext",
+      "shouldRouteToImob",
+      "isLegalRoutingQuestion"
+    ],
+    "literalPatternsBlocked": [
+      "defaultNextStep",
+      "quickReplies: [",
+      "const ...quickReplies... = ["
+    ]
+  }
+}
