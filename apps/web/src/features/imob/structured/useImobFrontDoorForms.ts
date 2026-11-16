@@ -7,7 +7,7 @@ import { useImobFormState, type ImobFormState } from "./useImobFormState";
 import { createImobStructuredForms } from "./createImobStructuredForms";
 import { makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage } from "./types";
 import type { ImobConversationPersistence, PersistedTag, ResumedThread } from "../persistence/useImobConversationPersistence";
-import { IMOB_PROPERTY_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy, imobPropertyCaptureResultSchema } from "@eiah/contracts";
+import { IMOB_PROPERTY_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy, imobPropertyCaptureResultSchema, type ImobPropertyCaptureProposal } from "@eiah/contracts";
 import { isPropertyCreateForm, buildPropertyCreateRequest } from "@/pages/app/imob/propertyCreateForm";
 import type { MessagePresentationSnapshot } from "@/components/agents/chatPresentationSnapshot";
 
@@ -35,8 +35,10 @@ export function toLauncherMessage<M extends FrontDoorMessageLike>(structured: St
   const presentationSnapshot: MessagePresentationSnapshot | undefined = capture ? {
     snapshotVersion: "v1", verticalContext: capture === "active" ? "IMOB" : null, routeIntent: capture === "active" ? "imob" : "help",
     showConfidence: false, provenanceMode: "none", signals: [], renderVariant: "guided_flow", quickReplySource: "agent_contract",
-    quickReplies: capture === "active" ? [propertyPolicy.questionReply, propertyPolicy.pauseReply] : [propertyPolicy.resumeReply],
-    inputPlaceholder: capture === "active" ? propertyPolicy.placeholder : propertyPolicy.pausedPlaceholder,
+    quickReplies: capture === "active" ? structured.propertyCaptureProposal
+      ? [propertyPolicy.confirmReply, propertyPolicy.rejectReply, propertyPolicy.questionReply]
+      : [propertyPolicy.questionReply, propertyPolicy.pauseReply] : [propertyPolicy.resumeReply],
+    inputPlaceholder: capture === "active" ? structured.propertyCaptureProposal ? propertyPolicy.confirmationPlaceholder : propertyPolicy.placeholder : propertyPolicy.pausedPlaceholder,
   } : undefined;
   return { id: structured.id, role: structured.role, content: structured.text, imobStructured: structured,
     ...(presentationSnapshot ? { presentationSnapshot } : {}) } as M;
@@ -120,6 +122,10 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
       const next = prev.map((message) => {
         const structured = message.imobStructured;
         const continuity = structured?.conversationState?.operational?.continuity;
+        if (structured?.propertyCaptureProposal && (changedScope || structured.propertyCaptureProposal.origin.contextRef !== reviewOriginRef.current.ref)) {
+          invalidated = true;
+          return { ...message, imobStructured: { ...structured, propertyCaptureProposal: null } };
+        }
         if (!continuity || (!changedScope && (!continuity.pending || continuity.pending.contextRef === reviewOriginRef.current.ref))) return message;
         invalidated = true;
         const text = continuity.pending
@@ -238,10 +244,7 @@ export function createImobFrontDoorForms(params: {
 
   async function consumeOperationalTurn(action: "continue" | "cancel" | "release" | "claim", text: string): Promise<boolean | void> {
     const propertyForm = pendingProperty();
-    if (propertyForm && action === "continue" && (getPropertyCaptureContext() === "active" || text === propertyPolicy.resumeReply)) {
-      await track(() => continuePropertyCapture(propertyForm, text));
-      return true;
-    }
+    if (propertyForm && action === "continue") return track(() => continuePropertyCapture(propertyForm, text));
     // P11: reivindicação somente leitura do turno pela vertical; sem contexto prévio também vale (a governança é do servidor).
     if (action === "claim") return forwardToImob(text, { claim: true });
     const context = latestContext();
@@ -270,38 +273,38 @@ export function createImobFrontDoorForms(params: {
     finally { imobForms.formSubmittingRef.current.delete(context.id); }
   }
 
-  async function continuePropertyCapture(form: StructuredMessage, text: string) {
+  async function continuePropertyCapture(form: StructuredMessage, text: string): Promise<boolean> {
     const session = getSession();
     const generation = params.getConversationGeneration();
     const scope = params.getConversationScopeKey?.();
+    const contextRef = getContinuityContextRef();
     const requestId = ++requestSequence.current;
     const values = { ...imobForms.resolveFormValuesForMessage(form) };
-    const revision = imobForms.getFormRevision?.(form.id);
-    const context = getPropertyCaptureContext();
-    const formThreadId = form.thread?.id;
-    const formCaseId = form.caseContext?.caseId;
+    const revision = imobForms.getFormRevision?.(form.id) ?? 0;
+    const context = getPropertyCaptureContext() ?? "active";
+    const origin = { formId: form.id, contextRef, draftVersion: revision,
+      threadId: form.thread?.id ?? null, caseId: form.caseContext?.caseId ?? null };
+    const draft = Object.fromEntries(IMOB_PROPERTY_CAPTURE_FIELDS.filter((field) => field in values).map((field) => [field, values[field]]));
+    const pending = form.propertyCaptureProposal ?? null;
+    const sameDraft = (a: Record<string, string | undefined>, b: Record<string, string | undefined>) =>
+      IMOB_PROPERTY_CAPTURE_FIELDS.every((field) => (a[field] ?? "") === (b[field] ?? ""));
     const stillCurrent = () => {
       const now = getSession();
       return requestSequence.current === requestId && generation === params.getConversationGeneration()
-        && scope === params.getConversationScopeKey?.() && now.token === session.token && now.userId === session.userId
+        && scope === params.getConversationScopeKey?.() && contextRef === getContinuityContextRef()
+        && now.token === session.token && now.userId === session.userId
         && now.tenantId === session.tenantId && now.workspaceId === session.workspaceId && now.activeDomain === session.activeDomain
         && pendingProperty()?.id === form.id && getPropertyCaptureContext() === context
-        && pendingProperty()?.thread?.id === formThreadId && pendingProperty()?.caseContext?.caseId === formCaseId;
+        && (pendingProperty()?.thread?.id ?? null) === origin.threadId && (pendingProperty()?.caseContext?.caseId ?? null) === origin.caseId
+        && (pendingProperty()?.propertyCaptureProposal?.ref ?? null) === (pending?.ref ?? null);
     };
-    const append = (content: string, state: "active" | "paused" = "active") => appendStructured({
+    const append = (content: string, state: "active" | "paused", proposal?: ImobPropertyCaptureProposal | null) => appendStructured({
       id: makeStructuredId("assistant"), role: "assistant", text: content, thread: form.thread,
-      propertyCaptureContext: state,
+      propertyCaptureContext: state, propertyCaptureProposal: proposal,
     });
     if (imobForms.formSubmittingRef.current.has(form.id)) {
-      append("O formulário está sendo salvo. Aguarde o resultado antes de alterar este cadastro.");
-      return;
-    }
-    if (text === propertyPolicy.resumeReply || text === propertyPolicy.pauseReply) {
-      const state = text === propertyPolicy.resumeReply ? "active" : "paused";
-      patchStructured(form.id, (message) => ({ ...message, propertyCaptureContext: state }));
-      append(state === "active" ? "Retomei o mesmo cadastro. O formulário e todos os dados foram preservados."
-        : "Pausei o cadastro para mudar de assunto. O formulário e os dados foram preservados; nada foi gravado.", state);
-      return;
+      append("O formulário está sendo salvo. Aguarde o resultado antes de alterar este cadastro.", context, pending);
+      return true;
     }
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -309,8 +312,8 @@ export function createImobFrontDoorForms(params: {
     try {
       const response = await Promise.race([
         resolveTurn({ intake: "property_draft", message: text, propertyCapture: {
-          message: text, operation: "property.create", step: "editing_form",
-          draft: Object.fromEntries(IMOB_PROPERTY_CAPTURE_FIELDS.filter((field) => field in values).map((field) => [field, values[field]])),
+          message: text, operation: "property.create", step: "editing_form", draft, origin, contextState: context,
+          pendingProposal: pending, providedFields: form.form!.fields.filter((field) => values[field.name]?.trim()).map((field) => field.name),
           history: params.getPropertyHistory?.(form.id) ?? [],
         } }, controller.signal),
         new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, params.propertyIntakeTimeoutMs ?? propertyPolicy.clientTimeoutMs); }),
@@ -318,22 +321,36 @@ export function createImobFrontDoorForms(params: {
       const parsed = imobPropertyCaptureResultSchema.safeParse(response.data?.propertyCapture);
       if (!response.ok || !parsed.success) throw new Error("invalid");
       result = parsed.data;
-      if (Object.keys(result.patch).length && result.outcome !== "updated") throw new Error("invalid");
-      // Reuse the actual form validator, checking only the proposed fields (other fields may still be incomplete).
-      const validation = buildPropertyCreateRequest({ ...values, ...result.patch });
-      if (!validation.ok && Object.keys(result.patch).some((field) => validation.errors[field])) throw new Error("invalid");
-      if (Object.keys(result.patch).some((field) => !form.form?.fields.some((item) => item.name === field))) throw new Error("invalid");
+      const validatePatch = (patch: Record<string, string | undefined>) => {
+        const validation = buildPropertyCreateRequest({ ...values, ...patch } as Record<string, string>);
+        if ((!validation.ok && Object.keys(patch).some((field) => validation.errors[field]))
+          || Object.keys(patch).some((field) => !form.form?.fields.some((item) => item.name === field))) throw new Error("invalid");
+      };
+      validatePatch(result.patch);
+      if (result.outcome === "updated") {
+        if (!pending || result.confirmedProposalRef !== pending.ref || result.proposal !== null
+          || JSON.stringify(pending.origin) !== JSON.stringify(origin) || !sameDraft(pending.baseDraft, draft)
+          || JSON.stringify(Object.entries(result.patch).sort()) !== JSON.stringify(Object.entries(pending.changes).sort())) throw new Error("invalid");
+      } else if (Object.keys(result.patch).length) throw new Error("invalid");
+      if (result.proposal) {
+        validatePatch(result.proposal.changes);
+        if (JSON.stringify(result.proposal.origin) !== JSON.stringify(origin) || !sameDraft(result.proposal.baseDraft, draft)
+          || !Object.keys(result.proposal.changes).length
+          || (result.outcome !== "proposed" && result.proposal.ref !== pending?.ref)) throw new Error("invalid");
+      } else if (result.outcome === "proposed") throw new Error("invalid");
     } catch (error) {
       const outcome = controller.signal.aborted ? "timeout" : error instanceof Error && error.message === "invalid" ? "invalid" : "unavailable";
-      result = { outcome, patch: {}, content: propertyPolicy[outcome] };
+      result = { outcome, patch: {}, proposal: pending, content: propertyPolicy[outcome] };
     } finally { if (timer) clearTimeout(timer); }
-    if (!stillCurrent()) return;
-    if (imobForms.formSubmittingRef.current.has(form.id) || revision !== imobForms.getFormRevision?.(form.id)
+    if (!stillCurrent()) return true;
+    if (imobForms.formSubmittingRef.current.has(form.id) || revision !== (imobForms.getFormRevision?.(form.id) ?? 0)
       || JSON.stringify(values) !== JSON.stringify(imobForms.resolveFormValuesForMessage(form))) {
-      append("Você editou o formulário durante a interpretação. Preservei suas edições e descartei a resposta anterior. Envie sua mensagem novamente para usar os dados atuais.");
-      return;
+      patchStructured(form.id, (message) => ({ ...message, propertyCaptureProposal: null }));
+      append("Você editou o formulário durante a interpretação. Preservei suas edições e descartei a resposta e a proposta anteriores por inteiro. Envie sua mensagem novamente para uma nova revisão.", context, null);
+      return true;
     }
-    if (Object.keys(result.patch).length) {
+    // Only a response bound to the exact current proposal may edit this same draft. Never invokes a save handler.
+    if (result.outcome === "updated") {
       imobForms.setFormValuesByMessageId((previous) => ({
         ...previous, [form.id]: { ...(previous[form.id] ?? {}), ...result.patch } as Record<string, string>,
       }));
@@ -343,9 +360,13 @@ export function createImobFrontDoorForms(params: {
         return { ...previous, [form.id]: remaining };
       });
     }
-    const state = result.outcome === "leave" ? "paused" : "active";
-    patchStructured(form.id, (message) => ({ ...message, propertyCaptureContext: state }));
-    append(result.content, state);
+    const state = result.outcome === "leave" ? "paused" : result.outcome === "resumed" || result.outcome === "proposed" || result.outcome === "updated" ? "active" : context;
+    const proposal = result.proposal === undefined ? pending : result.proposal;
+    patchStructured(form.id, (message) => ({ ...message, propertyCaptureContext: state, propertyCaptureProposal: proposal }));
+    // Paused conversation gets a semantic resume check before releasing a new subject to the existing front door.
+    if (context === "paused" && result.outcome === "leave") return false;
+    append(result.content, state, proposal);
+    return true;
   }
 
   /** Toda solicitação ao IMOB feita pelo front door (turno, reivindicação, continuação de formulário) é trabalho pendente compartilhado. */

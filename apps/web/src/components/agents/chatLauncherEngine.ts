@@ -27,7 +27,6 @@ import {
   type FrontDoorBillingSnapshot,
 } from "@/components/agents/frontDoorBillingEngine";
 import type { FrontDoorIntakeRequest } from "@/components/agents/frontDoorIntakeEngine";
-import { IMOB_PROPERTY_CAPTURE_POLICY } from "@eiah/contracts";
 import {
   resolveNoticeAckStep,
   type VerticalAccessNoticeAckRequest,
@@ -2161,14 +2160,14 @@ export async function resolveLauncherTurnDecision(params: {
     ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat) : null;
   const noticeAck = params.isUnifiedEiah
     ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice) : null;
-  const continuation = params.imobOperationalContinuation;
+  let continuation = params.imobOperationalContinuation;
   // An open property form belongs to IMOB before isolated help/legal/handoff heuristics.
   // Semantic continuation (including topic changes) is resolved by the contextual provider intake in the vertical engine.
-  if (continuation?.available && (continuation.propertyCaptureContext === "active"
-    || continuation.propertyCaptureContext === "paused" && params.trimmedInput === IMOB_PROPERTY_CAPTURE_POLICY.resumeReply)) {
-    await continuation.consume("continue", params.trimmedInput);
-    return { kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+  if (continuation?.available && continuation.propertyCaptureContext) {
+    const consumed = await continuation.consume("continue", params.trimmedInput);
+    if (consumed !== false) return { kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
       launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow" };
+    continuation = undefined; // The paused IMOB intake released this subject; use the existing governed routing.
   }
   const explicitVerticalTransfer = params.isUnifiedEiah || hasPendingProposalReview(continuation?.threadState)
     ? resolveExplicitVerticalHandoffRequest(params.input) : null;

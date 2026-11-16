@@ -1,3 +1,4 @@
+import { createLogger } from "@eiah/core/logging/logger";
 import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
 import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
@@ -1732,6 +1733,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     const parsed = imobPropertyCaptureRequestSchema.safeParse(body.propertyCapture);
     if (!parsed.success || parsed.data.message !== message) return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_INVALID" } });
     return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId },
+      observe: (diagnostic) => createLogger({ component: "imob-property-capture" }).info(diagnostic, "imob.property_capture.intake"),
       interpret: async ({ systemPrompt, userPrompt }) => {
         // Same coordinator and provider registry as the contextual Front Door intake; IMOB owns the domain contract.
         const profile = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);

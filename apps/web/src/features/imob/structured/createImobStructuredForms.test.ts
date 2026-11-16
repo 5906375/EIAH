@@ -2439,21 +2439,24 @@ const interpretedProperty = (message: string, changes: unknown[] = [], extra = {
 function propertyHarness(interpret: (request: any) => Promise<string> = async ({ message }) => interpretedProperty(message), transport: Parameters<typeof frontDoorHarness>[3] = {}) {
   const harness = frontDoorHarness(async (body) => {
     assert.equal(body.intake, "property_draft", "continuidade passa somente pelo intake consultivo, nunca pelo resolvedor operacional");
-    const propertyCapture = await interpretImobPropertyCapture(body.propertyCapture!, { interpret: async () => interpret(body.propertyCapture), timeoutMs: 100 });
+    const propertyCapture = await interpretImobPropertyCapture(body.propertyCapture!, { interpret: async () => interpret(body.propertyCapture), scope: { tenantId: "test-tenant", workspaceId: "test-workspace", userId: "test-user" }, timeoutMs: 100 });
     return { ok: true, data: { mode: "consult", action: "property.draft.intake", propertyCapture, threadLabel: "Captação", presentation: { text: propertyCapture.content }, conversationState: {} as never } };
   }, { current: 0 }, false, transport);
   const form = propertyDraftMessage();
   harness.setMessages([form]);
   harness.raw.setFormValuesByMessageId({ [form.id]: Object.fromEntries(form.form!.fields.map((field) => [field.name, String(field.value ?? "")])) });
-  const edit = (patch: Record<string, string>) => harness.raw.setFormValuesByMessageId((previous: any) => ({ ...previous, [form.id]: { ...previous[form.id], ...patch } }));
+  let revision = 0;
+  (harness.imobForms as any).getFormRevision = () => revision;
+  const edit = (patch: Record<string, string>) => { revision += 1; harness.raw.setFormValuesByMessageId((previous: any) => ({ ...previous, [form.id]: { ...previous[form.id], ...patch } })); };
   return { ...harness, form, edit };
 }
 
-test("cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, atualizam um único formulário sem escrita", async (t) => {
+test("cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita", async (t) => {
   const fetches: string[] = [];
   t.mock.method(globalThis, "fetch", async (input: any) => { fetches.push(String(input)); throw new Error("nenhuma rede permitida"); });
   const message = "Esse imóvel tem dois quartos e uma vaga. O que mais preciso informar?";
-  const harness = propertyHarness(async () => interpretedProperty(message, [
+  const harness = propertyHarness(async ({ pendingProposal }) => pendingProposal
+    ? interpretedProperty("", [], { intent: "confirm_changes", proposalRef: pendingProposal.ref }) : interpretedProperty(message, [
     { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
     { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
   ]), { getPropertyHistory: () => [{ role: "user", text: "Quero cadastrar um apartamento para locação em Balneário Camboriú." }] });
@@ -2470,8 +2473,19 @@ test("cadastro pendente: reprodução e mensagem mista vão ao intake antes do j
   assert.equal(harness.calls[0].propertyCapture?.history.length, 1);
   assert.equal("ownerId" in harness.calls[0].propertyCapture!.draft, false);
   assert.equal("documentType" in harness.calls[0].propertyCapture!.draft, false);
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "");
+  assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+  assert.deepEqual(harness.getErrors()[harness.form.id], { bedrooms: "Use só números", address: "Informe o endereço" });
+  const proposal = harness.messages()[0].propertyCaptureProposal;
+  assert.ok(proposal);
+  const proposed: any = toLauncherMessage(harness.messages().at(-1)!);
+  assert.equal(resolveSnapshotInputPlaceholder(proposed.presentationSnapshot), propertyPolicy.confirmationPlaceholder);
+  assert.deepEqual(resolveSnapshotQuickReplies(proposed.presentationSnapshot), [propertyPolicy.confirmReply, propertyPolicy.rejectReply, propertyPolicy.questionReply]);
+  await harness.consumeOperationalTurn("continue", "Pode colocar os dois dados que você propôs.");
   assert.equal(harness.getValues()[harness.form.id].bedrooms, "2");
   assert.equal(harness.getValues()[harness.form.id].garageSpots, "1");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /ainda não foi salvo/);
   assert.equal(harness.getValues()[harness.form.id].city, "Balneário Camboriú");
   assert.equal(harness.getValues()[harness.form.id].ownerId, "owner-manual");
   assert.deepEqual(harness.getErrors()[harness.form.id], { address: "Informe o endereço" }, "limpa apenas o erro do campo atualizado");
@@ -2482,7 +2496,7 @@ test("cadastro pendente: reprodução e mensagem mista vão ao intake antes do j
 });
 
 test("cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores", async () => {
-  const harness = propertyHarness(async ({ message }) => interpretedProperty(message, message.startsWith("Corrigindo") ? [
+  const harness = propertyHarness(async ({ message, pendingProposal }) => pendingProposal ? interpretedProperty("", [], { intent: "confirm_changes", proposalRef: pendingProposal.ref }) : interpretedProperty(message, message.startsWith("Corrigindo") ? [
     { field: "city", value: "Itajaí", evidence: message, correction: true },
   ] : []));
   harness.edit({ bedrooms: "3", garageSpots: "2", address: "Rua Manual, 500" });
@@ -2491,6 +2505,9 @@ test("cadastro: perguntas e correções preservam estado, campos manuais e alter
   assert.equal(harness.getPropertyCaptureContext(), "active");
   assert.deepEqual(harness.getConversationState(), state);
   await harness.consumeOperationalTurn("continue", "Corrigindo: a cidade é Itajaí.");
+  assert.equal(harness.getValues()[harness.form.id].city, "Balneário Camboriú");
+  assert.ok(harness.messages()[0].propertyCaptureProposal);
+  await harness.consumeOperationalTurn("continue", "Sim, troque só a cidade como proposto.");
   assert.equal(harness.getValues()[harness.form.id].city, "Itajaí");
   assert.equal(harness.getValues()[harness.form.id].address, "Rua Manual, 500");
   assert.equal(harness.getValues()[harness.form.id].bedrooms, "3");
@@ -2512,7 +2529,7 @@ test("cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e man
 });
 
 test("cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões", async () => {
-  const harness = propertyHarness(async ({ message }) => interpretedProperty(message, [], { intent: "change_subject" }));
+  const harness = propertyHarness(async ({ message, contextState }) => interpretedProperty(message, [], { intent: contextState === "paused" ? "resume" : "change_subject" }));
   harness.edit({ bedrooms: "4" });
   const first: any = toLauncherMessage(harness.form);
   assert.equal(resolveSnapshotInputPlaceholder(first.presentationSnapshot), propertyPolicy.placeholder);
@@ -2522,10 +2539,10 @@ test("cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots r
   const paused: any = toLauncherMessage(harness.messages().at(-1)!);
   assert.deepEqual(resolveSnapshotQuickReplies(paused.presentationSnapshot), [propertyPolicy.resumeReply]);
   assert.equal(resolveSnapshotInputPlaceholder(paused.presentationSnapshot), propertyPolicy.pausedPlaceholder);
-  await harness.consumeOperationalTurn("continue", propertyPolicy.resumeReply);
+  await harness.consumeOperationalTurn("continue", "Vamos voltar àquele apartamento que estávamos cadastrando.");
   assert.equal(harness.getPropertyCaptureContext(), "active");
   assert.equal(harness.getValues()[harness.form.id].bedrooms, "4");
-  assert.equal(harness.calls.length, 1, "retomar pelo botão exato é determinístico");
+  assert.equal(harness.calls.length, 2, "pausa e retomada semânticas passam pelo mesmo intake");
   assert.equal(harness.messages().filter((item) => item.form).length, 1);
 });
 
@@ -2550,7 +2567,8 @@ test("cadastro: troca de usuário, sessão, workspace, tenant, domínio, convers
   try {
     for (const kind of ["userId", "token", "tenantId", "workspaceId", "activeDomain", "conversation", "form", "thread", "case", "turn"] as const) {
       let finish!: (value: string) => void;
-      const harness = propertyHarness(() => new Promise((resolve) => { finish = resolve; }));
+      let modelCalls = 0;
+      const harness = propertyHarness(() => ++modelCalls === 1 ? new Promise((resolve) => { finish = resolve; }) : Promise.resolve(interpretedProperty("", [], { intent: "pause" })));
       const pending = harness.consumeOperationalTurn("continue", "Ele tem dois quartos.");
       const reply = interpretedProperty("", [{ field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }]);
       if (kind === "conversation") harness.conversationGenerationRef.current += 1;
@@ -2591,4 +2609,160 @@ test("cadastro: falhas, timeout do cliente e payload inválido encerram espera e
     const message: any = toLauncherMessage(harness.messages().at(-1)!);
     assert.equal(resolveSnapshotInputPlaceholder(message.presentationSnapshot), propertyPolicy.placeholder);
   }
+});
+
+
+test("cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa", async () => {
+  let step = "propose";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (step === "question") return interpretedProperty(message, [], { topics: ["ownerId"] });
+    if (step === "reject") return interpretedProperty(message, [], { intent: "reject_changes" });
+    if (step === "ambiguous") return interpretedProperty(message, [], { intent: "clarify", question: "Deseja incluir os dois dados ou revisar algum deles?" });
+    return interpretedProperty(message, [step === "more"
+      ? { field: "garageSpots", value: "1", evidence: message, correction: false }
+      : { field: "bedrooms", value: "2", evidence: message, correction: false }]);
+  });
+  const before = JSON.stringify(harness.getValues());
+  await harness.consumeOperationalTurn("continue", "Ele possui dois dormitórios.");
+  const first = harness.messages()[0].propertyCaptureProposal!;
+  step = "question"; await harness.consumeOperationalTurn("continue", "Preciso informar o proprietário agora?");
+  assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, first.ref);
+  assert.match(harness.messages().at(-1)!.text, /Proprietário: opcional/);
+  step = "ambiguous"; await harness.consumeOperationalTurn("continue", "Talvez, deixa eu ver.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, first.ref);
+  step = "more"; await harness.consumeOperationalTurn("continue", "E também tem uma vaga.");
+  const next = harness.messages()[0].propertyCaptureProposal!;
+  assert.notEqual(next.ref, first.ref); assert.deepEqual(next.changes, { bedrooms: "2", garageSpots: "1" });
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  step = "reject"; await harness.consumeOperationalTurn("continue", "Prefiro não incluir essas informações agora.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.equal(JSON.stringify(harness.getValues()), before); assert.equal(harness.messages().filter((m) => m.form).length, 1);
+});
+
+test("cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto", async () => {
+  const harness = propertyHarness(async ({ message, pendingProposal }) => pendingProposal
+    ? interpretedProperty(message, [], { intent: "confirm_changes", proposalRef: pendingProposal.ref })
+    : interpretedProperty(message, [{ field: "bedrooms", value: "2", evidence: message, correction: false }, { field: "garageSpots", value: "1", evidence: message, correction: false }]));
+  await harness.consumeOperationalTurn("continue", "São dois quartos e uma vaga.");
+  harness.edit({ bedrooms: "4" });
+  await harness.consumeOperationalTurn("continue", "Pode aplicar o que propôs.");
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "4");
+  assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /Não há uma proposta vigente/);
+});
+
+test("cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto", async () => {
+  let finish!: (value: string) => void;
+  let ref = "";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (pendingProposal) { ref = pendingProposal.ref; return new Promise((resolve) => { finish = resolve; }); }
+    return interpretedProperty(message, [{ field: "bedrooms", value: "2", evidence: message, correction: false }]);
+  });
+  await harness.consumeOperationalTurn("continue", "Esse tem dois quartos.");
+  const pending = harness.consumeOperationalTurn("continue", "Pode incluir os quartos.");
+  harness.conversationGenerationRef.current += 1;
+  const count = harness.messages().length;
+  finish(interpretedProperty("", [], { intent: "confirm_changes", proposalRef: ref }));
+  await pending;
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, ""); assert.equal(harness.messages().length, count);
+});
+
+test("cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake", async () => {
+  let intent = "pause";
+  const harness = propertyHarness(async ({ message }) => interpretedProperty(message, [], { intent }));
+  await harness.consumeOperationalTurn("continue", "Deixe isso para depois.");
+  intent = "change_subject";
+  const other = "Quero falar de outro assunto agora.";
+  const released = await harness.consumeOperationalTurn("continue", other);
+  assert.equal(released, false); assert.equal(harness.getPropertyCaptureContext(), "paused");
+  intent = "resume";
+  const input = "Vamos seguir preenchendo aquele apartamento?";
+  const decision = await resolveLauncherTurnDecision({ input, trimmedInput: input, routeIntent: "help", proposalMode: false,
+    isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    imobOperationalContinuation: { propertyCaptureContext: "paused", available: true, consume: harness.consumeOperationalTurn } });
+  assert.equal(decision?.turnConsumed, true); assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.equal(harness.calls.length, 3);
+});
+
+test("cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída", async () => {
+  for (const invalid of ["partial", "extra", "old_ref"]) {
+    const harness = frontDoorHarness(async ({ propertyCapture }) => {
+      assert.ok(propertyCapture);
+      if (!propertyCapture.pendingProposal) {
+        const result = await interpretImobPropertyCapture(propertyCapture, {
+          scope: { tenantId: "test-tenant", workspaceId: "test-workspace", userId: "test-user" },
+          interpret: async () => interpretedProperty("", [
+            { field: "bedrooms", value: "2", evidence: propertyCapture.message, correction: false },
+            { field: "garageSpots", value: "1", evidence: propertyCapture.message, correction: false },
+          ]),
+        });
+        return { ok: true, data: { propertyCapture: result } as ImobResolveTurnResponse };
+      }
+      const proposal = propertyCapture.pendingProposal;
+      return { ok: true, data: { propertyCapture: { outcome: "updated", content: "Aplicado.", proposal: null,
+        confirmedProposalRef: invalid === "old_ref" ? "previous-proposal" : proposal.ref,
+        patch: invalid === "partial" ? { bedrooms: "2" } : invalid === "extra" ? { ...proposal.changes, bathrooms: "3" } : proposal.changes,
+      } } as ImobResolveTurnResponse };
+    });
+    const form = propertyDraftMessage();
+    harness.setMessages([form]);
+    harness.raw.setFormValuesByMessageId({ [form.id]: Object.fromEntries(form.form!.fields.map((field) => [field.name, String(field.value ?? "")])) });
+    const before = JSON.stringify(harness.getValues());
+    await harness.consumeOperationalTurn("continue", "Dois quartos e uma vaga.");
+    const proposal = harness.messages()[0].propertyCaptureProposal!;
+    assert.ok(proposal);
+    await harness.consumeOperationalTurn("continue", "Pode aplicar os dois dados.");
+    assert.equal(JSON.stringify(harness.getValues()), before, invalid);
+    assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, proposal.ref);
+    assert.equal(harness.messages().at(-1)!.text, propertyPolicy.invalid);
+  }
+});
+
+test("cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição", async () => {
+  for (const revert of [false, true]) {
+    let finish!: (value: string) => void;
+    let ref = "";
+    const harness = propertyHarness(async ({ message, pendingProposal }) => {
+      if (pendingProposal) { ref = pendingProposal.ref; return new Promise((resolve) => { finish = resolve; }); }
+      return interpretedProperty(message, [
+        { field: "bedrooms", value: "2", evidence: message, correction: false },
+        { field: "garageSpots", value: "1", evidence: message, correction: false },
+      ]);
+    });
+    await harness.consumeOperationalTurn("continue", "Dois quartos e uma vaga.");
+    const pending = harness.consumeOperationalTurn("continue", "Quero aplicar essas duas inclusões.");
+    harness.edit({ bedrooms: "4" });
+    if (revert) harness.edit({ bedrooms: "" });
+    finish(interpretedProperty("", [], { intent: "confirm_changes", proposalRef: ref }));
+    await pending;
+    assert.equal(harness.getValues()[harness.form.id].bedrooms, revert ? "" : "4");
+    assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+    assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+    assert.match(harness.messages().at(-1)!.text, /descartei a resposta e a proposta anteriores por inteiro/);
+  }
+});
+
+test("cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior", async () => {
+  let step = "propose";
+  let oldRef = "";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (step === "confirm") return interpretedProperty(message, [], { intent: "confirm_changes", proposalRef: oldRef });
+    if (pendingProposal) oldRef = pendingProposal.ref;
+    return interpretedProperty(message, [
+      { field: "bedrooms", value: step === "correct" ? "" : "2", evidence: message, correction: step === "correct" },
+    ]);
+  });
+  const before = JSON.stringify(harness.getValues());
+  await harness.consumeOperationalTurn("continue", "Ele tem dois quartos.");
+  assert.ok(harness.messages()[0].propertyCaptureProposal);
+  step = "correct";
+  await harness.consumeOperationalTurn("continue", "Corrigindo: deixe quartos vazio como estava.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  step = "confirm";
+  await harness.consumeOperationalTurn("continue", "Pode aplicar.");
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /Não há uma proposta vigente/);
 });

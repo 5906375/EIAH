@@ -1,0 +1,98 @@
+TAP version 13
+# Subtest: cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+not ok 1 - cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+  ---
+  duration_ms: 6.369548
+  type: 'test'
+  location: '[WORKSPACE]/apps/api/src/tests/imob-property-capture-intake.test.ts:1:1666'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Incluir Quartos: 2.*Incluir Vagas: 1/. Input:
+
+    'Entendi os dados. Posso aplicar estas alterações ao rascunho? Incluir Quartos: 2; Incluir Vagas de garagem: 1. Ainda falta informar: Endereço. Pode me contar Endereço ou fornecer outros dados na ordem que preferir. O formulário ainda não mudou; confirmar esta proposta não salva o imóvel.'
+
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Entendi os dados. Posso aplicar estas alterações ao rascunho? Incluir Quartos: 2; Incluir Vagas de garagem: 1. Ainda falta informar: Endereço. Pode me contar Endereço ou fornecer outros dados na ordem que preferir. O formulário ainda não mudou; confirmar esta proposta não salva o imóvel.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> ([WORKSPACE]/apps/api/src/tests/imob-property-capture-intake.test.ts:34:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+ok 2 - cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+  ---
+  duration_ms: 2.566456
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+ok 3 - cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+  ---
+  duration_ms: 2.852375
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+ok 4 - cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+  ---
+  duration_ms: 2.560858
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+ok 5 - cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+  ---
+  duration_ms: 1.088699
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+ok 6 - cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+  ---
+  duration_ms: 1.525515
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+ok 7 - cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+  ---
+  duration_ms: 2.743091
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+ok 8 - cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+  ---
+  duration_ms: 11.712986
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+ok 9 - cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+  ---
+  duration_ms: 1.208172
+  type: 'test'
+  ...
+# Subtest: contrato de transporte limita contexto e rejeita autorização e identificadores livres
+ok 10 - contrato de transporte limita contexto e rejeita autorização e identificadores livres
+  ---
+  duration_ms: 1.035406
+  type: 'test'
+  ...
+# Subtest: rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+ok 11 - rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+  ---
+  duration_ms: 149.983719
+  type: 'test'
+  ...
+# Subtest: rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+ok 12 - rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+  ---
+  duration_ms: 190.570697
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 383.987241
