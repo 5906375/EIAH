@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { imobPropertyCaptureRequestSchema, type ImobPropertyCaptureRequest, type ImobPropertyCaptureProposal } from "@eiah/contracts";
 import { interpretImobPropertyCapture as intake, type ImobPropertyCaptureDeps } from "../services/imob/intake/imobPropertyCaptureIntake";
 import { resolveImobPropertyCaptureTurn } from "../services/imob/crm/imobCrmTurnEngine";
+import { llmFailureDiagnostic, llmDiagnosticIdentifier, LLMProviderError } from "@eiah/core/llm/LLMProviderError";
 
 // Injected model fixtures prove dispatch and deterministic protections, never real semantic understanding.
 const scope = { tenantId: "session-tenant", workspaceId: "session-workspace", userId: "session-user" };
@@ -197,7 +198,7 @@ test("contrato de transporte limita contexto e rejeita autorização e identific
 });
 
 /** Real route callback, dependencies injected. Not HTTP/DB/provider integration. */
-function routeHarness(options: { permission?: boolean; entitlement?: boolean; profile?: boolean } = {}) {
+function routeHarness(options: { permission?: boolean; entitlement?: boolean; profile?: boolean; profileError?: Error; executorError?: Error } = {}) {
   const source = ts.createSourceFile("imob.ts", readFileSync(new URL("../routes/imob.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
   let handler: ts.Expression | undefined;
   function visit(node: ts.Node) {
@@ -208,19 +209,20 @@ function routeHarness(options: { permission?: boolean; entitlement?: boolean; pr
   const calls: Array<{ kind: string; input: any }> = [];
   const injected = {
     crypto,
+    llmFailureDiagnostic, llmDiagnosticIdentifier,
     asObject: (value: any) => value && typeof value === "object" ? value : null,
     asString: (value: any) => typeof value === "string" ? value.trim() : null,
     readImobWorkspaceAccessProfile: async (input: any) => { calls.push({ kind: "access", input }); return { permissions: ["imob.chat.use"] }; },
     ensureImobWorkspacePermission: (res: any) => options.permission === false ? (res.status(403).json({ ok: false }), false) : true,
     resolveImobEntitlements: async (input: any) => { calls.push({ kind: "entitlement", input }); return { REAL_ESTATE_CORE: options.entitlement !== false }; },
     imobPropertyCaptureRequestSchema, resolveImobPropertyCaptureTurn,
-    createLogger: () => ({ info: (diagnostic: unknown) => calls.push({ kind: "diagnostic", input: diagnostic }) }),
-    getAgentProfile: async (...input: any[]) => { calls.push({ kind: "profile", input }); return { model: "configured:model", chatRuntime: { chatEnabled: options.profile !== false }, knowledgePolicy: { llmUsageMode: "grounded_reasoning", maskingPolicy: "required" } }; },
-    executeLlmStep: async (input: any) => { calls.push({ kind: "provider", input }); return { outputText: model() }; },
+    createLogger: (context: Record<string, unknown>) => ({ info: (diagnostic: Record<string, unknown>, message: string) => calls.push({ kind: message === "imob.property_capture.intake" ? "diagnostic" : "runtime", input: { ...context, ...diagnostic } }) }),
+    getAgentProfile: async (...input: any[]) => { calls.push({ kind: "profile", input }); if (options.profileError) throw options.profileError; return { model: "configured:model", chatRuntime: { chatEnabled: options.profile !== false }, knowledgePolicy: { llmUsageMode: "grounded_reasoning", maskingPolicy: "required" } }; },
+    executeLlmStep: async (input: any) => { calls.push({ kind: "provider", input }); if (options.executorError) throw options.executorError; return { outputText: model() }; },
   };
   const callback = new Function(...Object.keys(injected), ts.transpileModule(`return (${handler.getText(source)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText)(...Object.values(injected));
   return { calls, run: async (body: any) => {
-    const res = { statusCode: 200, body: null as any, status(code: number) { this.statusCode = code; return this; }, json(value: any) { this.body = value; return this; } };
+    const res = { statusCode: 200, body: null as any, getHeader: () => "http-synthetic-correlation", status(code: number) { this.statusCode = code; return this; }, json(value: any) { this.body = value; return this; } };
     await callback({ authContext: scope, prisma: {}, body }, res); return res;
   } };
 }
@@ -229,14 +231,79 @@ test("rota com dublês usa sessão e executor central antes de efeitos; não env
   const harness = routeHarness(); const input = request("O que falta?");
   const response = await harness.run({ message: input.message, intake: "property_draft", propertyCapture: input, tenantId: "evil", workspaceId: "evil", userId: "evil", caseId: "evil", actionId: "evil" });
   assert.equal(response.statusCode, 200); assert.equal(response.body.data.action, "property.draft.intake");
-  assert.deepEqual(harness.calls.map(({ kind }) => kind), ["access", "entitlement", "profile", "provider", "diagnostic"]);
+  const calls = harness.calls.filter(({ kind }) => kind !== "runtime");
+  assert.deepEqual(calls.map(({ kind }) => kind), ["access", "entitlement", "profile", "provider", "diagnostic"]);
   assert.equal(harness.calls[1].input.tenantId, scope.tenantId);
-  assert.deepEqual(harness.calls[2].input.slice(0, 3), [scope.tenantId, scope.workspaceId, "EIAH"]);
-  const provider = harness.calls[3].input;
+  assert.deepEqual(calls[2].input.slice(0, 3), [scope.tenantId, scope.workspaceId, "EIAH"]);
+  const provider = calls[3].input;
   assert.equal(provider.profile.model, "configured:model"); assert.equal(provider.profile.knowledgePolicy.maskingPolicy, "required");
   assert.equal(provider.metadata.maskSensitiveBeforeLlm, true);
+  assert.equal(provider.metadata.traceId, "http-synthetic-correlation");
+  assert.equal(calls.at(-1)?.input.traceId, "http-synthetic-correlation");
   assert.doesNotMatch(provider.userPrompt, /evil|session-tenant|session-user|caseId/);
   assert.equal("ownerId" in JSON.parse(provider.userPrompt).draft, false);
+});
+
+test("diagnóstico: falha de perfil antes do executor é correlacionada e não vaza erro genérico", async () => {
+  const secret = "Bearer synthetic-private-profile-secret";
+  const harness = routeHarness({ profileError: Object.assign(new Error(secret), { code: secret, privateData: secret }) });
+  const proposal = await propose();
+  const input = request("Posso perguntar?", { pendingProposal: proposal });
+  const snapshot = JSON.stringify(input);
+  const response = await harness.run({ message: input.message, intake: "property_draft", propertyCapture: input });
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.body.data.propertyCapture.outcome, "unavailable");
+  assert.equal(response.body.data.presentation.text, response.body.data.propertyCapture.content);
+  assert.deepEqual(response.body.data.propertyCapture.patch, {});
+  assert.deepEqual(response.body.data.propertyCapture.proposal, proposal);
+  assert.equal(JSON.stringify(input), snapshot);
+  assert.equal("executionRequest" in response.body.data, false);
+  assert.equal(harness.calls.some(({ kind }) => kind === "provider"), false);
+  const failures = harness.calls.filter(({ kind, input }) => kind === "runtime" && input.failure);
+  assert.equal(failures.length, 1);
+  assert.equal(failures[0].input.traceId, "http-synthetic-correlation");
+  assert.equal(failures[0].input.stage, "profile_resolution");
+  assert.deepEqual(failures[0].input.failure, { category: "internal", code: "profile_resolution_failed" });
+  const terminal = harness.calls.filter(({ kind }) => kind === "diagnostic");
+  assert.equal(terminal.length, 1);
+  assert.equal(terminal[0].input.traceId, "http-synthetic-correlation");
+  assert.equal(terminal[0].input.internalFailure.code, "interpretation_failed");
+  assert.doesNotMatch(JSON.stringify([...failures, ...terminal, response.body]), /synthetic-private-profile-secret|privateData|stack/);
+});
+
+test("diagnóstico: HTTP da aplicação permanece separado do status do provider e de IDs ausentes", async () => {
+  for (const signals of [{ httpStatus: 429, providerRequestId: "req_synthetic_real_header" }, {}]) {
+    const failure = new LLMProviderError({ provider: "openai", model: "synthetic-model", code: "credit_balance_exhausted", ...signals });
+    const harness = routeHarness({ executorError: failure });
+    const input = request("O que falta?");
+    const response = await harness.run({ message: input.message, intake: "property_draft", propertyCapture: input });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.data.propertyCapture.outcome, "unavailable");
+    const events = harness.calls.filter(({ kind }) => kind === "diagnostic");
+    assert.equal(events.length, 1);
+    assert.equal(events[0].input.traceId, "http-synthetic-correlation");
+    assert.equal(events[0].input.providerFailure.httpStatus, signals.httpStatus);
+    assert.equal(events[0].input.providerFailure.providerRequestId, signals.providerRequestId);
+    assert.equal(Object.hasOwn(events[0].input.providerFailure, "modelUsed"), false);
+    assert.doesNotMatch(JSON.stringify(response.body), /req_synthetic|credit_balance|synthetic-model/);
+  }
+});
+
+test("diagnóstico: parsing e schema têm conclusão única correlacionada sem registrar conteúdo", async () => {
+  const proposal = await propose();
+  for (const [raw, stage] of [["synthetic-private-invalid-json", "json_parse"], ['{"private":"synthetic-private-schema"}', "model_schema"]]) {
+    const diagnostics: unknown[] = [];
+    const input = request("Pergunta privada", { pendingProposal: proposal });
+    const snapshot = JSON.stringify(input);
+    const result = await resolveImobPropertyCaptureTurn(input, { scope, traceId: "http-synthetic-correlation",
+      interpret: async () => raw, observe: (event) => diagnostics.push(event) });
+    assert.deepEqual(diagnostics, [{ stage, outcome: "invalid", traceId: "http-synthetic-correlation" }]);
+    assert.deepEqual(result.propertyCapture.patch, {});
+    assert.deepEqual(result.propertyCapture.proposal, proposal);
+    assert.equal(JSON.stringify(input), snapshot);
+    assert.equal("executionRequest" in result, false);
+    assert.doesNotMatch(JSON.stringify(diagnostics), /synthetic-private|Pergunta privada/);
+  }
 });
 
 test("rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível", async () => {

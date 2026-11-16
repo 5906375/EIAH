@@ -1,6 +1,6 @@
 import { createLogger } from "../logging";
 import { retry, RetryExhaustedError } from "../utils/retry";
-import { isLLMProviderError } from "./LLMProviderError";
+import { isLLMProviderError, llmFailureDiagnostic, llmDiagnosticIdentifier, type LLMInternalStage } from "./LLMProviderError";
 import { withTimeout } from "../utils/timeout";
 import { normalizeMessages } from "../utils/normalizeMessages";
 import { resolveProvider, stripProviderPrefix } from "./LLMRouter";
@@ -16,25 +16,22 @@ function readNumberFromEnv(key: string, fallback: number) {
 }
 
 export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-  const provider = resolveProvider(req);
-  const model = stripProviderPrefix(req.model);
-  const messages = normalizeMessages(req.messages);
   const startedAt = Date.now();
-  const traceId =
-    typeof req.metadata?.traceId === "string" && req.metadata.traceId.trim()
-      ? req.metadata.traceId.trim()
-      : undefined;
-
-  logger.info(
-    {
-      provider: provider.name,
-      model,
-      traceId,
-    },
-    "llm.completion.start"
-  );
+  const traceId = llmDiagnosticIdentifier(req.metadata?.traceId);
+  const diagnostic = req.metadata?.source === "imob-property-capture-intake";
+  let stage: LLMInternalStage = "provider_resolution";
+  let selectedProvider: string | undefined;
+  let attempt = 0;
 
   try {
+    if (diagnostic) logger.info({ stage, traceId, modelRequested: llmDiagnosticIdentifier(req.model),
+      providerRequested: llmDiagnosticIdentifier(req.metadata?.provider) }, "llm.completion.resolve");
+    const provider = resolveProvider(req);
+    selectedProvider = provider.name;
+    const model = stripProviderPrefix(req.model);
+    const messages = normalizeMessages(req.messages);
+    stage = "provider_execution";
+    logger.info({ provider: provider.name, model, traceId }, "llm.completion.start");
     const timeoutMs = readNumberFromEnv("LLM_TIMEOUT_MS", 15000);
     const retries = readNumberFromEnv("LLM_RETRIES", 3);
     const baseDelayMs = readNumberFromEnv("LLM_RETRY_DELAY_MS", 150);
@@ -58,7 +55,13 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
     );
 
     const result = await retry(
-      () => withTimeout(provider.chatCompletion({ ...req, model, messages }), timeoutMs),
+      () => {
+        attempt++;
+        // Adapter dispatch is not evidence of a physical network attempt.
+        if (diagnostic) logger.info({ stage: "adapter_dispatch", provider: provider.name, model, traceId, attempt }, "llm.completion.attempt");
+        return withTimeout(provider.chatCompletion({ ...req, model, messages,
+          ...(diagnostic ? { metadata: { ...req.metadata, llmAttempt: attempt } } : {}) }), timeoutMs);
+      },
       {
         retries,
         delayMs: baseDelayMs,
@@ -77,6 +80,7 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
         traceId,
         completionId: result.completionId,
         providerRequestId: result.providerRequestId,
+        ...(diagnostic ? { stage: "completion", attempt, modelUsed: result.modelUsed } : {}),
       },
       "llm.completion.success"
     );
@@ -86,11 +90,13 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
     const failure = err instanceof RetryExhaustedError && isLLMProviderError(err.cause) ? err.cause : err;
     logger.error(
       {
-        provider: provider.name,
-        model,
+        provider: selectedProvider,
+        modelRequested: llmDiagnosticIdentifier(req.model),
         latencyMs: Date.now() - startedAt,
         traceId,
-        ...(isLLMProviderError(failure) ? { failure: failure.diagnostic } : { err: failure }),
+        stage,
+        attempt,
+        failure: llmFailureDiagnostic(failure, stage),
       },
       "llm.completion.error"
     );

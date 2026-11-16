@@ -1,4 +1,4 @@
-import test, { before, after } from "node:test";
+import test, { before, after, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import https from "node:https";
@@ -6,6 +6,7 @@ import ts from "typescript";
 import { Response } from "node-fetch";
 import { OpenAIProvider } from "../src/OpenAIProvider";
 import { isLLMProviderError } from "@eiah/core/llm/LLMProviderError";
+import { getRootStructuredLogger } from "@eiah/core/logging/logger";
 
 type Transport = NonNullable<ConstructorParameters<typeof OpenAIProvider>[1]>;
 // Minimal sanitized real-error fixture, owned by the adapter package. No live call.
@@ -77,6 +78,48 @@ test("OpenAI: transporte, JSON inválido e conteúdo ausente nunca viram sucesso
     for (const absent of ["traceId", "providerRequestId", "httpStatus", "providerType"]) assert.equal(Object.hasOwn(error.diagnostic, absent), false);
     return true;
   });
+});
+
+test("diagnóstico OpenAI: distingue tentativa, resposta, parsing e validação sem conteúdo sensível", async (t: TestContext) => {
+  const root = getRootStructuredLogger();
+  const streamSymbol = Object.getOwnPropertySymbols(root).find((key) => key.description === "pino.stream");
+  assert.ok(streamSymbol);
+  const stream: { write: (line: string) => unknown } = Reflect.get(root, streamSymbol);
+  const events: Array<Record<string, unknown>> = [];
+  t.mock.method(stream, "write", (line: string) => events.push(JSON.parse(line)));
+  const secret = "Bearer synthetic-private-transport-secret";
+  const diagnosticRequest = { ...request, metadata: { ...request.metadata, source: "imob-property-capture-intake", llmAttempt: 1 } };
+  const cases: Array<{ transport: Transport; stage?: string; status?: number; requestId?: string }> = [
+    { transport: async () => { throw new Error(secret); }, stage: "transport_failure" },
+    { transport: async () => response({ error: { ...quota.error, message: secret } }, 429, { "x-request-id": "req_synthetic_header" }),
+      stage: "response_validation", status: 429, requestId: "req_synthetic_header" },
+    { transport: async () => new Response(secret, { status: 200 }), stage: "response_parsing", status: 200 },
+    { transport: async () => response({ private: secret }), stage: "response_validation", status: 200 },
+    { transport: async () => response({ ...success, choices: [{ message: { content: secret }, finish_reason: "stop" }] }), status: 200 },
+  ];
+  for (const item of cases) {
+    events.length = 0;
+    const promise = adapter(item.transport).chatCompletion(diagnosticRequest);
+    if (item.stage) await assert.rejects(promise, isLLMProviderError); else await promise;
+    assert.equal(events.filter((event) => event.stage === "transport_attempt").length, 1);
+    const receipts = events.filter((event) => event.stage === "response_received");
+    assert.equal(receipts.length, item.status === undefined ? 0 : 1);
+    if (receipts[0]) {
+      assert.equal(receipts[0].providerHttpStatus, item.status);
+      assert.equal(receipts[0].providerRequestId, item.requestId);
+      assert.equal(Object.hasOwn(receipts[0], "statusCode"), false, "provider HTTP is not application HTTP");
+    }
+    const failures = events.filter((event) => Object.hasOwn(event, "failure"));
+    assert.equal(failures.length, item.stage ? 1 : 0);
+    if (item.stage) assert.equal(failures[0].stage, item.stage);
+    for (const event of events) {
+      assert.equal(event.traceId, request.metadata.traceId);
+      assert.equal(event.attempt, 1);
+      assert.equal(Object.hasOwn(event, "modelUsed"), false);
+      if (!item.requestId) assert.equal(Object.hasOwn(event, "providerRequestId"), false);
+    }
+    assert.doesNotMatch(JSON.stringify(events), /synthetic-private-transport-secret|Bearer|"stack"|"headers"|"messages"|"output"/);
+  }
 });
 
 /** Real consumer source, only imports replaced. No DB import, network, or financial write. */

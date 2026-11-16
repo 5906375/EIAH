@@ -1,0 +1,29 @@
+node:internal/modules/esm/resolve:839
+      const error = new ERR_UNSUPPORTED_RESOLVE_REQUEST(specifier, base);
+                    ^
+
+TypeError [ERR_UNSUPPORTED_RESOLVE_REQUEST]: Failed to resolve module specifier "<REPO>/node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/index.js" from "data:text/javascript;base64,<SOURCE_PAYLOAD_OMITTED>": Invalid relative URL or base scheme is not hierarchical.
+    at moduleResolve (node:internal/modules/esm/resolve:839:21)
+    at defaultResolve (node:internal/modules/esm/resolve:984:11)
+    ... 6 lines matching cause stack trace ...
+    at ModuleLoader.import (node:internal/modules/esm/loader:642:21)
+    at defaultImportModuleDynamicallyForModule (node:internal/modules/esm/utils:221:31) {
+  code: 'ERR_UNSUPPORTED_RESOLVE_REQUEST',
+  cause: TypeError: Invalid URL
+      at new URL (node:internal/url:818:25)
+      at moduleResolve (node:internal/modules/esm/resolve:837:18)
+      at defaultResolve (node:internal/modules/esm/resolve:984:11)
+      at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:780:12)
+      at #cachedDefaultResolve (node:internal/modules/esm/loader:704:25)
+      at ModuleLoader.resolve (node:internal/modules/esm/loader:687:38)
+      at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:305:38)
+      at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:643:36)
+      at TracingChannel.tracePromise (node:diagnostics_channel:344:14)
+      at ModuleLoader.import (node:internal/modules/esm/loader:642:21) {
+    code: 'ERR_INVALID_URL',
+    input: '<REPO>/node_modules/.pnpm/node-fetch@3.3.2/node_modules/node-fetch/src/index.js',
+    base: 'data:text/javascript;base64,<SOURCE_PAYLOAD_OMITTED>'
+  }
+}
+
+Node.js v22.17.1

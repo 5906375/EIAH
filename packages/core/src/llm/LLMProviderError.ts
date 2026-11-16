@@ -19,6 +19,19 @@ export type LLMFailureDiagnostic = {
 // Only bounded identifiers belong in operator diagnostics; free text never does.
 const identifier = (value: unknown) => typeof value === "string" && /^[\w.:-]{1,200}$/.test(value)
   && !/^(?:sk-|Bearer|gh[pousr]_)/i.test(value) ? value : undefined;
+
+/** Operator-only diagnostics. Generic errors are classified by controlled execution stage,
+ * never by copying their message, stack, arbitrary code or enumerable properties.
+ * These codes do not change retry eligibility or public domain reason codes.
+ */
+export type LLMInternalStage = "profile_resolution" | "policy_check" | "provider_registration"
+  | "provider_resolution" | "prompt_preparation" | "provider_execution" | "interpretation";
+export function llmFailureDiagnostic(error: unknown, stage: LLMInternalStage) {
+  return isLLMProviderError(error) ? error.diagnostic
+    : { category: "internal" as const, code: `${stage}_failed` };
+}
+
+export const llmDiagnosticIdentifier = identifier;
 const failureBrand = Symbol.for("eiah.llm.provider.failure.v1");
 
 // Core entries are bundled separately; instanceof alone loses identity across entries.

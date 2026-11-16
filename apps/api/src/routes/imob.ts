@@ -1,4 +1,5 @@
 import { createLogger } from "@eiah/core/logging/logger";
+import { llmFailureDiagnostic, llmDiagnosticIdentifier } from "@eiah/core/llm/LLMProviderError";
 import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
 import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
@@ -1732,16 +1733,29 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
     const parsed = imobPropertyCaptureRequestSchema.safeParse(body.propertyCapture);
     if (!parsed.success || parsed.data.message !== message) return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_INVALID" } });
+    // The request middleware owns this ID; never replace it with a completion/provider ID.
+    const traceId = llmDiagnosticIdentifier(res.getHeader("x-trace-id"));
+    const intakeLogger = createLogger({ component: "imob-property-capture", traceId });
     return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      traceId,
       scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId },
-      observe: (diagnostic) => createLogger({ component: "imob-property-capture" }).info(diagnostic, "imob.property_capture.intake"),
+      observe: (diagnostic) => intakeLogger.info(diagnostic, "imob.property_capture.intake"),
       interpret: async ({ systemPrompt, userPrompt }) => {
         // Same coordinator and provider registry as the contextual Front Door intake; IMOB owns the domain contract.
-        const profile = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);
-        if (!profile || profile.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
+        intakeLogger.info({ stage: "profile_resolution" }, "imob.property_capture.runtime");
+        const profile = await (async () => {
+          try {
+            const resolved = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);
+            if (!resolved || resolved.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
+            return resolved;
+          } catch (error) {
+            intakeLogger.info({ stage: "profile_resolution", failure: llmFailureDiagnostic(error, "profile_resolution") }, "imob.property_capture.runtime.failure");
+            throw error;
+          }
+        })();
         const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
           knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
-          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId: crypto.randomUUID() } });
+          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId } });
         return result.outputText;
       },
     }) });
