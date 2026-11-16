@@ -33,6 +33,8 @@ export type StructuredQuickReply = { id: string; label: string; reply?: string; 
 export type StructuredMessage = {
   /** Pending editable property form; a topic change pauses interpretation without losing the form values. */
   propertyCaptureContext?: "active" | "paused";
+  /** Ephemeral proposal bound to this unsaved form; never a save confirmation. */
+  propertyCaptureProposal?: import("@eiah/contracts").ImobPropertyCaptureProposal | null;
   /** Resultado efêmero do campo, reutilizável somente enquanto sua identificação não mudar. */
   propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   id: string;
