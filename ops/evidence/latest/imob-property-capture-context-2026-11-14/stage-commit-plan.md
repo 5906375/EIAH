@@ -1,3 +1,469 @@
+# Plano vigente — publicação da correção do registry IMOB
+
+Preparação de 2026-11-17 por Codex, sem subagentes. **Seleção final para stage/commit local autorizados.** A preparação original não
+executou stage; a seleção posterior de 21 caminhos foi bloqueada por whitespace.
+A retomada delimitada abaixo resolve somente esse formato, sem push, PR ou deploy.
+Esta seção substitui as seleções antigas de 40/71/29/39 caminhos. O conteúdo anterior
+deste mesmo arquivo permanece integralmente após o marcador de histórico, sem
+validade executável para esta correção. Não se criou plano, diretório, manifesto ou mecanismo paralelo. A única
+preservação adicional é o gzip bruto autorizado, pelo mecanismo existente.
+
+## Base conferida e condição de integração
+
+- Branch: `chore/imob-intake-provider-diagnostics`.
+- HEAD: `97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6`; stage vazio na preparação original.
+- Referência local `origin/main`: `f6617e1f2ded9ac0d5c8b0c1336b450b3de6d999`.
+- `main` local: `249d6a5fec6684d5bc6fcfa4448dd79ee2e5c9c9`, antiga.
+- `git merge-base HEAD origin/main` é HEAD; `git rev-list --left-right --count origin/main...HEAD`
+  retornou `7 0`. Os sete commits do lado de origin/main são merges #533–#539.
+- HEAD e origin/main têm **a mesma árvore**:
+  `c7790ac84d01b1869b1c4604c0e5757f90ee39a9`; diff de conteúdo vazio, exit 0.
+  Os incrementos de contexto, conversa guiada, propagação e instrumentação anteriores
+  já pertencem à main representada por essa referência local.
+- `git rev-list --left-right --count main...HEAD` retornou `0 72`;
+  `git diff --name-only main HEAD` contém 796 caminhos. **Bloqueio para usar essa
+  main local como base da seleção/integração.** Ela não representa o alvo observado.
+- Para esta revisão, comparar exclusivamente com origin/main no SHA acima. Não há
+  divergência de conteúdo nem dependência de fonte de produção não publicada fora
+  da linha de splitting contra esse alvo. A referência remota foi revalidada pelo
+  fetch autorizado descrito abaixo e permaneceu no mesmo SHA. Nenhum checkout,
+  reset, rebase, merge ou atualização da branch local foi executado. Se o alvo
+  mudar antes de futura integração, conferir o alcance afetado antes de agir.
+
+### Revalidação remota autorizada — 2026-11-17
+
+Comando executado uma vez: `git -c maintenance.auto=false -c gc.auto=0 fetch --no-tags --no-recurse-submodules origin`,
+exit 0; refspec `+refs/heads/*:refs/remotes/origin/*` e FETCH_HEAD confirmam main em
+`f6617e1f2ded9ac0d5c8b0c1336b450b3de6d999`; HEAD, branch e stage não mudaram.
+Consulta posterior: `git diff --name-status HEAD origin/main` vazio, exit 0;
+árvores idênticas e contagem `7 0` preservada. Não há diferença remota de produção.
+
+Leitura de `origin/main:packages/core/tsup.config.ts`: **splitting:false**.
+O hunk de uma linha continua necessário. Os 18 artefatos continuam ausentes no
+remoto, com bytes/hashes iguais à tabela; os nove blocos do registry no índice
+e o prefixo deste plano também continuam ausentes. **Os 21 caminhos permanecem
+necessários**, sem duplicação ou nova dependência de produção identificada.
+O hunk do índice segue `@@ -6,0 +7,54 @@`; somente o tamanho do prefixo deste
+plano mudou para registrar o fetch e deve ser conferido na seleção futura.
+
+Conferência antes de editar este registro: 28 arquivos locais intactos e hash do
+conteúdo do stage inalterado, exit 0. Nenhuma evidência de execução foi invalidada
+pelo fetch; não se repetiram builds, smokes, Docker ou chamadas de provider.
+Não há conflito de conteúdo observável com o alvo idêntico nem entradas unmerged;
+isso não é execução de merge nem aprovação antecipada de hooks/CI. O bloqueio
+de usar main local antiga permanece. Nesta retomada, somente este plano recebeu
+o registro necessário da nova verificação; Evidence Index e evidências ficam intactos.
+
+Procedimento mínimo posterior, **somente após autorização própria**: selecionar os
+mesmos 20 caminhos explícitos e um hunk do índice; conferir bytes staged, exclusões
+e hooks normais; criar um commit na branch atual; depois, sob autorização de push/PR,
+abrir PR contra main e conferir seu diff/checks reais. Não é necessário atualizar
+esta branch para corrigir divergência de conteúdo, pois ela não existe neste alvo.
+Nenhuma dessas ações foi executada. Typecheck focal anterior reprovado e fluxo
+real de 2 quartos/1 vaga não aprovado continuam preservados.
+
+O diff rastreado inicial contra HEAD/origin/main tinha somente CLAUDE.md, CODEX.md,
+Evidence Index e tsup do core. Os dois primeiros são alterações preexistentes
+excluídas. `changes.diff` também permanece local/excluído. O pacote abaixo contém
+18 arquivos novos, ausentes em origin/main; todos já existiam antes desta preparação.
+
+## Seleção exata final — 22 caminhos
+
+| Grupo | Caminhos / hunk incluído | Quantidade |
+| --- | --- | --- |
+| Produção | `packages/core/tsup.config.ts`, somente linha 28: `splitting: false` → `splitting: true` | 1 |
+| Evidências | Os 19 nomes da tabela abaixo; 18 anteriores e um gzip bruto. Somente o log indicado foi normalizado, com rastreabilidade; README/JSON atualizados | 19 |
+| Índice | `docs/EVIDENCE_INDEX.md`, somente hunk `@@ -6,0 +7,60 @@` contra origin/main, incluindo o registro real da normalização | 1 |
+| Preparação | Este `stage-commit-plan.md`: somente o novo prefixo até o marcador de histórico | 1 |
+
+**Único delta de produção confirmado:** blob-base
+`7b4beb0cba28fa8fae82594fb624320460cb1c2f`; SHA-256 do arquivo corrigido
+`2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b`.
+Diff sem contexto: `@@ -28 +28 @@`, uma remoção e uma adição. Nenhuma alteração
+de API/engine/launcher, contrato, provider, modelo, retry, fallback, filas, finanças,
+Dockerfile, manifests, exports, lockfile, CI ou infraestrutura integra esta correção.
+
+Raiz das 19 evidências da seleção final:
+`ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/`.
+
+| Nome relativo — incluir integralmente | Bytes | SHA-256 dos bytes revisados |
+| --- | --- | --- |
+| `README.md` | 62125 | `ee76f389837b1dc2ce6a7c3c08f54766b53b5763788f1d7aae1e3a4661522162` |
+| `check.mjs` | 14195 | `36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637` |
+| `consumer-packaging-check.mjs` | 15017 | `7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e` |
+| `consumer-packaging-results.json` | 97259 | `a9babe523c468d98f08def4f3c136ec6318267d7f88688bedfc4903a765997e6` |
+| `corrected-image-build.txt` | 58763 | `69980ea658d36e4170c165b9e3fab4d17610864b967b88854be55846a7b17a7e` |
+| `corrected-image-build.txt.gz` | 10154 | `25369a4d6bd1d220350a6c826e8d493e3d90df8f3f0f7f585a77e28ef0ec1741` |
+| `corrected-image-validation.json` | 401533 | `73e75ae9e89bc99b878728e35b3905722b3270bd258fe115b6bbfd53cc3b125e` |
+| `correction-api-build.txt` | 713 | `6c63df1dbc2ea8c18422be5e12e909d1549b8e2df719c552afa5fea6ca54b0f1` |
+| `correction-core-build.txt` | 29458 | `61f26e2cbd3d59f1ffd3d7a1c8c998a84f5ad7773c3a5292708f82d15f196c04` |
+| `correction-executions.json` | 6211 | `a9d8c61d45d6ec1166db922341793c8a6e77ae189cef266b32ea24b5366832cd` |
+| `correction-results.json` | 16408 | `2a429c470ba90b3487023fdc59a14cd6a4229e40cbd05a31771b871c9c99ea86` |
+| `delivery-executions.json` | 8125 | `67efb856eee19748c62afdcc4717db17149c172e43c2d6b90f1e41280b4b7041` |
+| `docker-connection-diagnostic.json` | 10884 | `3d5904e23b7f54a508c25ba9b419c396f5a6b8b7a4fb94a426f1cfbd3ce51f91` |
+| `docker-image-validation.json` | 20761 | `affa5e2bbb74cded877dcba8d51b7c7664ee6c893db280150c76f1c2daf0332a` |
+| `harness-initial.json` | 670 | `31bc481f25238b97e9cc883043cf844bf15d4cc32806ff70c4edab7e9541dcbe` |
+| `image-packaging-validation.py` | 18113 | `1a422974eee76c414e43ace70dd0e41578e297af379da4a3effd2b26a11ce055` |
+| `results.json` | 6683 | `01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73` |
+| `staging-delivery-path-review.json` | 15193 | `7668be8308b5b34f1a1e99d84c3bd57a2cfc928306996f17b547402d56109936` |
+| `verification.json` | 6059 | `dcf496889ffb9bfac6c8151928bb6ad738e2394fa703c5c3eae34b893b308daa` |
+
+Os 18 caminhos anteriores e o gzip adicional foram conferidos por
+`git check-ignore -v`: exit 1, não ignorados. Sem adição forçada. Somente
+corrected-image-build.txt recebe a normalização autorizada abaixo; os demais logs
+continuam intactos. O gzip conserva integralmente a transcrição original.
+
+## Hunk exato do Evidence Index e hunk deste plano
+
+Base do índice em HEAD e origin/main:
+`fc44ad11406b60e00462fc6bbcd4d094f7ba8cae`. Incluir somente a inserção de 60 linhas,
+linhas 7–66 do working tree preparado, antes de “Avaliação gratuita IMOB”:
+
+| Linhas atuais | Bloco incluído |
+| --- | --- |
+| 7–12 | Identidade do registry compilado — reprodução histórica |
+| 13–18 | Correção local do registry compilado |
+| 19–24 | Consumidores compilados e entrega local |
+| 25–30 | Diagnóstico da conexão Docker — histórico |
+| 31–36 | Imagem antiga/base runtime — histórico |
+| 37–42 | Caminho efetivo de entrega da API staging |
+| 43–48 | Build oficial da imagem corrigida — resultado inicial preservado |
+| 49–54 | Inspeção e smoke da imagem corrigida — resultado posterior aprovado |
+| 55–60 | Conferência histórica da seleção inicial de 21 caminhos, sem stage |
+| 61–66 | Preservação bruta e normalização documental efetivamente executadas |
+
+As oito primeiras entradas e a nona conferência inicial são históricas. A décima
+registra somente a preservação/normalização efetivamente executada, sem antecipar
+commit ou publicação. Nenhum outro hunk do índice pertence a esta seleção.
+SHA-256 do patch exato obtido com
+`git diff --unified=0 origin/main -- docs/EVIDENCE_INDEX.md`:
+`8a6151bf008c8ab3cccc023a10410cd14f9741cb9feed77dd2653012118313c0`.
+SHA-256 do índice completo preparado:
+`e6e79a2ee44d16530d27343fcf5f567d3b66959aa3a606d35cca90c5a644cada`.
+
+Neste plano, incluir a adição do novo prefixo; nenhum byte do conteúdo anterior
+deve ser removido ou reescrito. SHA-256 do conteúdo anterior inteiro, preservado
+após o marcador:
+`613b939a6029a177ef6ee15bf5e189e0e00b2398f4e198bc5460bc0922812345`.
+O plano é sua própria lista canônica; não existe manifesto separado nem hash
+autorreferente do arquivo final.
+
+## Exclusões explícitas e material já integrado
+
+- `CLAUDE.md`, SHA-256 `66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37`;
+  `CODEX.md`, SHA-256 `2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525`:
+  preservar as alterações locais; **zero hunks selecionados**.
+- `ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff`,
+  SHA-256 `4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2`:
+  original local; não selecionar, comprimir, copiar ou remover.
+- Todo código/teste/documentação das seleções antigas deste plano que não esteja
+  entre os 21 caminhos acima: já integrado em origin/main ou fora deste incremento.
+  Não reaplicar instrumentação, propagação de falhas, conversa guiada ou seus
+  contratos. Não executar comandos antigos, mesmo que seus títulos digam “vigente”.
+- `ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs`,
+  a fixture `packages/providers/tests/fixtures/openai-credit-balance-exhausted.json`
+  e todo o pacote pai intake-observability: dependências históricas já em origin/main,
+  sem diff; reutilizar, não readicionar. O mesmo vale para Dockerfile, manifests,
+  tsup da API, schemas e scripts de build já versionados.
+- Demais hunks presentes ou futuros do Evidence Index; diretórios inteiros,
+  curingas, `git add .`, `-A`, `-N`, .gitignore novo e adição forçada genérica.
+- Dist/node_modules/caches, binários/imagens Docker, ambientes, credenciais,
+  temporários, logs locais de outros pacotes e arquivos não enumerados.
+  A imagem e seus caches continuam preservados localmente, fora da seleção Git.
+
+## Dependências das evidências e limites de reprodução
+
+| Prova/consumidor | Dependências selecionadas ou já publicadas | Limite |
+| --- | --- | --- |
+| README e dez blocos do índice | Todos os 19 arquivos selecionados; este plano; referências históricas do pacote pai já em origin/main | Entradas anteriores de daemon/base/recusa não descrevem o resultado final da imagem |
+| Diagnóstico original | results.json, harness-initial.json, verification.json e check.mjs | Histórico 1/3 aprovado, exit 1; manter a falha e a adaptação posterior sem simular reexecução antiga |
+| Correção no host | correction-results.json, correction-executions.json, dois correction-*-build.txt, check.mjs | Provas locais existentes, saídas compiladas ignoradas e hashes históricos; não executar aqui |
+| Consumidores no host | consumer-packaging-check.mjs, consumer-packaging-results.json, delivery-executions.json, correção anterior | Reutiliza package-smoke e fixture já em origin/main |
+| Preflight e receita efetiva | docker-connection-diagnostic.json, docker-image-validation.json, staging-delivery-path-review.json | Metadados permitidos e histórico, não equivalência com Render atual |
+| Build e smoke na imagem | corrected-image-build.txt normalizado, seu bruto em corrected-image-build.txt.gz, corrected-image-validation.json, image-packaging-validation.py e os harnesses/JSON selecionados | Controlador adapta os helpers somente na camada do container e registra a limpeza |
+
+Os smokes originais do host **não são gates portáveis de checkout limpo**:
+check.mjs lê CLAUDE.md, CODEX.md e changes.diff locais e os compara ao snapshot
+histórico; consumer-packaging-check.mjs confere os hashes dos dist daquele momento.
+Esses arquivos/outputs excluídos são pré-condições da execução histórica, não novas
+dependências de produção nem justificativa para incluí-los no commit.
+
+O controlador de imagem lê os harnesses como texto, remove as verificações de
+arquivos protegidos do host e omite manifests CLI/workers ausentes da entrega.
+Usa só os módulos compilados da imagem, sem dist/node_modules do host.
+Sua execução aprovada comprova esse alcance sem depender de publicar as alterações
+locais das instruções ou changes.diff. Fixtures de fonte do executor/receita servem
+apenas à comparação; o trecho do executor é extraído do bundle sem alteração.
+
+`image-packaging-validation.py` é um helper de evidência vinculado ao ID da imagem
+local registrada, não um gate genérico de CI para qualquer novo build. Uma imagem
+reconstruída pode ter outro ID; retarget/revisão de qualquer ensaio futuro exige
+verificar sua procedência, sem alegar que o ID histórico certifica outro artefato.
+A imagem em si não integra a publicação Git. Caminhos de dist, hashes documentais
+anteriores, arquivos locais excluídos e IDs de containers removidos nos JSONs são
+proveniência histórica; não exigir sua inclusão para fechar a seleção.
+
+## Privacidade — revisão focal anterior, sem expor conteúdo
+
+Leitura dos 18 artefatos (781.511 bytes), exit 0: padrões de chaves de provider,
+tokens GitHub, chaves AWS, private keys, JWTs, Bearer e URLs com credenciais
+não tiveram ocorrência de alta confiança. Uma atribuição literal em check.mjs:167
+foi classificada como fixture sintética; seu valor não é transcrito neste plano.
+Não há campos estruturados de prompt/mensagens/rascunho/resposta bruta nos JSONs
+revisados. Fontes dos harnesses usam somente entradas/saídas sintéticas.
+
+Logs selecionados, stdout/stderr serializados e narrativa foram conferidos no
+alcance dos registros existentes. Há caminhos locais, hashes, correlações e IDs
+de serviço/imagem/container como metadados de procedência já permitidos, sem
+credenciais ou valores de ambiente reais. Esses bytes são preservados por seus
+hashes; não se criaram cópias “sanitizadas” ou outro diretório. Não é auditoria
+exaustiva de segredos. Nenhuma conversa, ambiente ou credencial foi consultada
+para executar esta revisão. Conferir novamente os **bytes staged**, se e quando
+houver autorização, porque o working tree não substitui essa conferência.
+
+## Validações reaproveitadas — não reexecutadas nesta preparação
+
+| Validação | Resultado | Exit histórico | Exec./aprov./reprov./ignor. | Alcance |
+| --- | --- | --- | --- | --- |
+| Registry compilado no host | APROVADO | 0 | 5/5/0/0 | Mesmo objeto registrado, resolvido e invocado por dublê |
+| Consumidores compilados no host | APROVADO | 0 | 7/7/0/0 | Grafo amplo estático e folhas seguras |
+| Builds oficiais core/API no host | APROVADO | 0 | — | Build formal, sem homologação geral |
+| Build Docker oficial | APROVADO | 0 | — | apps/api/Dockerfile.prod, contexto raiz, árvore com splitting=true |
+| Inspeção da imagem parada | APROVADO | 0 | — | Artefatos/exports/links/chunks presentes, sem executar a aplicação |
+| Registry na imagem | APROVADO | 0 | 5/5/0/0 | Trecho emitido do executor em VM e imports reais do core |
+| Consumidores na imagem | APROVADO | 0 | 7/7/0/0 | 25 entradas, 104 módulos, 78 chunks, 250 arestas e 169 bindings |
+| Limpeza do container próprio | APROVADO | 0 | — | Finally, imagem/cache preservados |
+| Typecheck focal anterior | REPROVADO | 1 | — | Dois diagnósticos focais antigos +16 de dependências; build API não substitui esse resultado |
+| Provider real, API completa, browser/HTTP/DB, staging e fluxo funcional | NÃO EXECUTADO/aprovado | — | — | Nenhum teste real de provider está aprovado |
+
+Imagem registrada:
+`sha256:f1828dc119705930e8b9ef16edf7592948a4e394a64aad1edec0f0624c47f720`,
+linux/amd64, tag local exclusiva. As provas do host e da imagem são execuções
+distintas já concluídas, reutilizadas sem repetir builds, smokes ou comandos Docker.
+API/barrels/workers/bancos/filas não foram iniciados; transportes sintéticos,
+zero chamadas reais. O fluxo real de 2 quartos/1 vaga permanece **NÃO APROVADO**.
+Não há equivalência integral com Render, homologação geral do core ou aprovação
+de CI remoto/staging. Não reabrir P1ReconciliationRecurring nem contornar gates.
+
+## Lista canônica de stage — referência para a seleção final
+
+Stage/commit local estão autorizados nesta retomada. A lista completa abaixo tem
+**21 caminhos explícitos**, mais **um hunk** do índice: 22 caminhos. Ela é referência
+canônica, não instrução para repetir o stage dos caminhos já corretos. A seleção
+inicial de 20 mais o hunk já foi executada; só os seis ajustes delimitados abaixo
+precisam de atualização seletiva, sem reaplicar seleções históricas:
+
+```bash
+git add -- \
+  'packages/core/tsup.config.ts' \
+  'ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-results.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-build.txt' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-build.txt.gz' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-validation.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-api-build.txt' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-core-build.txt' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-results.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/delivery-executions.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/docker-connection-diagnostic.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/docker-image-validation.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/harness-initial.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/image-packaging-validation.py' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/staging-delivery-path-review.json' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/verification.json'
+git add -p -- docs/EVIDENCE_INDEX.md
+```
+
+Na seleção interativa do índice, aceitar somente o hunk descrito (`+7,60` sem
+contexto ou seu equivalente com contexto); se o Git apresentar outras alterações
+misturadas, parar e revisar uma seleção exata antes de prosseguir. Não incluir
+CLAUDE.md/CODEX.md/changes.diff para facilitar execução de helper local.
+
+Após atualizar o stage autorizado: comparar a lista staged com estes 22 caminhos,
+conferir SHA-256 dos 19 arquivos e do tsup corrigido nos bytes de `git show :<path>`,
+e comparar o patch staged do índice com o hunk revisado. Neste plano, comparar o
+novo prefixo revisado e preservar o histórico byte a byte. Verificar referências
+pelos bytes staged + base versionada, respeitando a distinção entre dependências
+da entrega e campos históricos. Exigir `git diff --cached --check` aprovado e
+zero caminhos extras, sem usar o working tree como substituto dos bytes staged.
+Stage vazio nesta preparação não é aprovação antecipada dessas verificações.
+
+## Proposta de título e descrição do commit/PR contra main
+
+Título:
+
+```text
+fix(core): share LLM registry across compiled ESM entries
+```
+
+Descrição proposta:
+
+```text
+Enable splitting in the core ESM build so executor registration, router
+resolution and runCompletion share the same registry and provider object.
+
+The production change is one configuration line. The existing API Docker
+recipe already copies the complete packages tree, including shared chunks.
+
+Local synthetic checks passed on host and in the officially built image:
+registry 5/5 and consumers 7/7 in each environment. The image inspection
+and isolated smoke cover 25 public entries, 104 modules, 78 chunks,
+250 relative edges and shared error identities. Evidence and the exact
+publication selection preserve historical failures and coverage limits.
+
+The emitted API executor excerpt runs in a VM with explicit doubles;
+only reviewed compiled leaf modules execute in the image. The full API,
+workers, databases and queues are not started. No real provider call or
+paid request is part of this validation.
+
+The previous focal typecheck remains failed with pre-existing diagnostics.
+This does not approve staging, the full core/API, or the real property
+capture proposal/confirmation/guidance/explicit-save flow.
+```
+
+## Sequência posterior e verificação — ainda não executadas
+
+1. Revisar estes 21 caminhos/hunks e os limites de privacidade/reprodução. Revalidar
+   o alvo main efetivo em etapa autorizada; se houver mudança relevante ou dependência
+   nova não publicada, informar o bloqueio antes de propor integração. Não usar a
+   main local antiga, não reaplicar as seleções históricas e não atualizar a branch
+   automaticamente. No alvo origin/main observado não falta fonte de produção.
+2. Stage/commit local já autorizados: conferir os bytes staged e executar
+   o fluxo normal com hooks/gates aplicáveis, sem `--no-verify`, supressões ou mudança
+   de critérios para obter verde. Falha de hook/check bloqueia a sequência e deve
+   ser registrada, preservando a ressalva do typecheck focal.
+3. Após o commit local e somente com autorização de publicação, publicar a branch/PR
+   com destino main e descrição acima. Conferir o diff efetivo da PR para estes
+   caminhos/hunks; resultados locais não aprovam automaticamente checks remotos.
+   Nenhum push, PR ou merge está autorizado nesta preparação.
+4. Conferir resultados reais do CI e o SHA candidato, sem repetir manualmente
+   builds/smokes válidos só para produzir evidência. Mudança de fonte/artefato ou
+   falha concreta exige reavaliar apenas o alcance afetado.
+5. Publicação de imagem/deploy é outra autorização. Antes de eventual entrega,
+   conferir a receita efetiva, revisão e procedência do artefato; depois, sua
+   cadeia de chunks e isolamento sintético no alcance autorizado. Não executar
+   pre-deploy Prisma, migrações, seeds, serviços ou providers como efeito desta
+   preparação. Um deploy nunca é inferido da aprovação do empacotamento local.
+6. Teste real de provider e fluxo funcional exigem autorização separada e evidência
+   própria. Proposta de quartos/vaga, confirmação antes de aplicar, orientação e
+   salvamento apenas explícito permanecem pendentes, sem promessas de aprovação.
+
+## Conferências desta preparação e preservação
+
+Na preparação original, executados somente Git local, leituras/JSON, hashes,
+classificação focal de conteúdo e atualização deste plano/entrada real do índice.
+A retomada de fetch acrescentou somente sua revalidação descrita acima. Leituras
+de Git e comparação de árvores/diffs: exit 0. O rg pela referência deste plano
+no índice inicial retornou exit 1 por ausência, não por falha do produto; a entrada
+adicionada agora corresponde à conferência real, não à publicação futura.
+Cada check-ignore dos 18 novos arquivos retornou exit 1 (não ignorado); cat-file
+de cada um em origin/main retornou 128 (novo). Nenhum destes é teste do produto.
+
+A tabela atual ancora as 19 evidências finais; os hashes anteriores alterados
+pelo ajuste documental estão distinguidos na seção de normalização abaixo.
+Preservar as instruções preexistentes, changes.diff, fonte já validada e toda
+a seleção antiga abaixo como histórico. Nenhum temporário foi criado; não há
+limpeza própria pendente. Na preparação original, stage vazio; zero builds, smokes, providers,
+comandos Docker ou atualizações da branch local. O único fetch é o autorizado acima.
+Na preparação original, este prefixo e a nona entrada real do índice foram editados;
+na retomada de fetch, somente o plano. O ajuste posterior de whitespace está
+registrado abaixo e não invalida builds/smokes anteriores.
+
+Conferências efetivamente executadas na preparação original:
+
+| Conferência | Resultado | Exit | Exec./aprov./reprov./ignor. |
+| --- | --- | --- | --- |
+| Igualdade da lista proposta | APROVADO | 0 | 20 caminhos normais +1 índice, 21 únicos |
+| Integridade e preservação | APROVADO | 0 | 22 arquivos anteriores intactos; histórico do plano e índice anterior preservados |
+| Privacidade focal das adições documentais | APROVADO | 0 | Sem ocorrência de alta confiança; 18 artefatos conferidos separadamente |
+| Checker direto Evidence Index | APROVADO | 0 | 985 referências; sem repetir suíte unitária |
+| git diff --check e consulta do stage | APROVADO | 0 | Stage vazio; isso não aprova bytes staged futuros |
+| Builds, smokes, Docker, provider e CI remoto | NÃO EXECUTADO | — | Resultados anteriores reutilizados sem reexecução |
+
+Hunk desta preparação no plano: `@@ -0,0 +1,466 @@`, apenas adição
+antes do conteúdo já integrado. Status da seleção: **autorizada para commit local, condicionado aos checks staged**;
+status do fluxo real: **parcial e não aprovado**.
+
+## Ajuste autorizado de whitespace e seleção final — 2026-11-17
+
+Este registro supera apenas as contagens/hashes da seleção inicial e a pendência
+material do log; os estados de stage vazio e de 21 caminhos acima são históricos.
+Antes de alterar: branch/HEAD conferiram, os 21 caminhos staged e todos os hashes
+coincidiram com a seleção revisada, e as três exclusões permaneceram intactas.
+`git diff --cached --check`: exit 2, 15 ocorrências exclusivamente no log do build,
+linhas 150, 158, 165, 169, 184 e 221–230. Nenhum commit havia sido criado.
+
+Reutilizado `packaging.losslessLogs` do pacote pai: gzip mtime=0, nome vazio no
+header e compresslevel=9. O bruto foi comprimido e descomprimido byte a byte antes
+de sobrescrever o texto. Único caminho adicional: corrected-image-build.txt.gz,
+no diretório existente, necessário para publicar uma representação textual sem
+perder a captura original. Sem diretório, script, manifesto ou backup paralelo.
+Seleção final: **22 caminhos = produção 1 + evidências 19 + índice 1 + plano 1**.
+
+| Representação | Bytes | SHA-256 |
+| --- | --- | --- |
+| Bruto recuperável pelo gzip | 58799 | `ff0b59ca1935647f4adc23b3ee1a5a09f46dd24cf71837ae54b626a50e2c0d73` |
+| Gzip sem perda | 10154 | `25369a4d6bd1d220350a6c826e8d493e3d90df8f3f0f7f585a77e28ef0ec1741` |
+| Texto normalizado | 58763 | `69980ea658d36e4170c165b9e3fab4d17610864b967b88854be55846a7b17a7e` |
+
+Transformação exata: remover todos os bytes CR; dividir somente por LF; remover
+apenas espaços/tabs finais de cada segmento; reunir pelos mesmos LF. Resultado:
+31 CR e cinco espaços removidos, zero tabs; 686 LF preservados, nenhuma linha ou
+mensagem apagada/reordenada, nenhum exit code alterado. A fórmula em bytes consta
+do README/JSON. O .txt é representação normalizada; a transcrição bruta é o gzip.
+Todos os outros logs/harnesses e os resultados de runtime permanecem intactos.
+
+Dependências atualizadas: `build.logSha256` do JSON identifica o texto normalizado;
+a seção nova `packaging` guarda bruto/gzip/normalizado e a falha anterior. Demais
+campos históricos do JSON foram comparados semanticamente e não mudaram. README
+recebe só um apêndice; esta tabela de seleção atualiza seus hashes e os do JSON/log,
+sem reescrever hashes históricos dos builds/smokes ou referências de outros pacotes.
+O índice recebe somente seis linhas adicionais dentro da inserção já selecionada,
+para registrar a normalização real e seu gzip; as 54 linhas anteriores e o
+conteúdo integrado do índice continuam intactos. O histórico integrado deste plano
+permanece byte a byte, SHA-256 613b939a6029a177ef6ee15bf5e189e0e00b2398f4e198bc5460bc0922812345.
+
+Atualizar somente os seis caminhos explícitos abaixo; os outros 16 já staged
+permanecem sem mudança. O índice é permitido como arquivo apenas porque o diff
+inteiro foi delimitado ao único hunk +7,60; parar se aparecer qualquer outro hunk:
+
+```bash
+git add -- \
+  'ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md' \
+  'docs/EVIDENCE_INDEX.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-build.txt' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-build.txt.gz' \
+  'ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/corrected-image-validation.json'
+```
+
+Depois: conferir os 22 caminhos/bytes staged, a descompressão e transformação,
+privacidade inclusive bruto descomprimido, referências pelo checker existente,
+`git diff --cached --check` e hooks normais. Somente após aprovação, criar o commit
+local com o título já autorizado. Nenhum push, PR, merge ou deploy autorizado.
+Registry 5/5 e consumidores 7/7 em host/imagem e build/inspeção/smoke existentes
+são reutilizados sem reexecução. Typecheck focal anterior continua REPROVADO;
+API completa, provider real, staging e fluxo de quartos/vaga não aprovados.
+CLAUDE.md, CODEX.md e changes.diff continuam preservados/excluídos. Só Codex,
+sem subagentes; gzip permanente, nenhum temporário próprio ou limpeza pendente.
+
+Conferências documentais anteriores à atualização do stage: preservação sem perda
+e execução da fórmula registrada passaram exit 0; checker existente Evidence Index
+no sandbox exit 1 (sete referências históricas), mesmo comando fora do sandbox
+exit 0, 986 referências. Nenhuma referência histórica/checker foi alterada para
+obter aprovação. A leitura auxiliar inicial de cat-file em formato caminho@revisão
+retornou 128 e não foi considerada prova; o checker usa revisão:caminho. Nenhuma
+suíte/build/smoke foi repetida. Conferências finais staged continuam obrigatórias.
+
+---
+
+# Histórico — instrumentação correlacionada e planos anteriores, já integrados; não executar
+
 # Plano vigente — instrumentação correlacionada do intake IMOB
 
 Preparado em 2026-11-16 por Codex, sem subagentes. **Somente preparação; nenhum stage/commit/push/deploy executado.** Esta é a seleção vigente. Todo o plano anterior permanece integralmente após o marcador de histórico, sem validade executável para esta entrega.

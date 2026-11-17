@@ -1,0 +1,160 @@
+{
+  "date": "2026-11-17",
+  "executedAt": "2026-11-17T09:00:30.336Z",
+  "command": "node --input-type=module -e 'globalThis.resolveFromApi = specifier => import.meta.resolve(specifier); await import(\"../../ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs\")'",
+  "workingDirectory": "apps/api",
+  "scope": "Existing formal API executor excerpt and actual imported core dist modules; no app boot or real provider",
+  "localHead": "97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6",
+  "inspectedMerge": "f6617e1f2ded9ac0d5c8b0c1336b450b3de6d999",
+  "hypothesis": "CONFIRMED_LOCALLY",
+  "invariant": "REPROVADO",
+  "exitCode": 1,
+  "checks": {
+    "executed": 3,
+    "passed": 1,
+    "failed": 2,
+    "skipped": 0
+  },
+  "probes": [
+    {
+      "name": "Emitted executor registration visible in directly imported registry",
+      "result": "APROVADO"
+    },
+    {
+      "name": "Same registered provider visible through formal LLMRouter entry",
+      "result": "REPROVADO",
+      "providerNotFound": true
+    },
+    {
+      "name": "Emitted executor dispatch through formal completionEngine entry",
+      "result": "REPROVADO",
+      "providerNotFound": true
+    }
+  ],
+  "resolvedPaths": {
+    "registry": "packages/core/dist/llm/LLMRegistry.js",
+    "completion": "packages/core/dist/llm/completionEngine.js",
+    "router": "packages/core/dist/llm/LLMRouter.js",
+    "diagnostic": "packages/core/dist/llm/LLMProviderError.js"
+  },
+  "registryAllocations": {
+    "packages/core/dist/llm/LLMRegistry.js": 1,
+    "packages/core/dist/llm/LLMRouter.js": 1,
+    "packages/core/dist/llm/completionEngine.js": 1
+  },
+  "embeddedSources": [
+    {
+      "output": "apps/api/dist/index.js",
+      "source": "apps/api/src/orchestrator/llmExecutor.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/LLMRegistry.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/LLMRouter.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/LLMRouter.js",
+      "source": "packages/core/src/llm/LLMRouter.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/completionEngine.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/completionEngine.js",
+      "source": "packages/core/src/llm/LLMRouter.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/llm/completionEngine.js",
+      "source": "packages/core/src/llm/completionEngine.ts",
+      "matchesWorkingTree": true
+    }
+  ],
+  "executorExcerpt": {
+    "origin": "apps/api/dist/index.js",
+    "startLine": 36538,
+    "sha256": "c367eecc8de93210c8557e24ae5c07d0e8c6bbb7967c615cf90217a99690d163",
+    "mutationsToExcerpt": 0,
+    "doubles": [
+      "provider constructors",
+      "executor logger",
+      "isolated synthetic environment"
+    ],
+    "masking": "not exercised",
+    "completionAndRegistry": "actual dist imports, not doubles"
+  },
+  "events": [
+    {
+      "component": "llm-executor",
+      "msg": "llm.executor.enter",
+      "stage": "policy_check",
+      "modelRequested": "gpt-4.1"
+    },
+    {
+      "component": "llm-executor",
+      "msg": "llm.executor.stage",
+      "stage": "provider_registration"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.resolve",
+      "stage": "provider_resolution",
+      "traceId": "synthetic-registry-identity"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.error",
+      "stage": "provider_resolution",
+      "attempt": 0,
+      "traceId": "synthetic-registry-identity",
+      "failure": {
+        "category": "internal",
+        "code": "provider_resolution_failed"
+      }
+    }
+  ],
+  "syntheticAdapterCalls": 0,
+  "blockedNetworkAttempts": 0,
+  "realProviderCalls": 0,
+  "protectedFiles": {
+    "CLAUDE.md": "66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37",
+    "CODEX.md": "2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525",
+    "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff": "4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2"
+  },
+  "artifactsSha256": {
+    "apps/api/dist/index.js": "51818a07f81930f1d1cf43f651a19c9e874db0d1b2c8178300a8c403dd95682c",
+    "apps/api/dist/index.js.map": "89d3f528b67f220986a4ccbed5b9a10089257c2b478da76f2700bf542d05dee1",
+    "packages/core/dist/llm/LLMRegistry.js": "483b8ce166ca5d092f015a2cd7cdd6e45d1d4ab333cdbd00497011ded1af0eef",
+    "packages/core/dist/llm/LLMRegistry.js.map": "307669962de4c201725681d609e45d0081dfd494623446334b1bea4d69f7a2ee",
+    "packages/core/dist/llm/completionEngine.js": "3b54bf4c73ba9c6767a9d7b6c8267cd864f85271f389ffa031acf6e4b5fdf224",
+    "packages/core/dist/llm/completionEngine.js.map": "a8c5f339d4b0bf521f4f8b00fba83ce0663619b1ef04d4fcb66f7caa4a6686a1",
+    "packages/core/dist/llm/LLMRouter.js": "3ae2d227070c93250ad6b6df7d5fac4522f32f7b7a6feb5392b6bd498c256513",
+    "packages/core/dist/llm/LLMRouter.js.map": "b51978b84927716d31a2dfe1552dac16ac55208992ee2da65b2887b54c9f1920",
+    "packages/core/dist/llm/LLMProviderError.js": "5c3a497b11979c6ad6ed602c282c862d9d41fe945ca600322cbd4020554c2ffa",
+    "packages/core/dist/llm/LLMProviderError.js.map": "6c2ec3df10e7abb872ce26bbc78979b95a7828efa761c7b8954a66ef14c2c653",
+    "apps/api/src/orchestrator/llmExecutor.ts": "5e6e9fed1a84d087de53cef928a41fd3cb8092a7918a52d3d6c6384a687911ec",
+    "apps/api/tsup.config.ts": "f218e8ced2ac6e3a7d8d786e77231705d8aee10da6a10a90cc75b6cd3b5d0837",
+    "packages/core/src/llm/LLMRegistry.ts": "9e7097f525574bf091444bcb8815a543f8f6e9743321a7ed55c1dd39444b8310",
+    "packages/core/src/llm/LLMRouter.ts": "52f0fd7df54f75f1059d06d90f65c8f0851221a41a839f0fd1dbe094e52820aa",
+    "packages/core/src/llm/completionEngine.ts": "ef1dd963390d88400037c2a9e6659a6425c40978d72c8809ce93ef345daac7de",
+    "packages/core/tsup.config.ts": "c206e777bbb7f2ec4a492b920ad7ce6a5834104fb9879bc86f8adc97897b582b",
+    "packages/core/package.json": "9d7bad94f056848d489f7c9629169c1a170651d2f8001e7dff5aff0e118fda15"
+  },
+  "buildsExecuted": 0,
+  "sourceOrConfigEdits": 0,
+  "limits": [
+    "No new staging capture or deployed artifact inspection",
+    "No real provider, HTTP/DB/browser, intake proposal or persistence validation",
+    "Historical pre-instrumentation cause remains unknown",
+    "Local reproduction does not independently prove the deployed artifact identity"
+  ]
+}

@@ -1,0 +1,686 @@
+#1 [internal] load build definition from Dockerfile.prod
+#1 sha256:04156974eb807043b80c34f0088903f3d4e69a64e80afeefd0a40b75352d725e
+#1 transferring dockerfile: 1.25kB done
+#1 DONE 0.0s
+
+#2 [internal] load .dockerignore
+#2 sha256:c42991d5f5ddfefdc9f768e41a9e010dcfa7f4b6a5a85bf6be9068b35ed09794
+#2 transferring context: 669B done
+#2 DONE 0.0s
+
+#3 resolve image config for docker.io/docker/dockerfile:1.7
+#3 sha256:9f5684cfc9d952ddac5c1946f9f52668c5eed2753e5a29e2614de1b4949df55f
+#3 DONE 1.0s
+
+#4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#4 sha256:ee57d1abc39f80ea1ed2c88e573c37558545fab6247e38134ed684db6a56970b
+#4 CACHED
+
+#5 [internal] load build definition from Dockerfile.prod
+#5 sha256:026d52d27153a350700218a28992e4101eab58da6c72fd59b057765446669fa4
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/library/node:22-bookworm
+#6 sha256:fbc9c0e673879d782275f8c0eaa66a6caf981fac2ca8c94ff267856032b04c0f
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/node:22-bookworm-slim
+#7 sha256:c5bb0243eb2a0c3b44c97b546a318970579c4f1cb29b536509077459619a9d2b
+#7 DONE 1.5s
+
+#8 [internal] load .dockerignore
+#8 sha256:d59616f72c3d3f6d805c322252712f718c1572f63532aed9a19cd797a4ceb692
+#8 DONE 0.0s
+
+#12 [builder  1/10] FROM docker.io/library/node:22-bookworm
+#12 sha256:43c6aa02e587c2d4b64baf4a2f47f1e0227042a733a11134807826afc2d3a161
+#12 DONE 0.0s
+
+#9 [runtime 1/8] FROM docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+#9 sha256:ba8f9945f646b4cf383ba3b0f798f954d382f6b31c378d409e7d07743c26ecf7
+#9 resolve docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee done
+#9 sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee 5.22kB / 5.22kB done
+#9 sha256:47725aca53d3295ec2d3be8f62726599b3033cc262edc2c7e429909b3ac599fc 1.93kB / 1.93kB done
+#9 sha256:b774d993885c47eca14db241ba8cc7e5789235142f76e4a2a6a65ec350a1bac0 6.77kB / 6.77kB done
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 0B / 28.25MB 0.1s
+#9 sha256:076cba098ace87d6950e8fa4cc530bfe59834eba28f30061e8526d6f00bf52c8 0B / 3.31kB 0.1s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 0B / 49.90MB 0.1s
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 2.10MB / 28.25MB 0.3s
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 7.34MB / 28.25MB 0.4s
+#9 ...
+
+#16 [internal] load build context
+#16 sha256:67de80557e599bd46e45412c8874c287c3ed2dc84fc497b1cce301d848a24558
+#16 transferring context: 61.83MB 0.5s done
+#16 DONE 0.5s
+
+#14 [builder  3/10] RUN apt-get update && apt-get install -y   git python3 make g++ libc6 libstdc++6 libatomic1 libssl-dev   && rm -rf /var/lib/apt/lists/*
+#14 sha256:4e82765eb05b5523fdc68d97c8c490d2ffeea0acb7872ac2e99ec2a39eab4a30
+#14 CACHED
+
+#13 [builder  2/10] RUN corepack enable
+#13 sha256:198cf6703893b1800e34c5116f63b988bef984434a167cfbe42788c11be1063a
+#13 CACHED
+
+#15 [builder  4/10] WORKDIR /app
+#15 sha256:7082d6a166dc3dc9fc25e51a67888ba3e105a1f8f620ed857f1cbd562c903883
+#15 CACHED
+
+#9 [runtime 1/8] FROM docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+#9 sha256:ba8f9945f646b4cf383ba3b0f798f954d382f6b31c378d409e7d07743c26ecf7
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 16.83MB / 28.25MB 0.6s
+#9 sha256:076cba098ace87d6950e8fa4cc530bfe59834eba28f30061e8526d6f00bf52c8 3.31kB / 3.31kB 0.4s done
+#9 sha256:aa4e8910862263c3bad50c754fb555bbbb7661c41e35ba703ae082ec6749c175 0B / 1.71MB 0.6s
+#9 ...
+
+#17 [builder  5/10] COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+#17 sha256:2fd555e4c1fc9fa4af09928051803e9357aa46bab4d8380a35600a137acf7cc9
+#17 DONE 0.2s
+
+#9 [runtime 1/8] FROM docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+#9 sha256:ba8f9945f646b4cf383ba3b0f798f954d382f6b31c378d409e7d07743c26ecf7
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 23.07MB / 28.25MB 0.7s
+#9 ...
+
+#18 [builder  6/10] COPY packages ./packages
+#18 sha256:dccacd3db56999333acbbd59748f6a3a1bd81952f230efef6bbed8f0a98f8b0f
+#18 DONE 0.2s
+
+#19 [builder  7/10] COPY scripts ./scripts
+#19 sha256:c58548929624c232d80469914aeca1da913617752b72ba894670ad44438788dd
+#19 DONE 0.0s
+
+#9 [runtime 1/8] FROM docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+#9 sha256:ba8f9945f646b4cf383ba3b0f798f954d382f6b31c378d409e7d07743c26ecf7
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 28.25MB / 28.25MB 0.8s
+#9 sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 28.25MB / 28.25MB 0.8s done
+#9 extracting sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 0.1s
+#9 sha256:cce880541c96dc730321857781d113e3c75c0cb383f9510300922762006d734e 0B / 448B 0.9s
+#9 ...
+
+#20 [builder  8/10] COPY apps/api ./apps/api
+#20 sha256:db2c54ed43b543509d55c4f18a3d84d5857a801a9ef27f931ae81223da4f0301
+#20 DONE 0.2s
+
+#9 [runtime 1/8] FROM docker.io/library/node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
+#9 sha256:ba8f9945f646b4cf383ba3b0f798f954d382f6b31c378d409e7d07743c26ecf7
+#9 sha256:aa4e8910862263c3bad50c754fb555bbbb7661c41e35ba703ae082ec6749c175 1.71MB / 1.71MB 1.0s done
+#9 sha256:cce880541c96dc730321857781d113e3c75c0cb383f9510300922762006d734e 448B / 448B 1.0s done
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 3.15MB / 49.90MB 1.4s
+#9 extracting sha256:dd051e1b8c92ff101fa3071ab97ea4924885942f15644e01c3dc095764e863e3 0.8s done
+#9 extracting sha256:076cba098ace87d6950e8fa4cc530bfe59834eba28f30061e8526d6f00bf52c8
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 6.29MB / 49.90MB 1.8s
+#9 extracting sha256:076cba098ace87d6950e8fa4cc530bfe59834eba28f30061e8526d6f00bf52c8 done
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 10.49MB / 49.90MB 2.1s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 15.73MB / 49.90MB 2.3s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 22.02MB / 49.90MB 2.5s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 25.17MB / 49.90MB 2.6s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 34.60MB / 49.90MB 2.8s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 39.85MB / 49.90MB 2.9s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 49.90MB / 49.90MB 3.1s
+#9 sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 49.90MB / 49.90MB 3.1s done
+#9 extracting sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79
+#9 extracting sha256:0c4023204e5b4bcd551170279c40ff58285cc8ea87ddf9ff25cb3713e6ecda79 1.5s done
+#9 extracting sha256:aa4e8910862263c3bad50c754fb555bbbb7661c41e35ba703ae082ec6749c175
+#9 extracting sha256:aa4e8910862263c3bad50c754fb555bbbb7661c41e35ba703ae082ec6749c175 0.1s done
+#9 extracting sha256:cce880541c96dc730321857781d113e3c75c0cb383f9510300922762006d734e done
+#9 DONE 5.1s
+
+#10 [runtime 2/8] RUN apt-get update && apt-get install -y --no-install-recommends openssl   && rm -rf /var/lib/apt/lists/*
+#10 sha256:4a152f6fc0e9c9374f9cc2ceacc7ac086fe44da7940be3073457eeb0ea433bb4
+#10 0.325 Get:1 http://deb.debian.org/debian bookworm InRelease [151 kB]
+#10 0.360 Get:2 http://deb.debian.org/debian bookworm-updates InRelease [55.4 kB]
+#10 0.377 Get:3 http://deb.debian.org/debian-security bookworm-security InRelease [34.8 kB]
+#10 0.467 Get:4 http://deb.debian.org/debian bookworm/main amd64 Packages [8790 kB]
+#10 0.820 Get:5 http://deb.debian.org/debian bookworm-updates/main amd64 Packages [6924 B]
+#10 0.850 Get:6 http://deb.debian.org/debian-security bookworm-security/main amd64 Packages [375 kB]
+#10 3.145 Fetched 9414 kB in 3s (3282 kB/s)
+#10 3.145 Reading package lists...
+#10 3.991 Reading package lists...
+#10 ...
+
+#21 [builder  9/10] RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store   pnpm install --frozen-lockfile --ignore-scripts
+#21 sha256:d65b2bb6629e6f98e5b42d7a834ad8dd451d27c0acddbf310d2e6b077827dd7b
+#21 0.547 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.12.4.tgz
+#21 2.083 Scope: all 7 workspace projects
+#21 2.145 Lockfile is up to date, resolution step is skipped
+#21 2.214 Progress: resolved 1, reused 0, downloaded 0, added 0
+#21 2.369 Packages: +591
+#21 2.369 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#21 2.973
+#21 2.973    ╭───────────────────────────────────────────────╮
+#21 2.973    │                                               │
+#21 2.973    │     Update available! 10.12.4 → 12.21.0.      │
+#21 2.973    │     Changelog: https://pnpm.io/v/12.21.0      │
+#21 2.973    │   To update, run: corepack use pnpm@12.21.0   │
+#21 2.973    │                                               │
+#21 2.973    ╰───────────────────────────────────────────────╯
+#21 2.973
+#21 3.214 Progress: resolved 591, reused 591, downloaded 0, added 32
+#21 4.215 Progress: resolved 591, reused 591, downloaded 0, added 138
+#21 5.217 Progress: resolved 591, reused 591, downloaded 0, added 327
+#21 6.217 Progress: resolved 591, reused 591, downloaded 0, added 436
+#21 7.217 Progress: resolved 591, reused 591, downloaded 0, added 580
+#21 7.461 Progress: resolved 591, reused 591, downloaded 0, added 591, done
+#21 8.001
+#21 8.001 dependencies:
+#21 8.001 + @prisma/client 7.2.0
+#21 8.001 + prisma 7.2.0
+#21 8.001
+#21 8.001 devDependencies:
+#21 8.001 + @eslint/js 9.39.2
+#21 8.001 + @prisma/config 7.2.0
+#21 8.001 + @types/node 25.0.3
+#21 8.001 + @typescript-eslint/eslint-plugin 8.50.0
+#21 8.001 + @typescript-eslint/parser 8.50.0
+#21 8.001 + @typescript-eslint/utils 8.50.0
+#21 8.001 + eslint 9.39.2
+#21 8.001 + eslint-config-prettier 10.1.8
+#21 8.001 + eslint-plugin-import 2.32.0
+#21 8.001 + eslint-plugin-unused-imports 4.3.0
+#21 8.001 + playwright 1.61.1
+#21 8.001 + tsx 4.21.0
+#21 8.001 + typescript 5.9.3
+#21 8.001
+#21 8.038 Done in 6.2s using pnpm v10.12.4
+#21 DONE 8.3s
+
+#22 [builder 10/10] RUN pnpm --filter @eiah/api... run build
+#22 sha256:6e987bb241d54b5c5c2b5905e379a00f3991abbfa129c10136d27ef44058eb78
+#22 0.945 Scope: 6 of 7 workspace projects
+#22 0.949 packages/contracts prebuild$ bash ../../scripts/prebuild-check.sh
+#22 0.950 packages/db prebuild$ bash ../../scripts/prebuild-check.sh
+#22 0.978 packages/contracts prebuild: Done
+#22 0.979 packages/db prebuild: Done
+#22 0.980 packages/contracts build$ tsc -p tsconfig.json
+#22 0.980 packages/db build$ pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts
+#22 1.509 packages/db build: > @repo/db@1.0.0 generate /app/packages/db
+#22 1.510 packages/db build: > pnpm prisma generate
+#22 2.510 packages/db build: > @repo/db@1.0.0 prisma /app/packages/db
+#22 2.511 packages/db build: > prisma generate
+#22 ...
+
+#10 [runtime 2/8] RUN apt-get update && apt-get install -y --no-install-recommends openssl   && rm -rf /var/lib/apt/lists/*
+#10 sha256:4a152f6fc0e9c9374f9cc2ceacc7ac086fe44da7940be3073457eeb0ea433bb4
+#10 3.991 Reading package lists...
+#10 4.954 Building dependency tree...
+#10 5.097 Reading state information...
+#10 5.271 The following additional packages will be installed:
+#10 5.271   libssl3
+#10 5.273 Suggested packages:
+#10 5.273   ca-certificates
+#10 5.295 The following NEW packages will be installed:
+#10 5.296   libssl3 openssl
+#10 5.344 0 upgraded, 2 newly installed, 0 to remove and 0 not upgraded.
+#10 5.344 Need to get 3482 kB of archives.
+#10 5.344 After this operation, 8558 kB of additional disk space will be used.
+#10 5.344 Get:1 http://deb.debian.org/debian-security bookworm-security/main amd64 libssl3 amd64 3.0.22-1~deb12u2 [2040 kB]
+#10 5.435 Get:2 http://deb.debian.org/debian-security bookworm-security/main amd64 openssl amd64 3.0.22-1~deb12u2 [1442 kB]
+#10 5.645 debconf: delaying package configuration, since apt-utils is not installed
+#10 5.699 Fetched 3482 kB in 0s (22.7 MB/s)
+#10 5.737 Selecting previously unselected package libssl3:amd64.
+#10 5.737 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6096 files and directories currently installed.)
+#10 5.751 Preparing to unpack .../libssl3_3.0.22-1~deb12u2_amd64.deb ...
+#10 5.763 Unpacking libssl3:amd64 (3.0.22-1~deb12u2) ...
+#10 6.088 Selecting previously unselected package openssl.
+#10 6.089 Preparing to unpack .../openssl_3.0.22-1~deb12u2_amd64.deb ...
+#10 6.095 Unpacking openssl (3.0.22-1~deb12u2) ...
+#10 6.464 Setting up libssl3:amd64 (3.0.22-1~deb12u2) ...
+#10 6.545 Setting up openssl (3.0.22-1~deb12u2) ...
+#10 6.586 Processing triggers for libc-bin (2.36-9+deb12u14) ...
+#10 DONE 7.1s
+
+#11 [runtime 3/8] WORKDIR /app
+#11 sha256:47f9cecdb8aa96eb5db1767699857ff420f911f2f09ed6ee407ed41b220a030b
+#11 DONE 0.1s
+
+#22 [builder 10/10] RUN pnpm --filter @eiah/api... run build
+#22 sha256:6e987bb241d54b5c5c2b5905e379a00f3991abbfa129c10136d27ef44058eb78
+#22 4.495 packages/db build: Loaded Prisma config from prisma.config.ts.
+#22 5.541 packages/db build: Prisma schema loaded from prisma/schema.prisma.
+#22 7.191 packages/db build: ✔ Generated Prisma Client (v7.2.0) to ./src/generated/client in 931ms
+#22 7.192 packages/db build: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+#22 7.192 packages/db build: Tip: Need your database queries to be 1000x faster? Accelerate offers you that and more: https://pris.ly/tip-2-accelerate
+#22 8.037 packages/db build: CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+#22 8.038 packages/db build: CLI Using tsconfig: tsconfig.json
+#22 8.038 packages/db build: CLI tsup v8.5.1
+#22 8.039 packages/db build: CLI Using tsup config: /app/packages/db/tsup.config.ts
+#22 8.043 packages/db build: CLI Target: es2022
+#22 8.045 packages/db build: CLI Cleaning output folder
+#22 8.047 packages/db build: ESM Build start
+#22 8.069 packages/db build: ESM dist/client.js                 2.21 KB
+#22 8.069 packages/db build: ESM dist/index.js                  407.00 B
+#22 8.069 packages/db build: ESM dist/middleware/tenantGuard.js 3.74 KB
+#22 8.069 packages/db build: ESM ⚡️ Build success in 23ms
+#22 8.742 packages/db build: > @repo/db@1.0.0 build:dts /app/packages/db
+#22 8.742 packages/db build: > tsc --build tsconfig.json --force
+#22 9.519 packages/contracts build: Done
+#22 15.03 packages/db build: Done
+#22 15.03 packages/db postbuild$ node ./scripts/copy-publish-artifacts.mjs
+#22 15.13 packages/db postbuild: Done
+#22 15.13 packages/core prebuild$ bash ../../scripts/prebuild-check.sh
+#22 15.14 packages/core prebuild: Done
+#22 15.14 packages/core build$ pnpm run clean && pnpm exec tsc -p tsconfig.json --emitDeclarationOnly && pnpm exec tsup --config tsup.config.ts
+#22 15.49 packages/core build: > @eiah/core@0.1.0 clean /app/packages/core
+#22 15.49 packages/core build: > node -e "require('fs').rmSync('dist', { recursive: true, force: true })"
+#22 22.32 packages/core build: CLI Building entry: src/index.ts, src/actions/actionRegistry.ts, src/actions/billing.ts, src/actions/defi.ts, src/actions/finance.ts, src/actions/guardian.ts, src/actions/guardianChecklistTools.ts, src/actions/guardrails.ts, src/actions/index.ts, src/actions/knowledge.ts, src/actions/notifications.ts, src/actions/risk.ts, src/billing/reconciliation.ts, src/catalog/apeWeeklyCycleV3.test.ts, src/catalog/apeWeeklyCycleV3.ts, src/catalog/apeWeeklyCycleV3Validator.test.ts, src/catalog/apeWeeklyCycleV3Validator.ts, src/catalog/governedOperationCatalog.test.ts, src/catalog/governedOperationCatalog.ts, src/catalog/versionedActionRegistry.ts, src/catalog/workspaceActionPolicyProvisioning.ts, src/catalog/workspaceAgentProvisioning.test.ts, src/catalog/workspaceAgentProvisioning.ts, src/events/redisPublisher.ts, src/llm/LLMProvider.ts, src/llm/LLMProviderError.ts, src/llm/LLMRegistry.ts, src/llm/LLMRouter.ts, src/llm/completionEngine.ts, src/llm/types.ts, src/logging/index.ts, src/logging/logger.ts, src/policy/TenantPolicyStore.ts, src/queue/actionQueue.ts, src/queue/connection.test.ts, src/queue/connection.ts, src/queue/maintenanceQueue.ts, src/queue/redrive.ts, src/queue/runAtivoUniversalDLQ.ts, src/queue/runAtivoUniversalQueue.ts, src/queue/runQueue.ts, src/queue/snapshot.ts, src/queue/workerOwnershipLease.test.ts, src/queue/workerOwnershipLease.ts, src/queue/workerTopology.test.ts, src/queue/workerTopology.ts, src/reasons/index.ts, src/reasons/reasonCatalog.ts, src/security/killSwitch.ts, src/services/guardrailLedgerStore.ts, src/services/ledgerService.ts, src/services/mcpGovernanceEnv.test.ts, src/services/mcpGovernanceEnv.ts, src/services/planStepStore.ts, src/services/reconcileLedgerService.ts, src/services/sclLedger.ts, src/services/tenantInvoiceService.ts, src/services/workspaceProvenanceClassifier.test.ts, src/services/workspaceProvenanceClassifier.ts, src/services/workspaceProvenanceFacts.ts, src/taxonomy/publicProductTaxonomy.ts, src/utils/canonicalDigest.test.ts, src/utils/canonicalDigest.ts, src/utils/normalizeMessages.ts, src/utils/retry.ts, src/utils/timeout.ts, src/actions/agents/aadvAction.ts, src/actions/agents/defiOneAction.ts, src/actions/agents/diariasAction.ts, src/actions/agents/eiahAction.ts, src/actions/agents/finNexusAction.ts, src/actions/agents/flowOrchestratorAction.ts, src/actions/agents/guardianAction.ts, src/actions/agents/iBCAction.ts, src/actions/agents/imageNftDiariasAction.ts, src/actions/agents/index.ts, src/actions/agents/j360Action.ts, src/actions/agents/mktAction.ts, src/actions/agents/nftPyAction.ts, src/actions/agents/onchainMonitorAction.ts, src/actions/agents/pitchAction.ts, src/actions/agents/registry.ts, src/actions/agents/resolveLegalSpecialtyContext.ts, src/actions/agents/riskAnalyzerAction.ts, src/actions/agents/types.ts, src/actions/registry/TenantActionResolver.ts, src/actions/registry/VersionedActionRegistry.ts, src/actions/reporting/guardianReportRenderer.ts, src/actions/reporting/guardianReportSchema.ts, src/actions/reporting/index.ts, src/actions/reporting/j360LegalReportRenderer.ts, src/actions/reporting/j360LegalReportSchema.ts, src/actions/reporting/mktCampaignReportRenderer.ts, src/actions/reporting/mktCampaignReportSchema.ts, src/actions/reporting/recipeOrchestrationRenderer.ts, src/actions/reporting/recipeOrchestrationSchema.ts, src/actions/reporting/runAtivoSchema.ts
+#22 22.32 packages/core build: CLI Using tsconfig: tsconfig.json
+#22 22.32 packages/core build: CLI tsup v8.5.1
+#22 22.32 packages/core build: CLI Using tsup config: /app/packages/core/tsup.config.ts
+#22 22.32 packages/core build: CLI Target: node20
+#22 22.32 packages/core build: ESM Build start
+#22 22.54 packages/core build: ESM dist/actions/reporting/runAtivoSchema.js                  445.00 B
+#22 22.54 packages/core build: ESM dist/actions/reporting/guardianReportSchema.js            493.00 B
+#22 22.54 packages/core build: ESM dist/actions/reporting/index.js                           1.55 KB
+#22 22.55 packages/core build: ESM dist/integrations-IGHIWNFT.js                             7.53 KB
+#22 22.55 packages/core build: ESM dist/actions/reporting/j360LegalReportRenderer.js         448.00 B
+#22 22.55 packages/core build: ESM dist/actions/reporting/recipeOrchestrationRenderer.js     316.00 B
+#22 22.55 packages/core build: ESM dist/actions/reporting/mktCampaignReportSchema.js         1.66 KB
+#22 22.55 packages/core build: ESM dist/actions/reporting/recipeOrchestrationSchema.js       1.03 KB
+#22 22.55 packages/core build: ESM dist/actions/agents/pitchAction.js                        268.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/resolveLegalSpecialtyContext.js       207.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/riskAnalyzerAction.js                 255.00 B
+#22 22.55 packages/core build: ESM dist/actions/reporting/mktCampaignReportRenderer.js       386.00 B
+#22 22.55 packages/core build: ESM dist/actions/reporting/j360LegalReportSchema.js           1.14 KB
+#22 22.55 packages/core build: ESM dist/actions/agents/registry.js                           1.38 KB
+#22 22.55 packages/core build: ESM dist/actions/reporting/guardianReportRenderer.js          649.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/types.js                              154.00 B
+#22 22.55 packages/core build: ESM dist/actions/registry/TenantActionResolver.js             183.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/guardianAction.js                     311.00 B
+#22 22.55 packages/core build: ESM dist/actions/registry/VersionedActionRegistry.js          192.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/iBCAction.js                          210.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/index.js                              2.23 KB
+#22 22.55 packages/core build: ESM dist/actions/agents/j360Action.js                         215.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/mktAction.js                          222.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/nftPyAction.js                        220.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/onchainMonitorAction.js               265.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/imageNftDiariasAction.js              270.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/aadvAction.js                         215.00 B
+#22 22.55 packages/core build: ESM dist/utils/timeout.js                                     146.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/diariasAction.js                      230.00 B
+#22 22.55 packages/core build: ESM dist/utils/retry.js                                       178.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/defiOneAction.js                      230.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/eiahAction.js                         215.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/finNexusAction.js                     235.00 B
+#22 22.55 packages/core build: ESM dist/services/workspaceProvenanceClassifier.js            758.00 B
+#22 22.55 packages/core build: ESM dist/services/tenantInvoiceService.js                     437.00 B
+#22 22.55 packages/core build: ESM dist/actions/agents/flowOrchestratorAction.js             275.00 B
+#22 22.55 packages/core build: ESM dist/services/workspaceProvenanceFacts.js                 12.10 KB
+#22 22.55 packages/core build: ESM dist/utils/canonicalDigest.test.js                        1.97 KB
+#22 22.55 packages/core build: ESM dist/chunk-4ZMHFRSC.js                                    22.66 KB
+#22 22.55 packages/core build: ESM dist/utils/normalizeMessages.js                           168.00 B
+#22 22.55 packages/core build: ESM dist/taxonomy/publicProductTaxonomy.js                    1.49 KB
+#22 22.55 packages/core build: ESM dist/utils/canonicalDigest.js                             190.00 B
+#22 22.55 packages/core build: ESM dist/services/guardrailLedgerStore.js                     227.00 B
+#22 22.55 packages/core build: ESM dist/security/killSwitch.js                               4.31 KB
+#22 22.55 packages/core build: ESM dist/services/ledgerService.js                            187.00 B
+#22 22.55 packages/core build: ESM dist/services/mcpGovernanceEnv.js                         305.00 B
+#22 22.55 packages/core build: ESM dist/services/mcpGovernanceEnv.test.js                    2.20 KB
+#22 22.55 packages/core build: ESM dist/services/planStepStore.js                            156.00 B
+#22 22.55 packages/core build: ESM dist/queue/runQueue.js                                    624.00 B
+#22 22.55 packages/core build: ESM dist/services/reconcileLedgerService.js                   183.00 B
+#22 22.55 packages/core build: ESM dist/queue/snapshot.js                                    337.00 B
+#22 22.55 packages/core build: ESM dist/services/workspaceProvenanceClassifier.test.js       27.00 KB
+#22 22.55 packages/core build: ESM dist/services/sclLedger.js                                220.00 B
+#22 22.55 packages/core build: ESM dist/queue/workerOwnershipLease.js                        299.00 B
+#22 22.55 packages/core build: ESM dist/chunk-SDDIETUH.js                                    2.82 KB
+#22 22.55 packages/core build: ESM dist/queue/workerTopology.js                              377.00 B
+#22 22.55 packages/core build: ESM dist/queue/workerTopology.test.js                         3.59 KB
+#22 22.55 packages/core build: ESM dist/chunk-HBL4TSCV.js                                    3.81 KB
+#22 22.55 packages/core build: ESM dist/queue/actionQueue.js                                 595.00 B
+#22 22.55 packages/core build: ESM dist/queue/workerOwnershipLease.test.js                   10.14 KB
+#22 22.55 packages/core build: ESM dist/reasons/index.js                                     713.00 B
+#22 22.55 packages/core build: ESM dist/policy/TenantPolicyStore.js                          238.00 B
+#22 22.55 packages/core build: ESM dist/reasons/reasonCatalog.js                             690.00 B
+#22 22.55 packages/core build: ESM dist/queue/connection.test.js                             3.73 KB
+#22 22.55 packages/core build: ESM dist/queue/connection.js                                  222.00 B
+#22 22.56 packages/core build: ESM dist/queue/redrive.js                                     803.00 B
+#22 22.56 packages/core build: ESM dist/llm/LLMProvider.js                                   150.00 B
+#22 22.56 packages/core build: ESM dist/queue/maintenanceQueue.js                            773.00 B
+#22 22.56 packages/core build: ESM dist/queue/runAtivoUniversalDLQ.js                        270.00 B
+#22 22.56 packages/core build: ESM dist/queue/runAtivoUniversalQueue.js                      407.00 B
+#22 22.56 packages/core build: ESM dist/llm/LLMRouter.js                                     233.00 B
+#22 22.56 packages/core build: ESM dist/llm/LLMProviderError.js                              311.00 B
+#22 22.56 packages/core build: ESM dist/llm/types.js                                         64.00 B
+#22 22.56 packages/core build: ESM dist/logging/index.js                                     331.00 B
+#22 22.56 packages/core build: ESM dist/logging/logger.js                                    301.00 B
+#22 22.56 packages/core build: ESM dist/llm/completionEngine.js                              407.00 B
+#22 22.56 packages/core build: ESM dist/llm/LLMRegistry.js                                   150.00 B
+#22 22.56 packages/core build: ESM dist/catalog/apeWeeklyCycleV3Validator.js                 359.00 B
+#22 22.56 packages/core build: ESM dist/catalog/governedOperationCatalog.js                  643.00 B
+#22 22.56 packages/core build: ESM dist/catalog/versionedActionRegistry.js                   581.00 B
+#22 22.56 packages/core build: ESM dist/chunk-U5SIDYCS.js                                    1.27 KB
+#22 22.56 packages/core build: ESM dist/catalog/governedOperationCatalog.test.js             5.65 KB
+#22 22.56 packages/core build: ESM dist/catalog/workspaceActionPolicyProvisioning.js         1.24 KB
+#22 22.56 packages/core build: ESM dist/events/redisPublisher.js                             420.00 B
+#22 22.56 packages/core build: ESM dist/catalog/workspaceAgentProvisioning.test.js           2.03 KB
+#22 22.56 packages/core build: ESM dist/catalog/workspaceAgentProvisioning.js                377.00 B
+#22 22.56 packages/core build: ESM dist/actions/index.js                                     5.16 KB
+#22 22.56 packages/core build: ESM dist/actions/notifications.js                             339.00 B
+#22 22.56 packages/core build: ESM dist/actions/knowledge.js                                 329.00 B
+#22 22.56 packages/core build: ESM dist/actions/risk.js                                      314.00 B
+#22 22.56 packages/core build: ESM dist/catalog/apeWeeklyCycleV3.test.js                     7.04 KB
+#22 22.56 packages/core build: ESM dist/catalog/apeWeeklyCycleV3.js                          640.00 B
+#22 22.56 packages/core build: ESM dist/chunk-DOMKAYLM.js                                    642.00 B
+#22 22.56 packages/core build: ESM dist/chunk-T33ZY4ZU.js                                    6.12 KB
+#22 22.56 packages/core build: ESM dist/chunk-DUMZ25CC.js                                    4.23 KB
+#22 22.56 packages/core build: ESM dist/catalog/apeWeeklyCycleV3Validator.test.js            12.71 KB
+#22 22.56 packages/core build: ESM dist/billing/reconciliation.js                            6.60 KB
+#22 22.56 packages/core build: ESM dist/chunk-OVTDCE7D.js                                    4.11 KB
+#22 22.56 packages/core build: ESM dist/chunk-T5IVZEJV.js                                    9.10 KB
+#22 22.56 packages/core build: ESM dist/chunk-OJ6RDHLL.js                                    614.00 B
+#22 22.56 packages/core build: ESM dist/chunk-J6H767DG.js                                    554.00 B
+#22 22.56 packages/core build: ESM dist/chunk-OLHZGYXK.js                                    4.16 KB
+#22 22.56 packages/core build: ESM dist/chunk-5TCXA5MP.js                                    756.00 B
+#22 22.56 packages/core build: ESM dist/chunk-LTWXFA52.js                                    23.89 KB
+#22 22.56 packages/core build: ESM dist/chunk-S6GHMKMW.js                                    8.54 KB
+#22 22.56 packages/core build: ESM dist/chunk-IJGDXQ5A.js                                    6.68 KB
+#22 22.56 packages/core build: ESM dist/chunk-7YJTIZGK.js                                    42.00 B
+#22 22.56 packages/core build: ESM dist/chunk-NBDL7WSH.js                                    6.70 KB
+#22 22.56 packages/core build: ESM dist/chunk-T3RZCBN2.js                                    474.00 B
+#22 22.56 packages/core build: ESM dist/chunk-ODSH63U3.js                                    16.66 KB
+#22 22.56 packages/core build: ESM dist/chunk-5C2TNWN2.js                                    1.36 KB
+#22 22.56 packages/core build: ESM dist/chunk-MBFZUNSD.js                                    1.92 KB
+#22 22.56 packages/core build: ESM dist/chunk-DTZDXVB2.js                                    124.00 B
+#22 22.56 packages/core build: ESM dist/chunk-AI4CU5W4.js                                    3.71 KB
+#22 22.56 packages/core build: ESM dist/chunk-NCGZ5VGM.js                                    1.30 KB
+#22 22.56 packages/core build: ESM dist/chunk-VW2UVK5X.js                                    398.00 B
+#22 22.56 packages/core build: ESM dist/index.js                                             86.12 KB
+#22 22.56 packages/core build: ESM dist/chunk-IP426BZD.js                                    332.00 B
+#22 22.56 packages/core build: ESM dist/chunk-BKZX3YK6.js                                    2.35 KB
+#22 22.56 packages/core build: ESM dist/chunk-YXZ5NBFR.js                                    684.00 B
+#22 22.56 packages/core build: ESM dist/chunk-ZNSZSEHU.js                                    529.00 B
+#22 22.56 packages/core build: ESM dist/chunk-T6HPBBU3.js                                    42.00 B
+#22 22.56 packages/core build: ESM dist/chunk-2WLQ23ZR.js                                    1.50 KB
+#22 22.56 packages/core build: ESM dist/chunk-MGGB3C6J.js                                    1.54 KB
+#22 22.56 packages/core build: ESM dist/chunk-OQIRAGGO.js                                    2.97 KB
+#22 22.56 packages/core build: ESM dist/chunk-ITJCVKQC.js                                    660.00 B
+#22 22.56 packages/core build: ESM dist/chunk-TXP2IHKM.js                                    1.86 KB
+#22 22.56 packages/core build: ESM dist/chunk-MVDQPRGU.js                                    23.15 KB
+#22 22.56 packages/core build: ESM dist/chunk-OHDGBRPI.js                                    29.38 KB
+#22 22.56 packages/core build: ESM dist/chunk-IOVVL5L5.js                                    7.82 KB
+#22 22.56 packages/core build: ESM dist/chunk-IN4WJEOC.js                                    3.44 KB
+#22 22.56 packages/core build: ESM dist/chunk-TZC7WCTV.js                                    1.55 KB
+#22 22.56 packages/core build: ESM dist/chunk-Y5DX27F7.js                                    10.95 KB
+#22 22.56 packages/core build: ESM dist/chunk-XJEDWFS3.js                                    17.50 KB
+#22 22.56 packages/core build: ESM dist/chunk-WKV4LBLL.js                                    31.89 KB
+#22 22.57 packages/core build: ESM dist/chunk-FXUKIZXZ.js                                    4.57 KB
+#22 22.57 packages/core build: ESM dist/chunk-NNCPNRZC.js                                    2.58 KB
+#22 22.57 packages/core build: ESM dist/chunk-NAVGCSWE.js                                    2.48 KB
+#22 22.57 packages/core build: ESM dist/chunk-Y4VZDHIC.js                                    2.20 KB
+#22 22.57 packages/core build: ESM dist/chunk-KARVQAJX.js                                    15.33 KB
+#22 22.57 packages/core build: ESM dist/chunk-C26TQ75V.js                                    11.12 KB
+#22 22.57 packages/core build: ESM dist/chunk-FL3TGXLF.js                                    2.25 KB
+#22 22.57 packages/core build: ESM dist/chunk-LFH342PK.js                                    3.01 KB
+#22 22.57 packages/core build: ESM dist/chunk-2O6445PZ.js                                    2.43 KB
+#22 22.57 packages/core build: ESM dist/chunk-AKB5K4JR.js                                    12.41 KB
+#22 22.57 packages/core build: ESM dist/chunk-JAYMXQS3.js                                    2.32 KB
+#22 22.57 packages/core build: ESM dist/chunk-ZB4VG7QL.js                                    8.51 KB
+#22 22.57 packages/core build: ESM dist/chunk-BIM7PTCQ.js                                    2.15 KB
+#22 22.57 packages/core build: ESM dist/chunk-5S2B34DO.js                                    9.59 KB
+#22 22.57 packages/core build: ESM dist/chunk-JZWD4A4R.js                                    8.02 KB
+#22 22.57 packages/core build: ESM dist/chunk-CM5G5GDI.js                                    2.56 KB
+#22 22.57 packages/core build: ESM dist/chunk-7XJNFX6Q.js                                    3.29 KB
+#22 22.57 packages/core build: ESM dist/chunk-NDXPYMYF.js                                    17.80 KB
+#22 22.57 packages/core build: ESM dist/chunk-46SAYSYD.js                                    6.53 KB
+#22 22.57 packages/core build: ESM dist/actions/actionRegistry.js                            510.00 B
+#22 22.57 packages/core build: ESM dist/chunk-UXAJDOVM.js                                    5.85 KB
+#22 22.57 packages/core build: ESM dist/actions/billing.js                                   416.00 B
+#22 22.57 packages/core build: ESM dist/chunk-HZUTD6XT.js                                    211.00 B
+#22 22.57 packages/core build: ESM dist/chunk-YE7OW3HE.js                                    1.70 KB
+#22 22.57 packages/core build: ESM dist/chunk-G7MAJCD3.js                                    4.37 KB
+#22 22.57 packages/core build: ESM dist/chunk-3FCY2DN4.js                                    7.15 KB
+#22 22.57 packages/core build: ESM dist/chunk-JGJMPNX7.js                                    1.91 KB
+#22 22.57 packages/core build: ESM dist/actions/defi.js                                      314.00 B
+#22 22.57 packages/core build: ESM dist/actions/finance.js                                   323.00 B
+#22 22.57 packages/core build: ESM dist/chunk-57HTLRKE.js                                    42.00 B
+#22 22.57 packages/core build: ESM dist/chunk-5KT3WB3O.js                                    1.05 KB
+#22 22.57 packages/core build: ESM dist/chunk-KEDTFNSQ.js                                    3.95 KB
+#22 22.57 packages/core build: ESM dist/actions/guardian.js                                  326.00 B
+#22 22.57 packages/core build: ESM dist/chunk-UGQU7FMI.js                                    15.85 KB
+#22 22.57 packages/core build: ESM dist/chunk-H2ACEHYF.js                                    8.09 KB
+#22 22.57 packages/core build: ESM dist/chunk-F6BX46OD.js                                    14.11 KB
+#22 22.57 packages/core build: ESM dist/chunk-Y3NAHTST.js                                    5.75 KB
+#22 22.57 packages/core build: ESM dist/actions/guardrails.js                                485.00 B
+#22 22.57 packages/core build: ESM dist/chunk-3EATMUSJ.js                                    1.84 KB
+#22 22.57 packages/core build: ESM dist/actions/guardianChecklistTools.js                    537.00 B
+#22 22.57 packages/core build: ESM dist/chunk-WNQURWCF.js                                    4.06 KB
+#22 22.57 packages/core build: ESM dist/chunk-XADEOMR4.js                                    5.15 KB
+#22 22.57 packages/core build: ESM dist/chunk-O7NJVQY6.js                                    2.53 KB
+#22 22.57 packages/core build: ESM dist/chunk-424PT5DM.js                                    919.00 B
+#22 22.57 packages/core build: ESM dist/chunk-3C5UANV7.js                                    5.48 KB
+#22 22.57 packages/core build: ESM dist/actions/reporting/runAtivoSchema.js.map              71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/index.js.map                       71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/guardianReportSchema.js.map        71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/j360LegalReportRenderer.js.map     71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/recipeOrchestrationRenderer.js.map 71.00 B
+#22 22.57 packages/core build: ESM dist/integrations-IGHIWNFT.js.map                         15.05 KB
+#22 22.57 packages/core build: ESM dist/actions/reporting/mktCampaignReportSchema.js.map     71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/resolveLegalSpecialtyContext.js.map   71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/recipeOrchestrationSchema.js.map   71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/pitchAction.js.map                    71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/mktCampaignReportRenderer.js.map   71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/riskAnalyzerAction.js.map             71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/registry.js.map                       1.61 KB
+#22 22.57 packages/core build: ESM dist/actions/reporting/j360LegalReportSchema.js.map       71.00 B
+#22 22.57 packages/core build: ESM dist/actions/reporting/guardianReportRenderer.js.map      71.00 B
+#22 22.57 packages/core build: ESM dist/actions/registry/TenantActionResolver.js.map         71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/guardianAction.js.map                 71.00 B
+#22 22.57 packages/core build: ESM dist/actions/registry/VersionedActionRegistry.js.map      71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/types.js.map                          71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/iBCAction.js.map                      71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/j360Action.js.map                     71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/mktAction.js.map                      71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/index.js.map                          71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/nftPyAction.js.map                    71.00 B
+#22 22.57 packages/core build: ESM dist/actions/agents/onchainMonitorAction.js.map           71.00 B
+#22 22.57 packages/core build: ESM dist/utils/timeout.js.map                                 71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/imageNftDiariasAction.js.map          71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/defiOneAction.js.map                  71.00 B
+#22 22.58 packages/core build: ESM dist/utils/retry.js.map                                   71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/eiahAction.js.map                     71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/aadvAction.js.map                     71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/diariasAction.js.map                  71.00 B
+#22 22.58 packages/core build: ESM dist/services/workspaceProvenanceClassifier.js.map        71.00 B
+#22 22.58 packages/core build: ESM dist/actions/agents/flowOrchestratorAction.js.map         71.00 B
+#22 22.58 packages/core build: ESM dist/utils/canonicalDigest.test.js.map                    3.43 KB
+#22 22.58 packages/core build: ESM dist/actions/agents/finNexusAction.js.map                 71.00 B
+#22 22.58 packages/core build: ESM dist/services/tenantInvoiceService.js.map                 71.00 B
+#22 22.58 packages/core build: ESM dist/utils/normalizeMessages.js.map                       71.00 B
+#22 22.58 packages/core build: ESM dist/taxonomy/publicProductTaxonomy.js.map                71.00 B
+#22 22.58 packages/core build: ESM dist/services/workspaceProvenanceFacts.js.map             23.29 KB
+#22 22.58 packages/core build: ESM dist/utils/canonicalDigest.js.map                         71.00 B
+#22 22.58 packages/core build: ESM dist/services/guardrailLedgerStore.js.map                 71.00 B
+#22 22.58 packages/core build: ESM dist/services/ledgerService.js.map                        71.00 B
+#22 22.58 packages/core build: ESM dist/security/killSwitch.js.map                           8.31 KB
+#22 22.58 packages/core build: ESM dist/services/mcpGovernanceEnv.test.js.map                3.52 KB
+#22 22.58 packages/core build: ESM dist/queue/runQueue.js.map                                71.00 B
+#22 22.58 packages/core build: ESM dist/services/mcpGovernanceEnv.js.map                     71.00 B
+#22 22.58 packages/core build: ESM dist/services/planStepStore.js.map                        71.00 B
+#22 22.58 packages/core build: ESM dist/services/reconcileLedgerService.js.map               71.00 B
+#22 22.58 packages/core build: ESM dist/services/sclLedger.js.map                            71.00 B
+#22 22.58 packages/core build: ESM dist/queue/workerOwnershipLease.js.map                    71.00 B
+#22 22.58 packages/core build: ESM dist/chunk-SDDIETUH.js.map                                5.82 KB
+#22 22.58 packages/core build: ESM dist/queue/snapshot.js.map                                71.00 B
+#22 22.58 packages/core build: ESM dist/queue/workerTopology.test.js.map                     6.02 KB
+#22 22.58 packages/core build: ESM dist/services/workspaceProvenanceClassifier.test.js.map   50.95 KB
+#22 22.58 packages/core build: ESM dist/queue/workerTopology.js.map                          71.00 B
+#22 22.58 packages/core build: ESM dist/chunk-HBL4TSCV.js.map                                7.54 KB
+#22 22.58 packages/core build: ESM dist/queue/actionQueue.js.map                             71.00 B
+#22 22.58 packages/core build: ESM dist/chunk-4ZMHFRSC.js.map                                47.97 KB
+#22 22.58 packages/core build: ESM dist/reasons/index.js.map                                 71.00 B
+#22 22.58 packages/core build: ESM dist/queue/redrive.js.map                                 1.36 KB
+#22 22.58 packages/core build: ESM dist/policy/TenantPolicyStore.js.map                      71.00 B
+#22 22.58 packages/core build: ESM dist/queue/workerOwnershipLease.test.js.map               20.64 KB
+#22 22.58 packages/core build: ESM dist/queue/runAtivoUniversalDLQ.js.map                    71.00 B
+#22 22.58 packages/core build: ESM dist/llm/LLMProvider.js.map                               71.00 B
+#22 22.58 packages/core build: ESM dist/queue/runAtivoUniversalQueue.js.map                  71.00 B
+#22 22.58 packages/core build: ESM dist/llm/LLMRouter.js.map                                 71.00 B
+#22 22.58 packages/core build: ESM dist/logging/index.js.map                                 71.00 B
+#22 22.58 packages/core build: ESM dist/queue/connection.test.js.map                         6.35 KB
+#22 22.58 packages/core build: ESM dist/llm/LLMProviderError.js.map                          71.00 B
+#22 22.58 packages/core build: ESM dist/logging/logger.js.map                                71.00 B
+#22 22.58 packages/core build: ESM dist/catalog/governedOperationCatalog.js.map              71.00 B
+#22 22.58 packages/core build: ESM dist/catalog/versionedActionRegistry.js.map               994.00 B
+#22 22.58 packages/core build: ESM dist/catalog/apeWeeklyCycleV3Validator.js.map             71.00 B
+#22 22.58 packages/core build: ESM dist/chunk-U5SIDYCS.js.map                                3.30 KB
+#22 22.58 packages/core build: ESM dist/catalog/workspaceAgentProvisioning.test.js.map       3.26 KB
+#22 22.58 packages/core build: ESM dist/catalog/workspaceActionPolicyProvisioning.js.map     3.05 KB
+#22 22.58 packages/core build: ESM dist/catalog/governedOperationCatalog.test.js.map         9.29 KB
+#22 22.58 packages/core build: ESM dist/queue/maintenanceQueue.js.map                        71.00 B
+#22 22.58 packages/core build: ESM dist/events/redisPublisher.js.map                         71.00 B
+#22 22.58 packages/core build: ESM dist/catalog/workspaceAgentProvisioning.js.map            71.00 B
+#22 22.58 packages/core build: ESM dist/actions/index.js.map                                 71.00 B
+#22 22.58 packages/core build: ESM dist/actions/notifications.js.map                         71.00 B
+#22 22.58 packages/core build: ESM dist/catalog/apeWeeklyCycleV3.js.map                      71.00 B
+#22 22.58 packages/core build: ESM dist/actions/risk.js.map                                  71.00 B
+#22 22.58 packages/core build: ESM dist/actions/knowledge.js.map                             71.00 B
+#22 22.58 packages/core build: ESM dist/catalog/apeWeeklyCycleV3.test.js.map                 11.43 KB
+#22 22.58 packages/core build: ESM dist/reasons/reasonCatalog.js.map                         71.00 B
+#22 22.58 packages/core build: ESM dist/chunk-DOMKAYLM.js.map                                2.05 KB
+#22 22.58 packages/core build: ESM dist/chunk-DUMZ25CC.js.map                                14.43 KB
+#22 22.58 packages/core build: ESM dist/chunk-OVTDCE7D.js.map                                11.83 KB
+#22 22.58 packages/core build: ESM dist/billing/reconciliation.js.map                        18.56 KB
+#22 22.58 packages/core build: ESM dist/chunk-J6H767DG.js.map                                962.00 B
+#22 22.58 packages/core build: ESM dist/chunk-T33ZY4ZU.js.map                                17.10 KB
+#22 22.58 packages/core build: ESM dist/chunk-OJ6RDHLL.js.map                                1.26 KB
+#22 22.58 packages/core build: ESM dist/catalog/apeWeeklyCycleV3Validator.test.js.map        22.38 KB
+#22 22.59 packages/core build: ESM dist/chunk-T5IVZEJV.js.map                                17.14 KB
+#22 22.59 packages/core build: ESM dist/chunk-OLHZGYXK.js.map                                8.45 KB
+#22 22.59 packages/core build: ESM dist/chunk-5TCXA5MP.js.map                                1.71 KB
+#22 22.59 packages/core build: ESM dist/chunk-7YJTIZGK.js.map                                71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-S6GHMKMW.js.map                                16.27 KB
+#22 22.59 packages/core build: ESM dist/chunk-IJGDXQ5A.js.map                                12.53 KB
+#22 22.59 packages/core build: ESM dist/chunk-LTWXFA52.js.map                                38.11 KB
+#22 22.59 packages/core build: ESM dist/chunk-NBDL7WSH.js.map                                12.91 KB
+#22 22.59 packages/core build: ESM dist/chunk-T3RZCBN2.js.map                                795.00 B
+#22 22.59 packages/core build: ESM dist/chunk-DTZDXVB2.js.map                                377.00 B
+#22 22.59 packages/core build: ESM dist/chunk-5C2TNWN2.js.map                                2.58 KB
+#22 22.59 packages/core build: ESM dist/chunk-MBFZUNSD.js.map                                3.80 KB
+#22 22.59 packages/core build: ESM dist/chunk-ODSH63U3.js.map                                27.00 KB
+#22 22.59 packages/core build: ESM dist/chunk-VW2UVK5X.js.map                                767.00 B
+#22 22.59 packages/core build: ESM dist/chunk-NCGZ5VGM.js.map                                2.39 KB
+#22 22.59 packages/core build: ESM dist/chunk-AI4CU5W4.js.map                                6.09 KB
+#22 22.59 packages/core build: ESM dist/chunk-IP426BZD.js.map                                608.00 B
+#22 22.59 packages/core build: ESM dist/chunk-YXZ5NBFR.js.map                                1.24 KB
+#22 22.59 packages/core build: ESM dist/chunk-BKZX3YK6.js.map                                5.47 KB
+#22 22.59 packages/core build: ESM dist/chunk-T6HPBBU3.js.map                                71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-ZNSZSEHU.js.map                                1009.00 B
+#22 22.59 packages/core build: ESM dist/chunk-2WLQ23ZR.js.map                                2.84 KB
+#22 22.59 packages/core build: ESM dist/chunk-MGGB3C6J.js.map                                2.87 KB
+#22 22.59 packages/core build: ESM dist/chunk-TXP2IHKM.js.map                                3.31 KB
+#22 22.59 packages/core build: ESM dist/chunk-ITJCVKQC.js.map                                1.25 KB
+#22 22.59 packages/core build: ESM dist/chunk-OQIRAGGO.js.map                                6.00 KB
+#22 22.59 packages/core build: ESM dist/chunk-IOVVL5L5.js.map                                14.41 KB
+#22 22.59 packages/core build: ESM dist/llm/completionEngine.js.map                          71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-MVDQPRGU.js.map                                37.76 KB
+#22 22.59 packages/core build: ESM dist/llm/LLMRegistry.js.map                               71.00 B
+#22 22.59 packages/core build: ESM dist/llm/types.js.map                                     71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-IN4WJEOC.js.map                                6.38 KB
+#22 22.59 packages/core build: ESM dist/chunk-TZC7WCTV.js.map                                3.09 KB
+#22 22.59 packages/core build: ESM dist/chunk-OHDGBRPI.js.map                                41.76 KB
+#22 22.59 packages/core build: ESM dist/chunk-FXUKIZXZ.js.map                                7.78 KB
+#22 22.59 packages/core build: ESM dist/chunk-Y5DX27F7.js.map                                16.37 KB
+#22 22.59 packages/core build: ESM dist/chunk-XJEDWFS3.js.map                                25.45 KB
+#22 22.59 packages/core build: ESM dist/index.js.map                                         134.12 KB
+#22 22.59 packages/core build: ESM dist/chunk-Y4VZDHIC.js.map                                3.10 KB
+#22 22.59 packages/core build: ESM dist/chunk-NNCPNRZC.js.map                                4.97 KB
+#22 22.59 packages/core build: ESM dist/chunk-NAVGCSWE.js.map                                3.42 KB
+#22 22.59 packages/core build: ESM dist/chunk-C26TQ75V.js.map                                12.42 KB
+#22 22.59 packages/core build: ESM dist/chunk-FL3TGXLF.js.map                                2.99 KB
+#22 22.59 packages/core build: ESM dist/chunk-KARVQAJX.js.map                                19.75 KB
+#22 22.59 packages/core build: ESM dist/chunk-WKV4LBLL.js.map                                48.19 KB
+#22 22.59 packages/core build: ESM dist/chunk-LFH342PK.js.map                                4.79 KB
+#22 22.59 packages/core build: ESM dist/chunk-2O6445PZ.js.map                                3.34 KB
+#22 22.59 packages/core build: ESM dist/chunk-AKB5K4JR.js.map                                15.40 KB
+#22 22.59 packages/core build: ESM dist/queue/connection.js.map                              71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-JAYMXQS3.js.map                                3.16 KB
+#22 22.59 packages/core build: ESM dist/chunk-7XJNFX6Q.js.map                                6.20 KB
+#22 22.59 packages/core build: ESM dist/chunk-JZWD4A4R.js.map                                13.22 KB
+#22 22.59 packages/core build: ESM dist/chunk-BIM7PTCQ.js.map                                2.92 KB
+#22 22.59 packages/core build: ESM dist/actions/actionRegistry.js.map                        71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-UXAJDOVM.js.map                                10.63 KB
+#22 22.59 packages/core build: ESM dist/chunk-ZB4VG7QL.js.map                                14.08 KB
+#22 22.59 packages/core build: ESM dist/chunk-5S2B34DO.js.map                                13.88 KB
+#22 22.59 packages/core build: ESM dist/chunk-G7MAJCD3.js.map                                7.64 KB
+#22 22.59 packages/core build: ESM dist/chunk-CM5G5GDI.js.map                                3.37 KB
+#22 22.59 packages/core build: ESM dist/chunk-NDXPYMYF.js.map                                24.28 KB
+#22 22.59 packages/core build: ESM dist/actions/billing.js.map                               71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-46SAYSYD.js.map                                9.23 KB
+#22 22.59 packages/core build: ESM dist/actions/defi.js.map                                  71.00 B
+#22 22.59 packages/core build: ESM dist/actions/finance.js.map                               71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-YE7OW3HE.js.map                                3.13 KB
+#22 22.59 packages/core build: ESM dist/chunk-57HTLRKE.js.map                                71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-HZUTD6XT.js.map                                7.29 KB
+#22 22.59 packages/core build: ESM dist/chunk-JGJMPNX7.js.map                                3.92 KB
+#22 22.59 packages/core build: ESM dist/chunk-5KT3WB3O.js.map                                1.64 KB
+#22 22.59 packages/core build: ESM dist/actions/guardian.js.map                              71.00 B
+#22 22.59 packages/core build: ESM dist/chunk-KEDTFNSQ.js.map                                7.23 KB
+#22 22.60 packages/core build: ESM dist/chunk-Y3NAHTST.js.map                                11.62 KB
+#22 22.60 packages/core build: ESM dist/chunk-UGQU7FMI.js.map                                32.79 KB
+#22 22.60 packages/core build: ESM dist/chunk-H2ACEHYF.js.map                                14.87 KB
+#22 22.60 packages/core build: ESM dist/actions/guardrails.js.map                            71.00 B
+#22 22.60 packages/core build: ESM dist/chunk-F6BX46OD.js.map                                22.03 KB
+#22 22.60 packages/core build: ESM dist/actions/guardianChecklistTools.js.map                71.00 B
+#22 22.60 packages/core build: ESM dist/chunk-3FCY2DN4.js.map                                13.68 KB
+#22 22.60 packages/core build: ESM dist/chunk-3EATMUSJ.js.map                                3.87 KB
+#22 22.60 packages/core build: ESM dist/chunk-WNQURWCF.js.map                                8.47 KB
+#22 22.60 packages/core build: ESM dist/chunk-XADEOMR4.js.map                                10.26 KB
+#22 22.60 packages/core build: ESM dist/chunk-O7NJVQY6.js.map                                3.75 KB
+#22 22.60 packages/core build: ESM dist/chunk-424PT5DM.js.map                                71.00 B
+#22 22.60 packages/core build: ESM dist/chunk-3C5UANV7.js.map                                9.93 KB
+#22 22.60 packages/core build: ESM ⚡️ Build success in 228ms
+#22 22.60 packages/core build: Done
+#22 22.60 packages/providers prebuild$ bash ../../scripts/prebuild-check.sh
+#22 22.60 packages/mcp-runner prebuild$ bash ../../scripts/prebuild-check.sh
+#22 22.61 packages/mcp-runner prebuild: Done
+#22 22.62 packages/providers prebuild: Done
+#22 22.62 packages/mcp-runner build$ tsc -p tsconfig.json
+#22 22.62 packages/providers build$ tsc -p tsconfig.json
+#22 24.15 packages/providers build: Done
+#22 24.45 packages/mcp-runner build: Done
+#22 24.45 apps/api prebuild$ bash ../../scripts/prebuild-check.sh
+#22 24.46 apps/api prebuild: Done
+#22 24.47 apps/api build$ pnpm run typecheck && tsup --config tsup.config.ts
+#22 24.87 apps/api build: > @eiah/api@ typecheck /app/apps/api
+#22 24.87 apps/api build: > tsc -p tsconfig.build.json --noEmit
+#22 37.61 apps/api build: CLI Building entry: src/index.ts
+#22 37.61 apps/api build: CLI Using tsconfig: tsconfig.json
+#22 37.61 apps/api build: CLI tsup v8.5.1
+#22 37.61 apps/api build: CLI Using tsup config: /app/apps/api/tsup.config.ts
+#22 37.61 apps/api build: CLI Target: node22
+#22 37.61 apps/api build: CLI Cleaning output folder
+#22 37.61 apps/api build: ESM Build start
+#22 38.10 apps/api build: ESM dist/index.js     3.63 MB
+#22 38.10 apps/api build: ESM dist/index.js.map 6.84 MB
+#22 38.10 apps/api build: ESM ⚡️ Build success in 489ms
+#22 38.12 apps/api build: Done
+#22 DONE 38.2s
+
+#23 [runtime 4/8] COPY --from=builder /app/node_modules ./node_modules
+#23 sha256:d2577c65b3310adc8ccddc82103907058988454bc4cb4aaaca03f98bdfef6cbd
+#23 DONE 4.3s
+
+#24 [runtime 5/8] COPY --from=builder /app/packages ./packages
+#24 sha256:52cc9668d25dac353c0abddfc3dce41520c677f197d8865bbae0f15567cec9a8
+#24 DONE 0.4s
+
+#25 [runtime 6/8] COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+#25 sha256:608ff85c1c755bc74fad8eb137f7a03c19da9fcd146a64cc3bfec7326a575967
+#25 DONE 0.0s
+
+#26 [runtime 7/8] COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+#26 sha256:832e928bf37c11970fff3955589ad8b27e68e2a1a1053721a5acfd6d7956a2b5
+#26 DONE 0.0s
+
+#27 [runtime 8/8] COPY --from=builder /app/apps/api/dist ./apps/api/dist
+#27 sha256:eec7a2cab4e42da100b376e4420dad8e5575d03ca61df97bf94505dfd2229af1
+#27 DONE 0.1s
+
+#28 exporting to image
+#28 sha256:e8c613e07b0b7ff33893b694f7759a10d42e180f2b4dc349fb57dc6b71dcab00
+#28 exporting layers
+#28 exporting layers 4.8s done
+#28 writing image sha256:f1828dc119705930e8b9ef16edf7592948a4e394a64aad1edec0f0624c47f720 done
+#28 naming to docker.io/library/eiah-imob-registry-packaging:97c23a9b-splitting-20261117t115212z done
+#28 DONE 4.8s

@@ -1,0 +1,22 @@
+
+> @eiah/api@ prebuild /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/api@ build /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> pnpm run typecheck && tsup --config tsup.config.ts
+
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/tsup.config.ts
+CLI Target: node22
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js     3.63 MB
+ESM dist/index.js.map 6.84 MB
+ESM ⚡️ Build success in 340ms

@@ -1,0 +1,14 @@
+{
+  "date": "2026-11-17",
+  "kind": "summary of tool result; not raw stderr",
+  "command": "node ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs",
+  "workingDirectory": "repository root",
+  "exitCode": 1,
+  "nodeVersion": "v22.17.1",
+  "result": "BLOQUEADO",
+  "errorCode": "ERR_PACKAGE_PATH_NOT_EXPORTED",
+  "cause": "Verifier used createRequire.resolve on a package subpath with an import-only export condition",
+  "productChecksExecuted": 0,
+  "correction": "Native import.meta.resolve bootstrap from apps/api in the same process; no product source/config changes",
+  "realProviderCalls": 0
+}
