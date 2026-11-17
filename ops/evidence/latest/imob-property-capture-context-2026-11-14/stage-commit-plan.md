@@ -157,7 +157,7 @@ autorreferente do arquivo final.
   SHA-256 `4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2`:
   original local; não selecionar, comprimir, copiar ou remover.
 - Todo código/teste/documentação das seleções antigas deste plano que não esteja
-  entre os 21 caminhos acima: já integrado em origin/main ou fora deste incremento.
+  entre os 22 caminhos acima: já integrado em origin/main ou fora deste incremento.
   Não reaplicar instrumentação, propagação de falhas, conversa guiada ou seus
   contratos. Não executar comandos antigos, mesmo que seus títulos digam “vigente”.
 - `ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs`,
@@ -328,7 +328,7 @@ capture proposal/confirmation/guidance/explicit-save flow.
 
 ## Sequência posterior e verificação — ainda não executadas
 
-1. Revisar estes 21 caminhos/hunks e os limites de privacidade/reprodução. Revalidar
+1. Revisar estes 22 caminhos/hunks e os limites de privacidade/reprodução. Revalidar
    o alvo main efetivo em etapa autorizada; se houver mudança relevante ou dependência
    nova não publicada, informar o bloqueio antes de propor integração. Não usar a
    main local antiga, não reaplicar as seleções históricas e não atualizar a branch
