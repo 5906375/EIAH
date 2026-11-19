@@ -1,0 +1,586 @@
+{
+  "environment": {
+    "browser": "Chromium 149.0.7827.55 (Playwright headless)",
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "kind": "emulação de viewport (isMobile+touch), não aparelho físico"
+    },
+    "apiOrigin": "loopback (API real, NODE_ENV=test, sem workers/filas)",
+    "web": "Vite dev real em loopback"
+  },
+  "provider": {
+    "simulatedInvocations": 4,
+    "entries": [
+      {
+        "seq": 13,
+        "host": "api.openai.com",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 14,
+        "host": "api.openai.com",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 15,
+        "host": "api.openai.com",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 16,
+        "host": "api.openai.com",
+        "answered": "proposal",
+        "messageChars": 27
+      }
+    ]
+  },
+  "externalTraffic": {
+    "browserBlocked": {
+      "fonts.googleapis.com": 9
+    },
+    "backendBlocked": [],
+    "note": "nenhum acesso externo foi liberado; as entradas acima foram abortadas/rejeitadas"
+  },
+  "database": {
+    "properties": 2,
+    "sessions": [
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 10
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 22
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 7
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 5
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 3
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 15
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "saved",
+        "interpretation": "consumed",
+        "revision": 22
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 7
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 5
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 3
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "saved",
+        "interpretation": "declined",
+        "revision": 17
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 22
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 7
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 5
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 3
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "active",
+        "interpretation": "declined",
+        "revision": 16
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "1",
+      "name": "Abertura",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "fluxo guiado iniciado (resolve-turn 200 com sessão ativa)",
+          "ok": true
+        },
+        {
+          "what": "zero invocações do provider",
+          "ok": true
+        },
+        {
+          "what": "formulário completo ausente durante a coleta",
+          "ok": true
+        },
+        {
+          "what": "persistência de sessão ≠ imóvel: 1 sessão de controle, 0 imóveis",
+          "ok": false,
+          "error": "Expected values to be strictly equal: 2 !== 0 "
+        },
+        {
+          "what": "alternativa \"Continuar sem IA\" disponível como controle visível e acionável",
+          "ok": false,
+          "error": "nenhum botão \"Continuar sem IA\" renderizado (placeholder diz \"escolha Continuar sem IA\")"
+        }
+      ],
+      "screenshots": [
+        "01-abertura.png"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Proposta inicial (IA simulada)",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "exatamente uma invocação do provider simulado, com a resposta de proposta",
+          "ok": true
+        },
+        {
+          "what": "proposta mostra Quartos=2 e Vagas=1",
+          "ok": true
+        },
+        {
+          "what": "dados ainda NÃO aplicados antes da confirmação (servidor)",
+          "ok": true
+        },
+        {
+          "what": "uma confirmação aplica uma vez, sem nova invocação",
+          "ok": true
+        },
+        {
+          "what": "\"sim\" repetido não reaplica nem chama modelo",
+          "ok": true
+        },
+        {
+          "what": "imóveis ainda 0",
+          "ok": false,
+          "error": "Expected values to be strictly equal: 2 !== 0 "
+        }
+      ],
+      "screenshots": [
+        "02-proposta.png"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Coleta, um campo por vez",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "\"Continuar sem IA\" (digitado) segue sem modelo",
+          "ok": true
+        },
+        {
+          "what": "tipo é a primeira pergunta e bedrooms/garageSpots (já confirmados) não são repetidos",
+          "ok": true
+        },
+        {
+          "what": "entrada ambígua recebe orientação e não dispara outro modelo",
+          "ok": true
+        },
+        {
+          "what": "seletor do campo atual disponível",
+          "ok": true
+        },
+        {
+          "what": "seleção direta aplicou SOMENTE o campo escolhido",
+          "ok": true
+        },
+        {
+          "what": "entrada inválida em address recebe orientação (e fica no mesmo campo)",
+          "ok": true
+        },
+        {
+          "what": "entrada inválida em cep recebe orientação (e fica no mesmo campo)",
+          "ok": true
+        },
+        {
+          "what": "um campo por vez: nenhuma pergunta repetida (válidos e pulados não voltam)",
+          "ok": true
+        },
+        {
+          "what": "zero válido preservado (bathrooms=0)",
+          "ok": true
+        },
+        {
+          "what": "pulados registrados; obrigatório pulado (endereço) continua pendente",
+          "ok": true
+        },
+        {
+          "what": "nenhuma invocação do provider durante a coleta",
+          "ok": true
+        },
+        {
+          "what": "coleta encerrada leva à revisão",
+          "ok": true
+        },
+        {
+          "what": "corrigir/retomar: seletor \"Corrigir ou retomar campo\" reabre um pulado e só ele",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "03-coleta-selecao.png",
+        "04-coleta-fim.png"
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Revisão e bloqueio de salvamento sem obrigatórios",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "formulário completo existente aparece na revisão",
+          "ok": true
+        },
+        {
+          "what": "mostra os valores confirmados",
+          "ok": true
+        },
+        {
+          "what": "revisão lista a pendência obrigatória (Endereço)",
+          "ok": true
+        },
+        {
+          "what": "obrigatório pulado bloqueia o save (UI): nenhum POST /properties e 0 imóveis",
+          "ok": false,
+          "error": "Expected values to be strictly equal: 2 !== 0 "
+        },
+        {
+          "what": "servidor rejeita save sem obrigatórios mesmo com a validação visual contornada (com e sem referência)",
+          "ok": false,
+          "error": "Expected values to be strictly equal: 2 !== 0 "
+        },
+        {
+          "what": "corrigir permite prosseguir (preencher Endereço na revisão remove a pendência)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "05-revisao.png",
+        "06-revisao-bloqueada.png"
+      ]
+    },
+    {
+      "id": "6",
+      "name": "Salvamento integrado",
+      "status": "REPROVADO",
+      "checks": [],
+      "screenshots": [],
+      "aborted": "page.waitForResponse: Timeout 20000ms exceeded while waiting for event \"response\""
+    },
+    {
+      "id": "5a",
+      "name": "Reload na mesma aba preserva rascunho e consumo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "provider chamado uma vez até aqui",
+          "ok": true
+        },
+        {
+          "what": "após reload a sessão do servidor está intacta (rascunho, pulados e consumo)",
+          "ok": true
+        },
+        {
+          "what": "após reload a conversa mostra a coleta em andamento (mesma aba)",
+          "ok": true
+        },
+        {
+          "what": "depois do reload, repetir a descrição NÃO renova a interpretação (sem novo provider)",
+          "ok": true
+        },
+        {
+          "what": "sessão continua única e aberta",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "07-reload.png"
+      ]
+    },
+    {
+      "id": "5b",
+      "name": "Pausa e retomada não renovam a interpretação",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "pausa registrada no servidor, dados e consumo preservados",
+          "ok": true
+        },
+        {
+          "what": "retomada: mesma sessão ativa, sem nova interpretação",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "08-pausado.png"
+      ]
+    },
+    {
+      "id": "5c",
+      "name": "Cancelar com revisão antiga (requisição em voo) e ação antiga não atinge cadastro novo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "o cancelamento saiu com revisão ANTIGA (menor que a do servidor)",
+          "ok": true
+        },
+        {
+          "what": "mesmo assim a sessão foi cancelada no banco (resposta reflete o estado persistido)",
+          "ok": true
+        },
+        {
+          "what": "cadastro novo é outra sessão",
+          "ok": true
+        },
+        {
+          "what": "ação atrasada com a referência antiga (replay HTTP) não encerra o cadastro novo",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "09-cancelado-revisao-antiga.png"
+      ]
+    },
+    {
+      "id": "5d",
+      "name": "Resposta tardia não reabre sessão cancelada nem substitui cadastro novo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "o servidor processou a interpretação (provider +1) enquanto a resposta fica retida",
+          "ok": true
+        },
+        {
+          "what": "cadastro novo aberto",
+          "ok": true
+        },
+        {
+          "what": "a resposta tardia não exibiu a proposta nem substituiu o cadastro novo",
+          "ok": true
+        },
+        {
+          "what": "banco: antiga cancelada/sem proposta/consumo mantido; nova ativa e intacta",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "10-resposta-tardia.png"
+      ]
+    },
+    {
+      "id": "5e",
+      "name": "Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "turno IMOB digitado em nova aba mostra orientação de recuperação (achado P-03: o 409 do claim é engolido e o turno segue para outro fluxo)",
+          "ok": false,
+          "error": "sem aviso; resposta: \"Isso parece um caso jurídico.\""
+        },
+        {
+          "what": "abrir \"Cadastrar imóvel\" em nova aba com sessão abandonada oferece a recuperação explícita (achado P-02: mensagem de erro sem saída)",
+          "ok": false,
+          "error": "sem ação de recuperação; texto: \"Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessã\""
+        },
+        {
+          "what": "nenhuma segunda sessão foi aberta e o provider não foi chamado nesses dois turnos",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "11-turno-digitado-409-claim.png",
+        "12-abertura-em-nova-aba.png"
+      ],
+      "aborted": "locator.click: Timeout 30000ms exceeded."
+    },
+    {
+      "id": "7",
+      "name": "Desktop e mobile (emulação de viewport): perguntas, seletores, botões, erros, formulário final, scroll, foco e teclado",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "mobile/abertura: sem rolagem horizontal nem controles cortados",
+          "ok": true
+        },
+        {
+          "what": "mobile: pergunta e mensagem de erro visíveis dentro do viewport",
+          "ok": true
+        },
+        {
+          "what": "mobile: seletor aplica o campo e avança",
+          "ok": true
+        },
+        {
+          "what": "mobile: coleta chegou à revisão",
+          "ok": true
+        },
+        {
+          "what": "mobile/revisão: formulário final sem corte horizontal; botão Salvar visível",
+          "ok": true
+        },
+        {
+          "what": "mobile: alvo de toque do botão Salvar ≥ 40px de altura",
+          "ok": true
+        },
+        {
+          "what": "teclado (mobile/desktop): Tab alcança o campo de mensagem e o botão Salvar cadastro",
+          "ok": true
+        },
+        {
+          "what": "foco: depois de enviar, o campo de mensagem mantém/recebe o foco",
+          "ok": true
+        },
+        {
+          "what": "mobile: nenhuma invocação do provider no percurso sem IA",
+          "ok": true
+        },
+        {
+          "what": "mobile: salvamento explícito → 201 e segundo imóvel persistido",
+          "ok": false,
+          "error": "page.waitForResponse: Target page, context or browser has been closed"
+        }
+      ],
+      "screenshots": [
+        "13-mobile-abertura.png",
+        "14-mobile-erro.png",
+        "15-mobile-revisao.png"
+      ],
+      "viewports": {
+        "desktop": {
+          "width": 1280,
+          "height": 900
+        },
+        "mobile": {
+          "width": 390,
+          "height": 844,
+          "emulation": "Chromium isMobile+touch (emulação; não é aparelho físico)"
+        },
+        "browser": "Chromium 149.0.7827.55 (Playwright headless)"
+      },
+      "aborted": "page.screenshot: Target page, context or browser has been closed"
+    }
+  ]
+}

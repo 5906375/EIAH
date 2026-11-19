@@ -1,0 +1,124 @@
+TAP version 13
+# Subtest: campo híbrido pede intake, nunca converte frase livre em uma unidade
+ok 1 - campo híbrido pede intake, nunca converte frase livre em uma unidade
+  ---
+  duration_ms: 4.562663
+  type: 'test'
+  ...
+# Subtest: CEP ausente é válido; CEP informado inválido não desaparece como ausência
+ok 2 - CEP ausente é válido; CEP informado inválido não desaparece como ausência
+  ---
+  duration_ms: 0.646769
+  type: 'test'
+  ...
+# Subtest: property form is recognized by its submit target
+ok 3 - property form is recognized by its submit target
+  ---
+  duration_ms: 0.161542
+  type: 'test'
+  ...
+# Subtest: builds the structured request with unit label, occupancy and counts
+ok 4 - builds the structured request with unit label, occupancy and counts
+  ---
+  duration_ms: 1.03234
+  type: 'test'
+  ...
+# Subtest: blank occupancy stays unknown and owner is optional
+ok 5 - blank occupancy stays unknown and owner is optional
+  ---
+  duration_ms: 0.251359
+  type: 'test'
+  ...
+# Subtest: reports required and numeric field errors
+ok 6 - reports required and numeric field errors
+  ---
+  duration_ms: 0.238243
+  type: 'test'
+  ...
+# Subtest: destinação é opcional: vazio não grava; escolha explícita 'sem destinação' grava; texto livre é normalizado
+ok 7 - destinação é opcional: vazio não grava; escolha explícita 'sem destinação' grava; texto livre é normalizado
+  ---
+  duration_ms: 0.440464
+  type: 'test'
+  ...
+# Subtest: cadastro de uma unidade recusa várias unidades na identificação (lote tem confirmação própria)
+ok 8 - cadastro de uma unidade recusa várias unidades na identificação (lote tem confirmação própria)
+  ---
+  duration_ms: 0.395175
+  type: 'test'
+  ...
+# Subtest: plano: uma unidade grava direto; várias abrem o lote sem montar requisição; faixa inválida bloqueia
+ok 9 - plano: uma unidade grava direto; várias abrem o lote sem montar requisição; faixa inválida bloqueia
+  ---
+  duration_ms: 0.730016
+  type: 'test'
+  ...
+# Subtest: formulário do lote: destinação geral opcional + destinação por unidade + adicionar; action único por lote
+ok 10 - formulário do lote: destinação geral opcional + destinação por unidade + adicionar; action único por lote
+  ---
+  duration_ms: 1.019714
+  type: 'test'
+  ...
+# Subtest: lote: destinação geral vale para todas e o override individual vence
+ok 11 - lote: destinação geral vale para todas e o override individual vence
+  ---
+  duration_ms: 5.385909
+  type: 'test'
+  ...
+# Subtest: lote: sem destinação geral nem individual, nada de destinação é gravado
+ok 12 - lote: sem destinação geral nem individual, nada de destinação é gravado
+  ---
+  duration_ms: 0.455078
+  type: 'test'
+  ...
+# Subtest: lote: editar, remover e adicionar antes de gravar
+ok 13 - lote: editar, remover e adicionar antes de gravar
+  ---
+  duration_ms: 0.514117
+  type: 'test'
+  ...
+# Subtest: lote: pré-validação bloqueia repetida, já cadastrada, destinação inválida, faixa inválida e lote vazio
+ok 14 - lote: pré-validação bloqueia repetida, já cadastrada, destinação inválida, faixa inválida e lote vazio
+  ---
+  duration_ms: 1.180561
+  type: 'test'
+  ...
+# Subtest: lote: confirmação lista o que gravou e o que ficou pendente
+ok 15 - lote: confirmação lista o que gravou e o que ficou pendente
+  ---
+  duration_ms: 0.265598
+  type: 'test'
+  ...
+# Subtest: duplicate check matches address, city and unit label ignoring case and accents
+ok 16 - duplicate check matches address, city and unit label ignoring case and accents
+  ---
+  duration_ms: 0.206972
+  type: 'test'
+  ...
+# Subtest: confirmation text and owner options
+ok 17 - confirmation text and owner options
+  ---
+  duration_ms: 11.272479
+  type: 'test'
+  ...
+# Subtest: matchOptionByName acha o proprietário citado no chat só quando há um único compatível
+ok 18 - matchOptionByName acha o proprietário citado no chat só quando há um único compatível
+  ---
+  duration_ms: 0.624956
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: obrigatórios compartilhados, zero válido, unidade única e destinação opcional
+ok 19 - coleta guiada v1: obrigatórios compartilhados, zero válido, unidade única e destinação opcional
+  ---
+  duration_ms: 80.711273
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 118.16418

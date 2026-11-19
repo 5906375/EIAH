@@ -1,0 +1,164 @@
+{"level":30,"time":"2026-11-17T20:27:39.967Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+TAP version 13
+# Subtest: runtime: quota não sofre retry nem emite sucesso ou uso; executor preserva diagnóstico
+ok 1 - runtime: quota não sofre retry nem emite sucesso ou uso; executor preserva diagnóstico
+  ---
+  duration_ms: 3.74402
+  type: 'test'
+  ...
+{"level":30,"time":"2026-11-17T20:27:39.968Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.968Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.968Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.968Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.968Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.970Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":2,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.971Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":3,"msg":"llm.completion.attempt"}
+{"level":50,"time":"2026-11-17T20:27:39.972Z","service":"eiah","env":"development","component":"llm","provider":"openai","modelRequested":"openai:gpt-4.1","latencyMs":4,"traceId":"diagnostic-test-correlation","stage":"provider_execution","attempt":3,"failure":{"provider":"openai","model":"gpt-4.1","category":"transient","retryable":true,"interventionRequired":false,"providerType":"server_error","httpStatus":503,"providerRequestId":"req_synthetic_3"},"msg":"llm.completion.error"}
+# Subtest: runtime: transitório esgota somente o limite existente e preserva a falha tipada final
+ok 2 - runtime: transitório esgota somente o limite existente e preserva a falha tipada final
+  ---
+  duration_ms: 5.32947
+  type: 'test'
+  ...
+# Subtest: diagnóstico: política e seleção falham com etapa/correlação, antes de despacho ou transporte
+ok 3 - diagnóstico: política e seleção falham com etapa/correlação, antes de despacho ou transporte
+  ---
+  duration_ms: 1.030544
+  type: 'test'
+  ...
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+# Subtest: diagnóstico: erro genérico mantém retry existente sem vazar mensagem/stack nem emitir sucesso
+ok 4 - diagnóstico: erro genérico mantém retry existente sem vazar mensagem/stack nem emitir sucesso
+  ---
+  duration_ms: 4.295171
+  type: 'test'
+  ...
+# Subtest: diagnóstico: sucesso correlacionado chega ao intake sem fabricar modelo/IDs e sem escrita
+ok 5 - diagnóstico: sucesso correlacionado chega ao intake sem fabricar modelo/IDs e sem escrita
+  ---
+  duration_ms: 2.978435
+  type: 'test'
+  ...
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.981Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":2,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":1,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_success","stage":"completion","attempt":2,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.982Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+# Subtest: runtime: rate limit e transitório podem recuperar com a mesma policy; sucesso mantém conteúdo e uso
+ok 6 - runtime: rate limit e transitório podem recuperar com a mesma policy; sucesso mantém conteúdo e uso
+  ---
+  duration_ms: 2.192967
+  type: 'test'
+  ...
+# Subtest: engine/intake: quota não alcança parser/schema, preserva draft/proposta e não produz execução
+ok 7 - engine/intake: quota não alcança parser/schema, preserva draft/proposta e não produz execução
+  ---
+  duration_ms: 2.309392
+  type: 'test'
+  ...
+# Subtest: IDs: executor e capacidade preservam chave do breakdown; ausência bloqueia medição explicitamente sem fallback
+ok 8 - IDs: executor e capacidade preservam chave do breakdown; ausência bloqueia medição explicitamente sem fallback
+  ---
+  duration_ms: 73.522149
+  type: 'test'
+  ...
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":2,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":1,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_success","stage":"completion","attempt":2,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.983Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","stage":"completion","attempt":1,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:39.984Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","stage":"completion","attempt":1,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":50,"time":"2026-11-17T20:27:39.985Z","service":"eiah","env":"development","component":"llm","provider":"openai","modelRequested":"openai:gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","stage":"provider_execution","attempt":1,"failure":{"provider":"openai","model":"gpt-4.1","category":"financial_quota","retryable":false,"interventionRequired":true,"code":"credit_balance_exhausted","providerType":"insufficient_quota","httpStatus":429,"traceId":"diagnostic-test-correlation"},"msg":"llm.completion.error"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","providerRequested":"openai","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_first","stage":"completion","attempt":1,"modelUsed":"synthetic-confirmed-model","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","providerRequested":"openai","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_second","stage":"completion","attempt":1,"modelUsed":"synthetic-confirmed-model","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","providerRequested":"openai","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.058Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","providerRequestId":"req_synthetic_second","stage":"completion","attempt":1,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4o-mini","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4o-mini","providerRequested":"openai","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4o-mini","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","latencyMs":0,"traceId":"diagnostic-test-correlation","stage":"completion","attempt":1,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","providerRequested":"openai","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":50,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","modelRequested":"openai:gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","stage":"provider_execution","attempt":1,"failure":{"provider":"openai","model":"gpt-4.1","category":"financial_quota","retryable":false,"interventionRequired":true,"code":"credit_balance_exhausted","providerType":"insufficient_quota","httpStatus":429,"traceId":"diagnostic-test-correlation"},"msg":"llm.completion.error"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":1,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.059Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":50,"time":"2026-11-17T20:27:40.063Z","service":"eiah","env":"development","component":"llm","provider":"openai","modelRequested":"openai:gpt-4.1","latencyMs":4,"traceId":"diagnostic-test-correlation","stage":"provider_execution","attempt":1,"failure":{"provider":"openai","category":"transient","retryable":true,"interventionRequired":false,"providerType":"server_error","httpStatus":503},"msg":"llm.completion.error"}
+{"level":30,"time":"2026-11-17T20:27:40.063Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"policy_check","modelRequested":"openai:gpt-4.1","msg":"llm.executor.enter"}
+{"level":30,"time":"2026-11-17T20:27:40.063Z","service":"eiah","env":"development","component":"llm-executor","traceId":"diagnostic-test-correlation","stage":"provider_registration","msg":"llm.executor.stage"}
+{"level":30,"time":"2026-11-17T20:27:40.063Z","service":"eiah","env":"development","component":"llm","stage":"provider_resolution","traceId":"diagnostic-test-correlation","modelRequested":"openai:gpt-4.1","msg":"llm.completion.resolve"}
+{"level":30,"time":"2026-11-17T20:27:40.064Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-17T20:27:40.064Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-17T20:27:40.064Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":1,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.065Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":2,"msg":"llm.completion.attempt"}
+{"level":30,"time":"2026-11-17T20:27:40.066Z","service":"eiah","env":"development","component":"llm","stage":"adapter_dispatch","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","attempt":3,"msg":"llm.completion.attempt"}
+{"level":50,"time":"2026-11-17T20:27:40.067Z","service":"eiah","env":"development","component":"llm","provider":"openai","modelRequested":"openai:gpt-4.1","latencyMs":4,"traceId":"diagnostic-test-correlation","stage":"provider_execution","attempt":3,"failure":{"category":"internal","code":"provider_execution_failed"},"msg":"llm.completion.error"}
+# Subtest: runtime guiado: política interna limita transitório e timeout a um despacho sem mudar retries legados
+ok 9 - runtime guiado: política interna limita transitório e timeout a um despacho sem mudar retries legados
+  ---
+  duration_ms: 7.712279
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 116.355915

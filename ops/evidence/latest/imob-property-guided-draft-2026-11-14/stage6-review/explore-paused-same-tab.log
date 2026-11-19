@@ -1,0 +1,20 @@
+TAP version 13
+# EXPLORE status after pause: paused ctx: paused msgs: 5
+# EXPLORE claim text paused -> decision: legal_context_entry claimCalls: 0 calls+: 0 msgs+: 0 last: "Cadastro pausado; dados, campos pulados e consumo preservados."
+# EXPLORE start while paused -> decision: imob_operational_continuation turnConsumed: true calls+: 0 msgs+: 0 last: "Cadastro pausado; dados, campos pulados e consumo preservados."
+# EXPLORE server status: paused draft: {"propertyType":"apartamento"}
+# Subtest: EXPLORE paused
+ok 1 - EXPLORE paused
+  ---
+  duration_ms: 90.968768
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1633.107838

@@ -1,0 +1,82 @@
+TAP version 13
+# Subtest: P-04 claimOnly com sessão guiada aberta chega ao claim (200), sem LLM e sem tocar a sessão; reivindicado e não reivindicado
+not ok 1 - P-04 claimOnly com sessão guiada aberta chega ao claim (200), sem LLM e sem tocar a sessão; reivindicado e não reivindicado
+  ---
+  duration_ms: 206.922805
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:1:51473'
+  failureType: 'testCodeFailure'
+  error: |-
+    reivindicado: {"ok":false,"error":{"code":"IMOB_PROPERTY_CAPTURE_ACTIVE","message":"Continue no cadastro guiado, revise, pause ou cancele antes de mudar de assunto.","details":{"sessionRef":"a15afe4f-ea5b-4979-9b93-753be4b445a1","status":"active"}}}
+    
+    409 !== 200
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 200
+  actual: 409
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:743:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: P-04 o guard continua bloqueando o que não é claim; autorização do claim é preservada
+ok 2 - P-04 o guard continua bloqueando o que não é claim; autorização do claim é preservada
+  ---
+  duration_ms: 141.065687
+  type: 'test'
+  ...
+# Subtest: P-02 início guiado com sessão de outra origem: 409 com a referência da sessão aberta; mesma origem retoma; nada é cancelado nem renovado
+not ok 3 - P-02 início guiado com sessão de outra origem: 409 com a referência da sessão aberta; mesma origem retoma; nada é cancelado nem renovado
+  ---
+  duration_ms: 48.458777
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:1:54483'
+  failureType: 'testCodeFailure'
+  error: |-
+    {"ok":true,"data":{"mode":"consult","action":"property.draft.intake","threadLabel":"Captação","propertyCapture":{"outcome":"clarify","patch":{},"proposal":null,"content":"Esta sessão ou revisão não está vigente. Sincronize ou inicie um novo cadastro explicitamente. Nenhum dado foi alterado."},"conversationState":{"mode":"consult","pendingSlot":"none","resultOffset":0,"slots":{"goal":null,"city":null,"region":null,"neighborhood":null,"budgetMax":null,"bedrooms":null,"bathrooms":null,"propertyType":null},"operational":null},"presentation":{"text":"Esta sessão ou revisão não está vigente. Sincronize ou inicie um novo cadastro explicitamente. Nenhum dado foi alterado."}}}
+    
+    200 !== 409
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 409
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:782:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: P-02 isolamento: sessão de outro escopo não gera conflito nem vaza referência; sem escopo de usuário não há conflito inventado
+not ok 4 - P-02 isolamento: sessão de outro escopo não gera conflito nem vaza referência; sem escopo de usuário não há conflito inventado
+  ---
+  duration_ms: 38.757977
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:1:57206'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    200 !== 409
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 409
+  actual: 200
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-property-capture-intake.test.ts:815:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 1
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1527.635861

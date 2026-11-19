@@ -263,3 +263,17 @@ test("matchOptionByName acha o proprietário citado no chat só quando há um ú
   assert.equal(matchOptionByName(options, "João"), null);
   assert.equal(matchOptionByName(options, ""), null);
 });
+
+test("coleta guiada v1: obrigatórios compartilhados, zero válido, unidade única e destinação opcional", async () => {
+  const { buildGuidedPropertyCreateRequest } = await import("./propertyCreateForm");
+  const { buildPropertyCreateForm } = await import("../../../../../api/src/services/imob/imobTurnResolver");
+  const { IMOB_PROPERTY_GUIDED_REQUIRED } = await import("@eiah/contracts");
+  const form = buildPropertyCreateForm();
+  assert.deepEqual(form.fields.filter((field) => "required" in field && field.required).map((field) => field.name), [...IMOB_PROPERTY_GUIDED_REQUIRED]);
+  const values = { propertyType: "apartamento", city: "Joinville", address: "Rua Sintética, 123", bedrooms: "0" };
+  const valid = buildGuidedPropertyCreateRequest(values, form.fields); assert.equal(valid.ok, true);
+  if (valid.ok) { assert.equal(valid.request.bedrooms, 0); assert.equal(valid.request.goal, undefined); }
+  for (const bad of [{ ...values, propertyType: "qualquer" }, { ...values, address: "Rua" }, { ...values, unitLabel: "Kitnets 101 a 105" }]) {
+    assert.equal(buildGuidedPropertyCreateRequest(bad, form.fields).ok, false);
+  }
+});

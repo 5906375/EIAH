@@ -1,0 +1,19 @@
+{
+  "project": "api-official",
+  "config": "apps/api/tsconfig.build.json",
+  "typescript": "5.9.3",
+  "headCommit": "f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d",
+  "baselineFiles": 446,
+  "currentFiles": 447,
+  "newFilesInCurrentProgram": 1,
+  "baselineDiagnostics": 0,
+  "currentDiagnostics": 0,
+  "presentInBaseline": 0,
+  "introduced": 0,
+  "resolved": 0,
+  "introducedInNewFiles": 0,
+  "introducedList": [],
+  "resolvedList": [],
+  "seconds": 20,
+  "currentByFile": {}
+}

@@ -8,6 +8,8 @@ export interface ChatMessage {
 }
 
 export interface ChatCompletionRequest {
+  /** Internal admission policy. Never forwarded from untrusted HTTP metadata. */
+  transportPolicy?: "imob_guided_single_attempt";
   model: string;
   messages: ChatMessage[];
   maxTokens?: number;

@@ -1,0 +1,5 @@
+{"at":"2026-11-19T17:08:05.404Z","seq":1,"host":"api.openai.com","path":"/v1/chat/completions","method":"POST","contract":"chat_completions","authorization":"present","messageChars":27,"answered":"proposal"}
+{"at":"2026-11-19T17:08:38.552Z","seq":2,"host":"api.openai.com","path":"/v1/chat/completions","method":"POST","contract":"chat_completions","authorization":"present","messageChars":27,"answered":"proposal"}
+{"at":"2026-11-19T17:08:46.944Z","seq":3,"host":"api.openai.com","path":"/v1/chat/completions","method":"POST","contract":"chat_completions","authorization":"present","messageChars":27,"answered":"proposal"}
+{"at":"2026-11-19T17:08:58.495Z","seq":4,"host":"api.openai.com","path":"/v1/chat/completions","method":"POST","contract":"chat_completions","authorization":"present","messageChars":27,"answered":"proposal"}
+{"at":"2026-11-19T17:09:13.546Z","seq":5,"host":"api.openai.com","path":"/v1/responses","method":"POST","contract":"responses_intent","authorization":"present","messageChars":0,"answered":"abstain"}

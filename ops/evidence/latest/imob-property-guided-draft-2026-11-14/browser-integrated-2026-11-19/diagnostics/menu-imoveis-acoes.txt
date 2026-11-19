@@ -1,0 +1,9 @@
+# Saída literal de diag-menu-items.mjs (sessão guiada abandonada aberta; cada ação do grupo "Imóveis" em contexto novo). Só o grupo Imóveis foi sondado.
+GRUPO Imóveis: ["Cadastrar imóvel","Editar imóvel","Arquivar imóvel","Anexar documento","Captar imóvel","Tokenização de ativos"]
+  Cadastrar imóvel: resolve-turn=[{"status":200,"intake":"property_draft","guided":"start","err":null}] aviso409=false botaoCancelar=0 erroGenerico=false
+  Editar imóvel: resolve-turn=[] aviso409=false botaoCancelar=0 erroGenerico=false
+  Arquivar imóvel: resolve-turn=[] aviso409=false botaoCancelar=0 erroGenerico=false
+  Anexar documento: resolve-turn=[] aviso409=false botaoCancelar=0 erroGenerico=false
+  Captar imóvel: resolve-turn=[{"status":409,"guided":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE"}] aviso409=true botaoCancelar=1 erroGenerico=false
+  Tokenização de ativos: resolve-turn=[] aviso409=false botaoCancelar=0 erroGenerico=false
+# Os grupos Proprietários, Locações e Negócios foram incluídos na lista do script, mas a execução não imprimiu resultado para eles: NÃO verificados.

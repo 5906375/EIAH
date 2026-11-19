@@ -1,0 +1,244 @@
+TAP version 13
+# Subtest: cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+ok 1 - cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+  ---
+  duration_ms: 9.085382
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+ok 2 - cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+  ---
+  duration_ms: 3.2377
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+ok 3 - cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+  ---
+  duration_ms: 5.489167
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+ok 4 - cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+  ---
+  duration_ms: 3.860397
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção que retira todas as diferenças encerra a proposta anterior
+ok 5 - cadastro guiado: correção que retira todas as diferenças encerra a proposta anterior
+  ---
+  duration_ms: 1.278039
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+ok 6 - cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+  ---
+  duration_ms: 1.411705
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+ok 7 - cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+  ---
+  duration_ms: 2.424332
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+ok 8 - cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+  ---
+  duration_ms: 3.301143
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+ok 9 - cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+  ---
+  duration_ms: 17.88369
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+ok 10 - cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+  ---
+  duration_ms: 1.450282
+  type: 'test'
+  ...
+# Subtest: contrato de transporte limita contexto e rejeita autorização e identificadores livres
+ok 11 - contrato de transporte limita contexto e rejeita autorização e identificadores livres
+  ---
+  duration_ms: 1.195084
+  type: 'test'
+  ...
+# Subtest: rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+ok 12 - rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+  ---
+  duration_ms: 308.397156
+  type: 'test'
+  ...
+# Subtest: diagnóstico: falha de perfil antes do executor é correlacionada e não vaza erro genérico
+ok 13 - diagnóstico: falha de perfil antes do executor é correlacionada e não vaza erro genérico
+  ---
+  duration_ms: 112.244853
+  type: 'test'
+  ...
+# Subtest: diagnóstico: HTTP da aplicação permanece separado do status do provider e de IDs ausentes
+ok 14 - diagnóstico: HTTP da aplicação permanece separado do status do provider e de IDs ausentes
+  ---
+  duration_ms: 160.553508
+  type: 'test'
+  ...
+# Subtest: diagnóstico: parsing e schema têm conclusão única correlacionada sem registrar conteúdo
+ok 15 - diagnóstico: parsing e schema têm conclusão única correlacionada sem registrar conteúdo
+  ---
+  duration_ms: 4.468685
+  type: 'test'
+  ...
+# Subtest: rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+ok 16 - rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+  ---
+  duration_ms: 297.947227
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+ok 17 - coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+  ---
+  duration_ms: 18.572896
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+ok 18 - coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+  ---
+  duration_ms: 9.31226
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+ok 19 - coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+  ---
+  duration_ms: 34.222854
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+ok 20 - coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+  ---
+  duration_ms: 8.362815
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+ok 21 - coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+  ---
+  duration_ms: 1.283307
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+ok 22 - coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+  ---
+  duration_ms: 3.01936
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: isolamento autenticado, correção invalida proposta e nova tentativa só em cadastro explicitamente novo
+ok 23 - coleta guiada v1: isolamento autenticado, correção invalida proposta e nova tentativa só em cadastro explicitamente novo
+  ---
+  duration_ms: 4.350022
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: recuperação do controle indisponível preserva preenchimento e não concede interpretação
+ok 24 - coleta guiada v1: recuperação do controle indisponível preserva preenchimento e não concede interpretação
+  ---
+  duration_ms: 1.250588
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: callback real POST /properties usa requisitos de servidor e preserva createProperty legado
+ok 25 - coleta guiada v1: callback real POST /properties usa requisitos de servidor e preserva createProperty legado
+  ---
+  duration_ms: 53.418307
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: rota real admite antes do executor e exclui chamadas indiretas nos controles
+ok 26 - coleta guiada v1: rota real admite antes do executor e exclui chamadas indiretas nos controles
+  ---
+  duration_ms: 89.116657
+  type: 'test'
+  ...
+# Subtest: F-01 recuperação: sessão perdida é encerrada por referência explícita, sem origem, sem atingir cadastro mais novo
+ok 27 - F-01 recuperação: sessão perdida é encerrada por referência explícita, sem origem, sem atingir cadastro mais novo
+  ---
+  duration_ms: 5.018226
+  type: 'test'
+  ...
+# Subtest: F-01 recuperação: encerrar/expirar não renova o consumo; a mesma abertura não vira nova oportunidade
+ok 28 - F-01 recuperação: encerrar/expirar não renova o consumo; a mesma abertura não vira nova oportunidade
+  ---
+  duration_ms: 2.198915
+  type: 'test'
+  ...
+# Subtest: F-01 isolamento: a referência de um ator/escopo não encerra a sessão de outro
+ok 29 - F-01 isolamento: a referência de um ator/escopo não encerra a sessão de outro
+  ---
+  duration_ms: 5.070434
+  type: 'test'
+  ...
+# Subtest: F-02 cancelar/pausar com revisão antiga: valida a sessão, não exige a revisão mais recente, é idempotente e não aplica rascunho
+ok 30 - F-02 cancelar/pausar com revisão antiga: valida a sessão, não exige a revisão mais recente, é idempotente e não aplica rascunho
+  ---
+  duration_ms: 2.834577
+  type: 'test'
+  ...
+# Subtest: F-02 cancelamento antes da admissão impede transporte; depois dela não renova consumo nem aceita resposta tardia
+ok 31 - F-02 cancelamento antes da admissão impede transporte; depois dela não renova consumo nem aceita resposta tardia
+  ---
+  duration_ms: 17.207934
+  type: 'test'
+  ...
+# Subtest: F-03 revisão alterada durante o transporte: sincronização sem mudança preserva a proposta; mudança real a descarta sem nova interpretação
+ok 32 - F-03 revisão alterada durante o transporte: sincronização sem mudança preserva a proposta; mudança real a descarta sem nova interpretação
+  ---
+  duration_ms: 6.093904
+  type: 'test'
+  ...
+# Subtest: F-04 save legado sem sessão guiada não usa lock/transação; com sessão aberta continua exigindo a revisão vigente
+ok 33 - F-04 save legado sem sessão guiada não usa lock/transação; com sessão aberta continua exigindo a revisão vigente
+  ---
+  duration_ms: 1.354448
+  type: 'test'
+  ...
+# Subtest: F-05 guard 409 com a implementação real: sessão ativa/pausada bloqueia e nomeia a sessão; encerrada e outros escopos não bloqueiam
+ok 34 - F-05 guard 409 com a implementação real: sessão ativa/pausada bloqueia e nomeia a sessão; encerrada e outros escopos não bloqueiam
+  ---
+  duration_ms: 74.637181
+  type: 'test'
+  ...
+# Subtest: P-04 claimOnly com sessão guiada aberta chega ao claim (200), sem LLM e sem tocar a sessão; reivindicado e não reivindicado
+ok 35 - P-04 claimOnly com sessão guiada aberta chega ao claim (200), sem LLM e sem tocar a sessão; reivindicado e não reivindicado
+  ---
+  duration_ms: 103.388295
+  type: 'test'
+  ...
+# Subtest: P-04 o guard continua bloqueando o que não é claim; autorização do claim é preservada
+ok 36 - P-04 o guard continua bloqueando o que não é claim; autorização do claim é preservada
+  ---
+  duration_ms: 92.77015
+  type: 'test'
+  ...
+# Subtest: P-02 início guiado com sessão de outra origem: 409 com a referência da sessão aberta; mesma origem retoma; nada é cancelado nem renovado
+ok 37 - P-02 início guiado com sessão de outra origem: 409 com a referência da sessão aberta; mesma origem retoma; nada é cancelado nem renovado
+  ---
+  duration_ms: 51.607818
+  type: 'test'
+  ...
+# Subtest: P-02 isolamento: sessão de outro escopo não gera conflito nem vaza referência; sem escopo de usuário não há conflito inventado
+ok 38 - P-02 isolamento: sessão de outro escopo não gera conflito nem vaza referência; sem escopo de usuário não há conflito inventado
+  ---
+  duration_ms: 44.346704
+  type: 'test'
+  ...
+# Subtest: P-04 claimOnly carregando payload de captura guiada (sem intake) só chega ao claim: o propertyCapture é ignorado, a sessão e o provider não são tocados
+ok 39 - P-04 claimOnly carregando payload de captura guiada (sem intake) só chega ao claim: o propertyCapture é ignorado, a sessão e o provider não são tocados
+  ---
+  duration_ms: 49.625428
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2860.60268

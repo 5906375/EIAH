@@ -1,0 +1,32 @@
+{
+  "project": "web",
+  "config": "apps/web/tsconfig.json",
+  "typescript": "5.9.3",
+  "headCommit": "f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d",
+  "baselineFiles": 228,
+  "currentFiles": 228,
+  "newFilesInCurrentProgram": 0,
+  "baselineDiagnostics": 63,
+  "currentDiagnostics": 63,
+  "presentInBaseline": 63,
+  "introduced": 0,
+  "resolved": 0,
+  "introducedInNewFiles": 0,
+  "introducedList": [],
+  "resolvedList": [],
+  "seconds": 37,
+  "currentByFile": {
+    "apps/web/src/pages/profile.tsx": 21,
+    "apps/web/src/pages/self-service/index.tsx": 14,
+    "apps/web/src/pages/app/imob/chat.tsx": 11,
+    "apps/web/src/pages/app/agents/index.tsx": 5,
+    "apps/web/src/pages/app/imob/chatProof.ts": 5,
+    "apps/web/src/components/agents/eiahTutorContracts.ts": 1,
+    "apps/web/src/features/imob/funnel/ImobFunnelTab.tsx": 1,
+    "apps/web/src/features/imob/structured/useImobFormState.ts": 1,
+    "apps/web/src/hooks/useAgentExecution.ts": 1,
+    "apps/web/src/pages/app/imob/dashboard.tsx": 1,
+    "apps/web/src/pages/app/imob/processes.tsx": 1,
+    "apps/web/src/pages/self-service/pitch.tsx": 1
+  }
+}

@@ -1,0 +1,4 @@
+# Saída literal de diag-start-ui.mjs (duas abas reais; havia sessão guiada aberta com outra origem). Resposta do servidor ao início guiado:
+tab1 resolve-turn 200 {"intake":"property_draft","sentKeys":["message","operation","step","draft","origin","history","guided"],"guidedSent":"start","originSent":true,"outcome":"clarify","guided":null,"content":"Esta sessão ou revisão não está vigente. Sincronize ou inicie um novo cadastro explicitamente. Nenhum dado foi alterado."}
+tab2 resolve-turn 200 {"intake":"property_draft","sentKeys":["message","operation","step","draft","origin","history","guided"],"guidedSent":"start","originSent":true,"outcome":"clarify","guided":null,"content":"Esta sessão ou revisão não está vigente. Sincronize ou inicie um novo cadastro explicitamente. Nenhum dado foi alterado."}
+tab2 texto: Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessão.

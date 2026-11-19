@@ -1,0 +1,21 @@
+{
+  "id": "opening-forms-regression",
+  "command": [
+    "env",
+    "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+    "node",
+    "--import",
+    "tsx",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-forms-regression.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 2.439,
+  "tests": 197,
+  "pass": 197,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0
+}

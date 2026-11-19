@@ -1,3 +1,4 @@
+import { withGuidedPropertySave } from "../services/imob/intake/imobPropertyGuidedCapture";
 import type { Response, Router } from "express";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContract";
@@ -409,11 +410,13 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return;
     }
 
-    const created = await new ImobCrmMutationService(prisma).createProperty({
+    const scope = { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId ?? null };
+    const created = await withGuidedPropertySave(prisma, scope, parsed.data, (client) => new ImobCrmMutationService(client).createProperty({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
       userId: authContext.userId ?? null,
-    }, parsed.data);
+    }, parsed.data));
+    if (created.status === "guided_invalid") return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_GUIDED_INVALID", details: created.errors } });
     if (created.status === "owner_not_found") {
       return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for property" } });
     }

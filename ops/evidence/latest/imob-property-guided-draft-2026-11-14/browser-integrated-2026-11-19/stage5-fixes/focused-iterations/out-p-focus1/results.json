@@ -1,0 +1,354 @@
+{
+  "environment": {
+    "browser": "Chromium 149.0.7827.55 (Playwright headless)",
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "kind": "emulação de viewport (isMobile+touch), não aparelho físico"
+    },
+    "apiOrigin": "loopback (API real, NODE_ENV=test, sem workers/filas)",
+    "web": "Vite dev real em loopback"
+  },
+  "provider": {
+    "simulatedInvocations": 0,
+    "classifierInvocations": 1,
+    "unsupportedRequests": 0,
+    "entries": [
+      {
+        "seq": 1,
+        "host": "api.openai.com",
+        "path": "/v1/responses",
+        "contract": "responses_intent",
+        "answered": "abstain",
+        "messageChars": 0
+      }
+    ]
+  },
+  "selection": {
+    "requested": [
+      "1",
+      "1b",
+      "5e",
+      "5f"
+    ],
+    "executed": [
+      "1",
+      "1b",
+      "5e",
+      "5f"
+    ],
+    "harnessSelfTest": {
+      "externalBlocked": true,
+      "providerRedirected": true,
+      "chatCompletionsSupported": true,
+      "responsesIntentSupported": true,
+      "responsesIntentShape": true,
+      "responsesOtherRejected": true,
+      "unknownTextRejected": true
+    }
+  },
+  "divergences": [
+    {
+      "id": "D-ROUTING-01",
+      "scenario": "5e",
+      "input": "quero ver meus imóveis",
+      "observedReply": "Isso parece um caso jurídico.",
+      "expected": "chegar à consulta IMOB ou apresentar restrição de acesso pertinente",
+      "providerCallsDuringTurn": 0,
+      "origin": "roteamento local preexistente do Front Door (legalContextResolver.isLegalRoutingQuestion); não é provider, fixture nem fallback do harness",
+      "status": "preexistente, não corrigido nesta etapa"
+    }
+  ],
+  "externalTraffic": {
+    "browserBlocked": {
+      "fonts.googleapis.com": 9
+    },
+    "backendBlocked": [],
+    "note": "nenhum acesso externo foi liberado; as entradas acima foram abortadas/rejeitadas"
+  },
+  "database": {
+    "properties": 0,
+    "sessions": [
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "active",
+        "interpretation": "declined",
+        "revision": 3
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "1",
+      "name": "Abertura",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "fluxo guiado iniciado (resolve-turn 200 com sessão ativa)",
+          "ok": true
+        },
+        {
+          "what": "zero invocações do provider",
+          "ok": true
+        },
+        {
+          "what": "formulário completo ausente durante a coleta",
+          "ok": true
+        },
+        {
+          "what": "persistência de sessão ≠ imóvel: 1 sessão de controle, 0 imóveis",
+          "ok": true
+        },
+        {
+          "what": "alternativa \"Continuar sem IA\" disponível como controle visível e acionável",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "01-abertura.png"
+      ]
+    },
+    {
+      "id": "1b",
+      "name": "P-01 \"Continuar sem IA\" na abertura: clique, teclado (Enter/Espaço) e mobile, sem provider e sem formulário completo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "clique: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "clique: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "clique: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "clique: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "clique: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "mobile (emulação): botão visível dentro do viewport, sem corte e com alvo de toque ≥ 40px",
+          "ok": true
+        },
+        {
+          "what": "mobile (emulação): toque aciona a coleta sem provider",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "02-p01-abertura-com-botao.png",
+        "03-p01-depois-clique.png",
+        "04-p01-depois-teclado-Enter.png",
+        "05-p01-depois-teclado-Espaço.png",
+        "06-p01-mobile-abertura.png"
+      ]
+    },
+    {
+      "id": "5e",
+      "name": "Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "P-02: abrir \"Cadastrar imóvel\" em nova aba com sessão de outra origem oferece a recuperação explícita (aviso 409 com ação), sem erro genérico nem marcador pendente",
+          "ok": true
+        },
+        {
+          "what": "nenhuma segunda sessão foi aberta e o provider não foi chamado nesses dois turnos",
+          "ok": true
+        },
+        {
+          "what": "o servidor respondeu 409 IMOB_PROPERTY_CAPTURE_ACTIVE a uma ação IMOB não guiada",
+          "ok": true
+        },
+        {
+          "what": "o cliente mostra orientação e a ação \"Cancelar cadastro do imóvel\" (sem erro genérico)",
+          "ok": true
+        },
+        {
+          "what": "sem loop e sem LLM: um único 409 por ação e nenhuma chamada de provider",
+          "ok": true
+        },
+        {
+          "what": "nada foi cancelado automaticamente",
+          "ok": true
+        },
+        {
+          "what": "escopo: outro usuário do mesmo workspace, com a referência da sessão do dono, NÃO a cancela",
+          "ok": true
+        },
+        {
+          "what": "escopo: sem credencial a referência não opera (401/403) e a sessão segue ativa",
+          "ok": true
+        },
+        {
+          "what": "escopo: o cancelamento exige ação explícita do próprio titular (nenhum cancelamento automático até aqui)",
+          "ok": true
+        },
+        {
+          "what": "a ação cancelou exatamente a sessão nomeada (por referência, sem origem)",
+          "ok": true
+        },
+        {
+          "what": "o usuário foi liberado: nova ação IMOB deixa de dar 409 e novo cadastro exige início explícito",
+          "ok": true
+        },
+        {
+          "what": "P-02: novo início explícito abre sessão distinta; a referência antiga (replay) não cancela a sessão posterior",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "07-divergencia-quero-ver-meus-imoveis.png",
+        "08-abertura-em-nova-aba.png",
+        "09-bloqueio-409.png",
+        "10-recuperado.png"
+      ],
+      "limits": [
+        "recuperação integral do RASCUNHO entre abas NÃO está implementada: a recuperação é o cancelamento explícito e autorizado por referência; o rascunho da sessão cancelada não é restaurado",
+        "sem TTL/expiração automática (decisão do owner)"
+      ]
+    },
+    {
+      "id": "5f",
+      "name": "P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "pré-condições: 1 sessão ativa em coleta com 1 campo confirmado",
+          "ok": true
+        },
+        {
+          "what": "A: nenhum claim é emitido pela aba em coleta ativa; o texto segue para a coleta guiada",
+          "ok": true
+        },
+        {
+          "what": "A: o rascunho não foi apagado, substituído nem cancelado (mesma sessão ativa, mesmo campo confirmado, 1 sessão aberta)",
+          "ok": true
+        },
+        {
+          "what": "A: a interface continua na coleta, com retorno visível ao usuário (não é silencioso)",
+          "ok": true
+        },
+        {
+          "what": "B: o servidor respondeu 200 claimed:true (consulta de agente) à aba sem contexto, com a sessão guiada aberta",
+          "ok": true
+        },
+        {
+          "what": "B: a interface mostra a resposta reivindicada, sem aviso de cadastro pendente e sem erro genérico",
+          "ok": false,
+          "error": "The input did not match the regular expression /Ainda não/. Input: 'SYNTHETIC BROWSER TENANT\\n' + '\\n' + 'Agent Operations Console\\n' + '\\n' + 'SYNTHETIC BROWSER WORKSPACE\\n' + '\\n' + 'Runs\\n' + 'Chat\\n' + 'Billing\\n' + 'Marketplace\\n' + 'Self-service\\n' + 'Perfil\\n' + 'Chat ativo · EIAH\\n' + '‹ Painel\\n' + 'Nova conversa\\n' + 'Workspace no mês: R$ 0,00\\n' +"
+        },
+        {
+          "what": "B: a sessão e o rascunho do cadastro aberto ficaram idênticos; nenhum provider/classificador foi chamado",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "11-p04-mesma-aba-coleta-ativa.png",
+        "12-p04-outra-aba-claim-reivindicado.png"
+      ],
+      "aborted": "menu: grupo \"Imóveis\" não clicável (locator.click: Timeout 8000ms exceeded. | Call log: | - waiting for getByRole('button', { name: /^Imóveis\\b/ }).first() | )"
+    }
+  ]
+}

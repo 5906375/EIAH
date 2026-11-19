@@ -1,0 +1,8 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+src/services/imob/intake/imobPropertyGuidedCapture.ts(209,32): error TS2322: Type '"Seus dados estão preservados. O servidor está indisponível para confirmar o encerramento da sessão. Retome e tente cancelar novamente."' is not assignable to type '"Não foi possível autorizar a interpretação inicial. Continue sem IA; seus dados foram preservados."'.
+/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/api@ typecheck: `tsc -p tsconfig.build.json --noEmit`
+Exit status 2

@@ -1,0 +1,388 @@
+node:internal/child_process:1120
+    result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
+                   ^
+
+<ref *1> Error: spawnSync git EPERM
+    at Object.spawnSync (node:internal/child_process:1120:20)
+    at spawnSync (node:child_process:869:24)
+    at execFileSync (node:child_process:912:15)
+    at file:///tmp/imob-guided-legacy-repro-loader.mjs:6:18
+    at ModuleJob.run (node:internal/modules/esm/module_job:329:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:112:9) {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'spawnSync git',
+  path: 'git',
+  spawnargs: [
+    'show',
+    'HEAD:apps/web/src/features/imob/structured/createImobStructuredForms.test.ts'
+  ],
+  error: [Circular *1],
+  status: 0,
+  signal: null,
+  output: [
+    null,
+    'import test, { type TestContext } from "node:test";\n' +
+      'import { readFileSync } from "node:fs";\n' +
+      'import ts from "typescript";\n' +
+      'import { LLMProviderError } from "@eiah/core/llm/LLMProviderError";\n' +
+      'import assert from "node:assert/strict";\n' +
+      'import { IMOB_ACTION_MENUS, type ImobActionMenuItem } from "@/features/imob/imobActionMenus";\n' +
+      'import { createImobStructuredForms } from "./createImobStructuredForms";\n' +
+      'import type { ImobFormState } from "./useImobFormState";\n' +
+      'import type { ImobStructuredFormsHost, StructuredMessage } from "./types";\n' +
+      'import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD, toLauncherMessage } from "./useImobFrontDoorForms";\n' +
+      'import { IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy } from "@eiah/contracts";\n' +
+      'import { interpretImobPropertyCapture } from "../../../../../api/src/services/imob/intake/imobPropertyCaptureIntake";\n' +
+      'import { buildPropertyCreateForm } from "../../../../../api/src/services/imob/imobTurnResolver";\n' +
+      'import { resolveSnapshotInputPlaceholder, resolveSnapshotQuickReplies } from "@/components/agents/chatPresentationSnapshot";\n' +
+      'import { createPendingWorkTracker } from "@/lib/frontDoorPendingWork";\n' +
+      'import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";\n' +
+      'import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobProposalReviewContinuity";\n' +
+      'import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";\n' +
+      'import { resolveImobPropertyUnitIntakeTurn } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";\n' +
+      'import { resolveImobSemanticIntent } from "../../../../../api/src/services/imob/imobSemanticIntentResolver";\n' +
+      'import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";\n' +
+      'import { buildPropertyBulkArchiveForm } from "@/pages/app/imob/propertyBulkArchive";\n' +
+      'import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";\n' +
+      'import React from "react";\n' +
+      'import { renderToStaticMarkup } from "react-dom/server";\n' +
+      'import { ImobFrontDoorPart } from "./ImobFrontDoorPart";\n' +
+      'import { getSession, updateSession } from "@/state/sessionStore";\n' +
+      'import { detectLauncherRouteIntent, resolveLauncherTurnDecision } from "@/components/agents/chatLauncherEngine";\n' +
+      '\n' +
+      '/** Estado de formulário em memória (sem React), como um chat qualquer manteria. */\n' +
+      'function fakeState() {\n' +
+      '  let values: Record<string, Record<string, string>> = {};\n' +
+      '  let errors: Record<string, Record<string, string>> = {};\n' +
+      '  const bulkArchiveRef = { current: {} as Record<string, any> };\n' +
+      '  const state = {\n' +
+      '    bulkArchiveRef,\n' +
+      '    get bulkArchiveByMessageId() { return bulkArchiveRef.current; },\n' +
+      '    setBulkArchiveByMessageId: (update: unknown) => {\n' +
+      '      bulkArchiveRef.current = typeof update === "function" ? (update as (prev: Record<string, any>) => Record<string, any>)(bulkArchiveRef.current) : (update as Record<string, any>);\n' +
+      '    },\n' +
+      '    bulkArchiveScopeRef: { current: {} as Record<string, unknown> },\n' +
+      '    bulkArchiveStopRef: { current: new Set<string>() },\n' +
+      '    formValuesByMessageId: values,\n' +
+      '    setFormValuesByMessageId: (update: unknown) => {\n' +
+      '      values = typeof update === "function" ? (update as (prev: typeof values) => typeof values)(values) : (update as typeof values);\n' +
+      '    },\n' +
+      '    formErrorsByMessageId: errors,\n' +
+      '    setFormErrorsByMessageId: (update: unknown) => {\n' +
+      '      errors = typeof update === "function" ? (update as (prev: typeof errors) => typeof errors)(errors) : (update as typeof errors);\n' +
+      '    },\n' +
+      '    formLookupLoadingByMessageId: {},\n' +
+      '    imobPropertyOptions: [],\n' +
+      '    imobOwnerOptions: [],\n' +
+      '    formSubmittingRef: { current: new Set<string>() },\n' +
+      '    ownerNameConfirmedRef: { current: {} },\n' +
+      '    ownerRecordsRef: { current: [] },\n' +
+      '    ownerArchiveConfirmedRef: { current: {} },\n' +
+      '    formFilesRef: { current: {} },\n' +
+      '    pendingFormPrefillRef: { current: null as { submitTarget: string; values: Record<string, string> } | null },\n' +
+      '    contractAfterLeaseRef: { current: null },\n' +
+      '    propertyRecordsRef: { current: [] },\n' +
+      '    resolveFormFieldOptions: () => [],\n' +
+      '    resolveFormValuesForMessage: (message: StructuredMessage) => values[message.id] ?? {},\n' +
+      '    updateFormFieldValue: () => undefined,\n' +
+      '    applyCepLookupToForm: async () => null,\n' +
+      '    prepareIncomingMessage: <M,>(message: M) => message,\n' +
+      '  };\n' +
+      '  return { state: state as unknown as ImobFormState, getValues: () => values, getErrors: () => errors, raw: state };\n' +
+      '}\n' +
+      '\n' +
+      'function fakeHost() {\n' +
+      '  const appended: StructuredMessage[] = [];\n' +
+      '  const updated: Array<[string, Partial<StructuredMessage>]> = [];\n' +
+      '  const sent: Array<[string, string]> = [];\n' +
+      '  const host: ImobStructuredFormsHost = {\n' +
+      '    activeThreadId: "thread-1",\n' +
+      '    appendMessage: (message) => appended.push(message),\n' +
+      '    updateMessage: (id, patch) => updated.push([id, patch]),\n' +
+      '    patchMessage: () => undefined,\n' +
+      '    persistMessage: () => undefined,\n' +
+      '    sendText: (text, options) => sent.push([text, options.displayText]),\n' +
+      '  };\n' +
+      '  return { host, appended, updated, sent };\n' +
+      '}\n' +
+      '\n' +
+      'const localItems = IMOB_ACTION_MENUS.flatMap((menu) => menu.items).filter(\n' +
+      '  (item): item is Extract<ImobActionMenuItem, { kind: "local" }> => item.kind === "local",\n' +
+      ');\n' +
+      '\n' +
+      '// "Registrar locação encerrada" usa o formulário de locação do servidor: envia o pedido e pré-configura o formulário.\n' +
+      'const FORMS_VIA_SERVER = new Set(["rental_historical"]);\n' +
+      '\n' +
+      'test("todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro", () => {\n' +
+      '  for (const item of localItems.filter((candidate) => !FORMS_VIA_SERVER.has(candidate.form))) {\n' +
+      '    const { state } = fakeState();\n' +
+      '    const { host, appended } = fakeHost();\n' +
+      '    createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+      '    assert.equal(appended.length, 1, item.id);\n' +
+      '    assert.ok(appended[0].form?.submitTarget, `${item.id} sem submitTarget`);\n' +
+      '    assert.equal(appended[0].thread?.id, "thread-1", item.id);\n' +
+      '  }\n' +
+      '});\n' +
+      '\n' +
+      `test("menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada", () => {\n` +
+      '  const { state, raw } = fakeState();\n' +
+      '  const { host, sent, appended } = fakeHost();\n' +
+      '  const item = localItems.find((candidate) => candidate.form === "rental_historical");\n' +
+      '  assert.ok(item, "item de menu existe");\n' +
+      '  createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+      '  assert.equal(appended.length, 0);\n' +
+      '  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { leaseState: "encerrada" } });\n' +
+      '  assert.deepEqual(sent, [["cadastrar locatário", "Registrar locação encerrada"]]);\n' +
+      '});\n' +
+      '\n' +
+      'test("menus Negócios: venda e permuta abrem o formulário com o tipo certo", () => {\n' +
+      '  for (const [form, kind] of [["deal_sale", "venda"], ["deal_exchange", "permuta"]] as const) {\n' +
+      '    const item = localItems.find((candidate) => candidate.form === form);\n' +
+      '    assert.ok(item, form);\n' +
+      '    const { state } = fakeState();\n' +
+      '    const { host, appended } = fakeHost();\n' +
+      '    createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+      '    assert.equal(appended[0].form?.submitTarget, "imob.deals.create");\n' +
+      '    assert.equal(appended[0].form?.action, kind);\n' +
+      '  }\n' +
+      '});\n' +
+      '\n' +
+      'test("itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido", () => {\n' +
+      '  const { state } = fakeState();\n' +
+      '  const { host, sent } = fakeHost();\n' +
+      '  const forms = createImobStructuredForms(state, host);\n' +
+      '  forms.handleActionMenuSelect({ id: "owner-create", label: "Cadastrar proprietário", kind: "prompt", prompt: "cadastrar proprietário" });\n' +
+      '  assert.deepEqual(sent, [["cadastrar proprietário", "Cadastrar proprietário"]]);\n' +
+      '});\n' +
+      '\n' +
+      'test("próximo passo prepara o formulário seguinte já ligado ao cadastro", () => {\n' +
+      '  const { state, raw } = fakeState();\n' +
+      '  const { host, sent } = fakeHost();\n' +
+      '  createImobStructuredForms(state, host).startPropertyCreateFor("owner-9");\n' +
+      '  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.properties.create", values: { ownerId: "owner-9" } });\n' +
+      '  assert.deepEqual(sent, [["cadastrar imóvel", "Cadastrar imóvel"]]);\n' +
+      '});\n' +
+      '\n' +
+      'test("formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar", async () => {\n' +
+      '  const { state } = fakeState();\n' +
+      '  const { host, appended, updated } = fakeHost();\n' +
+      '  const forms = createImobStructuredForms(state, host);\n' +
+      '  const generic: StructuredMessage = {\n' +
+      '    id: "m1",\n' +
+      '    role: "assistant",\n' +
+      '    text: "",\n' +
+      '    form: { label: "Formulário genérico", entity: "anuncio", action: "publish", fields: [], actions: [] },\n' +
+      '  };\n' +
+      '  assert.equal(await forms.handleStructuredFormAction(generic, "submit"), false);\n' +
+      '\n' +
+      '  forms.openRentalLifecycleForm("rental_history");\n' +
+      '  const history = appended[0];\n' +
+      '  assert.equal(await forms.handleStructuredFormAction(history, "cancel"), true);\n' +
+      '  assert.deepEqual(updated, [[history.id, { form: undefined }]]);\n' +
+      '  assert.equal(appended.at(-1)?.text, "Histórico fechado.");\n' +
+      '});\n' +
+      '\n' +
+      'test("enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API", async () => {\n' +
+      '  const { state, getErrors } = fakeState();\n' +
+      '  const { host, appended } = fakeHost();\n' +
+      '  const forms = createImobStructuredForms(state, host);\n' +
+      '  forms.openRentalLifecycleForm("rental_history");\n' +
+      '  assert.equal(await forms.handleStructuredFormAction(appended[0], "submit"), true);\n' +
+      '  assert.deepEqual(getErrors()[appended[0].id], { propertyId: "Selecione o imóvel." });\n' +
+      '});\n' +
+      '\n' +
+      'const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };\n' +
+      'const caseContext = { caseId: "case-proposal", threadId: "thread-server", flow: "proposal.create", stage: "proposal_collecting", status: "pending_data" };\n' +
+      'function proposalTurn() {\n' +
+      '  return { ...resolveImobTurn({ message: "Quero gerar uma proposta comercial para um cliente.", access }), caseContext } as unknown as ImobResolveTurnResponse;\n' +
+      '}\n' +
+      '\n' +
+      'function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,\n' +
+      '  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"'... 174072 more characters,
+    ''
+  ],
+  pid: 25,
+  stdout: 'import test, { type TestContext } from "node:test";\n' +
+    'import { readFileSync } from "node:fs";\n' +
+    'import ts from "typescript";\n' +
+    'import { LLMProviderError } from "@eiah/core/llm/LLMProviderError";\n' +
+    'import assert from "node:assert/strict";\n' +
+    'import { IMOB_ACTION_MENUS, type ImobActionMenuItem } from "@/features/imob/imobActionMenus";\n' +
+    'import { createImobStructuredForms } from "./createImobStructuredForms";\n' +
+    'import type { ImobFormState } from "./useImobFormState";\n' +
+    'import type { ImobStructuredFormsHost, StructuredMessage } from "./types";\n' +
+    'import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD, toLauncherMessage } from "./useImobFrontDoorForms";\n' +
+    'import { IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy } from "@eiah/contracts";\n' +
+    'import { interpretImobPropertyCapture } from "../../../../../api/src/services/imob/intake/imobPropertyCaptureIntake";\n' +
+    'import { buildPropertyCreateForm } from "../../../../../api/src/services/imob/imobTurnResolver";\n' +
+    'import { resolveSnapshotInputPlaceholder, resolveSnapshotQuickReplies } from "@/components/agents/chatPresentationSnapshot";\n' +
+    'import { createPendingWorkTracker } from "@/lib/frontDoorPendingWork";\n' +
+    'import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";\n' +
+    'import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobProposalReviewContinuity";\n' +
+    'import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";\n' +
+    'import { resolveImobPropertyUnitIntakeTurn } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";\n' +
+    'import { resolveImobSemanticIntent } from "../../../../../api/src/services/imob/imobSemanticIntentResolver";\n' +
+    'import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";\n' +
+    'import { buildPropertyBulkArchiveForm } from "@/pages/app/imob/propertyBulkArchive";\n' +
+    'import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";\n' +
+    'import React from "react";\n' +
+    'import { renderToStaticMarkup } from "react-dom/server";\n' +
+    'import { ImobFrontDoorPart } from "./ImobFrontDoorPart";\n' +
+    'import { getSession, updateSession } from "@/state/sessionStore";\n' +
+    'import { detectLauncherRouteIntent, resolveLauncherTurnDecision } from "@/components/agents/chatLauncherEngine";\n' +
+    '\n' +
+    '/** Estado de formulário em memória (sem React), como um chat qualquer manteria. */\n' +
+    'function fakeState() {\n' +
+    '  let values: Record<string, Record<string, string>> = {};\n' +
+    '  let errors: Record<string, Record<string, string>> = {};\n' +
+    '  const bulkArchiveRef = { current: {} as Record<string, any> };\n' +
+    '  const state = {\n' +
+    '    bulkArchiveRef,\n' +
+    '    get bulkArchiveByMessageId() { return bulkArchiveRef.current; },\n' +
+    '    setBulkArchiveByMessageId: (update: unknown) => {\n' +
+    '      bulkArchiveRef.current = typeof update === "function" ? (update as (prev: Record<string, any>) => Record<string, any>)(bulkArchiveRef.current) : (update as Record<string, any>);\n' +
+    '    },\n' +
+    '    bulkArchiveScopeRef: { current: {} as Record<string, unknown> },\n' +
+    '    bulkArchiveStopRef: { current: new Set<string>() },\n' +
+    '    formValuesByMessageId: values,\n' +
+    '    setFormValuesByMessageId: (update: unknown) => {\n' +
+    '      values = typeof update === "function" ? (update as (prev: typeof values) => typeof values)(values) : (update as typeof values);\n' +
+    '    },\n' +
+    '    formErrorsByMessageId: errors,\n' +
+    '    setFormErrorsByMessageId: (update: unknown) => {\n' +
+    '      errors = typeof update === "function" ? (update as (prev: typeof errors) => typeof errors)(errors) : (update as typeof errors);\n' +
+    '    },\n' +
+    '    formLookupLoadingByMessageId: {},\n' +
+    '    imobPropertyOptions: [],\n' +
+    '    imobOwnerOptions: [],\n' +
+    '    formSubmittingRef: { current: new Set<string>() },\n' +
+    '    ownerNameConfirmedRef: { current: {} },\n' +
+    '    ownerRecordsRef: { current: [] },\n' +
+    '    ownerArchiveConfirmedRef: { current: {} },\n' +
+    '    formFilesRef: { current: {} },\n' +
+    '    pendingFormPrefillRef: { current: null as { submitTarget: string; values: Record<string, string> } | null },\n' +
+    '    contractAfterLeaseRef: { current: null },\n' +
+    '    propertyRecordsRef: { current: [] },\n' +
+    '    resolveFormFieldOptions: () => [],\n' +
+    '    resolveFormValuesForMessage: (message: StructuredMessage) => values[message.id] ?? {},\n' +
+    '    updateFormFieldValue: () => undefined,\n' +
+    '    applyCepLookupToForm: async () => null,\n' +
+    '    prepareIncomingMessage: <M,>(message: M) => message,\n' +
+    '  };\n' +
+    '  return { state: state as unknown as ImobFormState, getValues: () => values, getErrors: () => errors, raw: state };\n' +
+    '}\n' +
+    '\n' +
+    'function fakeHost() {\n' +
+    '  const appended: StructuredMessage[] = [];\n' +
+    '  const updated: Array<[string, Partial<StructuredMessage>]> = [];\n' +
+    '  const sent: Array<[string, string]> = [];\n' +
+    '  const host: ImobStructuredFormsHost = {\n' +
+    '    activeThreadId: "thread-1",\n' +
+    '    appendMessage: (message) => appended.push(message),\n' +
+    '    updateMessage: (id, patch) => updated.push([id, patch]),\n' +
+    '    patchMessage: () => undefined,\n' +
+    '    persistMessage: () => undefined,\n' +
+    '    sendText: (text, options) => sent.push([text, options.displayText]),\n' +
+    '  };\n' +
+    '  return { host, appended, updated, sent };\n' +
+    '}\n' +
+    '\n' +
+    'const localItems = IMOB_ACTION_MENUS.flatMap((menu) => menu.items).filter(\n' +
+    '  (item): item is Extract<ImobActionMenuItem, { kind: "local" }> => item.kind === "local",\n' +
+    ');\n' +
+    '\n' +
+    '// "Registrar locação encerrada" usa o formulário de locação do servidor: envia o pedido e pré-configura o formulário.\n' +
+    'const FORMS_VIA_SERVER = new Set(["rental_historical"]);\n' +
+    '\n' +
+    'test("todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro", () => {\n' +
+    '  for (const item of localItems.filter((candidate) => !FORMS_VIA_SERVER.has(candidate.form))) {\n' +
+    '    const { state } = fakeState();\n' +
+    '    const { host, appended } = fakeHost();\n' +
+    '    createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+    '    assert.equal(appended.length, 1, item.id);\n' +
+    '    assert.ok(appended[0].form?.submitTarget, `${item.id} sem submitTarget`);\n' +
+    '    assert.equal(appended[0].thread?.id, "thread-1", item.id);\n' +
+    '  }\n' +
+    '});\n' +
+    '\n' +
+    `test("menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada", () => {\n` +
+    '  const { state, raw } = fakeState();\n' +
+    '  const { host, sent, appended } = fakeHost();\n' +
+    '  const item = localItems.find((candidate) => candidate.form === "rental_historical");\n' +
+    '  assert.ok(item, "item de menu existe");\n' +
+    '  createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+    '  assert.equal(appended.length, 0);\n' +
+    '  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { leaseState: "encerrada" } });\n' +
+    '  assert.deepEqual(sent, [["cadastrar locatário", "Registrar locação encerrada"]]);\n' +
+    '});\n' +
+    '\n' +
+    'test("menus Negócios: venda e permuta abrem o formulário com o tipo certo", () => {\n' +
+    '  for (const [form, kind] of [["deal_sale", "venda"], ["deal_exchange", "permuta"]] as const) {\n' +
+    '    const item = localItems.find((candidate) => candidate.form === form);\n' +
+    '    assert.ok(item, form);\n' +
+    '    const { state } = fakeState();\n' +
+    '    const { host, appended } = fakeHost();\n' +
+    '    createImobStructuredForms(state, host).handleActionMenuSelect(item);\n' +
+    '    assert.equal(appended[0].form?.submitTarget, "imob.deals.create");\n' +
+    '    assert.equal(appended[0].form?.action, kind);\n' +
+    '  }\n' +
+    '});\n' +
+    '\n' +
+    'test("itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido", () => {\n' +
+    '  const { state } = fakeState();\n' +
+    '  const { host, sent } = fakeHost();\n' +
+    '  const forms = createImobStructuredForms(state, host);\n' +
+    '  forms.handleActionMenuSelect({ id: "owner-create", label: "Cadastrar proprietário", kind: "prompt", prompt: "cadastrar proprietário" });\n' +
+    '  assert.deepEqual(sent, [["cadastrar proprietário", "Cadastrar proprietário"]]);\n' +
+    '});\n' +
+    '\n' +
+    'test("próximo passo prepara o formulário seguinte já ligado ao cadastro", () => {\n' +
+    '  const { state, raw } = fakeState();\n' +
+    '  const { host, sent } = fakeHost();\n' +
+    '  createImobStructuredForms(state, host).startPropertyCreateFor("owner-9");\n' +
+    '  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.properties.create", values: { ownerId: "owner-9" } });\n' +
+    '  assert.deepEqual(sent, [["cadastrar imóvel", "Cadastrar imóvel"]]);\n' +
+    '});\n' +
+    '\n' +
+    'test("formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar", async () => {\n' +
+    '  const { state } = fakeState();\n' +
+    '  const { host, appended, updated } = fakeHost();\n' +
+    '  const forms = createImobStructuredForms(state, host);\n' +
+    '  const generic: StructuredMessage = {\n' +
+    '    id: "m1",\n' +
+    '    role: "assistant",\n' +
+    '    text: "",\n' +
+    '    form: { label: "Formulário genérico", entity: "anuncio", action: "publish", fields: [], actions: [] },\n' +
+    '  };\n' +
+    '  assert.equal(await forms.handleStructuredFormAction(generic, "submit"), false);\n' +
+    '\n' +
+    '  forms.openRentalLifecycleForm("rental_history");\n' +
+    '  const history = appended[0];\n' +
+    '  assert.equal(await forms.handleStructuredFormAction(history, "cancel"), true);\n' +
+    '  assert.deepEqual(updated, [[history.id, { form: undefined }]]);\n' +
+    '  assert.equal(appended.at(-1)?.text, "Histórico fechado.");\n' +
+    '});\n' +
+    '\n' +
+    'test("enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API", async () => {\n' +
+    '  const { state, getErrors } = fakeState();\n' +
+    '  const { host, appended } = fakeHost();\n' +
+    '  const forms = createImobStructuredForms(state, host);\n' +
+    '  forms.openRentalLifecycleForm("rental_history");\n' +
+    '  assert.equal(await forms.handleStructuredFormAction(appended[0], "submit"), true);\n' +
+    '  assert.deepEqual(getErrors()[appended[0].id], { propertyId: "Selecione o imóvel." });\n' +
+    '});\n' +
+    '\n' +
+    'const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };\n' +
+    'const caseContext = { caseId: "case-proposal", threadId: "thread-server", flow: "proposal.create", stage: "proposal_collecting", status: "pending_data" };\n' +
+    'function proposalTurn() {\n' +
+    '  return { ...resolveImobTurn({ message: "Quero gerar uma proposta comercial para um cliente.", access }), caseContext } as unknown as ImobResolveTurnResponse;\n' +
+    '}\n' +
+    '\n' +
+    'function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,\n' +
+    '  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"'... 174072 more characters,
+  stderr: ''
+}
+
+Node.js v22.17.1

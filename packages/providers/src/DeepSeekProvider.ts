@@ -5,15 +5,16 @@ import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core/l
 export class DeepSeekProvider extends LLMProvider {
   readonly name = "deepseek";
 
-  constructor(private apiKey: string) {
+  constructor(private apiKey: string, private transport: typeof fetch = fetch) {
     super();
   }
 
   async chatCompletion(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     const model = req.model.includes(":") ? req.model.split(":")[1] : req.model;
 
-    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const response = await this.transport("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
+      redirect: req.transportPolicy === "imob_guided_single_attempt" ? "error" : "follow",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",

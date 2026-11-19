@@ -7,7 +7,7 @@ import { useImobFormState, type ImobFormState } from "./useImobFormState";
 import { createImobStructuredForms } from "./createImobStructuredForms";
 import { makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage } from "./types";
 import type { ImobConversationPersistence, PersistedTag, ResumedThread } from "../persistence/useImobConversationPersistence";
-import { IMOB_PROPERTY_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy, imobPropertyCaptureResultSchema, type ImobPropertyCaptureProposal } from "@eiah/contracts";
+import { IMOB_PROPERTY_GUIDED_POLICY as guidedPolicy, resolveImobPropertyGuidedCommand, IMOB_PROPERTY_CAPTURE_FIELDS, IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy, imobPropertyCaptureResultSchema, type ImobPropertyCaptureProposal } from "@eiah/contracts";
 import { isPropertyCreateForm, buildPropertyCreateRequest } from "@/pages/app/imob/propertyCreateForm";
 import type { MessagePresentationSnapshot } from "@/components/agents/chatPresentationSnapshot";
 
@@ -32,15 +32,28 @@ export type FrontDoorMessageLike = {
   imobPersisted?: PersistedTag;
 };
 
+/** Thrown by the wrapped resolve-turn after it showed the recovery notice, so callers do not add a generic failure on top. */
+class CaptureRecoveryOffered extends Error {}
+function activeCaptureOf(error: unknown) {
+  const e = error as { status?: unknown; body?: { error?: { code?: unknown; details?: { sessionRef?: unknown; status?: unknown } } } } | null;
+  const details = e?.body?.error?.details;
+  if (e?.status !== 409 || e.body?.error?.code !== "IMOB_PROPERTY_CAPTURE_ACTIVE" || typeof details?.sessionRef !== "string") return null;
+  return { sessionRef: details.sessionRef, status: details.status === "paused" ? "paused" as const : "active" as const };
+}
+
 export function toLauncherMessage<M extends FrontDoorMessageLike>(structured: StructuredMessage): M {
   const capture = structured.propertyCaptureContext ?? (isPropertyCreateForm(structured.form) ? "active" : null);
   const presentationSnapshot: MessagePresentationSnapshot | undefined = capture ? {
     snapshotVersion: "v1", verticalContext: capture === "active" ? "IMOB" : null, routeIntent: capture === "active" ? "imob" : "help",
-    showConfidence: false, provenanceMode: "none", signals: [], renderVariant: "guided_flow", quickReplySource: "agent_contract",
-    quickReplies: capture === "active" ? structured.propertyCaptureProposal
+    showConfidence: false, provenanceMode: "none", signals: [], renderVariant: "guided_flow", quickReplySource: structured.propertyGuided ? "backend_payload" : "agent_contract",
+    quickReplies: structured.propertyGuided ? structured.propertyGuided.quickReplies : capture === "active" ? structured.propertyCaptureProposal
       ? [propertyPolicy.confirmReply, propertyPolicy.rejectReply, propertyPolicy.questionReply]
       : [propertyPolicy.questionReply, propertyPolicy.pauseReply] : [propertyPolicy.resumeReply],
-    inputPlaceholder: capture === "active" ? structured.propertyCaptureProposal ? propertyPolicy.confirmationPlaceholder : propertyPolicy.placeholder : propertyPolicy.pausedPlaceholder,
+    inputPlaceholder: structured.propertyGuided && capture === "active"
+      ? structured.propertyCaptureProposal ? propertyPolicy.confirmationPlaceholder
+        : structured.propertyGuided.phase === "start" ? guidedPolicy.initialPlaceholder
+          : structured.propertyGuided.showFullForm ? guidedPolicy.reviewPlaceholder : guidedPolicy.collectingPlaceholder
+      : capture === "active" ? structured.propertyCaptureProposal ? propertyPolicy.confirmationPlaceholder : propertyPolicy.placeholder : propertyPolicy.pausedPlaceholder,
   } : undefined;
   return { id: structured.id, role: structured.role, content: structured.text, imobStructured: structured,
     ...(presentationSnapshot ? { presentationSnapshot } : {}) } as M;
@@ -99,6 +112,24 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
     [setMessages],
   );
 
+  React.useEffect(() => {
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        const structured = message.imobStructured;
+        const local = imobForms.formValuesByMessageId[message.id];
+        if (!structured?.propertyGuided || !structured.form || !local) return message;
+        if (!structured.form.fields.some((field) => field.name in local && String(field.value ?? "") !== local[field.name])) return message;
+        changed = true;
+        return { ...message, imobStructured: { ...structured, propertyCaptureProposal: null,
+          propertyCaptureOrigin: structured.propertyCaptureOrigin ? { ...structured.propertyCaptureOrigin,
+            draftVersion: imobForms.getFormRevision(message.id) } : undefined,
+          form: { ...structured.form, fields: structured.form.fields.map((field) => ({ ...field, value: local[field.name] ?? field.value })) } } };
+      });
+      return changed ? next : prev;
+    });
+  }, [imobForms.formValuesByMessageId, setMessages]);
+
   const allMessagesRef = React.useRef(messages);
   allMessagesRef.current = messages;
   const requestSequenceRef = React.useRef(0);
@@ -124,7 +155,7 @@ export function useImobFrontDoorForms<M extends FrontDoorMessageLike>(params: {
       const next = prev.map((message) => {
         const structured = message.imobStructured;
         const continuity = structured?.conversationState?.operational?.continuity;
-        if (structured?.propertyCaptureProposal && (changedScope || structured.propertyCaptureProposal.origin.contextRef !== reviewOriginRef.current.ref)) {
+        if (structured?.propertyCaptureProposal && (changedScope || (!structured.propertyGuided && structured.propertyCaptureProposal.origin.contextRef !== reviewOriginRef.current.ref))) {
           invalidated = true;
           return { ...message, imobStructured: { ...structured, propertyCaptureProposal: null } };
         }
@@ -197,17 +228,75 @@ export function createImobFrontDoorForms(params: {
 }) {
   const { imobForms, getMessages, appendStructured, patchStructured, echoUser } = params;
   const track: PendingTrack = params.trackPending ?? ((work) => work());
-  const resolveTurn = params.resolveTurn ?? apiResolveImobTurn;
+  const rawResolveTurn = params.resolveTurn ?? apiResolveImobTurn;
+  // 409 IMOB_PROPERTY_CAPTURE_ACTIVE: the server names the actor's open guided capture. Show an explicit recovery notice (no LLM, no retry).
+  const resolveTurn: typeof apiResolveImobTurn = async (body, signal) => {
+    try { return await rawResolveTurn(body, signal); }
+    catch (error) {
+      const active = activeCaptureOf(error);
+      if (!active) throw error;
+      offerCaptureRecovery(active);
+      throw new CaptureRecoveryOffered();
+    }
+  };
   const originRef = `v1:${makeStructuredId("review")}`;
   const getContinuityContextRef = params.getContinuityContextRef ?? (() => originRef);
   const initialContextRef = getContinuityContextRef();
   const requestSequence = params.requestSequenceRef ?? { current: 0 };
   const latestContext = () => [...getMessages()].reverse().find((message) => message.conversationState);
   const pendingProperty = () => [...getMessages()].reverse().find((message) => isPropertyCreateForm(message.form));
+  const pendingOpening = () => [...getMessages()].reverse().find((message) => !message.form && message.propertyCaptureOrigin
+    && message.propertyGuided?.phase === "start" && message.propertyGuided.status === "active" && !message.propertyGuided.sessionRef);
+  const pendingRecovery = () => [...getMessages()].reverse().find((message) => message.propertyRecovery);
   const getPropertyCaptureContext = () => {
     const form = pendingProperty();
-    return form ? form.propertyCaptureContext ?? "active" as const : null;
+    return form ? form.propertyCaptureContext ?? "active" as const : pendingOpening() || pendingRecovery() ? "active" as const : null;
   };
+
+  function offerCaptureRecovery(active: NonNullable<ReturnType<typeof activeCaptureOf>>) {
+    // At most one live notice: the previous one stops offering its action, so repeated attempts never stack buttons or loop.
+    for (const item of getMessages()) if (item.propertyRecovery) patchStructured(item.id, (message) => ({ ...message, propertyRecovery: undefined, quickReplies: undefined }));
+    const id = makeStructuredId("assistant");
+    appendStructured({ id, role: "assistant", propertyRecovery: active,
+      text: "Há um cadastro de imóvel pendente em outra aba ou sessão. Nada foi salvo e nenhuma interpretação por IA foi feita. "
+        + "Para seguir com outro assunto, cancele o cadastro pendente (os dados dele serão descartados) ou retome-o na aba em que foi iniciado.",
+      quickReplies: [{ id: "cancel-pending-property", label: guidedPolicy.cancelReply, reply: guidedPolicy.cancelReply,
+        onSelect: () => { void track(() => recoverPendingCapture(id)); } }] });
+  }
+
+  /** Explicit recovery: closes exactly the session the server named. Never "the latest one"; the answer is the persisted state. */
+  async function recoverPendingCapture(noticeId: string): Promise<boolean> {
+    const notice = getMessages().find((message) => message.id === noticeId);
+    const target = notice?.propertyRecovery;
+    if (!notice || !target) return true;
+    const before = getSession(), generation = params.getConversationGeneration();
+    const current = () => generation === params.getConversationGeneration() && before.token === getSession().token && before.userId === getSession().userId
+      && before.tenantId === getSession().tenantId && before.workspaceId === getSession().workspaceId;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        rawResolveTurn({ intake: "property_draft", message: guidedPolicy.cancelReply, propertyCapture: {
+          message: guidedPolicy.cancelReply, operation: "property.create", step: "editing_form", draft: {}, history: [],
+          guided: { action: "cancel", sessionRef: target.sessionRef },
+        } }, controller.signal),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, params.propertyIntakeTimeoutMs ?? propertyPolicy.clientTimeoutMs); }),
+      ]);
+      if (!current()) return true;
+      const parsed = imobPropertyCaptureResultSchema.safeParse(response.data?.propertyCapture);
+      const guided = response.ok && parsed.success ? parsed.data.guided : undefined;
+      if (!guided || guided.sessionRef !== target.sessionRef || (guided.status !== "cancelled" && guided.status !== "saved")) throw new Error("unconfirmed");
+      patchStructured(noticeId, (message) => ({ ...message, propertyRecovery: undefined, quickReplies: undefined }));
+      appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: guided.status === "saved"
+        ? "Esse cadastro já havia sido salvo; nada mais foi alterado. Para cadastrar outro imóvel, escolha Cadastrar imóvel."
+        : "Cadastro pendente cancelado. Nada foi salvo. Para cadastrar um imóvel, escolha Cadastrar imóvel." });
+    } catch {
+      // Unknown outcome: the notice (and its single action) stay; nothing is retried automatically.
+      if (current()) appendStructured({ id: makeStructuredId("assistant"), role: "assistant",
+        text: "Não consegui confirmar o cancelamento do cadastro pendente. Ele continua aberto; tente novamente pelo aviso." });
+    } finally { if (timer) clearTimeout(timer); }
+    return true;
+  }
   const initialGeneration = params.getConversationGeneration();
   const initialScopeKey = params.getConversationScopeKey?.();
   const initialReviewSession = getSession();
@@ -246,6 +335,24 @@ export function createImobFrontDoorForms(params: {
 
   async function consumeOperationalTurn(action: "continue" | "cancel" | "release" | "claim", text: string): Promise<boolean | void> {
     const propertyForm = pendingProperty();
+    const recovery = !propertyForm && !pendingOpening() ? pendingRecovery() : undefined;
+    if (recovery) {
+      const typed = text.trim().toLocaleLowerCase("pt-BR");
+      if (typed === guidedPolicy.cancelReply.toLocaleLowerCase("pt-BR")) return track(() => recoverPendingCapture(recovery.id));
+      if (typed === guidedPolicy.startReply.toLocaleLowerCase("pt-BR")) { offerCaptureRecovery(recovery.propertyRecovery!); return true; }
+      return false; // Other subjects follow the governed routing; IMOB turns surface the notice again, with no automatic retry.
+    }
+    if (text.trim().toLocaleLowerCase("pt-BR") === guidedPolicy.startReply.toLocaleLowerCase("pt-BR")) {
+      return track(() => propertyForm?.propertyGuided ? continueGuidedProperty(propertyForm, text, { action: "sync" }) : startGuidedProperty());
+    }
+    const opening = pendingOpening();
+    if (!propertyForm && opening) {
+      if (action === "cancel" || text.trim().toLocaleLowerCase("pt-BR") === guidedPolicy.cancelReply.toLocaleLowerCase("pt-BR")) return track(() => cancelGuidedOpening(opening));
+      appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: "A abertura ainda está pendente. Você pode repetir Cadastrar imóvel para sincronizar ou cancelar o cadastro." });
+      return true;
+    }
+    if (propertyForm?.propertyGuided) return track(() => continueGuidedProperty(propertyForm, text,
+      action === "cancel" ? { action: "cancel" } : action === "release" ? { action: "pause" } : undefined));
     if (propertyForm && action === "continue") return track(() => continuePropertyCapture(propertyForm, text));
     // P11: reivindicação somente leitura do turno pela vertical; sem contexto prévio também vale (a governança é do servidor).
     if (action === "claim") return forwardToImob(text, { claim: true });
@@ -273,6 +380,168 @@ export function createImobFrontDoorForms(params: {
     imobForms.formSubmittingRef.current.add(context.id);
     try { await forwardToImob(text, pending ? { continuityReplyRef: pending.ref } : undefined); }
     finally { imobForms.formSubmittingRef.current.delete(context.id); }
+  }
+
+  async function startGuidedProperty(): Promise<boolean> {
+    const previous = pendingProperty();
+    if (previous?.propertyGuided) return continueGuidedProperty(previous, guidedPolicy.startReply, { action: "sync" });
+    // A lost opening response may already have created the server session. Retry the same registration, including after same-tab reload.
+    const interrupted = pendingOpening();
+    const generation = params.getConversationGeneration();
+    const before = getSession(), scope = params.getConversationScopeKey?.(), contextRef = getContinuityContextRef();
+    const sequence = ++requestSequence.current;
+    const origin = interrupted?.propertyCaptureOrigin ?? { formId: makeStructuredId("assistant"), contextRef, draftVersion: 0, threadId: FRONT_DOOR_IMOB_THREAD.id, caseId: null };
+    const markerId = interrupted?.id ?? makeStructuredId("assistant");
+    const pendingView = { sessionRef: null, revision: 0, phase: "start" as const, status: "active" as const, skipped: [],
+      interpretation: "blocked" as const, currentField: null, errors: {}, quickReplies: [guidedPolicy.startReply, guidedPolicy.cancelReply], showFullForm: false };
+    if (!interrupted) appendStructured({ id: markerId, role: "assistant", text: "Abrindo o cadastro do imóvel…",
+      propertyCaptureOrigin: origin, propertyGuided: pendingView, propertyCaptureContext: "active" });
+    const stillCurrent = () => sequence === requestSequence.current && generation === params.getConversationGeneration()
+      && getMessages().find((message) => message.id === markerId)?.propertyGuided?.status === "active"
+      && (!pendingProperty() || pendingProperty()?.id === previous?.id)
+      && params.getConversationScopeKey?.() === scope && contextRef === getContinuityContextRef()
+      && before.token === getSession().token && before.tenantId === getSession().tenantId && before.workspaceId === getSession().workspaceId
+      && before.userId === getSession().userId && before.activeDomain === getSession().activeDomain;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        resolveTurn({ intake: "property_draft", message: guidedPolicy.startReply, propertyCapture: {
+          message: guidedPolicy.startReply, operation: "property.create", step: "editing_form", draft: {}, origin, history: [], guided: { action: "start" },
+        } }, controller.signal),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, params.propertyIntakeTimeoutMs ?? propertyPolicy.clientTimeoutMs); }),
+      ]);
+      if (!stillCurrent()) return true;
+      const parsed = imobPropertyCaptureResultSchema.safeParse(response.data?.propertyCapture);
+      if (!response.ok || !parsed.success || !parsed.data.guided || !response.data.presentation.form) throw new Error("invalid");
+      const result = parsed.data;
+      if (result.guided?.status === "cancelled" || result.guided?.status === "saved") {
+        patchStructured(markerId, (message) => ({ ...message, text: result.content, propertyGuided: result.guided, propertyCaptureProposal: null }));
+        return true;
+      }
+      patchStructured(markerId, (message) => ({ ...message, text: "", propertyGuided: undefined, propertyCaptureOrigin: undefined, propertyCaptureContext: undefined }));
+      const values = { ...result.patch, ...(result.guided?.fieldPatch ? { [result.guided.fieldPatch.name]: result.guided.fieldPatch.value } : {}) };
+      appendStructured({ id: origin.formId, role: "assistant", text: result.content,
+        form: { ...response.data.presentation.form, fields: response.data.presentation.form.fields.map((field) => ({ ...field, value: values[field.name as keyof typeof values] ?? field.value })) },
+        thread: FRONT_DOOR_IMOB_THREAD, propertyGuided: result.guided, propertyCaptureContext: result.guided?.status === "paused" ? "paused" : "active", propertyCaptureOrigin: origin,
+        propertyCaptureProposal: result.proposal });
+      return true;
+    } catch (error) {
+      // Another origin has an open capture: the wrapped resolveTurn already showed the explicit recovery notice (server-named session, no retry).
+      // Nothing was opened, so the opening marker is removed instead of left pending behind a generic failure.
+      if (error instanceof CaptureRecoveryOffered) {
+        patchStructured(markerId, (message) => ({ ...message, text: "", propertyGuided: undefined, propertyCaptureOrigin: undefined, propertyCaptureContext: undefined }));
+        return true;
+      }
+      if (stillCurrent()) patchStructured(markerId, (message) => ({ ...message,
+        text: "Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessão." }));
+      return true;
+    } finally { if (timer) clearTimeout(timer); }
+  }
+
+  async function cancelGuidedOpening(opening: StructuredMessage): Promise<boolean> {
+    const sequence = ++requestSequence.current, before = getSession(), generation = params.getConversationGeneration();
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const current = () => sequence === requestSequence.current && generation === params.getConversationGeneration()
+      && before.token === getSession().token && before.userId === getSession().userId
+      && before.tenantId === getSession().tenantId && before.workspaceId === getSession().workspaceId;
+    try {
+      const response = await Promise.race([
+        resolveTurn({ intake: "property_draft", message: guidedPolicy.cancelReply, propertyCapture: {
+          message: guidedPolicy.cancelReply, operation: "property.create", step: "editing_form", draft: {}, history: [],
+          origin: opening.propertyCaptureOrigin, guided: { action: "cancel" },
+        } }, controller.signal),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, params.propertyIntakeTimeoutMs ?? propertyPolicy.clientTimeoutMs); }),
+      ]);
+      if (!current()) return true;
+      const parsed = imobPropertyCaptureResultSchema.safeParse(response.data?.propertyCapture);
+      if (!response.ok || !parsed.success || !parsed.data.guided || !["cancelled", "saved"].includes(parsed.data.guided.status)) throw new Error("invalid");
+      patchStructured(opening.id, (message) => ({ ...message, text: parsed.data.content, propertyGuided: parsed.data.guided, propertyCaptureProposal: null }));
+    } catch {
+      if (current()) patchStructured(opening.id, (message) => ({ ...message,
+        text: "Não consegui confirmar o cancelamento. A resposta antiga foi descartada; tente cancelar novamente ou sincronizar Cadastrar imóvel." }));
+    } finally { if (timer) clearTimeout(timer); }
+    return true;
+  }
+
+  async function continueGuidedProperty(form: StructuredMessage, text: string,
+    selected?: NonNullable<import("@eiah/contracts").ImobPropertyCaptureRequest["guided"]>): Promise<boolean> {
+    const state = form.propertyGuided!;
+    if (imobForms.formSubmittingRef.current.has(form.id)) {
+      appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: "O cadastro está sendo salvo. Aguarde o resultado antes de alterar ou cancelar." });
+      return true;
+    }
+    if (!form.form || !form.propertyCaptureOrigin) return true;
+    const command = selected ?? resolveImobPropertyGuidedCommand(text, state, form.form.fields, Boolean(form.propertyCaptureProposal));
+    if (state.status === "paused" && command.action === "sync") return false;
+    const values = { ...imobForms.resolveFormValuesForMessage(form) };
+    const revision = imobForms.getFormRevision(form.id);
+    const origin = { ...form.propertyCaptureOrigin, draftVersion: revision };
+    const before = getSession(), generation = params.getConversationGeneration(), scope = params.getConversationScopeKey?.();
+    const sequence = ++requestSequence.current;
+    const stillCurrent = () => sequence === requestSequence.current && params.getConversationGeneration() === generation
+      && params.getConversationScopeKey?.() === scope && getSession().token === before.token && getSession().userId === before.userId
+      && getSession().tenantId === before.tenantId && getSession().workspaceId === before.workspaceId && getSession().activeDomain === before.activeDomain
+      && pendingProperty()?.id === form.id && pendingProperty()?.propertyGuided?.sessionRef === state.sessionRef;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const response = await Promise.race([
+        resolveTurn({ intake: "property_draft", message: text, propertyCapture: { message: text, operation: "property.create", step: "editing_form",
+          draft: Object.fromEntries(IMOB_PROPERTY_CAPTURE_FIELDS.filter((key) => key in values).map((key) => [key, values[key]])), origin,
+          contextState: form.propertyCaptureContext ?? "active", pendingProposal: form.propertyCaptureProposal ?? null,
+          history: params.getPropertyHistory?.(form.id) ?? [],
+          guided: { ...command, ...(state.sessionRef ? { sessionRef: state.sessionRef } : {}), revision: state.revision, ownerId: values.ownerId ?? "", fallbackView: { phase: state.phase, skipped: state.skipped, currentField: state.currentField } },
+        } }, controller.signal),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, params.propertyIntakeTimeoutMs ?? propertyPolicy.clientTimeoutMs); }),
+      ]);
+      if (!stillCurrent()) return true;
+      const parsed = imobPropertyCaptureResultSchema.safeParse(response.data?.propertyCapture);
+      if (!response.ok || !parsed.success) throw new Error("invalid");
+      const result = parsed.data;
+      if (!result.guided) {
+        patchStructured(form.id, (current) => ({ ...current, propertyCaptureProposal: null,
+          propertyGuided: { ...state, interpretation: "blocked", quickReplies: [guidedPolicy.reviewReply, guidedPolicy.cancelReply] } }));
+        appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: result.content, propertyGuided: { ...state, quickReplies: [] } });
+        return true;
+      }
+      if (result.guided.sessionRef !== state.sessionRef && state.sessionRef) throw new Error("invalid");
+      const updated = revision === imobForms.getFormRevision(form.id) && JSON.stringify(values) === JSON.stringify(imobForms.resolveFormValuesForMessage(form));
+      if (!updated) {
+        patchStructured(form.id, (current) => ({ ...current, propertyGuided: result.guided, propertyCaptureProposal: null }));
+        appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: "Preservei sua edição feita durante a resposta. Continue pelo campo ou revise o cadastro." });
+        return true;
+      }
+      const patch: Record<string, string> = Object.fromEntries(Object.entries(result.patch).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+      if (result.guided.fieldPatch) patch[result.guided.fieldPatch.name] = result.guided.fieldPatch.value;
+      if (!result.guided.synchronized && command.action === "confirm" && Object.keys(patch).length
+        && (!form.propertyCaptureProposal || result.confirmedProposalRef !== form.propertyCaptureProposal.ref
+          || JSON.stringify(Object.entries(result.patch).sort()) !== JSON.stringify(Object.entries(form.propertyCaptureProposal.changes).sort()))) throw new Error("invalid");
+      if (!result.guided.synchronized && command.action === "set" && Object.keys(patch).some((key) => key !== command.field && key !== state.currentField)) throw new Error("invalid");
+      if (Object.keys(patch).length) imobForms.setFormValuesByMessageId((prev) => ({ ...prev, [form.id]: { ...values, ...patch } }));
+      const nextValues = { ...values, ...patch };
+      const closed = result.guided.status === "cancelled" || result.guided.status === "saved";
+      patchStructured(form.id, (current) => ({ ...current, propertyGuided: result.guided,
+        propertyCaptureContext: result.guided!.status === "paused" ? "paused" : "active",
+        propertyCaptureProposal: result.proposal ?? null, propertyCaptureOrigin: origin,
+        form: closed ? undefined : { ...current.form!, fields: current.form!.fields.map((field) => ({ ...field, value: nextValues[field.name] ?? field.value })) },
+      }));
+      imobForms.setFormErrorsByMessageId((prev) => ({ ...prev, [form.id]: result.guided!.showFullForm ? result.guided!.errors : {} }));
+      appendStructured({ id: makeStructuredId("assistant"), role: "assistant", text: result.content,
+        propertyCaptureContext: result.guided.status === "paused" ? "paused" : "active", propertyGuided: result.guided,
+        propertyCaptureProposal: result.proposal ?? null, thread: form.thread });
+      return true;
+    } catch {
+      if (stillCurrent()) {
+        // Unknown outcomes never renew local eligibility. Server admission remains authoritative after reload/retry.
+        const blocked = { ...state, interpretation: "blocked" as const };
+        patchStructured(form.id, (current) => ({ ...current, propertyGuided: blocked }));
+        appendStructured({ id: makeStructuredId("assistant"), role: "assistant", propertyGuided: blocked,
+          text: "Não consegui confirmar a resposta. Seus dados foram mantidos. Continue sem IA para sincronizar o cadastro." });
+      }
+      return true;
+    } finally { if (timer) clearTimeout(timer); }
   }
 
   async function continuePropertyCapture(form: StructuredMessage, text: string): Promise<boolean> {
@@ -380,6 +649,7 @@ export function createImobFrontDoorForms(params: {
     message: StructuredMessage;
     request: Extract<ReturnType<typeof buildProposalFormContinuation>, { ok: true }>["request"];
   }): Promise<boolean> {
+    if (!options?.claim && text.trim().toLocaleLowerCase("pt-BR") === guidedPolicy.startReply.toLocaleLowerCase("pt-BR")) return startGuidedProperty();
     if (options?.displayText) echoUser(options.displayText);
     const context = continuation?.message ?? latestContext();
     const generation = params.getConversationGeneration();
@@ -458,7 +728,8 @@ export function createImobFrontDoorForms(params: {
       // Resposta do servidor ao turno: vai ao histórico persistido (formulários locais e mensagens de erro não).
       params.persistAssistant?.(reply);
       return accepted;
-    } catch {
+    } catch (error) {
+      if (error instanceof CaptureRecoveryOffered) return false;
       if (options?.claim) return false;
       if (!isCurrentConversation() || (context && latestContext()?.id !== context.id)
         || !isCurrentQuestion()) return false;
@@ -508,7 +779,36 @@ export function createImobFrontDoorForms(params: {
     // Cada operação assíncrona de formulário/ação (salvar, carregar listas, arquivar…) é trabalho pendente compartilhado; as síncronas passam direto.
     structuredForms: trackAsyncMethods({
       ...structuredForms,
+      handleSelectChange(message: StructuredMessage, field: string, value: string) {
+        const live = getMessages().find((item) => item.id === message.id);
+        if (live?.propertyGuided && !live.propertyGuided.showFullForm) {
+          void track(() => continueGuidedProperty(live, value || "Selecionar opção", { action: "set", field, value }));
+          return;
+        }
+        structuredForms.handleSelectChange(message, field, value);
+      },
+      focusPropertyField(message: StructuredMessage, field: string) {
+        const live = getMessages().find((item) => item.id === message.id);
+        if (live?.propertyGuided) return track(() => continueGuidedProperty(live, `Corrigir ${field}`, { action: "focus", field }));
+      },
+      /** A reply the server offered for the current guided state (e.g. "Continuar sem IA"): the same canonical command as typing it. No provider. */
+      selectGuidedReply(message: StructuredMessage, reply: string) {
+        const live = getMessages().find((item) => item.id === message.id);
+        if (!live?.propertyGuided || !live.form || !live.propertyGuided.quickReplies.includes(reply)) return;
+        echoUser(reply);
+        return track(() => continueGuidedProperty(live, reply));
+      },
       async handleStructuredFormAction(incoming: StructuredMessage, actionId: "cancel" | "submit" | "archive"): Promise<boolean> {
+        const guided = getMessages().find((item) => item.id === incoming.id);
+        if (guided?.propertyGuided && guided.form) {
+          if (actionId === "cancel") return continueGuidedProperty(guided, guidedPolicy.cancelReply, { action: "cancel" });
+          if (!guided.propertyGuided.showFullForm) {
+            const field = guided.propertyGuided.currentField;
+            if (field && actionId === "submit") return continueGuidedProperty(guided, imobForms.resolveFormValuesForMessage(guided)[field] || "Continuar",
+              { action: "set", field, value: imobForms.resolveFormValuesForMessage(guided)[field] ?? "" });
+            return true;
+          }
+        }
         if (!isConversationalProposalForm(incoming.form)) return structuredForms.handleStructuredFormAction(incoming, actionId);
         // Ignora eventos de um formulário já fechado e duplo clique durante o envio.
         const message = getMessages().find((item) => item.id === incoming.id);

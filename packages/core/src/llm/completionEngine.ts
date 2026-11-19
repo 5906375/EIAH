@@ -33,7 +33,7 @@ export async function runCompletion(req: ChatCompletionRequest): Promise<ChatCom
     stage = "provider_execution";
     logger.info({ provider: provider.name, model, traceId }, "llm.completion.start");
     const timeoutMs = readNumberFromEnv("LLM_TIMEOUT_MS", 15000);
-    const retries = readNumberFromEnv("LLM_RETRIES", 3);
+    const retries = req.transportPolicy === "imob_guided_single_attempt" ? 1 : readNumberFromEnv("LLM_RETRIES", 3);
     const baseDelayMs = readNumberFromEnv("LLM_RETRY_DELAY_MS", 150);
     const maxDelayMs = readNumberFromEnv("LLM_RETRY_MAX_DELAY_MS", 2000);
     const backoffFactor = readNumberFromEnv("LLM_RETRY_BACKOFF_FACTOR", 1.6);

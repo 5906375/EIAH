@@ -1,0 +1,22 @@
+TAP version 13
+# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+ok 1 - paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+  ---
+  duration_ms: 97.747533
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+ok 2 - coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+  ---
+  duration_ms: 23.005148
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 200.178123

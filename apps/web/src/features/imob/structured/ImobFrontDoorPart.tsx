@@ -1,3 +1,4 @@
+import { visiblePropertyCaptureForm } from "@/pages/app/imob/propertyCreateForm";
 import React from "react";
 import { ImobFormCard } from "./ImobFormCard";
 import type { ImobFrontDoorForms } from "./useImobFrontDoorForms";
@@ -19,6 +20,16 @@ export function ImobFrontDoorPart({
 }) {
   const { imobForms, structuredForms } = frontDoor;
   const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const visibleForm = visiblePropertyCaptureForm(message);
+  // Guided opening: the server's replies for this state ("Continuar sem IA", "Revisar cadastro", "Cancelar…") become real controls. The full form
+  // stays hidden until the user chooses to review; each reply is the same canonical command as typing it.
+  const guided = message.propertyGuided;
+  const openingReplies: NonNullable<StructuredMessage["quickReplies"]> = isLast && message.form && guided?.status === "active" && guided.phase === "start" && !message.propertyCaptureProposal
+    ? guided.quickReplies.map((reply) => ({ id: `guided-${reply}`, label: reply, onSelect: () => { void structuredForms.selectGuidedReply(message, reply); } })) : [];
+  const quickReplies = message.quickReplies?.length ? message.quickReplies : openingReplies;
+  React.useEffect(() => {
+    if (message.form && message.propertyGuided?.showFullForm) rootRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, [message.propertyGuided?.showFullForm]);
   // O launcher só rola quando ele mesmo empilha a mensagem; a resposta da vertical chega depois (assíncrona). Quando a última
   // mensagem traz um cartão de vertical, ela entra na área visível ao aparecer (inclusive ao restaurar a conversa).
   React.useEffect(() => {
@@ -49,18 +60,29 @@ export function ImobFrontDoorPart({
           ) : null}
         </div>
       ) : null}
-      {message.form ? (
+      {visibleForm ? (
         <ImobFormCard
-          message={{ ...message, form: message.form }}
+          message={{ ...message, form: visibleForm }}
           state={imobForms}
           onSelectChange={structuredForms.handleSelectChange}
           onAction={(target, actionId) => structuredForms.handleStructuredFormAction(target, actionId)}
           onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
         />
       ) : null}
-      {isLast && message.quickReplies?.length ? (
+      {message.form && message.propertyGuided?.status === "active" ? (
+        <label className="text-xs text-muted-foreground">Corrigir ou retomar campo
+          <select aria-label="Corrigir ou retomar campo" value="" className="ml-2 rounded border border-white/10 bg-surface p-2"
+            onChange={(event) => { if (event.target.value) void structuredForms.focusPropertyField(message, event.target.value); }}>
+            <option value="">Selecione um campo</option>
+            {message.form.fields.filter((field) => field.type !== "file" && !field.allowAttachment && !field.name.startsWith("document")).map((field) => (
+              <option key={field.name} value={field.name}>{field.label}{message.propertyGuided!.skipped.includes(field.name) ? " (pulado)" : ""}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {isLast && quickReplies.length ? (
         <div className="flex flex-col items-start gap-1.5" role="group" aria-label="Próximos passos">
-          {message.quickReplies.map((option) => (
+          {quickReplies.map((option) => (
             <button
               key={`${message.id}-reply-${option.id}`}
               type="button"

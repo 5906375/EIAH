@@ -1,0 +1,15 @@
+[APROVADO] 1 Abertura
+[APROVADO] 2 Proposta inicial (IA simulada)
+[APROVADO] 3 Coleta, um campo por vez
+[APROVADO] 4 Revisão e bloqueio de salvamento sem obrigatórios
+[APROVADO] 6 Salvamento integrado
+[APROVADO] 1b P-01 "Continuar sem IA" na abertura: clique, teclado (Enter/Espaço) e mobile, sem provider e sem formulário completo
+[APROVADO] 5a Reload na mesma aba preserva rascunho e consumo
+[APROVADO] 5b Pausa e retomada não renovam a interpretação
+[APROVADO] 5c Cancelar com revisão antiga (requisição em voo) e ação antiga não atinge cadastro novo
+[APROVADO] 5d Resposta tardia não reabre sessão cancelada nem substitui cadastro novo
+[APROVADO] 5e Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba
+[APROVADO] 5f P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho
+[APROVADO] 7 Desktop e mobile (emulação de viewport): perguntas, seletores, botões, erros, formulário final, scroll, foco e teclado
+
+CENÁRIOS: 13 | aprovados 13 | reprovados 0; provider simulado: interpretação=4, classificador=1, não suportadas=0; hosts externos bloqueados no navegador={"fonts.googleapis.com":16}; no backend=0

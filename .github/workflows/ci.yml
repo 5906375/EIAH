@@ -1748,3 +1748,12 @@ jobs:
         env:
           EIAH_DISPOSABLE_INFRA: "1"
         timeout-minutes: 10
+
+      # IMOB P-04: o claimOnly do Front Door não escreve (nenhuma transação de escrita nem memory_events), medido em PostgreSQL real. O teste exige a
+      # guarda de banco descartável (assertDisposableDatabase): este job fornece eiah_logistica_core_ci efêmero do runner + EIAH_DISPOSABLE_INFRA.
+      # Falha do teste reprova o passo (sem continue-on-error, sem skip); o arquivo do W4 (banco eiah_ci) não o executa.
+      - name: Run IMOB claimOnly write-measurement integration (PostgreSQL real descartável)
+        run: pnpm test:imob-claim-only-writes:integration
+        env:
+          EIAH_DISPOSABLE_INFRA: "1"
+        timeout-minutes: 10

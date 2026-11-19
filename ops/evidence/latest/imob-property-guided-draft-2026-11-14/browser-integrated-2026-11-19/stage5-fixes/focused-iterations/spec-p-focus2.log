@@ -1,0 +1,3 @@
+[APROVADO] 5f P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho
+
+CENÁRIOS: 1 | aprovados 1 | reprovados 0; provider simulado: interpretação=0, classificador=1, não suportadas=0; hosts externos bloqueados no navegador={"fonts.googleapis.com":3}; no backend=0

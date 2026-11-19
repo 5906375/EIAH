@@ -1,0 +1,34 @@
+TAP version 13
+# Subtest: coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+ok 1 - coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+  ---
+  duration_ms: 50.730391
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: abertura com resultado desconhecido termina espera e retoma a mesma referência
+ok 2 - coleta guiada v1 Front Door: abertura com resultado desconhecido termina espera e retoma a mesma referência
+  ---
+  duration_ms: 19.0441
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 abertura: repetição reutiliza origem e resposta atrasada não renova interpretação consumida
+ok 3 - coleta guiada v1 abertura: repetição reutiliza origem e resposta atrasada não renova interpretação consumida
+  ---
+  duration_ms: 22.039658
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 abertura: cancelar antes/depois da admissão impede resposta tardia de substituir cadastro mais recente
+ok 4 - coleta guiada v1 abertura: cancelar antes/depois da admissão impede resposta tardia de substituir cadastro mais recente
+  ---
+  duration_ms: 15.731329
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 199.522126

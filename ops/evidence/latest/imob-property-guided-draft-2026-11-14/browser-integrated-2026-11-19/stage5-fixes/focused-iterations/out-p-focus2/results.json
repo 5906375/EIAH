@@ -1,0 +1,156 @@
+{
+  "environment": {
+    "browser": "Chromium 149.0.7827.55 (Playwright headless)",
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "kind": "emulação de viewport (isMobile+touch), não aparelho físico"
+    },
+    "apiOrigin": "loopback (API real, NODE_ENV=test, sem workers/filas)",
+    "web": "Vite dev real em loopback"
+  },
+  "provider": {
+    "simulatedInvocations": 0,
+    "classifierInvocations": 1,
+    "unsupportedRequests": 0,
+    "entries": [
+      {
+        "seq": 1,
+        "host": "api.openai.com",
+        "path": "/v1/responses",
+        "contract": "responses_intent",
+        "answered": "abstain",
+        "messageChars": 0
+      }
+    ]
+  },
+  "selection": {
+    "requested": [
+      "5f"
+    ],
+    "executed": [
+      "5f"
+    ],
+    "harnessSelfTest": {
+      "externalBlocked": true,
+      "providerRedirected": true,
+      "chatCompletionsSupported": true,
+      "responsesIntentSupported": true,
+      "responsesIntentShape": true,
+      "responsesOtherRejected": true,
+      "unknownTextRejected": true
+    }
+  },
+  "divergences": [],
+  "externalTraffic": {
+    "browserBlocked": {
+      "fonts.googleapis.com": 3
+    },
+    "backendBlocked": [],
+    "note": "nenhum acesso externo foi liberado; as entradas acima foram abortadas/rejeitadas"
+  },
+  "database": {
+    "properties": 0,
+    "sessions": [
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 4
+      },
+      {
+        "status": "active",
+        "interpretation": "declined",
+        "revision": 3
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "5f",
+      "name": "P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "pré-condições: 1 sessão ativa em coleta com 1 campo confirmado",
+          "ok": true
+        },
+        {
+          "what": "A: nenhum claim é emitido pela aba em coleta ativa; o texto segue para a coleta guiada",
+          "ok": true
+        },
+        {
+          "what": "A: o rascunho não foi apagado, substituído nem cancelado (mesma sessão ativa, mesmo campo confirmado, 1 sessão aberta)",
+          "ok": true
+        },
+        {
+          "what": "A: a interface continua na coleta, com retorno visível ao usuário (não é silencioso)",
+          "ok": true
+        },
+        {
+          "what": "B: o servidor respondeu 200 claimed:true (consulta de agente) à aba sem contexto, com a sessão guiada aberta",
+          "ok": true
+        },
+        {
+          "what": "B: a interface mostra a resposta reivindicada, sem aviso de cadastro pendente e sem erro genérico",
+          "ok": true
+        },
+        {
+          "what": "B: a sessão e o rascunho do cadastro aberto ficaram idênticos; nenhum provider/classificador foi chamado",
+          "ok": true
+        },
+        {
+          "what": "C: a ação IMOB não guiada continua com 409, aviso e cancelamento explícito; sessão intacta",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "01-p04-mesma-aba-coleta-ativa.png",
+        "02-p04-outra-aba-claim-reivindicado.png",
+        "03-p04-operacao-incompativel-bloqueada.png"
+      ]
+    }
+  ]
+}

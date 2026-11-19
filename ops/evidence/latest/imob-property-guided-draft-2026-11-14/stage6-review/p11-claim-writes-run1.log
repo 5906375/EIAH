@@ -1,0 +1,983 @@
+TAP version 13
+# {"level":30,"time":"2026-11-19T17:46:51.044Z","service":"eiah","env":"test","traceId":"8def8973-40a9-4c8a-8f39-2d513cde11b5","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"185","durationMs":134.376779,"msg":"http.request.completed"}
+# Subtest: POST /api/marketplace/installations/activate recusa quem não é proprietário nem tem permissão de ativar
+ok 1 - POST /api/marketplace/installations/activate recusa quem não é proprietário nem tem permissão de ativar
+  ---
+  duration_ms: 1907.330973
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# {"level":30,"time":"2026-11-19T17:46:51.173Z","service":"eiah","env":"test","traceId":"f0ac165e-5e32-42c1-9c5d-f3f8015fd88d","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"351","durationMs":117.030844,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:51.220Z","service":"eiah","env":"test","traceId":"f8124c6e-fc82-4d3b-87ba-d60438b4f8df","component":"api","httpMethod":"GET","path":"/api/marketplace/installations","statusCode":200,"contentLength":"244","durationMs":38.00932,"msg":"http.request.completed"}
+# Subtest: POST /api/marketplace/installations/activate ativa IMOB e retorna rotas liberadas
+ok 2 - POST /api/marketplace/installations/activate ativa IMOB e retorna rotas liberadas
+  ---
+  duration_ms: 169.819297
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# {"level":30,"time":"2026-11-19T17:46:51.290Z","service":"eiah","env":"test","traceId":"cf410b59-d3da-4afd-aed9-032c475eb25b","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"351","durationMs":64.08123,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-install-mwnue0fg-03348s/workspace-install-mwnue0fg-03348s
+# {"level":30,"time":"2026-11-19T17:46:51.362Z","service":"eiah","env":"test","traceId":"b71d4509-196e-419b-b8e6-3cbe217dc0bd","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"351","durationMs":68.812666,"msg":"http.request.completed"}
+# Subtest: POST /api/marketplace/installations/activate é idempotente por tenant/workspace/produto
+ok 3 - POST /api/marketplace/installations/activate é idempotente por tenant/workspace/produto
+  ---
+  duration_ms: 148.241717
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-19T17:46:51.390Z","service":"eiah","env":"test","traceId":"08411ec2-8682-4426-ae38-1dd8087974e3","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":400,"contentLength":"47","durationMs":15.551192,"msg":"http.request.completed"}
+# Subtest: POST /api/marketplace/installations/activate rejeita produto inválido
+ok 4 - POST /api/marketplace/installations/activate rejeita produto inválido
+  ---
+  duration_ms: 19.492339
+  type: 'test'
+  ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.556Z","service":"eiah","env":"test","traceId":"5ee736b2-7670-443e-b238-566ed2db6ad2","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"312","durationMs":38.725553,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.603Z","service":"eiah","env":"test","traceId":"2b2d0e35-4e77-4f82-b57c-81969a85a036","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"312","durationMs":43.641313,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.643Z","service":"eiah","env":"test","traceId":"b12542b4-fc1e-4384-a193-029a2c7ec154","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"312","durationMs":35.784866,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.685Z","service":"eiah","env":"test","traceId":"38ac5636-01d4-465f-aea8-1444d2ff8212","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"312","durationMs":37.353606,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.723Z","service":"eiah","env":"test","traceId":"5988852a-c15d-4423-9721-3a87351d5a33","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"308","durationMs":33.088001,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a2-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.760Z","service":"eiah","env":"test","traceId":"f00e9e5b-8bb1-4973-86df-48b7d1efb1a3","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"311","durationMs":34.622096,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-b-mwnue0fg-03348s-authz/workspace-authz-b-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.796Z","service":"eiah","env":"test","traceId":"f1902ba6-bb70-4e36-9d1e-3d443eb402b4","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"312","durationMs":33.956476,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.831Z","service":"eiah","env":"test","traceId":"d74c04e9-6ac4-4ef1-a4f1-0eb2ca24f3af","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":403,"contentLength":"311","durationMs":31.92158,"msg":"http.request.completed"}
+# Subtest: AUTHZ-SCOPE-1: autoridade comercial de contratação de agentes
+    # Subtest: 1-5 sem designação ninguém contrata: pessoa comum, Founder, administrador técnico, 'papel personalizado', serviço, outro workspace e outro tenant
+    ok 1 - 1-5 sem designação ninguém contrata: pessoa comum, Founder, administrador técnico, 'papel personalizado', serviço, outro workspace e outro tenant
+      ---
+      duration_ms: 331.402693
+      type: 'test'
+      ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.881Z","service":"eiah","env":"test","traceId":"112db271-99f0-48f4-92b5-d35fd9713258","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"114","durationMs":33.893504,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:51.902Z","service":"eiah","env":"test","traceId":"9bf77cef-5ac8-4337-bcdc-e097c1dca5da","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"104","durationMs":18.117479,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:51.916Z","service":"eiah","env":"test","traceId":"3274bac2-9b3c-4db3-9dcf-f5db2be4a7fd","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_seed_grantor_mwnue0fg-03348s-authz/revoke","statusCode":403,"contentLength":"105","durationMs":11.98223,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.959Z","service":"eiah","env":"test","traceId":"dd4c3ced-5a37-4b98-815f-94003e945dd4","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":38.276016,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:51.998Z","service":"eiah","env":"test","traceId":"b7f68d0f-0a1f-4727-8624-fce1e141ce60","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":36.112104,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.041Z","service":"eiah","env":"test","traceId":"ee91031a-b61d-49e8-92cf-de6a011036de","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":40.262888,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.084Z","service":"eiah","env":"test","traceId":"cc25d1b2-248f-4a26-83e8-e13ddc3cf33d","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":38.826851,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.133Z","service":"eiah","env":"test","traceId":"79f36506-2c39-45d0-9aab-ccd86fd13f4b","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":44.796484,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a2-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.187Z","service":"eiah","env":"test","traceId":"afd05d98-b984-45f7-aef6-fc1b43828134","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"473","durationMs":51.101525,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a2-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.271Z","service":"eiah","env":"test","traceId":"ba006e89-66eb-4550-90bd-b47d0ec9a150","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"155","durationMs":80.628622,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.308Z","service":"eiah","env":"test","traceId":"64585872-bc04-4ef4-a07c-686dd911bf8a","component":"api","httpMethod":"GET","path":"/api/commercial-authority/status","statusCode":200,"contentLength":"354","durationMs":34.287019,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.342Z","service":"eiah","env":"test","traceId":"14e394b4-8152-4c5a-910b-38c62b1a9bf5","component":"api","httpMethod":"GET","path":"/api/commercial-authority/status","statusCode":200,"contentLength":"227","durationMs":31.755037,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.360Z","service":"eiah","env":"test","traceId":"1013fc00-0586-4cab-afed-2894dbf937b3","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"135","durationMs":12.121798,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.372Z","service":"eiah","env":"test","traceId":"e5a325f2-2c75-499e-a1e4-dc1dee3f7db1","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"138","durationMs":11.208692,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.385Z","service":"eiah","env":"test","traceId":"e3cca0ee-30e9-4f44-b517-4a5675cd39de","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"148","durationMs":11.012072,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.398Z","service":"eiah","env":"test","traceId":"e532eae1-21d8-4b43-a9b8-4b374467ace4","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"118","durationMs":11.128426,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.410Z","service":"eiah","env":"test","traceId":"1faa73ba-994e-4f5b-980f-c7959bae660b","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"125","durationMs":10.097284,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.424Z","service":"eiah","env":"test","traceId":"d1bf7846-286c-4940-8079-46dd3e4e52b4","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":400,"contentLength":"170","durationMs":12.152063,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.465Z","service":"eiah","env":"test","traceId":"bbc49e23-2215-4752-8993-bf0556906381","component":"api","httpMethod":"GET","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":37.851181,"msg":"http.request.completed"}
+    # Subtest: 5 papel personalizado não permite autoconcessão; e ninguém concede a si mesmo; bootstrap bloqueado e explícito
+    ok 2 - 5 papel personalizado não permite autoconcessão; e ninguém concede a si mesmo; bootstrap bloqueado e explícito
+      ---
+      duration_ms: 621.452638
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:46:52.513Z","service":"eiah","env":"test","traceId":"62aa03bd-c55b-48fb-9832-f1ec48dae164","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"136","durationMs":44.389618,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.557Z","service":"eiah","env":"test","traceId":"bc2a14b4-783c-4a04-adbf-ca972d860915","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"138","durationMs":41.274895,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.601Z","service":"eiah","env":"test","traceId":"7e644527-5708-4711-8135-520fe092da42","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"138","durationMs":39.559914,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.643Z","service":"eiah","env":"test","traceId":"ac2865b1-419b-44aa-a343-ca525a9777c1","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"114","durationMs":35.873712,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.683Z","service":"eiah","env":"test","traceId":"36d00725-52c7-44b5-b9f8-11a9ff2e3348","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":409,"contentLength":"184","durationMs":37.407419,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.728Z","service":"eiah","env":"test","traceId":"7549e736-1c9a-4091-99da-3e8312d48c01","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":422,"contentLength":"141","durationMs":39.747113,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:52.766Z","service":"eiah","env":"test","traceId":"cbe1dccf-28a7-4e8c-91f4-92ea1600d841","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":422,"contentLength":"141","durationMs":35.570006,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.828Z","service":"eiah","env":"test","traceId":"799b31b0-1b38-40bf-9271-453e673a9e4d","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":201,"contentLength":"580","durationMs":56.24839,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "eiah_commercial_authority_active_uidx"`
+# {"level":30,"time":"2026-11-19T17:46:52.886Z","service":"eiah","env":"test","traceId":"14103553-052e-4063-813d-469ebdf6dd77","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":409,"contentLength":"126","durationMs":47.461881,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.924Z","service":"eiah","env":"test","traceId":"047c81ab-0a7c-4c75-a5fa-d7d4e87de730","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":33.081549,"msg":"http.request.completed"}
+    # Subtest: 3 concessão governada: ninguém concede o que não possui; validade e limites têm teto; separação de funções; beneficiário é membro
+    ok 3 - 3 concessão governada: ninguém concede o que não possui; validade e limites têm teto; separação de funções; beneficiário é membro
+      ---
+      duration_ms: 459.313317
+      type: 'test'
+      ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:52.985Z","service":"eiah","env":"test","traceId":"cd495efd-ba8c-4d0f-ae05-b2eadce6794d","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue290000p0bdzy3bbg6or/subscribe","statusCode":200,"contentLength":"129","durationMs":56.445974,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.033Z","service":"eiah","env":"test","traceId":"927bb848-ca07-421d-ae51-612f1060701c","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":403,"contentLength":"198","durationMs":40.384025,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.088Z","service":"eiah","env":"test","traceId":"2385e917-0f87-4c13-ba3c-b2213b9a213f","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":403,"contentLength":"203","durationMs":49.667428,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:53.183Z","service":"eiah","env":"test","traceId":"63a48567-8b8d-454d-aea6-8f80a95ba4bb","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1475","durationMs":88.782435,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.221Z","service":"eiah","env":"test","traceId":"4a7b357f-ea97-4922-a1b8-098daa03ff55","component":"api","httpMethod":"GET","path":"/api/commercial-authority/designations","statusCode":200,"contentLength":"1588","durationMs":34.254379,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.261Z","service":"eiah","env":"test","traceId":"3d205994-0040-40ba-b9a6-bfc2051ebc55","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_2fd33c44-c6de-42ac-ac6f-e2b26b8f0d42/revoke","statusCode":403,"contentLength":"159","durationMs":36.280502,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.294Z","service":"eiah","env":"test","traceId":"baa96b1d-7f49-40d7-835d-fa0e855df87f","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_2fd33c44-c6de-42ac-ac6f-e2b26b8f0d42/revoke","statusCode":404,"contentLength":"111","durationMs":30.209731,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.309Z","service":"eiah","env":"test","traceId":"0ff47bc2-8cf4-4e7f-abdd-b8a97edc1d69","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_2fd33c44-c6de-42ac-ac6f-e2b26b8f0d42/revoke","statusCode":400,"contentLength":"149","durationMs":13.200574,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.349Z","service":"eiah","env":"test","traceId":"a5d0949f-ea7e-4feb-b3ca-c9f636334367","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_2fd33c44-c6de-42ac-ac6f-e2b26b8f0d42/revoke","statusCode":200,"contentLength":"69","durationMs":37.56255,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.385Z","service":"eiah","env":"test","traceId":"c4a6af43-9135-40d1-b7c2-c1613521e144","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":403,"contentLength":"312","durationMs":33.576519,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:53.441Z","service":"eiah","env":"test","traceId":"9975f7a2-fad5-4397-8d76-10b6ca590969","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":48.205377,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.471Z","service":"eiah","env":"test","traceId":"0fdbfeb0-86d2-439e-a726-15433e5f1871","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_2fd33c44-c6de-42ac-ac6f-e2b26b8f0d42/revoke","statusCode":409,"contentLength":"95","durationMs":27.254873,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.512Z","service":"eiah","env":"test","traceId":"79a37962-f5a8-40cd-818c-ccae0ec86396","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":201,"contentLength":"579","durationMs":38.535871,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.546Z","service":"eiah","env":"test","traceId":"d94bf786-8bb1-489d-94ce-0d3d127a983c","component":"api","httpMethod":"GET","path":"/api/commercial-authority/designations","statusCode":200,"contentLength":"2164","durationMs":31.205609,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.580Z","service":"eiah","env":"test","traceId":"d1012791-a58b-4aa7-b6ab-a93912329094","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_c8167382-5f6f-4159-9480-d7fe4a42acbd/revoke","statusCode":200,"contentLength":"69","durationMs":31.615736,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.621Z","service":"eiah","env":"test","traceId":"917979bf-43ca-4874-a8e7-7b1f03784029","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":201,"contentLength":"577","durationMs":38.445048,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.661Z","service":"eiah","env":"test","traceId":"f7bb3c5c-aea6-41e0-b98b-d7d42177c560","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":201,"contentLength":"573","durationMs":37.073295,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.709Z","service":"eiah","env":"test","traceId":"5d196f8c-a854-45a6-89aa-7a53088974ba","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue293000r0bdzuvc5ivlz/subscribe","statusCode":200,"contentLength":"129","durationMs":46.181359,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.744Z","service":"eiah","env":"test","traceId":"525486a6-2b63-4693-be9d-406cb319e88d","component":"api","httpMethod":"GET","path":"/api/commercial-authority/designations","statusCode":200,"contentLength":"3286","durationMs":32.765434,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.796Z","service":"eiah","env":"test","traceId":"0c2d31f4-7dff-4073-bd64-8a1c2105dac1","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_6b775a79-b6d4-4da3-971e-164572197efa/revoke","statusCode":200,"contentLength":"112","durationMs":48.549838,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.840Z","service":"eiah","env":"test","traceId":"87d60605-963a-44ab-8998-c6c79fb6fa17","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue295000s0bdz7pwcyh4g/subscribe","statusCode":403,"contentLength":"312","durationMs":41.146466,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:53.891Z","service":"eiah","env":"test","traceId":"f5246909-d937-43e5-bfd4-0a91e23b0bf1","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":403,"contentLength":"159","durationMs":43.437586,"msg":"http.request.completed"}
+    # Subtest: 12+8 fluxo positivo sintético e revogação imediata: contratar com designação, respeitar limites, revogar e perder a autoridade na chamada seguinte
+    ok 4 - 12+8 fluxo positivo sintético e revogação imediata: contratar com designação, respeitar limites, revogar e perder a autoridade na chamada seguinte
+      ---
+      duration_ms: 966.592976
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:46:53.914Z","service":"eiah","env":"test","traceId":"24865d5f-ba5b-495c-b532-7cc49faab528","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":409,"contentLength":"220","durationMs":19.273404,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.931Z","service":"eiah","env":"test","traceId":"a230a036-9da1-4741-9706-c79a79de5bb4","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":409,"contentLength":"220","durationMs":15.018694,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.953Z","service":"eiah","env":"test","traceId":"22ee0deb-7593-479b-bbbd-847ecaac6a7f","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":19.88218,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:53.976Z","service":"eiah","env":"test","traceId":"95821c8a-9b83-4466-b8a1-32e93ca0fbcc","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":20.884099,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.002Z","service":"eiah","env":"test","traceId":"e0d4890b-edcb-494a-8970-bceb3370b4aa","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":23.29427,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.022Z","service":"eiah","env":"test","traceId":"5377aced-a63f-4587-a455-aca05bf6545e","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"136","durationMs":14.347764,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.067Z","service":"eiah","env":"test","traceId":"f94bce34-26cc-4dcf-b597-c426dc7ff0f5","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":200,"contentLength":"117","durationMs":42.429008,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.117Z","service":"eiah","env":"test","traceId":"db078385-6594-431f-bf01-a28ca1f38a69","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":200,"contentLength":"117","durationMs":46.119244,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.214Z","service":"eiah","env":"test","traceId":"1465b0be-3642-4133-9474-f8e4d2f62f86","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":200,"contentLength":"477","durationMs":75.093814,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.250Z","service":"eiah","env":"test","traceId":"6660f48b-8e59-4ed8-b042-5db6d95ff068","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":25.039113,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.307Z","service":"eiah","env":"test","traceId":"e4b6afe7-ac5c-4c8d-8bf8-4b6002b59ebd","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":54.893136,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.352Z","service":"eiah","env":"test","traceId":"3ea9884f-98e7-44fc-bfd9-cf9fc2703b0e","component":"api","httpMethod":"PATCH","path":"/api/delegations/cmwnue4cj001g0bdz444ptxl8","statusCode":403,"contentLength":"312","durationMs":42.254769,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.391Z","service":"eiah","env":"test","traceId":"ea710196-ad67-4237-8861-7e1c11119d22","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":403,"contentLength":"312","durationMs":35.308865,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.431Z","service":"eiah","env":"test","traceId":"ad82e8d6-f30b-4589-b80d-c9891578f9ed","component":"api","httpMethod":"PATCH","path":"/api/delegations/cmwnue4cj001g0bdz444ptxl8","statusCode":403,"contentLength":"312","durationMs":38.263843,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.469Z","service":"eiah","env":"test","traceId":"d2a1c038-e3bb-448a-ba52-f12108774c09","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":403,"contentLength":"312","durationMs":35.464386,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.507Z","service":"eiah","env":"test","traceId":"c838391c-f7d7-4797-9d3f-2185076be42a","component":"api","httpMethod":"PATCH","path":"/api/delegations/cmwnue4cj001g0bdz444ptxl8","statusCode":403,"contentLength":"312","durationMs":35.175268,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.543Z","service":"eiah","env":"test","traceId":"d862e3e5-374f-4a62-8079-49eeafbea35e","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":403,"contentLength":"312","durationMs":33.196349,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.586Z","service":"eiah","env":"test","traceId":"1eedd93c-e274-4a76-a4f2-e33e932bfb34","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue295000s0bdz7pwcyh4g/subscribe","statusCode":403,"contentLength":"312","durationMs":38.255277,"msg":"http.request.completed"}
+    # Subtest: 6-7 /actions/override e delegações não contornam o controle: nem sozinhos nem combinados
+    ok 5 - 6-7 /actions/override e delegações não contornam o controle: nem sozinhos nem combinados
+      ---
+      duration_ms: 697.587306
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:46:54.662Z","service":"eiah","env":"test","traceId":"09ac6ab1-7114-484d-b806-c28568fc4770","component":"api","httpMethod":"PUT","path":"/api/profile/me","statusCode":422,"contentLength":"278","durationMs":68.965662,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.712Z","service":"eiah","env":"test","traceId":"79651f90-de1c-441a-b2b1-8ded445966b9","component":"api","httpMethod":"POST","path":"/api/profile/workspace-members/invitations","statusCode":422,"contentLength":"278","durationMs":47.999294,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:54.771Z","service":"eiah","env":"test","traceId":"6ec899bb-f632-42cf-85e8-4748b937c7cc","component":"api","httpMethod":"POST","path":"/api/profile/workspace-members/invitations","statusCode":201,"contentLength":"391","durationMs":52.843885,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:54.817Z","service":"eiah","env":"test","traceId":"f03b1ea5-1b1c-434b-8edc-e009bb5ad862","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":403,"contentLength":"312","durationMs":41.699348,"msg":"http.request.completed"}
+    # Subtest: 5+10 papéis personalizados e convites não produzem autoridade comercial; convidar pessoa e contratar agente são operações distintas
+    ok 6 - 5+10 papéis personalizados e convites não produzem autoridade comercial; convidar pessoa e contratar agente são operações distintas
+      ---
+      duration_ms: 229.060311
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:54.864Z","service":"eiah","env":"test","traceId":"a108cd65-8a17-4518-af07-68f5dadc647e","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":40.635075,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:54.925Z","service":"eiah","env":"test","traceId":"e8c66d6f-cddd-4991-bd93-5dfd419ce517","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":58.301356,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:54.986Z","service":"eiah","env":"test","traceId":"cc09ff62-d8b5-444d-b87e-8a093cf120ad","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":57.73309,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:55.049Z","service":"eiah","env":"test","traceId":"61b7e307-71e0-4a5d-8610-c69eec4143e9","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1540","durationMs":58.196511,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:55.108Z","service":"eiah","env":"test","traceId":"a3f8c1a7-93ca-4869-9887-6a651fdd753a","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign&authority=contratacao_autorizada","statusCode":200,"contentLength":"1544","durationMs":54.575034,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:55.113Z","service":"eiah","env":"test","traceId":"b1a128fa-72bf-4e2f-8050-06b4302586e5","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":401,"contentLength":"77","durationMs":0.605846,"msg":"http.request.completed"}
+    # Subtest: 11 descoberta e recomendação seguem disponíveis para quem só consulta, sem ação de contratação
+    ok 7 - 11 descoberta e recomendação seguem disponíveis para quem só consulta, sem ação de contratação
+      ---
+      duration_ms: 293.88927
+      type: 'test'
+      ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.165Z","service":"eiah","env":"test","traceId":"613fa043-f55e-42f9-82f9-7612c07deaf2","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":201,"contentLength":"580","durationMs":49.308177,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:55.225Z","service":"eiah","env":"test","traceId":"d4e8f3e4-7136-499b-b4b9-6fdfa23f704d","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":503,"contentLength":"160","durationMs":52.275456,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:55.277Z","service":"eiah","env":"test","traceId":"4f1a2a77-48c0-40e6-8dc9-ca675ce54068","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations","statusCode":503,"contentLength":"150","durationMs":44.023944,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:55.316Z","service":"eiah","env":"test","traceId":"2ca7a490-f3c9-4833-9535-a3b23d0dd0f3","component":"api","httpMethod":"GET","path":"/api/commercial-authority/designations","statusCode":200,"contentLength":"3885","durationMs":35.275349,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:55.361Z","service":"eiah","env":"test","traceId":"13435696-74ee-44e8-8627-571e02ab760a","component":"api","httpMethod":"POST","path":"/api/commercial-authority/designations/cad_e47c77f6-48b4-4749-afab-4fb1e17e9018/revoke","statusCode":503,"contentLength":"148","durationMs":42.207483,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:55.398Z","service":"eiah","env":"test","traceId":"8a17ae86-1b3f-4042-bfcf-6b4727b518e7","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":403,"contentLength":"312","durationMs":33.568999,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.449Z","service":"eiah","env":"test","traceId":"4a02e7b4-d832-4d1f-8859-55b5cdf49ddf","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue292000q0bdzu1npcr4h/subscribe","statusCode":200,"contentLength":"129","durationMs":44.70804,"msg":"http.request.completed"}
+    # Subtest: 9 falha na auditoria impede o efeito comercial: contratar, conceder e revogar não deixam rastro quando o registro falha
+    ok 8 - 9 falha na auditoria impede o efeito comercial: contratar, conceder e revogar não deixam rastro quando o registro falha
+      ---
+      duration_ms: 338.403317
+      type: 'test'
+      ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.486Z","service":"eiah","env":"test","traceId":"152efb09-05c1-40d8-8ea3-8e32419914d9","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue293000r0bdzuvc5ivlz/subscribe","statusCode":403,"contentLength":"312","durationMs":30.124824,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.519Z","service":"eiah","env":"test","traceId":"1c11a719-ac5c-43ab-a98a-93ebda1f2493","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue293000r0bdzuvc5ivlz/subscribe","statusCode":403,"contentLength":"312","durationMs":29.128256,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:55.563Z","service":"eiah","env":"test","traceId":"0411060a-be39-4e5a-b877-fcddfa80cc67","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":40.921813,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:55.609Z","service":"eiah","env":"test","traceId":"cb3debb3-e36c-4460-8446-4bcad00b56c7","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1475","durationMs":42.29881,"msg":"http.request.completed"}
+    # Subtest: 8 designação expirada e membership suspensa perdem a autoridade imediatamente (sem depender de revogação explícita)
+    ok 9 - 8 designação expirada e membership suspensa perdem a autoridade imediatamente (sem depender de revogação explícita)
+      ---
+      duration_ms: 161.067939
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:46:55.653Z","service":"eiah","env":"test","traceId":"50baa0b1-78d5-4028-adca-b8eda8561671","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":200,"contentLength":"477","durationMs":36.252434,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.693Z","service":"eiah","env":"test","traceId":"2e3f01b9-00be-4c94-9f0b-1d54d4a55479","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":38.242566,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.727Z","service":"eiah","env":"test","traceId":"8e79de85-d2a1-4d95-a6f7-e56bd62a263e","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":30.294239,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.759Z","service":"eiah","env":"test","traceId":"344785e4-10a1-4f58-bb78-750ff9a81dbb","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":30.872506,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.793Z","service":"eiah","env":"test","traceId":"9502c81f-c367-46d6-bd59-5adf4a9f258a","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":30.87456,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:55.834Z","service":"eiah","env":"test","traceId":"eec2a24e-75dc-469a-a8ca-b3ab117cd509","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1544","durationMs":38.984216,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:update enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.894Z","service":"eiah","env":"test","traceId":"c5aaea75-ee4a-4588-a38e-3e7665b2c047","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue296000t0bdz5nwf0y91/subscribe","statusCode":200,"contentLength":"167","durationMs":54.163612,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.942Z","service":"eiah","env":"test","traceId":"763a059b-178b-4d8a-b565-ba190e21c4f1","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":41.789475,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:55.979Z","service":"eiah","env":"test","traceId":"fc78b74f-f518-4278-9c67-8d7e83dab76f","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":34.505799,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.012Z","service":"eiah","env":"test","traceId":"d4ca9077-7584-4a22-be83-6c5f80d38581","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":30.797894,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:56.049Z","service":"eiah","env":"test","traceId":"ea2d2de9-e4b9-492e-948f-d20cb73ecc50","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"809","durationMs":34.096241,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.089Z","service":"eiah","env":"test","traceId":"33eeab9c-a9ad-48b5-a049-9c8e3a9c626b","component":"api","httpMethod":"PATCH","path":"/api/delegations/cmwnue5gi001m0bdzndn9zx7q","statusCode":200,"contentLength":"475","durationMs":36.000541,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.131Z","service":"eiah","env":"test","traceId":"26b163c2-8e5a-4993-a4d2-753303103896","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":39.173965,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.170Z","service":"eiah","env":"test","traceId":"afd67989-2e1e-48a2-a247-f8cab8a9c687","component":"api","httpMethod":"PATCH","path":"/api/delegations/cmwnue5gi001m0bdzndn9zx7q","statusCode":200,"contentLength":"477","durationMs":37.283946,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.200Z","service":"eiah","env":"test","traceId":"0ea78d0f-2618-4754-bdcc-28ff1c23a514","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":27.65322,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.233Z","service":"eiah","env":"test","traceId":"d453be60-7774-4eea-8750-676c9eab6107","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":28.177933,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.266Z","service":"eiah","env":"test","traceId":"0af99002-a325-4151-bb12-4246cc852250","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":28.810306,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.305Z","service":"eiah","env":"test","traceId":"22c4f64e-a07b-4ff1-8b4b-2bb1c90f109b","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":28.894036,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.339Z","service":"eiah","env":"test","traceId":"d2b72f80-acda-4f3b-b029-918e9466f60a","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":29.879326,"msg":"http.request.completed"}
+    # Subtest: 1-4 agente governado: política antiga + delegação de publicador NÃO habilitam; a habilitação só nasce da contratação governada e fica vinculada à decisão
+    ok 10 - 1-4 agente governado: política antiga + delegação de publicador NÃO habilitam; a habilitação só nasce da contratação governada e fica vinculada à decisão
+      ---
+      duration_ms: 727.405389
+      type: 'test'
+      ...
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.380Z","service":"eiah","env":"test","traceId":"aeda7f9a-f2ee-4765-add5-40f3b689ee89","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_0eb20a22-fbe6-4032-9cb8-0f0c58d92448/revoke","statusCode":403,"contentLength":"161","durationMs":36.799369,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.418Z","service":"eiah","env":"test","traceId":"71997770-603a-41bb-9331-830189814473","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_0eb20a22-fbe6-4032-9cb8-0f0c58d92448/revoke","statusCode":403,"contentLength":"161","durationMs":35.329592,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.453Z","service":"eiah","env":"test","traceId":"bd25b221-c4ca-4ec0-863d-645c66d735dd","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_0eb20a22-fbe6-4032-9cb8-0f0c58d92448/revoke","statusCode":403,"contentLength":"105","durationMs":31.904971,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-b-mwnue0fg-03348s-authz/workspace-authz-b-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.488Z","service":"eiah","env":"test","traceId":"b43098bc-a081-456a-9baa-a37c54aba36b","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_0eb20a22-fbe6-4032-9cb8-0f0c58d92448/revoke","statusCode":403,"contentLength":"161","durationMs":31.855583,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.519Z","service":"eiah","env":"test","traceId":"a5092cea-49af-48b9-b8d3-6c05dd341da8","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":28.934714,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.559Z","service":"eiah","env":"test","traceId":"f2c431ea-5f4e-4955-9eeb-c770e569c8e3","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_0eb20a22-fbe6-4032-9cb8-0f0c58d92448/revoke","statusCode":200,"contentLength":"69","durationMs":36.942367,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.592Z","service":"eiah","env":"test","traceId":"8ac18000-f4bd-4caa-825e-a3ef1f1c65ca","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":30.989378,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.628Z","service":"eiah","env":"test","traceId":"28f14af1-238a-4040-8758-ffcf78f86b75","component":"api","httpMethod":"POST","path":"/api/delegations","statusCode":200,"contentLength":"477","durationMs":28.699323,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.656Z","service":"eiah","env":"test","traceId":"6f9f2533-2202-4a96-a243-44218940d42a","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":25.866208,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.687Z","service":"eiah","env":"test","traceId":"85bce0b2-53a2-4720-a5ad-72117eda17c7","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":26.101561,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.704Z","service":"eiah","env":"test","traceId":"a562c7b5-194d-4b8c-94bc-d15a5d900476","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":14.16092,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.722Z","service":"eiah","env":"test","traceId":"1cd9daeb-f07d-4e54-a5c5-2fbe04208f67","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":16.229157,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.740Z","service":"eiah","env":"test","traceId":"8404701f-874d-43d1-a6c3-13f53d8079be","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"312","durationMs":15.361054,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.756Z","service":"eiah","env":"test","traceId":"620cb3c5-2888-4c50-a201-1f92c062b7b7","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"308","durationMs":15.126523,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.773Z","service":"eiah","env":"test","traceId":"25dfd337-583e-45d1-8dd7-d6e9e5d44686","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"308","durationMs":15.535962,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.788Z","service":"eiah","env":"test","traceId":"26a73f11-0c13-4d23-bb81-c50ec24dcb7b","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":403,"contentLength":"136","durationMs":12.991962,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.823Z","service":"eiah","env":"test","traceId":"3eafcb58-dd59-4613-b28a-8d4d4b674e21","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":32.632604,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.852Z","service":"eiah","env":"test","traceId":"995ac1d7-c998-4e65-98db-e95e9b8da628","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":200,"contentLength":"117","durationMs":26.165707,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.883Z","service":"eiah","env":"test","traceId":"ba3ced51-8c4b-4dc1-a0b6-d9240339711f","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":27.68864,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:56.901Z","service":"eiah","env":"test","traceId":"a2a46978-e642-4572-a424-65bd62ce8922","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":200,"contentLength":"117","durationMs":15.073887,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# [tenantGuard] TenantActionPolicy:update enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.951Z","service":"eiah","env":"test","traceId":"6434011a-43bf-4a66-a23f-189bd2d0d2ef","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue296000t0bdz5nwf0y91/subscribe","statusCode":200,"contentLength":"167","durationMs":48.383336,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:56.983Z","service":"eiah","env":"test","traceId":"2583c378-ab47-4e62-ab53-94d00d823cf8","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":29.151704,"msg":"http.request.completed"}
+    # Subtest: 1-2+5-8 revogação comercial: delegação nova, política antiga e actions.admin NÃO reativam o agente; só nova decisão da pessoa com autoridade
+    ok 11 - 1-2+5-8 revogação comercial: delegação nova, política antiga e actions.admin NÃO reativam o agente; só nova decisão da pessoa com autoridade
+      ---
+      duration_ms: 646.819575
+      type: 'test'
+      ...
+# prisma:error audit blocked (test)
+# guardrailLedger RBAC log failed: DriverAdapterError: audit blocked (test)
+#     at PrismaPgAdapter.onError (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/@prisma+adapter-pg@7.2.0/node_modules/@prisma/adapter-pg/dist/index.mjs:651:11)
+#     at PrismaPgAdapter.performIO (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/@prisma+adapter-pg@7.2.0/node_modules/@prisma/adapter-pg/dist/index.mjs:646:12)
+#     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+#     at async PrismaPgAdapter.queryRaw (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/node_modules/.pnpm/@prisma+adapter-pg@7.2.0/node_modules/@prisma/adapter-pg/dist/index.mjs:566:30)
+#     at async /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:24331
+#     at async fr (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:24170)
+#     at async e.interpretNode (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:42277)
+#     at async e.interpretNode (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:42701)
+#     at async e.interpretNode (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:43875)
+#     at async e.run (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:15:41116)
+#     at async e.execute (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:61:682)
+#     at async Dt.request (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:62:2186)
+#     at async Object.singleLoader (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:69:6569)
+#     at async qr.request (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:69:7061)
+#     at async a (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/db/src/generated/client/runtime/client.js:79:5816)
+#     at async recordGuardrailAudit (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/packages/core/src/services/guardrailLedgerStore.ts:79:3) {
+#   cause: {
+#     originalCode: 'P0001',
+#     originalMessage: 'audit blocked (test)',
+#     kind: 'postgres',
+#     code: 'P0001',
+#     severity: 'ERROR',
+#     message: 'audit blocked (test)',
+#     detail: undefined,
+#     column: undefined,
+#     hint: undefined
+#   },
+#   clientVersion: '7.2.0'
+# }
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:57.025Z","service":"eiah","env":"test","traceId":"5fc1c8a9-561c-4807-abe8-d92725f0e8c9","component":"api","httpMethod":"POST","path":"/api/actions/override","statusCode":503,"contentLength":"152","durationMs":30.135573,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:57.069Z","service":"eiah","env":"test","traceId":"55b6a22f-00f3-4950-80a7-ff9cc36e182a","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_2d7a43a6-a998-415c-95e2-7f07b10c426f/revoke","statusCode":503,"contentLength":"149","durationMs":40.147075,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:57.114Z","service":"eiah","env":"test","traceId":"242299c2-e702-45b9-94ba-426cc0d2b8ee","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"2973","durationMs":41.585872,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# prisma:error audit blocked (test)
+# {"level":30,"time":"2026-11-19T17:46:57.163Z","service":"eiah","env":"test","traceId":"65a4430f-31cf-4a90-af1b-f4b0b1236436","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue296000t0bdz5nwf0y91/subscribe","statusCode":503,"contentLength":"160","durationMs":46.645431,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:57.208Z","service":"eiah","env":"test","traceId":"26d67d8b-48f7-400f-b470-e026847ad38d","component":"api","httpMethod":"POST","path":"/api/commercial-authority/enablements/cae_2d7a43a6-a998-415c-95e2-7f07b10c426f/revoke","statusCode":200,"contentLength":"69","durationMs":38.314862,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-authz-a-mwnue0fg-03348s-authz/workspace-authz-a-mwnue0fg-03348s-authz
+# {"level":30,"time":"2026-11-19T17:46:57.244Z","service":"eiah","env":"test","traceId":"e277e6eb-0b7c-4377-90cc-f54d2ea30ce9","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":34.149531,"msg":"http.request.completed"}
+    # Subtest: 9 falha na auditoria bloqueia o efeito comercial também no override e na revogação de habilitação; a recuperação restabelece
+    ok 12 - 9 falha na auditoria bloqueia o efeito comercial também no override e na revogação de habilitação; a recuperação restabelece
+      ---
+      duration_ms: 258.142977
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:46:57.351Z","service":"eiah","env":"test","traceId":"9a002bc1-26a6-4931-95a9-8f1ac8c3865f","component":"api","httpMethod":"POST","path":"/api/auth/onboarding","statusCode":201,"contentLength":"288","durationMs":103.934947,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for org-authz-mwnue0fg-03348s-authz/cmwnue6qs00260bdz0oerg6ye
+# {"level":30,"time":"2026-11-19T17:46:57.382Z","service":"eiah","env":"test","traceId":"1c78f3dc-96ac-492c-8c83-4d0bdc540d78","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":25.233081,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for org-authz-mwnue0fg-03348s-authz/cmwnue6qs00260bdz0oerg6ye
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:57.415Z","service":"eiah","env":"test","traceId":"48208909-631c-4da0-9859-a9e1b1fb8164","component":"api","httpMethod":"GET","path":"/api/agents/capabilities/discover?domain=marketing&capability=campaign","statusCode":200,"contentLength":"1516","durationMs":31.004643,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:46:57.447Z","service":"eiah","env":"test","traceId":"de16d010-b4c5-4672-8d0e-fa8164a8bd87","component":"api","httpMethod":"GET","path":"/api/commercial-authority/status","statusCode":200,"contentLength":"354","durationMs":28.729235,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for org-authz-mwnue0fg-03348s-authz/cmwnue6qs00260bdz0oerg6ye
+# {"level":30,"time":"2026-11-19T17:46:57.488Z","service":"eiah","env":"test","traceId":"681b9b61-1a5d-4473-99c0-c1cc108d7c23","component":"api","httpMethod":"GET","path":"/api/agents","statusCode":200,"contentLength":"12","durationMs":36.816004,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for org-authz-mwnue0fg-03348s-authz/cmwnue6qs00260bdz0oerg6ye
+# {"level":30,"time":"2026-11-19T17:46:57.531Z","service":"eiah","env":"test","traceId":"8807c3e9-d5ba-4b41-a8e5-68a150fbefac","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue296000t0bdz5nwf0y91/subscribe","statusCode":403,"contentLength":"312","durationMs":40.400097,"msg":"http.request.completed"}
+    # Subtest: 3 onboarding não concede autoridade nem habilitação comercial implícita de agente governado
+    ok 13 - 3 onboarding não concede autoridade nem habilitação comercial implícita de agente governado
+      ---
+      duration_ms: 286.722068
+      type: 'test'
+      ...
+    # Subtest: ausência de efeitos externos: nada além de linhas sintéticas do banco descartável
+    ok 14 - ausência de efeitos externos: nada além de linhas sintéticas do banco descartável
+      ---
+      duration_ms: 10.657549
+      type: 'test'
+      ...
+# prisma:error 
+# Invalid `prismaGlobal.tenant.deleteMany()` invocation in
+# /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/marketplace.installations.activate.test.ts:311:57
+#   308 await prismaGlobal.workspace.deleteMany({ where: { tenantId: { in: tenants } } });
+#   309 // requireScope (actions.admin) grava em guardrail_ledger, que é append-only por desenho: o tenant que a rota
+#   310 // administrativa tocou não pode ser apagado. Os demais são removidos; o banco de teste é descartável.
+# → 311 for (const id of tenants) await prismaGlobal.tenant.deleteMany(
+# Foreign key constraint violated on the constraint: `guardrail_ledger_tenant_id_fkey`
+    1..14
+ok 5 - AUTHZ-SCOPE-1: autoridade comercial de contratação de agentes
+  ---
+  duration_ms: 6213.777822
+  type: 'suite'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:57.715Z","service":"eiah","env":"test","traceId":"9ce9fe24-6633-4c2c-a735-2432dd51258b","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"359","durationMs":71.175997,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:57.915Z","service":"eiah","env":"test","traceId":"7d282f0f-3a47-43d4-bb48-0b925793a7cf","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21952","durationMs":144.590789,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.092Z","service":"eiah","env":"test","traceId":"42fae2db-807c-46ad-9d91-40883f3630de","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21883","durationMs":171.116153,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.207Z","service":"eiah","env":"test","traceId":"7b2fc43f-40a2-4fcf-a1e7-ee3bda9a74a9","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21962","durationMs":112.023075,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.324Z","service":"eiah","env":"test","traceId":"4c4b4b08-0003-4b23-b201-bddf681068ac","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21893","durationMs":113.437689,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.465Z","service":"eiah","env":"test","traceId":"8a8eb04c-f6a2-4679-96ca-b63ec451db08","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21959","durationMs":137.873008,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.584Z","service":"eiah","env":"test","traceId":"759f9b79-ab3a-4802-a0b2-1cde94c99675","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21890","durationMs":116.189204,"msg":"http.request.completed"}
+# Subtest: P10: Front Door → caso IMOB → necessidade de divulgação → MKT → autoridade → consulta
+    # Subtest: necessidade de divulgação reconhecida SEM frase mágica: o MKT aparece no contexto do caso, com a autoridade de cada pessoa
+    ok 1 - necessidade de divulgação reconhecida SEM frase mágica: o MKT aparece no contexto do caso, com a autoridade de cada pessoa
+      ---
+      duration_ms: 820.155864
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.714Z","service":"eiah","env":"test","traceId":"14616d8f-9ce7-4018-b242-e09a25315e72","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21803","durationMs":106.575542,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:58.821Z","service":"eiah","env":"test","traceId":"7270554c-616e-4da3-a5b6-7f4f87a61dd0","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21734","durationMs":103.850262,"msg":"http.request.completed"}
+    # Subtest: 'Isso já contratou o Marketing?' é consulta de ESTADO da contratação de agente, nunca contrato imobiliário
+    ok 2 - 'Isso já contratou o Marketing?' é consulta de ESTADO da contratação de agente, nunca contrato imobiliário
+      ---
+      duration_ms: 253.971393
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:59.010Z","service":"eiah","env":"test","traceId":"d707b8f6-4057-4912-9890-4574b36bc5cd","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"24536","durationMs":166.143627,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:59.155Z","service":"eiah","env":"test","traceId":"1121b817-9dfb-4c1f-9901-f7b44594aa0f","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"24534","durationMs":142.108381,"msg":"http.request.completed"}
+    # Subtest: 'Qual o status desse caso?' com e sem artigo é o mesmo pedido de status do caso (não é interceptado como agente)
+    ok 3 - 'Qual o status desse caso?' com e sem artigo é o mesmo pedido de status do caso (não é interceptado como agente)
+      ---
+      duration_ms: 316.25404
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.248Z","service":"eiah","env":"test","traceId":"5764976e-443c-4a3d-a1c9-a7c2917f670c","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"6437","durationMs":74.433914,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:59.363Z","service":"eiah","env":"test","traceId":"8b1863d9-f470-4524-b7ae-9d8ff0e71ddd","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"21851","durationMs":111.03968,"msg":"http.request.completed"}
+    # Subtest: 'Preciso convidar alguém?' é ambíguo: pede esclarecimento, não abre formulário nem convida ninguém
+    ok 4 - 'Preciso convidar alguém?' é ambíguo: pede esclarecimento, não abre formulário nem convida ninguém
+      ---
+      duration_ms: 216.083925
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.467Z","service":"eiah","env":"test","traceId":"771f517d-04d5-449f-8d4c-0cdae160966f","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"35135","durationMs":91.301985,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.586Z","service":"eiah","env":"test","traceId":"fb863c9c-ce54-41f9-9bdf-95685a4e0917","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"30179","durationMs":114.601957,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.673Z","service":"eiah","env":"test","traceId":"61d1f2bc-acb8-4457-8213-829061c22c32","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"30206","durationMs":84.644218,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.753Z","service":"eiah","env":"test","traceId":"e217922f-7391-4fb4-a2a1-881bd9617599","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"30187","durationMs":77.391875,"msg":"http.request.completed"}
+    # Subtest: fluxos legítimos continuam: cadastrar imóvel e contrato de locação NÃO são interceptados como Marketing
+    ok 5 - fluxos legítimos continuam: cadastrar imóvel e contrato de locação NÃO são interceptados como Marketing
+      ---
+      duration_ms: 381.144852
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.822Z","service":"eiah","env":"test","traceId":"292df195-ef8c-4c0c-aa0b-ad45445806ea","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"20861","durationMs":65.300371,"msg":"http.request.completed"}
+    # Subtest: limite sem LLM: frase fora do léxico fechado NÃO é entendida como divulgação (segue o roteamento existente)
+    ok 6 - limite sem LLM: frase fora do léxico fechado NÃO é entendida como divulgação (segue o roteamento existente)
+      ---
+      duration_ms: 68.238008
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:46:59.925Z","service":"eiah","env":"test","traceId":"37a61795-a66d-467d-9ced-fbf6c4c5d3cf","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"23476","durationMs":91.058234,"msg":"http.request.completed"}
+# [tenantGuard] GuardrailAuditLedger:create enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:46:59.959Z","service":"eiah","env":"test","traceId":"507ab4d0-4855-474e-af4c-18f20d029934","component":"api","httpMethod":"POST","path":"/api/marketplace/cmwnue71w002n0bdz90i24cm1/subscribe","statusCode":403,"contentLength":"312","durationMs":30.922633,"msg":"http.request.completed"}
+    # Subtest: a autoridade vem do servidor: cabeçalhos/corpo forjados não elevam A; nada foi contratado, cobrado, habilitado ou publicado
+    ok 7 - a autoridade vem do servidor: cabeçalhos/corpo forjados não elevam A; nada foi contratado, cobrado, habilitado ou publicado
+      ---
+      duration_ms: 147.29496
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.075Z","service":"eiah","env":"test","traceId":"eb0ac65e-28ed-486e-baad-739e9c97c050","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":102.635285,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.164Z","service":"eiah","env":"test","traceId":"95802877-2ed0-4731-83eb-3c9921e46c50","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14113","durationMs":85.703257,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.270Z","service":"eiah","env":"test","traceId":"fb15d411-a523-4198-88dd-737aaf7d3979","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":104.143628,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.372Z","service":"eiah","env":"test","traceId":"8afd2261-ddbb-4e3e-90f4-f5fac9d3e0bb","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14113","durationMs":97.254574,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.475Z","service":"eiah","env":"test","traceId":"b1765f3b-1679-4e4c-b641-81a3878b8d22","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":100.767379,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.579Z","service":"eiah","env":"test","traceId":"3f5e62d8-3720-4c91-80f4-36eb3d00f9d6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14113","durationMs":100.280687,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.675Z","service":"eiah","env":"test","traceId":"d643d287-bf05-4c2f-9db1-bb58528091f7","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":93.333246,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.789Z","service":"eiah","env":"test","traceId":"bf6f59b1-176c-4c69-bab9-da58bddf423d","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":111.375728,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:00.896Z","service":"eiah","env":"test","traceId":"29030e58-5214-4f48-bddb-ac79884469db","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":104.367471,"msg":"http.request.completed"}
+    # Subtest: P11 vínculo explícito: com caseId autorizado a vertical responde SÓ sobre esse caso (nada do caso mais recente), com a autoridade de cada pessoa
+    ok 8 - P11 vínculo explícito: com caseId autorizado a vertical responde SÓ sobre esse caso (nada do caso mais recente), com a autoridade de cada pessoa
+      ---
+      duration_ms: 927.249046
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.004Z","service":"eiah","env":"test","traceId":"ad025653-af1a-4da2-9071-0fc204f355f4","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":104.064337,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.096Z","service":"eiah","env":"test","traceId":"83f4b263-b916-44a2-8490-bafa9ea27ea8","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":87.368263,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.191Z","service":"eiah","env":"test","traceId":"0cb4844e-af38-4412-816e-822170837bb6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":92.501605,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.281Z","service":"eiah","env":"test","traceId":"f6256cc0-53de-4bc5-9d8d-01e2ce6c4e79","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":87.940288,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.377Z","service":"eiah","env":"test","traceId":"0a4935bc-8e1f-41c5-a1b6-9f1a64834024","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":92.132804,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.456Z","service":"eiah","env":"test","traceId":"24c424d9-0618-44a0-8823-2f3908557bb3","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":76.56687,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.541Z","service":"eiah","env":"test","traceId":"1d0ad249-bbd2-4854-971c-5e063a9c49bc","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":82.483098,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.614Z","service":"eiah","env":"test","traceId":"f671bf76-e5ff-4854-bb7d-7667dfd62090","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":69.278236,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.698Z","service":"eiah","env":"test","traceId":"3be998ec-5a73-4531-aa30-9fde7ecc092e","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2155","durationMs":81.940046,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:01.774Z","service":"eiah","env":"test","traceId":"cff683db-c798-4e78-b77b-b408a07828a6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2086","durationMs":73.18923,"msg":"http.request.completed"}
+    # Subtest: P11 sem caseId: recomendação de MKT SEM caso; o caso mais recente nunca é lido, mesmo havendo casos; nada é vinculado nem exposto
+    ok 9 - P11 sem caseId: recomendação de MKT SEM caso; o caso mais recente nunca é lido, mesmo havendo casos; nada é vinculado nem exposto
+      ---
+      duration_ms: 877.510448
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:01.851Z","service":"eiah","env":"test","traceId":"4ab36c9c-1624-48de-9200-21778d0a50d3","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":73.490335,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:01.917Z","service":"eiah","env":"test","traceId":"b54bd386-626a-4a4f-ba74-1a738846e068","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":62.89919,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:01.981Z","service":"eiah","env":"test","traceId":"10be88f2-1a7b-4a75-a2db-59fe81692d90","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":60.430412,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.050Z","service":"eiah","env":"test","traceId":"93dccbf2-8709-4873-8d26-8e770fe16a5c","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":66.736967,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.112Z","service":"eiah","env":"test","traceId":"52c025e8-f527-4067-86e6-0e1f55b8d4cb","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":58.634214,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.182Z","service":"eiah","env":"test","traceId":"18ca62b9-317a-43be-be6a-68f29794570c","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":68.082747,"msg":"http.request.completed"}
+    # Subtest: P11 isolamento: caseId inexistente, de outro workspace ou de outro tenant é NEGADO sem fallback (nada do caso mais recente nem do outro escopo)
+    ok 10 - P11 isolamento: caseId inexistente, de outro workspace ou de outro tenant é NEGADO sem fallback (nada do caso mais recente nem do outro escopo)
+      ---
+      duration_ms: 408.225345
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.243Z","service":"eiah","env":"test","traceId":"3c1443d5-7102-49c7-afcf-f5a9bba13f20","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"479","durationMs":57.179772,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.303Z","service":"eiah","env":"test","traceId":"21603f6e-8dae-422b-a016-17c4e78fc06b","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"479","durationMs":57.518931,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:02.378Z","service":"eiah","env":"test","traceId":"67fe4837-0572-4aad-867c-52dc18265ed8","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":72.729218,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:02.466Z","service":"eiah","env":"test","traceId":"fbd107ed-b892-4c67-894d-5b60d417ab44","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":85.899668,"msg":"http.request.completed"}
+    # Subtest: P11 permissão de ETAPA: quem não opera a etapa do caso não recebe dados dele (nem por caseId explícito nem por fallback); sem caseId só há recomendação sem caso
+    ok 11 - P11 permissão de ETAPA: quem não opera a etapa do caso não recebe dados dele (nem por caseId explícito nem por fallback); sem caseId só há recomendação sem caso
+      ---
+      duration_ms: 284.269729
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:02.553Z","service":"eiah","env":"test","traceId":"f3365df2-1b2d-4989-b8dc-56918c3c3e0d","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2155","durationMs":82.578357,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:02.628Z","service":"eiah","env":"test","traceId":"cb101d9b-018a-42fc-b99c-c904eb14d121","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":72.316822,"msg":"http.request.completed"}
+    # Subtest: P11 reivindicação: 'contratou o Marketing?' é consulta de ESTADO do agente; autoridade e identidade não vêm do corpo
+    ok 12 - P11 reivindicação: 'contratou o Marketing?' é consulta de ESTADO do agente; autoridade e identidade não vêm do corpo
+      ---
+      duration_ms: 165.931764
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.700Z","service":"eiah","env":"test","traceId":"4c834abc-d8bc-413f-b0a2-6206622825a6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":50.867556,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.749Z","service":"eiah","env":"test","traceId":"278fc43d-1866-4692-800e-87fedecd730e","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":46.593535,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.812Z","service":"eiah","env":"test","traceId":"cbbfa338-5f85-45e8-a2fe-fe66260fe3fc","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":59.147786,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.872Z","service":"eiah","env":"test","traceId":"187612bf-5cab-43f0-884b-2b196ce3dc20","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":58.410661,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.934Z","service":"eiah","env":"test","traceId":"d142a6cd-e14e-427e-935a-e0885aa1037e","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":58.961264,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:02.996Z","service":"eiah","env":"test","traceId":"c146373b-e886-418c-a178-fec821e39e26","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":59.307182,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:03.054Z","service":"eiah","env":"test","traceId":"862c6ac0-e544-4799-b1ef-9a1b2ddcf1ad","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":55.992868,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:03.124Z","service":"eiah","env":"test","traceId":"77ca663a-e243-40ed-ba6b-8db400c5dca9","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":66.848549,"msg":"http.request.completed"}
+    # Subtest: P11 reivindicação: plataforma, convite, contrato, cadastro e demais mensagens NÃO são reivindicados e não deixam efeito
+    ok 13 - P11 reivindicação: plataforma, convite, contrato, cadastro e demais mensagens NÃO são reivindicados e não deixam efeito
+      ---
+      duration_ms: 502.506132
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-19T17:47:03.192Z","service":"eiah","env":"test","traceId":"d762020f-8957-4f04-b049-4f8b958afb15","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":403,"contentLength":"266","durationMs":51.745459,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-19T17:47:03.240Z","service":"eiah","env":"test","traceId":"3733ab47-1940-47a9-8f4d-66dcbb94b732","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":403,"contentLength":"303","durationMs":43.618419,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.343Z","service":"eiah","env":"test","traceId":"bf578a85-8836-4cc9-8df3-99c590a2b804","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":99.650312,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:03.413Z","service":"eiah","env":"test","traceId":"9950b312-f0e3-48e5-9f2f-1b94383c68d1","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":67.592499,"msg":"http.request.completed"}
+    # Subtest: P11 acesso governado: liberação revogada não reivindica (gate de revogação do IMOB, fail-closed); restaurada, volta; escopo de outro tenant não vê o caso
+    ok 14 - P11 acesso governado: liberação revogada não reivindica (gate de revogação do IMOB, fail-closed); restaurada, volta; escopo de outro tenant não vê o caso
+      ---
+      duration_ms: 278.028761
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.526Z","service":"eiah","env":"test","traceId":"ee0dc7d1-c3a1-4fd8-8c40-bd1d2e97565b","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14182","durationMs":92.568244,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.615Z","service":"eiah","env":"test","traceId":"cf83cc65-87f0-4832-8ced-913f7b0111e3","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":82.298064,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.707Z","service":"eiah","env":"test","traceId":"dcda2975-c764-43dc-a94b-e43869c8a1e9","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14113","durationMs":85.233431,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.797Z","service":"eiah","env":"test","traceId":"4ea6432e-d7b4-460a-8320-395311163ee5","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":83.977333,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:03.884Z","service":"eiah","env":"test","traceId":"53a33613-7212-4178-8c00-bfa1cf45a358","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2155","durationMs":78.453736,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:03.955Z","service":"eiah","env":"test","traceId":"47607a84-5d4c-4ec3-8895-c91a0ae97d15","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":65.838271,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:04.022Z","service":"eiah","env":"test","traceId":"1d6be24d-da50-4151-92bf-45f3f4d3f3c5","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"479","durationMs":60.680351,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# {"level":30,"time":"2026-11-19T17:47:04.086Z","service":"eiah","env":"test","traceId":"e3bc36dd-ba5b-401d-923a-749536ee9d13","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":58.594463,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:04.181Z","service":"eiah","env":"test","traceId":"09bfe831-efaf-4e84-879d-66f6312dcdc8","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14106","durationMs":87.594912,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwnue0fg-03348s-p10/workspace-p10-mwnue0fg-03348s-p10
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T17:47:04.270Z","service":"eiah","env":"test","traceId":"44a8e763-01ff-402d-9560-b95159502ea4","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2372","durationMs":79.714199,"msg":"http.request.completed"}
+# P04-CLAIM-WRITES {"control":1,"outcomes":{"a: caso explícito":"200/claimed=true","a: sem caso":"200/claimed=true","b: caso explícito":"200/claimed=true","b: sem caso":"200/claimed=true","a: estado de agente":"200/claimed=true","a: caso de outro workspace (negado)":"200/claimed=true","c: etapa não permitida (negado)":"200/claimed=true","a: não reivindicado":"200/claimed=false","a: marcadores de fluxo/caso no threadState":"200/claimed=true","a: marcadores de fluxo sem caseId":"200/claimed=true"}}
+    # Subtest: P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+    ok 15 - P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+      ---
+      duration_ms: 860.804028
+      type: 'test'
+      ...
+    1..15
+ok 6 - P10: Front Door → caso IMOB → necessidade de divulgação → MKT → autoridade → consulta
+  ---
+  duration_ms: 6681.115012
+  type: 'suite'
+  ...
+1..6
+# tests 33
+# suites 2
+# pass 33
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16625.801733

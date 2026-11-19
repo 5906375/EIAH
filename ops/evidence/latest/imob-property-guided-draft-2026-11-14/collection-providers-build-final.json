@@ -1,0 +1,14 @@
+{
+  "id": "providers-build-final",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@eiah/providers",
+    "build"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build-final.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 0.932
+}

@@ -1,0 +1,4 @@
+[REPROVADO] 5e Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba — locator.click: Timeout 30000ms exceeded.
+   ✗ abrir "Cadastrar imóvel" em nova aba com sessão abandonada oferece a recuperação explícita (achado P-02: mensagem de erro sem saída): sem ação de recuperação; texto: "Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessã"
+
+CENÁRIOS: 1 | aprovados 0 | reprovados 1; provider simulado=0; hosts externos bloqueados no navegador={"fonts.googleapis.com":3}; no backend=0

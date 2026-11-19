@@ -1,0 +1,19 @@
+node:internal/modules/customization_hooks:276
+    throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
+          ^
+
+TypeError [ERR_INVALID_RETURN_PROPERTY_VALUE]: Expected a string, an ArrayBuffer, or a TypedArray to be returned for the "source" from the "load" hook but got undefined.
+    at validateLoad (node:internal/modules/customization_hooks:276:11)
+    at nextStep (node:internal/modules/customization_hooks:190:14)
+    at load (file:///tmp/imob-guided-legacy-repro-loader.mjs:9:10)
+    at nextStep (node:internal/modules/customization_hooks:185:26)
+    at loadWithHooks (node:internal/modules/customization_hooks:348:18)
+    at #loadSync (node:internal/modules/esm/loader:834:14)
+    at ModuleLoader.load (node:internal/modules/esm/loader:793:28)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:580:43)
+    at #createModuleJob (node:internal/modules/esm/loader:604:36)
+    at #getJobFromResolveResult (node:internal/modules/esm/loader:338:34) {
+  code: 'ERR_INVALID_RETURN_PROPERTY_VALUE'
+}
+
+Node.js v22.17.1

@@ -1,0 +1,21 @@
+
+> eiah-builder@ check:w4-non-regression /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> node --import tsx scripts/checkW4NonRegression.ts
+
+{
+  "ok": true,
+  "check": "check:w4-non-regression",
+  "invariants": [
+    "session.imob_installed_token",
+    "session.product_installations_token",
+    "marketplace.installation_routes_and_model"
+  ],
+  "invariantCount": 3,
+  "structuralGateBoundary": {
+    "sha": "70ce66f41675c08e283948c0209b1cb55026121f",
+    "note": "before this boundary: context consumed declarative telemetry; after this boundary: validates only structure and executed tests."
+  },
+  "template": "ops/verticals/template/vertical-template.md",
+  "onboarding": "ops/verticals/vertical-onboarding-checklist.md",
+  "note": "Este check valida somente estrutura de código (rotas de sessão/marketplace) e depende de uma suíte de testes reais executada antes dele no mesmo job (instalação de marketplace, idempotência de ativação). Não lê mais o antigo arquivo de KPIs declarativos consumido pela versão anterior deste check."
+}

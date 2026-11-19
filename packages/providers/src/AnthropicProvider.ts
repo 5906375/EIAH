@@ -5,15 +5,16 @@ import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core/l
 export class AnthropicProvider extends LLMProvider {
   readonly name = "anthropic";
 
-  constructor(private apiKey: string) {
+  constructor(private apiKey: string, private transport: typeof fetch = fetch) {
     super();
   }
 
   async chatCompletion(req: ChatCompletionRequest): Promise<ChatCompletionResponse> {
     const model = req.model.includes(":") ? req.model.split(":")[1] : req.model;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await this.transport("https://api.anthropic.com/v1/messages", {
       method: "POST",
+      redirect: req.transportPolicy === "imob_guided_single_attempt" ? "error" : "follow",
       headers: {
         "x-api-key": this.apiKey,
         "Content-Type": "application/json",

@@ -31,6 +31,10 @@ export type StructuredCard = {
 export type StructuredQuickReply = { id: string; label: string; reply?: string; onSelect?: () => void };
 
 export type StructuredMessage = {
+  propertyGuided?: import("@eiah/contracts").ImobPropertyGuidedState;
+  /** Notice for an open guided capture whose origin was lost (server 409). Names the session; closing it is an explicit user action. */
+  propertyRecovery?: { sessionRef: string; status: "active" | "paused" };
+  propertyCaptureOrigin?: NonNullable<import("@eiah/contracts").ImobPropertyCaptureRequest["origin"]>;
   /** Pending editable property form; a topic change pauses interpretation without losing the form values. */
   propertyCaptureContext?: "active" | "paused";
   /** Ephemeral proposal bound to this unsaved form; never a save confirmation. */

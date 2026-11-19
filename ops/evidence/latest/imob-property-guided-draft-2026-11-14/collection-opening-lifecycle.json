@@ -1,0 +1,22 @@
+{
+  "id": "opening-lifecycle",
+  "command": [
+    "env",
+    "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+    "node",
+    "--import",
+    "tsx",
+    "--test-name-pattern=^coleta guiada v1 (abertura:|Front Door: abertura)",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 1.087,
+  "tests": 4,
+  "pass": 4,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0
+}

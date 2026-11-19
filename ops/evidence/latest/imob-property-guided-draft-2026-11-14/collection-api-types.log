@@ -1,0 +1,100 @@
+apps/api/src/middlewares/enforceTenant.ts(79,11): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(88,11): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(96,11): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(114,13): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(115,11): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(115,35): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(144,13): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(187,13): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/middlewares/enforceTenant.ts(191,9): error TS2339: Property 'logger' does not exist on type 'TenantAwareRequest'.
+apps/api/src/routes/imob.ts(1764,37): error TS2339: Property 'model' does not exist on type '{ knowledgePolicy: { deterministicSources: { sourceId: string; kind: "ledger" | "snapshot" | "db" | "api" | "event_store" | "document_index"; authorityLevel: "primary" | "secondary" | "advisory"; required: boolean; version: string; }[]; ... 5 more ...; maskingPolicy: "required" | ... 1 more ... | "conditional"; }; ....'.
+  Property 'model' does not exist on type '{ knowledgePolicy: { deterministicSources: { sourceId: string; kind: "ledger" | "snapshot" | "db" | "api" | "event_store" | "document_index"; authorityLevel: "primary" | "secondary" | "advisory"; required: boolean; version: string; }[]; ... 5 more ...; maskingPolicy: "required" | ... 1 more ... | "conditional"; }; ....'.
+apps/api/src/routes/imob.ts(4168,7): error TS2322: Type 'string | number | Date' is not assignable to type 'string | undefined'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1291,57): error TS2345: Argument of type 'string | number | boolean | Date | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1297,57): error TS2345: Argument of type 'string | number | boolean | Date | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1306,5): error TS2322: Type '{ id: string | number | Date | null; marketplaceId: string | number | Date | null; scope: string | number | Date | null; trustMin: string | number | Date | null; validUntil: string | ... 2 more ... | null; }[]' is not assignable to type 'readonly ActiveDelegationRef[]'.
+  Type '{ id: string | number | Date | null; marketplaceId: string | number | Date | null; scope: string | number | Date | null; trustMin: string | number | Date | null; validUntil: string | ... 2 more ... | null; }' is not assignable to type 'ActiveDelegationRef'.
+    Types of property 'id' are incompatible.
+      Type 'string | number | Date | null' is not assignable to type 'string'.
+        Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1318,35): error TS2345: Argument of type 'Date | JsonValue' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1321,9): error TS2322: Type '{ id: string; name: string | number | boolean | Date | JsonObject | JsonArray; description: string | number | boolean | Date | JsonObject | JsonArray; ... 11 more ...; modeContracts: { ...; }[] | undefined; }[]' is not assignable to type 'AgentListing[]'.
+  Type '{ id: string; name: string | number | boolean | Date | Prisma.JsonObject | Prisma.JsonArray; description: string | number | boolean | Date | Prisma.JsonObject | Prisma.JsonArray; ... 11 more ...; modeContracts: { ...; }[] | undefined; }' is not assignable to type 'AgentListing'.
+    Types of property 'name' are incompatible.
+      Type 'string | number | boolean | Date | JsonObject | JsonArray' is not assignable to type 'string'.
+        Type 'number' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1322,80): error TS2345: Argument of type 'string | number | boolean | Date' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1324,38): error TS2345: Argument of type 'string | number | boolean | Date' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1362,38): error TS2345: Argument of type 'Date | JsonValue' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1371,9): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1372,9): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string | null'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1375,11): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/agents.ts(1376,11): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/imob/imobAccessGate.ts(93,24): error TS2339: Property 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+apps/api/src/services/imob/imobAccessGate.ts(127,10): error TS2339: Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+apps/api/src/services/imob/imobAccessGate.ts(129,13): error TS2339: Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+apps/api/src/services/imob/imobAccessGate.ts(130,7): error TS2339: Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+apps/api/src/services/imob/imobRevocationGate.ts(48,7): error TS2339: Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+apps/api/src/services/runArchiveService.ts(251,29): error TS2345: Argument of type '{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; ... 18 more ...; archiveRef: string | null; } | { ...; }' is not assignable to parameter of type 'Pick<{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; ... 18 more ...; archiveRef: string | null; }, "updatedAt">'.
+  Property 'updatedAt' is missing in type '{ [x: string]: string | number | boolean | Date | JsonObject | JsonArray | null; }' but required in type 'Pick<{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; ... 18 more ...; archiveRef: string | null; }, "updatedAt">'.
+apps/api/src/services/runArchiveService.ts(256,68): error TS2322: Type '{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; ... 18 more ...; archiveRef: string | null; } | { ...; }' is not assignable to type '{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; costCents: number; ... 17 more ...; archiveRef: string | null; }'.
+  Type '{ [x: string]: string | number | boolean | Date | JsonObject | JsonArray | null; }' is missing the following properties from type '{ tenantId: string; workspaceId: string; userId: string | null; agent: string; status: RunStatus; id: string; request: JsonValue; response: JsonValue; costCents: number; ... 17 more ...; archiveRef: string | null; }': tenantId, workspaceId, userId, agent, and 23 more.
+apps/api/src/services/runArchiveService.ts(322,9): error TS2322: Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runArchiveService.ts(323,9): error TS2322: Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runArchiveService.ts(324,9): error TS2322: Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runArchiveService.ts(328,9): error TS2322: Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runArchiveService.ts(334,9): error TS2322: Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runEventEmitter.ts(49,51): error TS2345: Argument of type 'Date | JsonValue' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runEventEmitter.ts(60,29): error TS2345: Argument of type 'Date | JsonValue' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/runEvents.ts(108,29): error TS2345: Argument of type '{ [x: string]: Date | JsonValue; } | { runId: string; tenantId: string; workspaceId: string; userId: string | null; type: string; id: string; createdAt: Date; payload: JsonValue; criticalHash: string | null; sclTxId: string | null; }' is not assignable to parameter of type 'RunEvent'.
+  Type '{ [x: string]: Date | JsonValue; }' is missing the following properties from type 'RunEvent': id, runId, tenantId, workspaceId, and 6 more.
+apps/api/src/services/runs.ts(172,5): error TS2322: Type '(string | number | boolean | Date | JsonObject | JsonArray | null)[]' is not assignable to type 'string[]'.
+  Type 'string | number | boolean | Date | JsonObject | JsonArray | null' is not assignable to type 'string'.
+    Type 'null' is not assignable to type 'string'.
+apps/api/src/services/trustScoreEngine.ts(35,3): error TS2322: Type 'string | number | Date' is not assignable to type 'number'.
+  Type 'string' is not assignable to type 'number'.
+apps/api/src/services/trustScoreEngine.ts(57,68): error TS2365: Operator '+' cannot be applied to types 'string | number | Date' and 'number'.
+apps/api/src/services/trustScoreEngine.ts(58,17): error TS2365: Operator '>' cannot be applied to types 'number' and 'string | number | Date'.
+apps/api/src/services/trustScoreEngine.ts(58,42): error TS2365: Operator '<' cannot be applied to types 'number' and 'string | number | Date'.
+apps/api/src/services/uploads.ts(72,14): error TS2322: Type 'string | number | Date' is not assignable to type 'string | undefined'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentAssignments.ts(294,20): error TS2345: Argument of type '(assignment: { id: string; tenantId: string; workspaceId: string; agentKey: string; agentVersion: string; enabled: boolean; signedByUserId: string | null; signedAt: Date | null; signatureRef: string | null; }) => WorkspaceAgentAssignmentRecord' is not assignable to parameter of type '((value: { tenantId: string; workspaceId: string; metadata: JsonValue; id: string; createdAt: Date; updatedAt: Date; enabled: boolean; signedAt: Date | null; agentVersion: string; agentKey: string; signedByUserId: string | null; signatureRef: string | null; }, index: number, array: { ...; }[]) => WorkspaceAgentAssig...'.
+  Type '(assignment: { id: string; tenantId: string; workspaceId: string; agentKey: string; agentVersion: string; enabled: boolean; signedByUserId: string | null; signedAt: Date | null; signatureRef: string | null; }) => WorkspaceAgentAssignmentRecord' is not assignable to type '(value: { [x: string]: Date | JsonValue; }, index: number, array: { [x: string]: Date | JsonValue; }[]) => WorkspaceAgentAssignmentRecord'.
+    Types of parameters 'assignment' and 'value' are incompatible.
+      Type '{ [x: string]: Date | JsonValue; }' is missing the following properties from type '{ id: string; tenantId: string; workspaceId: string; agentKey: string; agentVersion: string; enabled: boolean; signedByUserId: string | null; signedAt: Date | null; signatureRef: string | null; }': id, tenantId, workspaceId, agentKey, and 5 more.
+apps/api/src/services/workspaceAgentProvisioning.ts(104,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(105,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(106,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(107,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(108,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string'.
+  Type 'null' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(109,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'boolean'.
+  Type 'null' is not assignable to type 'boolean'.
+apps/api/src/services/workspaceAgentProvisioning.ts(110,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string | null'.
+  Type 'number' is not assignable to type 'string'.
+apps/api/src/services/workspaceAgentProvisioning.ts(111,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'Date | null'.
+  Type 'string' is not assignable to type 'Date'.
+apps/api/src/services/workspaceAgentProvisioning.ts(112,7): error TS2322: Type 'Date | JsonValue' is not assignable to type 'string | null'.
+  Type 'number' is not assignable to type 'string'.

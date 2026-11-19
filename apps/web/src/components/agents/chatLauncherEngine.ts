@@ -1,3 +1,4 @@
+import { IMOB_PROPERTY_GUIDED_POLICY } from "@eiah/contracts";
 import {
   apiGetBillingPricingQuote,
   apiQueryEiahHelp,
@@ -2147,6 +2148,11 @@ export async function resolveLauncherTurnDecision(params: {
     consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
   };
 }): Promise<LauncherLocalDecision | null> {
+  if (params.imobOperationalContinuation?.available && params.trimmedInput.toLocaleLowerCase("pt-BR") === IMOB_PROPERTY_GUIDED_POLICY.startReply.toLocaleLowerCase("pt-BR")) {
+    await params.imobOperationalContinuation.consume("continue", params.trimmedInput);
+    return { kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+      launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow" };
+  }
   // O contrato operacional do IMOB precede a classificação isolada do Front Door.
   // Intenções explícitas usam os mesmos catálogos de help; fallback não encerra coleta.
   const activationStep = params.isUnifiedEiah
