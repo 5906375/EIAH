@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+ok 1 - paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+  ---
+  duration_ms: 98.567227
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+ok 2 - coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+  ---
+  duration_ms: 18.458334
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: IA propõe 2/1, sim contextual aplica uma vez e continua sem IA
+ok 3 - coleta guiada v1 Front Door: IA propõe 2/1, sim contextual aplica uma vez e continua sem IA
+  ---
+  duration_ms: 13.063235
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: revisão reutiliza formulário, bloqueia obrigatórios e save explícito não faz intake de unidades
+ok 4 - coleta guiada v1 Front Door: revisão reutiliza formulário, bloqueia obrigatórios e save explícito não faz intake de unidades
+  ---
+  duration_ms: 8.36988
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: snapshot na mesma aba preserva valores/pulados, mas cancelamento do servidor vence reload
+ok 5 - coleta guiada v1 Front Door: snapshot na mesma aba preserva valores/pulados, mas cancelamento do servidor vence reload
+  ---
+  duration_ms: 8.6338
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 242.716273

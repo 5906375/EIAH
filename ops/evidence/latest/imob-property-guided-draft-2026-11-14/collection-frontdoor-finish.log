@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+ok 1 - paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+  ---
+  duration_ms: 108.105432
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+ok 2 - coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo
+  ---
+  duration_ms: 22.117865
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: IA propõe 2/1, sim contextual aplica uma vez e continua sem IA
+ok 3 - coleta guiada v1 Front Door: IA propõe 2/1, sim contextual aplica uma vez e continua sem IA
+  ---
+  duration_ms: 16.111705
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: revisão reutiliza formulário, bloqueia obrigatórios e save explícito não faz intake de unidades
+ok 4 - coleta guiada v1 Front Door: revisão reutiliza formulário, bloqueia obrigatórios e save explícito não faz intake de unidades
+  ---
+  duration_ms: 8.75456
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: snapshot na mesma aba preserva valores/pulados, mas cancelamento do servidor vence reload
+ok 5 - coleta guiada v1 Front Door: snapshot na mesma aba preserva valores/pulados, mas cancelamento do servidor vence reload
+  ---
+  duration_ms: 8.951952
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: abertura com resultado desconhecido termina espera e retoma a mesma referência
+ok 6 - coleta guiada v1 Front Door: abertura com resultado desconhecido termina espera e retoma a mesma referência
+  ---
+  duration_ms: 11.796134
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: pausa libera outro assunto sem IA e retoma o mesmo consumo
+ok 7 - coleta guiada v1 Front Door: pausa libera outro assunto sem IA e retoma o mesmo consumo
+  ---
+  duration_ms: 8.738018
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1 Front Door: efeito real espelha edição/revisão no snapshot e hook restaura valores sem renovar consumo
+ok 8 - coleta guiada v1 Front Door: efeito real espelha edição/revisão no snapshot e hook restaura valores sem renovar consumo
+  ---
+  duration_ms: 33.29917
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 298.987651

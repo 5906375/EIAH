@@ -1,3 +1,5 @@
+import { buildPropertyCreateForm } from "../imobTurnResolver";
+import { resolveImobPropertyGuidedCapture, type PropertyGuidedDeps } from "../intake/imobPropertyGuidedCapture";
 import { interpretTransversalTurn } from "../imobTransversalTurn";
 import { interpretImobPropertyCapture, type ImobPropertyCaptureDeps } from "../intake/imobPropertyCaptureIntake";
 import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
@@ -1795,11 +1797,13 @@ export async function resolveImobPropertyUnitIntakeTurn(message: string, previou
 }
 
 /** Pending form intake returns before case resolution, operational dispatch or persistence. */
-export async function resolveImobPropertyCaptureTurn(input: unknown, deps: ImobPropertyCaptureDeps) {
+export async function resolveImobPropertyCaptureTurn(input: unknown, deps: ImobPropertyCaptureDeps & { prisma?: PropertyGuidedDeps["prisma"] }) {
   const request = imobPropertyCaptureRequestSchema.parse(input);
-  const propertyCapture = await interpretImobPropertyCapture(request, deps);
+  const propertyCapture = request.guided
+    ? await resolveImobPropertyGuidedCapture(request, { ...deps, prisma: deps.prisma!, scope: deps.scope! })
+    : await interpretImobPropertyCapture(request, deps);
   return { mode: "consult" as const, action: "property.draft.intake", threadLabel: "Captação", propertyCapture,
-    conversationState: createEmptyImobCrmThreadState(), presentation: { text: propertyCapture.content } };
+    conversationState: createEmptyImobCrmThreadState(), presentation: { text: propertyCapture.content, ...(propertyCapture.guided ? { form: buildPropertyCreateForm() } : {}) } };
 }
 
 export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) {

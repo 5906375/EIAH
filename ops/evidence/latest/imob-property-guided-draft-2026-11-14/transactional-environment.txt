@@ -1,0 +1,7 @@
+container=eiah-imob-guided-it-2baabcb7 id=f7363c8f06dbfc4abbcb5a4331618c09eeb256dc82c12baddb3804377833a97d
+imagem_local=pgvector/pgvector:pg16 id=sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7
+digest=pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b (criada 2026-08-13; ja presente localmente, sem download)
+banco=eiah_logistica_core_imobguided_2baabcb7 porta_host=127.0.0.1:38679
+restart=no network=default ports={"5432/tcp":[{"HostIp":"127.0.0.1","HostPort":"38679"}]} mounts=0 tmpfs={"/var/lib/postgresql/data":"rw,mode=0700,size=768m"} binds=null privileged=false cap_drop=["ALL"] cap_add=["CHOWN","SETUID","SETGID","FOWNER","DAC_OVERRIDE"] memory=1073741824
+system_identifier (container e porta do host): 7709860377322274855 / 7709860377322274855
+servidor=16.15 (Debian 16.15-1.pgdg12+2)|vector=0.8.6|migracoes_finalizadas=36|tabelas=80

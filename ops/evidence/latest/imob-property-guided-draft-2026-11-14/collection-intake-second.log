@@ -1,0 +1,142 @@
+TAP version 13
+# Subtest: cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+ok 1 - cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+  ---
+  duration_ms: 7.702472
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+ok 2 - cadastro guiado: concordância contextual aplica apenas a proposta vigente; recusa e dúvida não alteram campos
+  ---
+  duration_ms: 2.28925
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+ok 3 - cadastro guiado: perguntas preservam proposta; mensagens distribuídas e correções exigem nova revisão integral
+  ---
+  duration_ms: 3.227331
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+ok 4 - cadastro guiado: edição manual, versão, origem, escopo e proposta adulterada impedem confirmação inteira
+  ---
+  duration_ms: 2.811587
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção que retira todas as diferenças encerra a proposta anterior
+ok 5 - cadastro guiado: correção que retira todas as diferenças encerra a proposta anterior
+  ---
+  duration_ms: 0.888661
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+ok 6 - cadastro guiado: correção mostra substituição, mas conflito sem significado inequívoco pede esclarecimento
+  ---
+  duration_ms: 1.023097
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+ok 7 - cadastro guiado: pausa e retomada livres preservam proposta e não são confirmações de salvar
+  ---
+  duration_ms: 1.267443
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+ok 8 - cadastro guiado: resultados inválidos preservam dados e diagnosticam a etapa sem prompt ou saída bruta
+  ---
+  duration_ms: 3.08968
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+ok 9 - cadastro guiado: indisponibilidade, policy e timeout encerram espera e preservam proposta válida
+  ---
+  duration_ms: 8.722165
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+ok 10 - cadastro guiado: campos realmente ausentes orientam o próximo dado, sem exigir save antes de conversar
+  ---
+  duration_ms: 0.754074
+  type: 'test'
+  ...
+# Subtest: contrato de transporte limita contexto e rejeita autorização e identificadores livres
+ok 11 - contrato de transporte limita contexto e rejeita autorização e identificadores livres
+  ---
+  duration_ms: 0.53764
+  type: 'test'
+  ...
+# Subtest: rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+ok 12 - rota com dublês usa sessão e executor central antes de efeitos; não envia escopo ou credencial ao provider
+  ---
+  duration_ms: 202.221715
+  type: 'test'
+  ...
+# Subtest: diagnóstico: falha de perfil antes do executor é correlacionada e não vaza erro genérico
+ok 13 - diagnóstico: falha de perfil antes do executor é correlacionada e não vaza erro genérico
+  ---
+  duration_ms: 77.695857
+  type: 'test'
+  ...
+# Subtest: diagnóstico: HTTP da aplicação permanece separado do status do provider e de IDs ausentes
+ok 14 - diagnóstico: HTTP da aplicação permanece separado do status do provider e de IDs ausentes
+  ---
+  duration_ms: 93.857916
+  type: 'test'
+  ...
+# Subtest: diagnóstico: parsing e schema têm conclusão única correlacionada sem registrar conteúdo
+ok 15 - diagnóstico: parsing e schema têm conclusão única correlacionada sem registrar conteúdo
+  ---
+  duration_ms: 1.398583
+  type: 'test'
+  ...
+# Subtest: rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+ok 16 - rota com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível
+  ---
+  duration_ms: 145.668865
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+ok 17 - coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+  ---
+  duration_ms: 6.206026
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+ok 18 - coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+  ---
+  duration_ms: 2.839633
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+ok 19 - coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+  ---
+  duration_ms: 10.745263
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+ok 20 - coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+  ---
+  duration_ms: 3.29644
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+ok 21 - coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+  ---
+  duration_ms: 0.638424
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+ok 22 - coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+  ---
+  duration_ms: 1.244596
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 585.300635

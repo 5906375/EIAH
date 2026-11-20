@@ -1,0 +1,22 @@
+{
+  "id": "opening-intake-regression",
+  "command": [
+    "env",
+    "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+    "node",
+    "--import",
+    "tsx",
+    "--test-name-pattern=^coleta guiada v1:",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-intake-regression.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 1.575,
+  "tests": 10,
+  "pass": 10,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0
+}

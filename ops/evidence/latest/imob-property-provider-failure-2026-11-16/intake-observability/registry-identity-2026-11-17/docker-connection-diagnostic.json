@@ -1,0 +1,220 @@
+{
+  "date": "2026-11-17",
+  "recordedAt": "2026-11-17T11:22:18.007Z",
+  "scope": "Docker connection diagnosis only; read-only",
+  "status": "PARCIAL",
+  "branch": "chore/imob-intake-provider-diagnostics",
+  "head": "97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6",
+  "stageInitiallyEmpty": true,
+  "evidenceBefore": {
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/verification.json": "dcf496889ffb9bfac6c8151928bb6ad738e2394fa703c5c3eae34b893b308daa",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-results.json": "a9babe523c468d98f08def4f3c136ec6318267d7f88688bedfc4903a765997e6",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/harness-initial.json": "31bc481f25238b97e9cc883043cf844bf15d4cc32806ff70c4edab7e9541dcbe",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/delivery-executions.json": "67efb856eee19748c62afdcc4717db17149c172e43c2d6b90f1e41280b4b7041",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json": "01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-results.json": "2a429c470ba90b3487023fdc59a14cd6a4229e40cbd05a31771b871c9c99ea86",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-api-build.txt": "6c63df1dbc2ea8c18422be5e12e909d1549b8e2df719c552afa5fea6ca54b0f1",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": "dd6e40ed64740ebbe349e3f41cce913bdb876e3148a2bd230f4e2c09c4bdbab0",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs": "7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-core-build.txt": "61f26e2cbd3d59f1ffd3d7a1c8c998a84f5ad7773c3a5292708f82d15f196c04",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-executions.json": "a9d8c61d45d6ec1166db922341793c8a6e77ae189cef266b32ea24b5366832cd"
+  },
+  "observations": {
+    "selectedContext": "default",
+    "endpoint": "unix:///var/run/docker.sock",
+    "skipTLSVerify": false,
+    "environment": {
+      "DOCKER_HOST": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_CONTEXT": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_CONFIG": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_TLS": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_TLS_VERIFY": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_CERT_PATH": {
+        "set": false,
+        "empty": null
+      },
+      "DOCKER_API_VERSION": {
+        "set": false,
+        "empty": null
+      },
+      "XDG_RUNTIME_DIR": {
+        "set": true,
+        "empty": false,
+        "value": "<set, omitted>"
+      }
+    },
+    "filesystemInSandbox": {
+      "/var/run/docker.sock": {
+        "exists": false,
+        "symlink": false,
+        "errno": 2
+      },
+      "/run/docker.sock": {
+        "exists": false,
+        "symlink": false,
+        "errno": 2
+      },
+      "/run": {
+        "exists": true,
+        "symlink": false,
+        "kind": "directory",
+        "mode": "0o755",
+        "uid": 65534,
+        "gid": 65534,
+        "readable": true,
+        "writable": false
+      },
+      "/var/run": {
+        "exists": true,
+        "symlink": true,
+        "target": "/run",
+        "kind": "directory",
+        "mode": "0o755",
+        "uid": 65534,
+        "gid": 65534,
+        "readable": true,
+        "writable": false
+      },
+      "/run/systemd/system": {
+        "exists": true,
+        "symlink": false,
+        "kind": "directory",
+        "mode": "0o755",
+        "uid": 65534,
+        "gid": 65534,
+        "readable": true,
+        "writable": false
+      },
+      "/run/user/1000/docker.sock": {
+        "exists": false,
+        "symlink": false,
+        "errno": 2
+      }
+    },
+    "serviceStateOutsideSandbox": {
+      "docker.service": {
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "disabled"
+      },
+      "docker.socket": {
+        "LoadState": "loaded",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "disabled"
+      }
+    },
+    "socketStateOutsideSandbox": {
+      "/var/run/docker.sock": "ENOENT",
+      "/run/docker.sock": "ENOENT"
+    },
+    "otherContext": {
+      "name": "desktop-linux",
+      "selected": false,
+      "endpoint": "npipe:////./pipe/dockerDesktopLinuxEngine",
+      "probed": false
+    },
+    "observableCause": "Selected default context has no local Unix socket; docker.service and docker.socket are loaded but inactive/dead in the authorized service query",
+    "unproven": "Why units became inactive, Docker Desktop availability, image/cache inventory and corrected-image provenance",
+    "minimumNextAction": "An authorized operator must start docker.service on the host for the selected default endpoint and make its socket accessible to this session. Suggested host command: sudo systemctl start docker.service. Not executed; no enable, chmod or context switch proposed."
+  },
+  "commands": [
+    {
+      "name": "context-show-compatibility",
+      "command": "docker context show; docker context ls --format '{{json .Name}}'",
+      "exitCode": 0,
+      "result": "Initial show did not report selected context; usage text returned. Aggregate exit of combined command only.",
+      "output": "\nUsage:  docker context COMMAND\n\nManage contexts\n\nCommands:\n  create      Create a context\n  export      Export a context to a tar or kubeconfig file\n  import      Import a context from a tar or zip file\n  inspect     Display detailed information on one or more contexts\n  ls          List contexts\n  rm          Remove one or more contexts\n  update      Update a context\n  use         Set the current docker context\n\nRun 'docker context COMMAND --help' for more information on a command.\n\"default\"\n\"desktop-linux\"\n"
+    },
+    {
+      "name": "sanitized-environment-and-filesystem",
+      "command": "python3: inspect only DOCKER_HOST/CONTEXT/CONFIG/TLS/TLS_VERIFY/CERT_PATH/API_VERSION and XDG_RUNTIME_DIR presence, metadata for Docker/runtime paths; no credential/config/certificate contents read",
+      "exitCode": 0,
+      "outputKind": "Selected structured fields; sensitive/custom values omitted",
+      "result": "APROVADO",
+      "observationsRef": "observations.environment and filesystemInSandbox"
+    },
+    {
+      "name": "systemd-sandbox",
+      "command": "systemctl is-active docker.service docker.socket; systemctl show docker.service docker.socket --property=LoadState,ActiveState,SubState,UnitFileState --no-pager",
+      "exitCode": 1,
+      "result": "BLOQUEADO",
+      "output": "Failed to connect to bus: Operation not permitted\nFailed to connect to bus: Operation not permitted\n"
+    },
+    {
+      "name": "selected-context",
+      "command": "docker context ls --format '{{json .Name}} {{json .Current}} {{json .DockerEndpoint}}'",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "output": "\"default\" true \"unix:///var/run/docker.sock\"\n\"desktop-linux\" false \"npipe:////./pipe/dockerDesktopLinuxEngine\"\n"
+    },
+    {
+      "name": "systemd-authorized",
+      "command": "systemctl show docker.service docker.socket --property=LoadState,ActiveState,SubState,UnitFileState --no-pager",
+      "environment": "authorized outside sandbox; read-only",
+      "exitCode": 0,
+      "result": "APROVADO (state read; units remain inactive)",
+      "output": "LoadState=loaded\nActiveState=inactive\nSubState=dead\nUnitFileState=disabled\n\nLoadState=loaded\nActiveState=inactive\nSubState=dead\nUnitFileState=disabled\n"
+    },
+    {
+      "name": "selected-endpoint",
+      "command": "docker context inspect default --format '{{json .Endpoints.docker.Host}} {{json .Endpoints.docker.SkipTLSVerify}}'",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "output": "\"unix:///var/run/docker.sock\" false\n"
+    },
+    {
+      "name": "socket-host-metadata",
+      "command": "stat -Lc '%n: %F mode=%a uid=%u gid=%g' /var/run/docker.sock /run/docker.sock",
+      "environment": "authorized outside sandbox; read-only",
+      "exitCode": 1,
+      "result": "BLOQUEADO (socket unavailable)",
+      "output": "stat: cannot stat '/var/run/docker.sock': No such file or directory\nstat: cannot stat '/run/docker.sock': No such file or directory\n"
+    }
+  ],
+  "image": {
+    "correspondingImage": "UNVERIFIED",
+    "provenance": "UNAVAILABLE",
+    "inventoryRepeated": false,
+    "buildAttempted": false,
+    "filesystemInspected": false,
+    "containerSmokeExecuted": false,
+    "reason": "Stop after focused diagnosis: selected socket absent, units inactive; no equivalent daemon queries repeated"
+  },
+  "reusedResults": {
+    "registry": "5/5, not rerun",
+    "consumers": "7/7, not rerun",
+    "builds": "core/API approved, not rerun",
+    "typecheck": "focal remains failed by previously documented diagnostics"
+  },
+  "changes": {
+    "contexts": 0,
+    "permissions": 0,
+    "services": 0,
+    "configuration": 0,
+    "productionSources": 0,
+    "images": 0,
+    "containers": 0,
+    "temporaryFiles": 0
+  },
+  "documentationCheck": {"command":"node --import tsx scripts/checkEvidenceIndex.ts","environment":"authorized outside sandbox for git subprocess","exitCode":0,"output":"{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 352939,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 979\n}\n","referencesChecked":979,"unitTestsRepeated":0,"buildsRepeated":0,"smokesRepeated":0},
+  "finalIntegrity": {"result":"APROVADO","exitCode":0,"priorEvidenceFilesPreserved":12,"READMEAppendOnly":true,"protectedFilesUnchanged":3,"priorArtifactHashesUnchanged":43,"temporaryArtifactsCreated":0,"gitDiffCheckExitCode":0,"stageEmpty":true,"gitDiffCachedQuietExitCode":0,"newProductionEdits":0},
+  "realProviderCalls": 0
+}

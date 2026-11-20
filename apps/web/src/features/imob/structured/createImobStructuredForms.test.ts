@@ -1,3 +1,5 @@
+import { guidedPropertyFixture } from "../../../../../api/src/tests/fixtures/imob/guided-property-capture.fixture";
+import { PropertyCaptureActiveError, openPropertyCapture, propertyCaptureActiveBody } from "../../../../../api/src/services/imob/imobChatConversationManagement";
 import test, { type TestContext } from "node:test";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
@@ -48,6 +50,7 @@ function fakeState() {
     setFormErrorsByMessageId: (update: unknown) => {
       errors = typeof update === "function" ? (update as (prev: typeof errors) => typeof errors)(errors) : (update as typeof errors);
     },
+    getFormRevision: () => 0,
     formLookupLoadingByMessageId: {},
     imobPropertyOptions: [],
     imobOwnerOptions: [],
@@ -218,7 +221,9 @@ function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok
 }
 
 test("paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run", async (t) => {
-  const harness = frontDoorHarness(async (request) => ({ ok: true, data: {
+  const guided = guidedPropertyFixture();
+  const harness = frontDoorHarness(async (request) => request.propertyCapture?.guided
+    ? { ok: true, data: await guided.run(request.propertyCapture) } : ({ ok: true, data: {
     ...resolveImobTurn({ ...request, threadState: request.threadState as never, access }),
     // Este teste isola a continuidade; a interpretação real é exercitada nos testes de intake abaixo.
     ...(request.intake === "property_units" ? { propertyUnitIntake: { status: "resolved", source: "openai", unitLabels: ["Kit Paridade"] } } : {}),
@@ -278,7 +283,8 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   assert.equal(propertyForm.form?.submitTarget, "imob.properties.create");
   assert.equal(harness.getValues()[propertyForm.id].ownerId, owner.id);
   fill(propertyForm, { propertyType: "kitnet", goal: "locacao", unitLabel: "Kit Paridade", city: "Cidade Paridade", address: "Rua Paridade, 10" });
-  await harness.structuredForms.handleStructuredFormAction(propertyForm, "submit");
+  await harness.consumeOperationalTurn("continue", "Revisar cadastro");
+  await harness.structuredForms.handleStructuredFormAction(harness.messages().find((message) => message.id === propertyForm.id)!, "submit");
   assert.match(nextForm().text, /Imóvel cadastrado: Kit Paridade/);
   assert.equal(property.ownerId, owner.id);
 
@@ -311,8 +317,8 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   assert.match(html, /Gerar minuta/);
   assert.match(html, /value="Dona Paridade"/);
   assert.match(html, /value="Inquilino Paridade"/);
-  assert.equal(harness.calls.filter((call) => !call.intake).length, 3, "contrato aberto pelo handler compartilhado sem novo turno operacional");
-  assert.equal(harness.calls.filter((call) => call.intake === "property_units").length, 1, "identificação livre reutiliza o intake consultivo");
+  assert.equal(harness.calls.filter((call) => !call.intake).length, 2, "contrato aberto pelo handler compartilhado sem novo turno operacional; imóvel usa intake guiado");
+  assert.equal(harness.calls.filter((call) => call.intake === "property_units").length, 0, "save guiado de uma unidade não chama intake semântico");
   assert.deepEqual(requests.filter((request) => request.method === "POST").map((request) => request.path), ["/imob/owners", "/imob/properties", "/imob/rentals"]);
   assert.equal(requests.filter((request) => request.path === "/imob/contracts/rental/prefill").length, 1);
   assert.equal(requests.filter((request) => request.path === "/runs").length, 0);
@@ -430,7 +436,7 @@ test("nova coleta depois de proposta pronta preserva presentation.text junto do 
 });
 
 function sendFrontDoorTurn(harness: ReturnType<typeof frontDoorHarness>, input: string, options: {
-  activeDomain?: "core" | "imob"; available?: boolean; selectedAgent?: string;
+  activeDomain?: "core" | "imob"; available?: boolean; selectedAgent?: string; withCaptureContext?: boolean;
 } = {}) {
   return resolveLauncherTurnDecision({
     input, trimmedInput: input, routeIntent: detectLauncherRouteIntent(input, false),
@@ -439,7 +445,7 @@ function sendFrontDoorTurn(harness: ReturnType<typeof frontDoorHarness>, input: 
     catalogAgents: [], intentUnknown: true, confidence: 0,
     accessContext: { ...access, activeDomain: options.activeDomain ?? "imob" },
     imobOperationalContinuation: { threadState: harness.getConversationState(), available: options.available ?? true,
-      consume: harness.consumeOperationalTurn },
+      ...(options.withCaptureContext ? { propertyCaptureContext: harness.getPropertyCaptureContext() } : {}), consume: harness.consumeOperationalTurn },
   });
 }
 
@@ -1610,7 +1616,7 @@ function semanticUnitFixture(t: TestContext) {
 
 test("texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação", async (t) => {
   const { api, harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "Tenho três kitnets de teste, da 102 à 104." });
   renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: form, frontDoor: harness, isLast: true }));
@@ -1631,7 +1637,7 @@ test("texto direto no formulário usa intake existente, apresenta lote e só gra
 
 test("campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados", async (t) => {
   const { api, harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = { ...harness.messages().at(-1)!, caseContext: { ...caseContext, flow: "property.create" } };
   harness.setMessages([form]);
   withDefaults(harness, form, { propertyType: "sala", ownerId: "owner-known", goal: "venda", city: "Joinville", address: "Rua A, 783", unitLabel: "São três salas, mas ainda não sei quais." });
@@ -1656,7 +1662,7 @@ test("campo ambíguo clarifica no Front Door com zero write e retoma com os dado
 
 test("unidade singular livre usa intake e preserva seu nome no cadastro", async (t) => {
   const { api, harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "É só a unidade do fundo." });
   setUnits({ status: "resolved", confidence: 0.97, expressions: [], singleLabel: "unidade do fundo" });
@@ -1667,7 +1673,7 @@ test("unidade singular livre usa intake e preserva seu nome no cadastro", async 
 
 test("corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente", async (t) => {
   const { api, harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "", address: "Rua A, 783", unitLabel: "É só a unidade do fundo." });
   setUnits({ status: "resolved", confidence: 0.97, expressions: [], singleLabel: "unidade do fundo" });
@@ -1690,7 +1696,7 @@ test("novo turno iniciado durante intake impede aplicação e escrita da respost
   const harness = frontDoorHarness(async (request) => request.intake ? intake : request.message === "outro assunto" ? turn : {
     ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse,
   }, { current: 0 }, true);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "unidade do fundo" });
   const pending = harness.structuredForms.handleStructuredFormAction(form, "submit");
@@ -1707,7 +1713,7 @@ test("novo turno iniciado durante intake impede aplicação e escrita da respost
 
 test("prefill de clarificação não transporta dados de imóvel para outra conversa", async (t) => {
   const { harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { city: "Joinville", address: "Rua A, 783", ownerId: "owner-private", goal: "venda", unitLabel: "Não sei quais unidades." });
   setUnits({ status: "needs_clarification", confidence: 0.3, expressions: [], singleLabel: null });
@@ -1720,7 +1726,7 @@ test("prefill de clarificação não transporta dados de imóvel para outra conv
 
 test("adicionar unidades em linguagem natural volta à confirmação e preserva destinação", async (t) => {
   const { api, harness, setUnits } = semanticUnitFixture(t);
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const original = harness.messages().at(-1)!;
   withDefaults(harness, original, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "Kitnets 102 a 104" });
   await harness.structuredForms.handleStructuredFormAction(original, "submit");
@@ -1748,7 +1754,7 @@ test("resposta tardia do intake não grava nem substitui edição, cancelamento 
     const harness = frontDoorHarness(async (request) => request.intake ? delayed : {
       ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse,
     }, { current: 0 }, true);
-    await harness.forwardToImob("cadastrar imóvel");
+    await harness.forwardToImob("cadastrar um imóvel");
     const form = harness.messages().at(-1)!;
     withDefaults(harness, form, { city: "Joinville", address: "Rua A, 783", unitLabel: "É a unidade do fundo." });
     const pending = harness.structuredForms.handleStructuredFormAction(form, "submit");
@@ -1861,7 +1867,7 @@ test("lote: falha no meio mantém o que entrou e devolve ao formulário só as p
 test("uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio", async (t) => {
   const api = mockImobApi(t);
   const harness = realResolverHarness();
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 104", goal: "uso_proprio" });
   await harness.structuredForms.handleStructuredFormAction(form, "submit");
@@ -1874,7 +1880,7 @@ test("uma unidade com destinação sem operação (uso próprio) confirma e não
 test("sem destinação informada: cadastra sem goal e sem sugerir próximo passo", async (t) => {
   const api = mockImobApi(t);
   const harness = realResolverHarness();
-  await harness.forwardToImob("cadastrar imóvel");
+  await harness.forwardToImob("cadastrar um imóvel");
   const form = harness.messages().at(-1)!;
   withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 105", goal: "" });
   await harness.structuredForms.handleStructuredFormAction(form, "submit");
@@ -2797,4 +2803,464 @@ test("cadastro guiado: correção sem diferenças remove proposta e impede reapl
   assert.equal(JSON.stringify(harness.getValues()), before);
   assert.equal(harness.messages()[0].propertyCaptureProposal, null);
   assert.match(harness.messages().at(-1)!.text, /Não há uma proposta vigente/);
+});
+
+import { IMOB_PROPERTY_GUIDED_POLICY as guidedPolicy } from "@eiah/contracts";
+import { visiblePropertyCaptureForm } from "@/pages/app/imob/propertyCreateForm";
+
+function guidedFrontDoorFixture(interpret: () => Promise<string> = async () => { throw new Error("unexpected model"); }) {
+  const server = guidedPropertyFixture();
+  const harness = frontDoorHarness(async (body) => {
+    assert.equal(body.intake, "property_draft"); assert.ok(body.propertyCapture?.guided);
+    return { ok: true, data: await server.run(body.propertyCapture, interpret) };
+  }, { current: 0 }, true);
+  return { ...harness, server, current: () => harness.messages().find((message) => Boolean(message.form && message.propertyGuided))! };
+}
+
+test("coleta guiada v1 Front Door: abertura determinística oculta formulário completo; seletor aplica somente o campo", async () => {
+  const h = guidedFrontDoorFixture();
+  const decision = await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  assert.equal(decision?.kind, "imob_operational_continuation"); assert.equal(decision?.shouldCreateRun, false);
+  assert.equal(h.server.control.transports, 0); assert.equal(h.calls[0].propertyCapture?.guided?.action, "start");
+  assert.equal(visiblePropertyCaptureForm(h.current()), undefined);
+  const opened = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: h.current(), frontDoor: h, isLast: true }));
+  assert.doesNotMatch(opened, /imob-structured-form|<button[^>]*>Salvar cadastro|type="file"/);
+  await h.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  assert.deepEqual(visiblePropertyCaptureForm(h.current())?.fields.map((field) => field.name), ["propertyType"]);
+  const count = h.calls.length;
+  h.structuredForms.handleSelectChange(h.current(), "propertyType", "apartamento");
+  for (let wait = 0; wait < 30 && (h.calls.length === count || h.current().propertyGuided?.currentField === "propertyType"); wait++) await tick();
+  assert.deepEqual(h.getValues()[h.current().id], { propertyType: "apartamento" });
+  assert.equal(h.current().propertyGuided?.currentField, "goal"); assert.equal(h.server.control.transports, 0);
+  assert.equal(h.calls[h.calls.length - 1]?.propertyCapture?.guided?.action, "set");
+});
+
+test("coleta guiada v1 Front Door: IA propõe 2/1, sim contextual aplica uma vez e continua sem IA", async () => {
+  const h = guidedFrontDoorFixture(async () => interpretedProperty("São dois quartos e uma vaga", [
+    { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }, { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
+  ]));
+  await h.forwardToImob(guidedPolicy.startReply);
+  await h.consumeOperationalTurn("continue", "São dois quartos e uma vaga");
+  const id = h.current().id;
+  assert.equal(h.getValues()[id]?.bedrooms, undefined);
+  assert.deepEqual(h.current().propertyCaptureProposal?.changes, { bedrooms: "2", garageSpots: "1" });
+  await h.consumeOperationalTurn("continue", "sim");
+  assert.equal(h.getValues()[id].bedrooms, "2"); assert.equal(h.getValues()[id].garageSpots, "1");
+  await h.consumeOperationalTurn("continue", propertyPolicy.confirmReply);
+  assert.equal(h.server.control.transports, 1); assert.equal(h.current().propertyCaptureProposal, null);
+  await h.structuredForms.focusPropertyField(h.current(), "garageSpots");
+  await h.consumeOperationalTurn("continue", "0");
+  assert.equal(h.getValues()[id].garageSpots, "0"); assert.equal(h.server.control.transports, 1);
+});
+
+test("coleta guiada v1 Front Door: revisão reutiliza formulário, bloqueia obrigatórios e save explícito não faz intake de unidades", async (t) => {
+  const h = guidedFrontDoorFixture(); const api = mockImobApi(t);
+  await h.forwardToImob(guidedPolicy.startReply);
+  await h.consumeOperationalTurn("continue", guidedPolicy.reviewReply);
+  assert.ok(visiblePropertyCaptureForm(h.current())?.fields.some((field) => field.name === "address"));
+  assert.equal(visiblePropertyCaptureForm(h.current())?.actions?.find((item) => item.id === "submit")?.label, "Salvar cadastro");
+  await h.structuredForms.handleStructuredFormAction(h.current(), "submit");
+  assert.ok(h.getErrors()[h.current().id]?.propertyType); assert.equal(api.posts("/imob/properties").length, 0);
+  h.raw.setFormValuesByMessageId({ [h.current().id]: { propertyType: "apartamento", city: "Joinville", address: "Rua Sintética, 123", unitLabel: "Apartamento do fundo" } });
+  const before = h.calls.length;
+  await h.structuredForms.handleStructuredFormAction(h.current(), "submit");
+  assert.equal(api.posts("/imob/properties").length, 1);
+  assert.equal(h.calls.length, before); assert.equal(h.server.control.transports, 0);
+  assert.ok(api.posts("/imob/properties")[0].body.metadata.propertyCaptureSessionRef);
+});
+
+test("coleta guiada v1 Front Door: snapshot na mesma aba preserva valores/pulados, mas cancelamento do servidor vence reload", async () => {
+  const h = guidedFrontDoorFixture(); await h.forwardToImob(guidedPolicy.startReply);
+  await h.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  await h.consumeOperationalTurn("continue", "Apartamento");
+  await h.consumeOperationalTurn("continue", guidedPolicy.skipReply);
+  await h.consumeOperationalTurn("continue", propertyPolicy.pauseReply);
+  const snapshot = JSON.parse(JSON.stringify(h.messages())) as StructuredMessage[];
+  const saved = snapshot.find((message) => message.form && message.propertyGuided)!;
+  assert.equal(saved.form!.fields.find((field) => field.name === "propertyType")?.value, "apartamento");
+  assert.ok(saved.propertyGuided!.skipped.includes("goal"));
+  const serverSession = [...h.server.events.values()][0].metadata;
+  await h.server.run({ message: "cancel", operation: "property.create", step: "editing_form", draft: { propertyType: "apartamento" },
+    origin: saved.propertyCaptureOrigin, history: [], guided: { action: "cancel", sessionRef: serverSession.sessionRef, revision: serverSession.revision } });
+  h.setMessages(snapshot);
+  await h.consumeOperationalTurn("continue", propertyPolicy.resumeReply);
+  assert.equal(h.current(), undefined);
+  assert.equal([...h.server.events.values()][0].metadata.status, "cancelled"); assert.equal(h.server.control.transports, 0);
+});
+
+
+test("coleta guiada v1 Front Door: abertura com resultado desconhecido termina espera e retoma a mesma referência", async () => {
+  const server = guidedPropertyFixture(); let calls = 0;
+  const h = frontDoorHarness(async (body) => {
+    calls++;
+    const response = { ok: true as const, data: await server.run(body.propertyCapture!) };
+    return calls === 1 ? new Promise<Awaited<ReturnType<typeof apiResolveImobTurn>>>(() => {}) : response;
+  }, { current: 0 }, true, { propertyIntakeTimeoutMs: 5 });
+  await h.forwardToImob(guidedPolicy.startReply);
+  assert.match(h.messages()[h.messages().length - 1]!.text, /Não consegui confirmar/);
+  const origin = h.messages()[h.messages().length - 1]!.propertyCaptureOrigin;
+  assert.ok(origin); assert.equal(server.events.size, 1);
+  await h.forwardToImob(guidedPolicy.startReply);
+  const form = h.messages().find((message) => message.form && message.propertyGuided)!;
+  assert.ok(form); assert.deepEqual(form.propertyCaptureOrigin, origin);
+  assert.equal(server.events.size, 1); assert.equal(server.control.transports, 0);
+});
+
+
+test("coleta guiada v1 Front Door: pausa libera outro assunto sem IA e retoma o mesmo consumo", async () => {
+  const h = guidedFrontDoorFixture(); await h.forwardToImob(guidedPolicy.startReply);
+  await h.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  await h.consumeOperationalTurn("continue", propertyPolicy.pauseReply);
+  const session = h.current().propertyGuided!.sessionRef, before = h.calls.length;
+  assert.equal(await h.consumeOperationalTurn("continue", "Como criar um run?"), false);
+  assert.equal(h.calls.length, before);
+  await h.consumeOperationalTurn("continue", propertyPolicy.resumeReply);
+  assert.equal(h.current().propertyGuided!.sessionRef, session);
+  assert.equal(h.current().propertyGuided!.interpretation, "declined"); assert.equal(h.server.control.transports, 0);
+});
+
+test("coleta guiada v1 Front Door: efeito real espelha edição/revisão no snapshot e hook restaura valores sem renovar consumo", async () => {
+  const h = guidedFrontDoorFixture(async () => interpretedProperty("dois quartos", [{ field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }]));
+  await h.forwardToImob(guidedPolicy.startReply); await h.consumeOperationalTurn("continue", "dois quartos");
+  const current = h.current(); assert.ok(current.propertyCaptureProposal);
+  let messages = h.messages().map((message) => ({ id: message.id, role: message.role, content: message.text, imobStructured: structuredClone(message) }));
+  const source = ts.createSourceFile("useImobFrontDoorForms.ts", readFileSync(new URL("./useImobFrontDoorForms.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
+  let callback: ts.Expression | undefined;
+  function visit(node: ts.Node) {
+    if (ts.isCallExpression(node) && node.expression.getText(source) === "React.useEffect"
+      && node.arguments[0].getText(source).includes("const local = imobForms.formValuesByMessageId")) callback = node.arguments[0];
+    ts.forEachChild(node, visit);
+  }
+  visit(source); assert.ok(callback);
+  const env = { imobForms: { formValuesByMessageId: { [current.id]: { city: "Cidade corrigida", bedrooms: "0" } }, getFormRevision: () => 17 },
+    setMessages: (update: (value: typeof messages) => typeof messages) => { messages = update(messages); } };
+  const effect = new Function("env", `with (env) { ${ts.transpileModule(`return (${callback.getText(source)});`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText} }`)(env);
+  effect();
+  const saved = messages.find((message) => message.id === current.id)!.imobStructured;
+  assert.equal(saved.propertyCaptureOrigin?.draftVersion, 17); assert.equal(saved.propertyCaptureProposal, null);
+  assert.equal(saved.propertyGuided?.interpretation, "consumed");
+  const restored = JSON.parse(JSON.stringify(messages));
+  let values: Record<string, string> | undefined;
+  function Reloaded() {
+    const adapter = useImobFrontDoorForms({ messages: restored, setMessages: () => undefined, getConversationGeneration: () => 0 });
+    values = adapter.imobForms.resolveFormValuesForMessage(restored.find((message: { id: string }) => message.id === current.id).imobStructured);
+    return null;
+  }
+  renderToStaticMarkup(React.createElement(Reloaded));
+  assert.equal(values?.city, "Cidade corrigida"); assert.equal(values?.bedrooms, "0");
+  const serialized = JSON.stringify(messages); effect(); assert.equal(JSON.stringify(messages), serialized, "snapshot effect must be stable");
+  assert.equal(h.server.control.transports, 1);
+});
+
+test("coleta guiada v1 abertura: repetição reutiliza origem e resposta atrasada não renova interpretação consumida", async () => {
+  const server = guidedPropertyFixture();
+  let release!: (value: Awaited<ReturnType<typeof apiResolveImobTurn>>) => void;
+  let first = true;
+  const h = frontDoorHarness(async (body) => {
+    const response = { ok: true as const, data: await server.run(body.propertyCapture!, async () => interpretedProperty("dois quartos", [
+      { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
+    ])) };
+    if (first) { first = false; return new Promise((resolve) => { release = resolve; }); }
+    return response;
+  }, { current: 0 }, true);
+  const old = h.forwardToImob(guidedPolicy.startReply);
+  for (let wait = 0; wait < 30 && !release; wait++) await tick();
+  assert.ok(release);
+  const oldReply = { ok: true as const, data: await server.run(h.calls[0].propertyCapture!) };
+  await h.forwardToImob(guidedPolicy.startReply);
+  const form = h.messages().find((message) => message.form && message.propertyGuided)!;
+  await h.consumeOperationalTurn("continue", "dois quartos");
+  await h.forwardToImob(guidedPolicy.startReply);
+  assert.equal(h.messages().find((message) => message.id === form.id)?.propertyGuided?.interpretation, "consumed");
+  release(oldReply); await old;
+  assert.equal(h.messages().filter((message) => message.form).length, 1);
+  assert.equal(h.messages().find((message) => message.id === form.id)?.propertyGuided?.interpretation, "consumed");
+  assert.equal(server.events.size, 1); assert.equal(server.control.transports, 1);
+  assert.equal(new Set(h.calls.filter((call) => call.propertyCapture?.guided?.action === "start").map((call) => call.propertyCapture?.origin?.formId)).size, 1);
+});
+
+test("coleta guiada v1 abertura: cancelar antes/depois da admissão impede resposta tardia de substituir cadastro mais recente", async () => {
+  for (const beforeAdmission of [true, false]) {
+    const server = guidedPropertyFixture();
+    let release!: () => void;
+    let first = true;
+    const h = frontDoorHarness(async (body) => {
+      if (first) {
+        first = false;
+        const initial = beforeAdmission ? null : await server.run(body.propertyCapture!);
+        await new Promise<void>((resolve) => { release = resolve; });
+        return { ok: true, data: initial ?? await server.run(body.propertyCapture!) };
+      }
+      return { ok: true, data: await server.run(body.propertyCapture!) };
+    }, { current: 0 }, true);
+    const old = h.forwardToImob(guidedPolicy.startReply);
+    for (let wait = 0; wait < 30 && !release; wait++) await tick();
+    assert.ok(release); assert.equal(h.getPropertyCaptureContext(), "active");
+    const originalOrigin = h.calls[0].propertyCapture!.origin!;
+    await h.consumeOperationalTurn("continue", guidedPolicy.cancelReply);
+    const ended = [...server.events.values()].find((event) => event.metadata.origin.formId === originalOrigin.formId);
+    assert.equal(ended?.metadata.status, "cancelled");
+    await h.forwardToImob(guidedPolicy.startReply);
+    const newer = h.messages().find((message) => message.form && message.propertyGuided)!;
+    assert.ok(newer); assert.notEqual(newer.propertyCaptureOrigin?.formId, originalOrigin.formId);
+    release(); await old;
+    assert.equal(h.messages().filter((message) => message.form).length, 1);
+    assert.equal(h.messages().find((message) => message.form)?.id, newer.id);
+    assert.equal(server.events.size, 2); assert.equal(server.control.transports, 0);
+    assert.equal([...server.events.values()].find((event) => event.metadata.origin.formId === originalOrigin.formId)?.metadata.status, "cancelled");
+  }
+});
+
+// ── F-01/F-08: recuperação por 409 e entrada guiada × legada. Servidor = dublê em memória + implementação real de `openPropertyCapture`. ──
+function activeCaptureFixture(options: { failCancel?: boolean; claim?: Parameters<typeof frontDoorHarness>[4] } = {}) {
+  const server = guidedPropertyFixture();
+  const lostOrigin = { formId: "lost-form", contextRef: "v1:lost", draftVersion: 0, threadId: "lost-thread", caseId: null };
+  const harness = frontDoorHarness(async (body) => {
+    const guided = body.propertyCapture?.guided;
+    if (guided) {
+      if (guided.action === "cancel" && guided.sessionRef && options.failCancel) throw new Error("synthetic network failure");
+      // Mirrors the route: the engine's conflict (another origin while a capture is open) is the same 409 contract as the guard.
+      try { return { ok: true, data: await server.run(body.propertyCapture!) }; }
+      catch (error) {
+        if (error instanceof PropertyCaptureActiveError) throw Object.assign(new Error("HTTP 409"), { status: 409, body: propertyCaptureActiveBody(error.open) });
+        throw error;
+      }
+    }
+    const open = await openPropertyCapture(server.prisma, server.scope, body.intake === "property_draft" || body.intake === "property_units");
+    if (open) throw Object.assign(new Error("HTTP 409"), { status: 409, body: { ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_ACTIVE", details: open } } });
+    return { ok: true, data: proposalTurn() };
+  }, { current: 0 }, true, {}, options.claim);
+  const open = async () => (await server.run({ message: "start", operation: "property.create", step: "editing_form", draft: {}, origin: lostOrigin, history: [], guided: { action: "start" } })).propertyCapture.guided!.sessionRef!;
+  const notice = () => harness.messages().find((message) => message.propertyRecovery);
+  return { ...harness, server, open, notice };
+}
+
+test("F-01 Front Door: 409 mostra aviso com ação explícita, sem LLM, sem erro genérico e sem repetir a chamada", async () => {
+  const h = activeCaptureFixture();
+  const ref = await h.open();
+  assert.equal(await h.forwardToImob("quero ver minha carteira"), false);
+  assert.equal(h.calls.length, 1, "uma única chamada; nenhum retry automático");
+  assert.equal(h.notice()?.propertyRecovery?.sessionRef, ref);
+  assert.doesNotMatch(h.messages().map((message) => message.text).join("\n"), /Não consegui abrir o formulário/);
+  assert.equal(h.notice()?.quickReplies?.[0].label, guidedPolicy.cancelReply);
+  assert.equal(h.server.control.transports, 0);
+  assert.equal(h.getPropertyCaptureContext(), "active");
+  // Nada foi encerrado automaticamente.
+  assert.equal([...h.server.events.values()][0].metadata.status, "active");
+  // Segunda tentativa: um único aviso vivo (sem empilhar botões).
+  await h.forwardToImob("e agora?");
+  assert.equal(h.messages().filter((message) => message.propertyRecovery).length, 1);
+  assert.equal(h.messages().filter((message) => message.quickReplies?.length).length, 1);
+});
+
+test("F-01 Front Door: a ação do aviso cancela exatamente a sessão nomeada, reflete o estado persistido e libera o usuário", async () => {
+  const h = activeCaptureFixture();
+  const ref = await h.open();
+  await h.forwardToImob("quero ver minha carteira");
+  const noticeId = h.notice()!.id;
+  h.notice()!.quickReplies![0].onSelect!();
+  for (let wait = 0; wait < 30 && h.notice(); wait++) await tick();
+  const cancel = h.calls[h.calls.length - 1]!.propertyCapture!;
+  assert.deepEqual(cancel.guided, { action: "cancel", sessionRef: ref }); assert.equal(cancel.origin, undefined, "não depende da origem perdida");
+  assert.equal(h.notice(), undefined); assert.ok(h.messages().find((message) => message.id === noticeId));
+  assert.equal([...h.server.events.values()][0].metadata.status, "cancelled");
+  assert.match(h.messages()[h.messages().length - 1]!.text, /Cadastro pendente cancelado/);
+  assert.equal(h.getPropertyCaptureContext(), null);
+  assert.equal(h.server.control.transports, 0);
+  const calls = h.calls.length;
+  assert.equal(await h.forwardToImob("quero ver minha carteira"), true);
+  assert.equal(h.calls.length, calls + 1); assert.equal(h.notice(), undefined, "sem novo aviso: o usuário não está mais bloqueado");
+});
+
+test("F-01 Front Door: cancelamento digitado só vale com o texto exato; outros assuntos seguem o roteamento sem chamar o servidor", async () => {
+  const h = activeCaptureFixture();
+  await h.open();
+  await h.forwardToImob("quero ver minha carteira");
+  const calls = h.calls.length;
+  assert.equal(await h.consumeOperationalTurn("continue", "me explique o EIAH"), false);
+  assert.equal(h.calls.length, calls);
+  await h.consumeOperationalTurn("continue", guidedPolicy.startReply);
+  assert.equal(h.calls.length, calls, "iniciar não chama o servidor enquanto o aviso está pendente");
+  assert.equal(h.messages().filter((message) => message.propertyRecovery).length, 1);
+  await h.consumeOperationalTurn("continue", "cancelar cadastro do imóvel");
+  assert.equal([...h.server.events.values()][0].metadata.status, "cancelled");
+});
+
+test("F-01 Front Door: cancelamento não confirmado mantém o aviso e não repete automaticamente", async () => {
+  const h = activeCaptureFixture({ failCancel: true });
+  await h.open();
+  await h.forwardToImob("quero ver minha carteira");
+  const calls = h.calls.length;
+  h.notice()!.quickReplies![0].onSelect!();
+  for (let wait = 0; wait < 30 && h.calls.length === calls; wait++) await tick();
+  await tick(); await tick();
+  assert.equal(h.calls.length, calls + 1, "uma tentativa por ação do usuário");
+  assert.ok(h.notice(), "o aviso permanece"); assert.match(h.messages()[h.messages().length - 1]!.text, /Não consegui confirmar o cancelamento/);
+  assert.equal([...h.server.events.values()][0].metadata.status, "active", "estado do servidor não foi alegado como cancelado");
+});
+
+test("F-08 entrada: a frase guiada tem cobertura própria e a fixture legada continua legada (sem trocar só o texto)", async () => {
+  // Guiada: "Cadastrar imóvel" (qualquer caixa) abre o modo guiado.
+  const guided = guidedFrontDoorFixture();
+  await sendFrontDoorTurn(guided, "cadastrar imóvel");
+  assert.equal(guided.calls[0].propertyCapture?.guided?.action, "start");
+  // Legada: "cadastrar um imóvel" NÃO abre o modo guiado e continua exercitando o caminho legado.
+  const legacy = frontDoorHarness(async () => ({ ok: true, data: proposalTurn() }));
+  await legacy.forwardToImob("cadastrar um imóvel");
+  assert.ok(legacy.calls.length >= 1);
+  assert.ok(legacy.calls.every((call) => !call.propertyCapture?.guided), "nenhuma chamada guiada no caminho legado");
+});
+
+
+// ── P-01: "Continuar sem IA" visível e acionável na abertura (caminho determinístico existente) ──
+test("P-01 abertura guiada: Continuar sem IA é botão nativo acionável, sem provider e sem formulário completo antecipado", async () => {
+  const h = guidedFrontDoorFixture();
+  await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  const html = () => renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: h.current(), frontDoor: h, isLast: true }));
+  assert.match(html(), /<button[^>]*type="button"[^>]*>Continuar sem IA<\/button>/, "controle visível e acionável (botão nativo: Tab/Enter/Espaço)");
+  assert.doesNotMatch(html(), /imob-structured-form|<button[^>]*>Salvar cadastro|type="file"/, "o formulário completo não aparece antes da revisão");
+  assert.equal(visiblePropertyCaptureForm(h.current()), undefined);
+  assert.doesNotMatch(renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: h.current(), frontDoor: h, isLast: false })), /<button[^>]*>Continuar sem IA<\/button>/, "só a última mensagem oferece a ação");
+  // Ativação: o mesmo comando canônico do texto digitado ("collect"), servidor determinístico, 0 transporte.
+  const calls = h.calls.length;
+  h.structuredForms.selectGuidedReply(h.current(), guidedPolicy.collectReply);
+  for (let wait = 0; wait < 30 && h.calls.length === calls; wait++) await tick();
+  await tick();
+  assert.equal(h.calls[h.calls.length - 1]?.propertyCapture?.guided?.action, "collect"); assert.equal(h.calls.length, calls + 1);
+  assert.equal(h.server.control.transports, 0, "não chama o provider");
+  assert.equal(h.current().propertyGuided?.phase, "collecting");
+  assert.deepEqual(visiblePropertyCaptureForm(h.current())?.fields.map((field) => field.name), ["propertyType"], "somente a pergunta atual");
+  assert.doesNotMatch(html(), /<button[^>]*>Continuar sem IA<\/button>/, "depois de escolher, a ação deixa de ser oferecida");
+});
+
+test("P-01 o clique é equivalente ao texto digitado: mesmos efeitos no servidor; abertura duplicada/concorrente não repete a escolha", async () => {
+  const byClick = guidedFrontDoorFixture(), typed = guidedFrontDoorFixture();
+  await byClick.forwardToImob(guidedPolicy.startReply); await typed.forwardToImob(guidedPolicy.startReply);
+  byClick.structuredForms.selectGuidedReply(byClick.current(), guidedPolicy.collectReply); await tick(); await tick();
+  await typed.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  const row = (h: typeof byClick) => { const m = [...h.server.events.values()][0].metadata; return { status: m.status, phase: m.phase, interpretation: m.interpretation, revision: m.revision }; };
+  assert.deepEqual(row(byClick), row(typed));
+  assert.equal(byClick.server.control.transports + typed.server.control.transports, 0);
+  // Segundo clique com estado já avançado: não retorna ao início nem renova a interpretação.
+  byClick.structuredForms.selectGuidedReply(byClick.current(), guidedPolicy.collectReply); await tick(); await tick();
+  assert.equal([...byClick.server.events.values()][0].metadata.interpretation, "declined"); assert.equal(byClick.server.control.transports, 0);
+});
+
+// ── P-02: início guiado com sessão de outra origem: aviso de recuperação explícita (contrato 409 existente) ──
+test("P-02 Front Door: Cadastrar imóvel com sessão de outra origem mostra o aviso explícito, sem erro genérico, sem marcador pendente, sem LLM e sem cancelamento automático", async () => {
+  const h = activeCaptureFixture();
+  const ref = await h.open();
+  const decision = await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  assert.equal(decision?.kind, "imob_operational_continuation");
+  assert.equal(h.calls.length, 1); assert.equal(h.calls[0].propertyCapture?.guided?.action, "start");
+  assert.equal(h.notice()?.propertyRecovery?.sessionRef, ref, "referência validada pelo servidor");
+  assert.equal(h.notice()?.quickReplies?.[0].label, guidedPolicy.cancelReply);
+  const texts = h.messages().map((message) => message.text).join("\n");
+  assert.doesNotMatch(texts, /Não consegui confirmar a abertura/); assert.doesNotMatch(texts, /Abrindo o cadastro/);
+  assert.equal(h.messages().filter((message) => message.propertyGuided || message.propertyCaptureOrigin).length, 0, "nenhum marcador de abertura pendente sobrou");
+  assert.equal(h.server.control.transports, 0); assert.equal(h.server.events.size, 1);
+  assert.equal([...h.server.events.values()][0].metadata.status, "active", "nada foi cancelado automaticamente");
+  // Nova tentativa digitada com o aviso vivo: nenhuma chamada, um único aviso.
+  await h.consumeOperationalTurn("continue", guidedPolicy.startReply);
+  assert.equal(h.calls.length, 1); assert.equal(h.messages().filter((message) => message.propertyRecovery).length, 1);
+  // Ação explícita do aviso: cancela exatamente a sessão nomeada; depois o início explícito abre outra, e a referência antiga não a atinge.
+  h.notice()!.quickReplies![0].onSelect!();
+  for (let wait = 0; wait < 30 && h.notice(); wait++) await tick();
+  assert.equal([...h.server.events.values()][0].metadata.status, "cancelled");
+  await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  const reopened = h.messages().find((message) => message.form && message.propertyGuided);
+  assert.equal(h.server.events.size, 2); assert.ok(reopened?.propertyGuided?.sessionRef);
+  assert.equal(reopened?.propertyGuided?.status, "active"); assert.notEqual(reopened?.propertyGuided?.sessionRef, ref);
+  assert.equal(h.server.control.transports, 0);
+});
+
+test("P-02 a mesma origem retoma a sessão (sem conflito); a abertura retomada não renova a interpretação", async () => {
+  const h = guidedFrontDoorFixture();
+  await h.forwardToImob(guidedPolicy.startReply);
+  const ref = h.current().propertyGuided!.sessionRef!;
+  await h.forwardToImob(guidedPolicy.startReply); // mesma aba/origem: sincroniza
+  assert.equal(h.server.events.size, 1); assert.equal(h.current().propertyGuided?.sessionRef, ref);
+  assert.equal([...h.server.events.values()][0].metadata.interpretation, "available"); assert.equal(h.server.control.transports, 0);
+});
+
+// ── P-04 (interface): o claim nunca apaga, substitui ou cancela em silêncio o rascunho ──
+test("P-04 interface: durante a coleta ativa na mesma aba o texto vai para a coleta (nenhum claim é emitido) e o rascunho permanece", async () => {
+  const h = guidedFrontDoorFixture();
+  await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  await h.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  h.structuredForms.handleSelectChange(h.current(), "propertyType", "apartamento"); for (let wait = 0; wait < 30 && h.current().propertyGuided?.currentField === "propertyType"; wait++) await tick();
+  const id = h.current().id; assert.equal(h.getValues()[id].propertyType, "apartamento");
+  const eventBefore = JSON.stringify([...h.server.events.values()].map((event) => event.metadata.draft));
+  const decision = await sendFrontDoorTurn(h, "Isso já contratou o Marketing?", { withCaptureContext: true });
+  assert.equal(decision?.kind, "imob_operational_continuation", "consumido pela coleta, não pelo claim");
+  assert.equal(h.claimCalls.length, 0, "nenhum claim durante a coleta ativa");
+  assert.equal(h.current().id, id, "o mesmo formulário guiado continua"); assert.equal(h.getValues()[id].propertyType, "apartamento", "rascunho preservado");
+  assert.equal(JSON.stringify([...h.server.events.values()].map((event) => event.metadata.draft)), eventBefore);
+  const status = [...h.server.events.values()][0].metadata.status; assert.equal(status, "active"); assert.equal(h.server.control.transports, 0);
+});
+
+test("P-04 interface: aba sem o contexto guiado (origem perdida) recebe o claim reivindicado e não toca a sessão aberta", async () => {
+  const h = activeCaptureFixture({ claim: async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }) });
+  const ref = await h.open();
+  const before = JSON.stringify([...h.server.events.values()]);
+  assert.equal(await h.consumeOperationalTurn("claim", "Isso já contratou o Marketing?"), true);
+  assert.equal(h.claimCalls.length, 1); assert.equal(h.claimCalls[0].message, "Isso já contratou o Marketing?");
+  assert.equal(h.calls.length, 0, "nenhuma chamada de resolve-turn comum (não bloqueada, sem aviso)");
+  assert.equal(h.notice(), undefined, "sem aviso de cadastro pendente: o claim não é uma operação incompatível");
+  assert.equal(JSON.stringify([...h.server.events.values()]), before, "sessão intacta (não cancelada, renovada nem alterada)");
+  assert.equal(h.server.events.get(ref)!.metadata.status, "active"); assert.equal(h.server.control.transports, 0);
+});
+
+
+test("P-04 captura pausada na mesma aba: texto reivindicável e o comando de início não alteram a sessão, o rascunho nem o formulário (invariantes)", async () => {
+  const server = guidedPropertyFixture();
+  const h = frontDoorHarness(async (body) => ({ ok: true, data: await server.run(body.propertyCapture!, async () => { throw new Error("unexpected model"); }) }), { current: 0 }, true, {},
+    async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  const form = () => h.messages().find((message) => message.form && message.propertyGuided)!;
+  await h.consumeOperationalTurn("continue", guidedPolicy.collectReply);
+  h.structuredForms.handleSelectChange(form(), "propertyType", "apartamento");
+  for (let wait = 0; wait < 30 && form().propertyGuided?.currentField === "propertyType"; wait++) await tick();
+  await h.consumeOperationalTurn("continue", "Mudar de assunto"); await tick();
+  assert.equal(form().propertyGuided?.status, "paused"); assert.equal(h.getPropertyCaptureContext(), "paused");
+  const row = () => { const meta = [...server.events.values()][0].metadata; return JSON.stringify({ status: meta.status, draft: meta.draft, interpretation: meta.interpretation, skipped: meta.skipped }); };
+  const before = row(), formId = form().id;
+  for (const text of ["Isso já contratou o Marketing?", guidedPolicy.startReply, "quero ver minha carteira"]) {
+    await sendFrontDoorTurn(h, text, { withCaptureContext: true });
+    assert.equal(row(), before, `sessão/rascunho inalterados após "${text}"`);
+    assert.equal(form().id, formId, "o mesmo formulário guiado continua pendente"); assert.equal(h.getValues()[formId].propertyType, "apartamento");
+    assert.equal(h.messages().filter((message) => message.propertyRecovery).length, 0, "sem aviso de outra aba");
+  }
+  assert.equal(server.events.size, 1, "nenhuma segunda sessão"); assert.equal(server.control.transports, 0, "nenhum provider");
+});
+
+
+// Caracterização do ESCOPO da interface guiada (não amplia a UI): quais ações têm controle clicável em cada fase e quais dependem de texto digitado.
+// Os botões da abertura vêm das respostas do servidor para a fase `start`; nas demais fases só existem os controles do próprio formulário.
+test("escopo da interface guiada: controles por fase; pular, revisar, pausar, retomar e confirmar/rejeitar proposta dependem de texto", async () => {
+  const h = guidedFrontDoorFixture(async () => interpretedProperty("São dois quartos e uma vaga", [
+    { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }, { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false }]));
+  const controls = () => {
+    const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: h.current(), frontDoor: h, isLast: true }));
+    return { buttons: [...html.matchAll(/<button[^>]*>(.*?)<\/button>/g)].map((match) => match[1].replace(/<[^>]+>/g, "")),
+      selects: [...html.matchAll(/<select[^>]*aria-label="([^"]*)"/g)].map((match) => match[1]), fields: visiblePropertyCaptureForm(h.current())?.fields.map((field) => field.name) ?? [] };
+  };
+  const text = async (input: string) => { await h.consumeOperationalTurn("continue", input); await tick(); };
+  await sendFrontDoorTurn(h, guidedPolicy.startReply);
+  assert.deepEqual(controls(), { buttons: ["Continuar sem IA", "Revisar cadastro", "Cancelar cadastro do imóvel"], selects: ["Corrigir ou retomar campo"], fields: [] }, "abertura");
+  await text("São dois quartos e uma vaga");
+  assert.ok(h.current().propertyCaptureProposal, "proposta pendente");
+  const proposal = controls();
+  assert.deepEqual(proposal.buttons, ["Continuar", "Cancelar cadastro"], "proposta pendente: NÃO há botões de confirmar/rejeitar (só texto: sim/não ou os rótulos canônicos)");
+  await text("sim");
+  const collecting = controls();
+  assert.deepEqual(collecting.buttons, ["Continuar", "Cancelar cadastro"], "coleta: sem botões de pular/revisar/pausar (só texto)");
+  assert.equal(collecting.fields.length, 1, "coleta: um campo por vez"); assert.deepEqual(collecting.selects, ["Corrigir ou retomar campo"]);
+  await text("Mudar de assunto");
+  assert.deepEqual(controls(), { buttons: [], selects: [], fields: [] }, "pausado: nenhum controle; retomar e cancelar dependem de texto");
+  await text("Continuar cadastro do imóvel"); await text(guidedPolicy.reviewReply);
+  const review = controls();
+  assert.deepEqual(review.buttons, ["Cancelar", "Salvar cadastro"], "revisão: Salvar é o único caminho de gravação, por clique explícito");
+  assert.ok(review.fields.includes("address") && review.fields.length > 3, "formulário completo só na revisão");
+  assert.equal(h.server.control.transports, 1, "uma única interpretação em toda a jornada");
 });

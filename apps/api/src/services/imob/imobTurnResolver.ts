@@ -1,3 +1,4 @@
+import { IMOB_PROPERTY_GUIDED_REQUIRED } from "@eiah/contracts";
 import { buildImobDriveSearchUrl } from "./imobDriveSync";
 import { type ImobActionKey, type ImobEntityKey } from "./imobActionCatalog";
 import {
@@ -1180,7 +1181,7 @@ export function buildPropertyCreateForm(propertyDraft?: {
         name: "propertyType",
         label: "Tipo",
         type: "select" as const,
-        required: true,
+        required: IMOB_PROPERTY_GUIDED_REQUIRED.includes("propertyType"),
         placeholder: "",
         value: normalizedPropertyType ?? "",
         options: IMOB_CRM_PROPERTY_TYPE_OPTIONS.map((option) => ({
@@ -1240,14 +1241,14 @@ export function buildPropertyCreateForm(propertyDraft?: {
         name: "city",
         label: "Cidade",
         type: "text" as const,
-        required: true,
+        required: IMOB_PROPERTY_GUIDED_REQUIRED.includes("city"),
         value: propertyDraft?.city ?? "",
       },
       {
         name: "address",
         label: "Endereço",
         type: "text" as const,
-        required: true,
+        required: IMOB_PROPERTY_GUIDED_REQUIRED.includes("address"),
         value: propertyDraft?.address ?? "",
       },
       {

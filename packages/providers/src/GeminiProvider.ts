@@ -5,7 +5,7 @@ import type { ChatCompletionRequest, ChatCompletionResponse, ChatMessage } from 
 export class GeminiProvider extends LLMProvider {
   readonly name = "gemini";
 
-  constructor(private apiKey: string) {
+  constructor(private apiKey: string, private transport: typeof fetch = fetch) {
     super();
   }
 
@@ -20,8 +20,9 @@ export class GeminiProvider extends LLMProvider {
       })),
     };
 
-    const response = await fetch(url, {
+    const response = await this.transport(url, {
       method: "POST",
+      redirect: req.transportPolicy === "imob_guided_single_attempt" ? "error" : "follow",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });

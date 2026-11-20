@@ -1,0 +1,1519 @@
+TAP version 13
+# Subtest: todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro
+ok 1 - todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro
+  ---
+  duration_ms: 39.73771
+  type: 'test'
+  ...
+# Subtest: menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada
+ok 2 - menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada
+  ---
+  duration_ms: 0.704119
+  type: 'test'
+  ...
+# Subtest: menus Negócios: venda e permuta abrem o formulário com o tipo certo
+ok 3 - menus Negócios: venda e permuta abrem o formulário com o tipo certo
+  ---
+  duration_ms: 0.316382
+  type: 'test'
+  ...
+# Subtest: itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido
+ok 4 - itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido
+  ---
+  duration_ms: 0.174908
+  type: 'test'
+  ...
+# Subtest: próximo passo prepara o formulário seguinte já ligado ao cadastro
+ok 5 - próximo passo prepara o formulário seguinte já ligado ao cadastro
+  ---
+  duration_ms: 0.237763
+  type: 'test'
+  ...
+# Subtest: formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar
+ok 6 - formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar
+  ---
+  duration_ms: 0.58637
+  type: 'test'
+  ...
+# Subtest: enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API
+ok 7 - enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API
+  ---
+  duration_ms: 0.228224
+  type: 'test'
+  ...
+# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+not ok 8 - paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+  ---
+  duration_ms: 67.222099
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:197:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    + actual - expected
+    
+    + undefined
+    - 'imob.properties.create'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 'imob.properties.create'
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:258:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: falha ao salvar cadastro mantém coleta, form e valores no Front Door
+ok 9 - falha ao salvar cadastro mantém coleta, form e valores no Front Door
+  ---
+  duration_ms: 2.644444
+  type: 'test'
+  ...
+# Subtest: encerrar cadastro antigo não limpa estado de outra thread no Front Door
+ok 10 - encerrar cadastro antigo não limpa estado de outra thread no Front Door
+  ---
+  duration_ms: 3.17715
+  type: 'test'
+  ...
+# Subtest: regressão: Gerar proposta → sim oferece o segundo turno ao IMOB antes de help/preview/self-service
+ok 11 - regressão: Gerar proposta → sim oferece o segundo turno ao IMOB antes de help/preview/self-service
+  ---
+  duration_ms: 9.278994
+  type: 'test'
+  ...
+# Subtest: presentation sem texto continua renderizando o formulário com rótulo e descrição
+ok 12 - presentation sem texto continua renderizando o formulário com rótulo e descrição
+  ---
+  duration_ms: 1.423112
+  type: 'test'
+  ...
+# Subtest: composição de coleta não suprime bloqueio, resposta sem form ou form sem introdução
+ok 13 - composição de coleta não suprime bloqueio, resposta sem form ou form sem introdução
+  ---
+  duration_ms: 11.148962
+  type: 'test'
+  ...
+# Subtest: nova coleta depois de proposta pronta preserva presentation.text junto do formulário
+ok 14 - nova coleta depois de proposta pronta preserva presentation.text junto do formulário
+  ---
+  duration_ms: 2.962282
+  type: 'test'
+  ...
+# Subtest: coleta textual no Front Door preserva draft, campos curtos, caso e thread até revisão, sem executar run
+ok 15 - coleta textual no Front Door preserva draft, campos curtos, caso e thread até revisão, sem executar run
+  ---
+  duration_ms: 17.43736
+  type: 'test'
+  ...
+# Subtest: Front Door → engine CRM real: sim continua coleta sem passar pelo gate de confirmação de action
+ok 16 - Front Door → engine CRM real: sim continua coleta sem passar pelo gate de confirmação de action
+  ---
+  duration_ms: 37.480938
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: como criar um run?
+ok 17 - assunto explícito libera coleta: como criar um run?
+  ---
+  duration_ms: 5.944086
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: quero falar sobre billing
+ok 18 - assunto explícito libera coleta: quero falar sobre billing
+  ---
+  duration_ms: 7.724576
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: voltar para core
+ok 19 - assunto explícito libera coleta: voltar para core
+  ---
+  duration_ms: 4.756658
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: cancelar proposta
+ok 20 - cancelamento textual reutiliza fechamento local sem chamar a API: cancelar proposta
+  ---
+  duration_ms: 2.647687
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: cancelar
+ok 21 - cancelamento textual reutiliza fechamento local sem chamar a API: cancelar
+  ---
+  duration_ms: 3.250244
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: não quero continuar
+ok 22 - cancelamento textual reutiliza fechamento local sem chamar a API: não quero continuar
+  ---
+  duration_ms: 4.067548
+  type: 'test'
+  ...
+# Subtest: domínio core ou disponibilidade não confirmada não consome continuidade histórica
+ok 23 - domínio core ou disponibilidade não confirmada não consome continuidade histórica
+  ---
+  duration_ms: 11.024301
+  type: 'test'
+  ...
+# Subtest: seleção de especialista não altera continuidade da vertical ativa
+ok 24 - seleção de especialista não altera continuidade da vertical ativa
+  ---
+  duration_ms: 1.916084
+  type: 'test'
+  ...
+# Subtest: continuidade textual funciona quando backend não entrega form; erro mantém coleta sem fallback genérico
+ok 25 - continuidade textual funciona quando backend não entrega form; erro mantém coleta sem fallback genérico
+  ---
+  duration_ms: 1.560358
+  type: 'test'
+  ...
+# Subtest: resposta tardia após cancelamento não reabre coleta e envio duplicado não repete query
+ok 26 - resposta tardia após cancelamento não reabre coleta e envio duplicado não repete query
+  ---
+  duration_ms: 3.123351
+  type: 'test'
+  ...
+# Subtest: Negócios → Gerar proposta usa o dispatcher existente e abre proposal.create no Front Door vazio
+ok 27 - Negócios → Gerar proposta usa o dispatcher existente e abre proposal.create no Front Door vazio
+  ---
+  duration_ms: 6.997288
+  type: 'test'
+  ...
+# Subtest: Front Door preserva e renderiza proposal.create sem submitTarget, texto e contexto do servidor
+ok 28 - Front Door preserva e renderiza proposal.create sem submitTarget, texto e contexto do servidor
+  ---
+  duration_ms: 2.944117
+  type: 'test'
+  ...
+# Subtest: Front Door mantém o dispatcher de form com submitTarget
+ok 29 - Front Door mantém o dispatcher de form com submitTarget
+  ---
+  duration_ms: 0.748581
+  type: 'test'
+  ...
+# Subtest: form desconhecido sem submitTarget mantém apresentação informativa sem inventar submissão
+ok 30 - form desconhecido sem submitTarget mantém apresentação informativa sem inventar submissão
+  ---
+  duration_ms: 0.713318
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 4455/100000 e continuidade
+ok 31 - Front Door → builder compartilhado → resolver mantém 4455/100000 e continuidade
+  ---
+  duration_ms: 2.288329
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 98765/450000 e continuidade
+ok 32 - Front Door → builder compartilhado → resolver mantém 98765/450000 e continuidade
+  ---
+  duration_ms: 1.716751
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém imovel-AB12/R$ 100.000,75 e continuidade
+ok 33 - Front Door → builder compartilhado → resolver mantém imovel-AB12/R$ 100.000,75 e continuidade
+  ---
+  duration_ms: 1.769721
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 4455/100000.50 e continuidade
+ok 34 - Front Door → builder compartilhado → resolver mantém 4455/100000.50 e continuidade
+  ---
+  duration_ms: 1.732045
+  type: 'test'
+  ...
+# Subtest: cancelamento fecha e limpa erros sem chamar resolver, preservando valores e contexto
+ok 35 - cancelamento fecha e limpa erros sem chamar resolver, preservando valores e contexto
+  ---
+  duration_ms: 1.126532
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"propertyId":""}
+ok 36 - campos ausentes/inválidos no Front Door bloqueiam envio: {"propertyId":""}
+  ---
+  duration_ms: 0.929544
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":""}
+ok 37 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":""}
+  ---
+  duration_ms: 0.633636
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"inválido"}
+ok 38 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"inválido"}
+  ---
+  duration_ms: 0.689812
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"-100"}
+ok 39 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"-100"}
+  ---
+  duration_ms: 0.604049
+  type: 'test'
+  ...
+# Subtest: sem conversationState, proposal.create não submete
+ok 40 - sem conversationState, proposal.create não submete
+  ---
+  duration_ms: 0.741827
+  type: 'test'
+  ...
+# Subtest: thread sintética continua consistente quando resposta não contém caseContext
+ok 41 - thread sintética continua consistente quando resposta não contém caseContext
+  ---
+  duration_ms: 0.861892
+  type: 'test'
+  ...
+# Subtest: erro HTTP ou bloqueio do engine não fecha formulário nem perde campos; duplo submit envia uma vez
+ok 42 - erro HTTP ou bloqueio do engine não fecha formulário nem perde campos; duplo submit envia uma vez
+  ---
+  duration_ms: 2.997151
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 1, sem reabrir form
+ok 43 - Nova conversa descarta resposta IMOB pendente da solicitação 1, sem reabrir form
+  ---
+  duration_ms: 9.507491
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 2, sem reabrir form
+ok 44 - Nova conversa descarta resposta IMOB pendente da solicitação 2, sem reabrir form
+  ---
+  duration_ms: 8.481482
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 3, sem reabrir form
+ok 45 - Nova conversa descarta resposta IMOB pendente da solicitação 3, sem reabrir form
+  ---
+  duration_ms: 7.624835
+  type: 'test'
+  ...
+# Subtest: erro IMOB tardio após Nova conversa também não escreve na conversa nova
+ok 46 - erro IMOB tardio após Nova conversa também não escreve na conversa nova
+  ---
+  duration_ms: 5.344307
+  type: 'test'
+  ...
+# Subtest: troca real de agente e hidratação mantêm draft na conversa Front Door, sem compartilhar outro workspace
+ok 47 - troca real de agente e hidratação mantêm draft na conversa Front Door, sem compartilhar outro workspace
+  ---
+  duration_ms: 61.809818
+  type: 'test'
+  ...
+# Subtest: geração de Nova conversa protege também cadastro IMOB, sem regra específica de proposta
+ok 48 - geração de Nova conversa protege também cadastro IMOB, sem regra específica de proposta
+  ---
+  duration_ms: 10.356354
+  type: 'test'
+  ...
+# Subtest: resposta IMOB não escreve após troca de workspace, mesmo antes de renderizar a chave nova
+ok 49 - resposta IMOB não escreve após troca de workspace, mesmo antes de renderizar a chave nova
+  ---
+  duration_ms: 2.3099
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Não mantém ownership IMOB e não cria run
+ok 50 - FDC-03A Front Door: coleta → revisão → Não mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 7.400589
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Sim mantém ownership IMOB e não cria run
+ok 51 - FDC-03A Front Door: coleta → revisão → Sim mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 7.028804
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Talvez mantém ownership IMOB e não cria run
+ok 52 - FDC-03A Front Door: coleta → revisão → Talvez mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 4.605942
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após unknown_version
+ok 53 - FDC-03A revisão não captura resposta após unknown_version
+  ---
+  duration_ms: 8.54132
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após expired
+ok 54 - FDC-03A revisão não captura resposta após expired
+  ---
+  duration_ms: 5.231938
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após answered
+ok 55 - FDC-03A revisão não captura resposta após answered
+  ---
+  duration_ms: 4.64521
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_thread
+ok 56 - FDC-03A revisão não captura resposta após other_thread
+  ---
+  duration_ms: 4.613173
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_case
+ok 57 - FDC-03A revisão não captura resposta após other_case
+  ---
+  duration_ms: 6.044028
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_assistant
+ok 58 - FDC-03A revisão não captura resposta após other_assistant
+  ---
+  duration_ms: 5.611045
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após conversation
+ok 59 - FDC-03A revisão não captura resposta após conversation
+  ---
+  duration_ms: 4.423152
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após workspace
+ok 60 - FDC-03A revisão não captura resposta após workspace
+  ---
+  duration_ms: 5.601589
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após user
+ok 61 - FDC-03A revisão não captura resposta após user
+  ---
+  duration_ms: 5.785086
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após agent
+ok 62 - FDC-03A revisão não captura resposta após agent
+  ---
+  duration_ms: 2.450641
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após vertical
+ok 63 - FDC-03A revisão não captura resposta após vertical
+  ---
+  duration_ms: 4.317264
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após unavailable
+ok 64 - FDC-03A revisão não captura resposta após unavailable
+  ---
+  duration_ms: 5.010435
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Como vejo minha fatura?) suspende revisão e preserva draft
+ok 65 - FDC-03A pergunta explícita posterior (Como vejo minha fatura?) suspende revisão e preserva draft
+  ---
+  duration_ms: 8.743021
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Preciso de ajuda do Jurídico) suspende revisão e preserva draft
+ok 66 - FDC-03A pergunta explícita posterior (Preciso de ajuda do Jurídico) suspende revisão e preserva draft
+  ---
+  duration_ms: 6.336268
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Preciso de ajuda jurídica) suspende revisão e preserva draft
+ok 67 - FDC-03A pergunta explícita posterior (Preciso de ajuda jurídica) suspende revisão e preserva draft
+  ---
+  duration_ms: 6.288758
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Quero ativar o IMOB) suspende revisão e preserva draft
+ok 68 - FDC-03A pergunta explícita posterior (Quero ativar o IMOB) suspende revisão e preserva draft
+  ---
+  duration_ms: 5.596403
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Quero sair do IMOB) suspende revisão e preserva draft
+ok 69 - FDC-03A pergunta explícita posterior (Quero sair do IMOB) suspende revisão e preserva draft
+  ---
+  duration_ms: 5.889996
+  type: 'test'
+  ...
+# Subtest: FDC-03A falha HTTP de revisão mantém pergunta e draft para retry, sem run
+ok 70 - FDC-03A falha HTTP de revisão mantém pergunta e draft para retry, sem run
+  ---
+  duration_ms: 3.001805
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após conversation não altera conversa
+ok 71 - FDC-03A resposta atrasada após conversation não altera conversa
+  ---
+  duration_ms: 2.906489
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após workspace não altera conversa
+ok 72 - FDC-03A resposta atrasada após workspace não altera conversa
+  ---
+  duration_ms: 2.680687
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após agent não altera conversa
+ok 73 - FDC-03A resposta atrasada após agent não altera conversa
+  ---
+  duration_ms: 4.142143
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após vertical não altera conversa
+ok 74 - FDC-03A resposta atrasada após vertical não altera conversa
+  ---
+  duration_ms: 3.241228
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após question_replaced não altera conversa
+ok 75 - FDC-03A resposta atrasada após question_replaced não altera conversa
+  ---
+  duration_ms: 3.08235
+  type: 'test'
+  ...
+# Subtest: FDC-03A requisições fora de ordem no bootstrap só apresentam a resposta mais recente
+ok 76 - FDC-03A requisições fora de ordem no bootstrap só apresentam a resposta mais recente
+  ---
+  duration_ms: 1.214114
+  type: 'test'
+  ...
+# Subtest: FDC-03A duas respostas simultâneas à mesma pergunta enviam uma vez e preservam a primeira resposta
+ok 77 - FDC-03A duas respostas simultâneas à mesma pergunta enviam uma vez e preservam a primeira resposta
+  ---
+  duration_ms: 2.742182
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in remount
+ok 78 - FDC-03A-R1 restored descriptor cannot capture a reply in remount
+  ---
+  duration_ms: 2.403708
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in restored_history
+ok 79 - FDC-03A-R1 restored descriptor cannot capture a reply in restored_history
+  ---
+  duration_ms: 2.242519
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in another_conversation
+ok 80 - FDC-03A-R1 restored descriptor cannot capture a reply in another_conversation
+  ---
+  duration_ms: 2.329882
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in replaced_origin
+ok 81 - FDC-03A-R1 restored descriptor cannot capture a reply in replaced_origin
+  ---
+  duration_ms: 2.99613
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in another_user
+ok 82 - FDC-03A-R1 restored descriptor cannot capture a reply in another_user
+  ---
+  duration_ms: 2.210995
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 Front Door presents draft summary → No → concrete details, without writes
+ok 83 - FDC-03A-R1 Front Door presents draft summary → No → concrete details, without writes
+  ---
+  duration_ms: 3.874874
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 Front Door cancellation preserves domain and approval
+ok 84 - FDC-03A-R1 Front Door cancellation preserves domain and approval
+  ---
+  duration_ms: 4.479424
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 real hook mounted with restored history invalidates old review before any effect
+ok 85 - FDC-03A-R1 real hook mounted with restored history invalidates old review before any effect
+  ---
+  duration_ms: 2.854115
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 actual history invalidation effect handles hydration after mount, preserves draft and is stable
+ok 86 - FDC-03A-R1 actual history invalidation effect handles hydration after mount, preserves draft and is stable
+  ---
+  duration_ms: 16.575491
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para IMOB releases review into governed handoff without running
+ok 87 - FDC-03A-R3 Quero mudar para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 3.30086
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para IMOB releases review into governed handoff without running
+ok 88 - FDC-03A-R3 Trocar para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 2.277429
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para IMOB releases review into governed handoff without running
+ok 89 - FDC-03A-R3 Ir para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 2.124116
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para LEGAL releases review into governed handoff without running
+ok 90 - FDC-03A-R3 Quero mudar para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 2.210469
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para LEGAL releases review into governed handoff without running
+ok 91 - FDC-03A-R3 Trocar para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 2.174218
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para LEGAL releases review into governed handoff without running
+ok 92 - FDC-03A-R3 Ir para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 4.472537
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para COMEX releases review into governed handoff without running
+ok 93 - FDC-03A-R3 Quero mudar para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 2.644185
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para COMEX releases review into governed handoff without running
+ok 94 - FDC-03A-R3 Trocar para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 2.606382
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para COMEX releases review into governed handoff without running
+ok 95 - FDC-03A-R3 Ir para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 2.444394
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para HEALTH releases review into governed handoff without running
+ok 96 - FDC-03A-R3 Quero mudar para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 2.404787
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para HEALTH releases review into governed handoff without running
+ok 97 - FDC-03A-R3 Trocar para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 2.151986
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para HEALTH releases review into governed handoff without running
+ok 98 - FDC-03A-R3 Ir para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 2.026965
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para financeiro releases review into governed handoff without running
+ok 99 - FDC-03A-R3 Quero mudar para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 2.125904
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para financeiro releases review into governed handoff without running
+ok 100 - FDC-03A-R3 Trocar para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 2.307655
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para financeiro releases review into governed handoff without running
+ok 101 - FDC-03A-R3 Ir para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 5.181732
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O valor de venda precisa ser 90000
+ok 102 - FDC-03A-R3 clarification stays with proposal domain: O valor de venda precisa ser 90000
+  ---
+  duration_ms: 4.129734
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: Quero corrigir o valor de venda
+ok 103 - FDC-03A-R3 clarification stays with proposal domain: Quero corrigir o valor de venda
+  ---
+  duration_ms: 3.693006
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O contrato precisa de outro valor
+ok 104 - FDC-03A-R3 clarification stays with proposal domain: O contrato precisa de outro valor
+  ---
+  duration_ms: 3.557096
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: A cláusula de pagamento precisa ser corrigida
+ok 105 - FDC-03A-R3 clarification stays with proposal domain: A cláusula de pagamento precisa ser corrigida
+  ---
+  duration_ms: 4.421095
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O imóvel informado está errado
+ok 106 - FDC-03A-R3 clarification stays with proposal domain: O imóvel informado está errado
+  ---
+  duration_ms: 3.483765
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Quero mudar para a vertical LEGAL) pede escolha sem transferir nem descartar contexto
+ok 107 - FDC mínimo: dúvida de ownership (Quero mudar para a vertical LEGAL) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 8.339629
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Mude para COMEX) pede escolha sem transferir nem descartar contexto
+ok 108 - FDC mínimo: dúvida de ownership (Mude para COMEX) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 7.527751
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Quero revisar o prazo de pagamento da proposta) pede escolha sem transferir nem descartar contexto
+ok 109 - FDC mínimo: dúvida de ownership (Quero revisar o prazo de pagamento da proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 8.625967
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Preciso avaliar o reajuste do valor da proposta) pede escolha sem transferir nem descartar contexto
+ok 110 - FDC mínimo: dúvida de ownership (Preciso avaliar o reajuste do valor da proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 7.800515
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Vamos revisar a cláusula de pagamento desta proposta) pede escolha sem transferir nem descartar contexto
+ok 111 - FDC mínimo: dúvida de ownership (Vamos revisar a cláusula de pagamento desta proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 7.754851
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Gostaria de tratar outra coisa) pede escolha sem transferir nem descartar contexto
+ok 112 - FDC mínimo: dúvida de ownership (Gostaria de tratar outra coisa) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 7.224399
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply success após changed_ref no mesmo ID
+ok 113 - FDC mínimo: Front Door rejeita reply success após changed_ref no mesmo ID
+  ---
+  duration_ms: 2.875259
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply success após invalidated_ref no mesmo ID
+ok 114 - FDC mínimo: Front Door rejeita reply success após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 2.355504
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply transport_failure após changed_ref no mesmo ID
+ok 115 - FDC mínimo: Front Door rejeita reply transport_failure após changed_ref no mesmo ID
+  ---
+  duration_ms: 1.876672
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply transport_failure após invalidated_ref no mesmo ID
+ok 116 - FDC mínimo: Front Door rejeita reply transport_failure após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 2.100867
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn success após changed_ref no mesmo ID
+ok 117 - FDC mínimo: Front Door rejeita direct_turn success após changed_ref no mesmo ID
+  ---
+  duration_ms: 3.225028
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn success após invalidated_ref no mesmo ID
+ok 118 - FDC mínimo: Front Door rejeita direct_turn success após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 3.880774
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn transport_failure após changed_ref no mesmo ID
+ok 119 - FDC mínimo: Front Door rejeita direct_turn transport_failure após changed_ref no mesmo ID
+  ---
+  duration_ms: 2.013669
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn transport_failure após invalidated_ref no mesmo ID
+ok 120 - FDC mínimo: Front Door rejeita direct_turn transport_failure após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 1.964782
+  type: 'test'
+  ...
+# Subtest: P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações
+ok 121 - P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações
+  ---
+  duration_ms: 1.481015
+  type: 'test'
+  ...
+# Subtest: P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal
+ok 122 - P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal
+  ---
+  duration_ms: 0.242865
+  type: 'test'
+  ...
+# Subtest: P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam
+ok 123 - P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam
+  ---
+  duration_ms: 10.985058
+  type: 'test'
+  ...
+# Subtest: P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente
+ok 124 - P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente
+  ---
+  duration_ms: 2.030498
+  type: 'test'
+  ...
+# Subtest: P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')
+ok 125 - P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')
+  ---
+  duration_ms: 4.238034
+  type: 'test'
+  ...
+# Subtest: P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado
+ok 126 - P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado
+  ---
+  duration_ms: 2.415018
+  type: 'test'
+  ...
+# Subtest: P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa
+ok 127 - P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa
+  ---
+  duration_ms: 0.793625
+  type: 'test'
+  ...
+# Subtest: P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)
+ok 128 - P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)
+  ---
+  duration_ms: 0.281257
+  type: 'test'
+  ...
+# Subtest: texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação
+not ok 129 - texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação
+  ---
+  duration_ms: 9.488106
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1574:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    editar e renderizar não interpreta o campo
+    
+    1 !== 0
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 0
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1580:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados
+not ok 130 - campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados
+  ---
+  duration_ms: 6.728512
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1594:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Quais unidades/. Input:
+    
+    'Não consegui abrir o cadastro agora. Tente Cadastrar imóvel novamente.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui abrir o cadastro agora. Tente Cadastrar imóvel novamente.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1603:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: unidade singular livre usa intake e preserva seu nome no cadastro
+not ok 131 - unidade singular livre usa intake e preserva seu nome no cadastro
+  ---
+  duration_ms: 6.725118
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1618:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1625:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente
+not ok 132 - corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente
+  ---
+  duration_ms: 6.244495
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1628:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    0 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 0
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1640:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: novo turno iniciado durante intake impede aplicação e escrita da resposta antiga
+not ok 133 - novo turno iniciado durante intake impede aplicação e escrita da resposta antiga
+  ---
+  duration_ms: 19.232854
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1642:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: prefill de clarificação não transporta dados de imóvel para outra conversa
+not ok 134 - prefill de clarificação não transporta dados de imóvel para outra conversa
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1665:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: adicionar unidades em linguagem natural volta à confirmação e preserva destinação
+not ok 135 - adicionar unidades em linguagem natural volta à confirmação e preserva destinação
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1677:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: resposta tardia do intake não grava nem substitui edição, cancelamento ou outra conversa
+not ok 136 - resposta tardia do intake não grava nem substitui edição, cancelamento ou outra conversa
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1698:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação
+not ok 137 - lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1731:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: lote: erro de pré-validação mantém o formulário e não grava nada
+not ok 138 - lote: erro de pré-validação mantém o formulário e não grava nada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1772:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes
+not ok 139 - lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1790:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio
+not ok 140 - uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1810:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: sem destinação informada: cadastra sem goal e sem sugerir próximo passo
+not ok 141 - sem destinação informada: cadastra sem goal e sem sugerir próximo passo
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1822:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação
+not ok 142 - venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1832:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: venda: erro de validação não chama a API; cancelar não registra
+not ok 143 - venda: erro de validação não chama a API; cancelar não registra
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1855:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura
+not ok 144 - locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1867:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)
+not ok 145 - lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1888:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada
+not ok 146 - Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1977:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar
+not ok 147 - arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1986:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada
+not ok 148 - prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1998:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado
+not ok 149 - três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2013:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada
+not ok 150 - um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2024:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação
+not ok 151 - falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2038:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez
+not ok 152 - proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2059:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote
+not ok 153 - a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2067:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada
+not ok 154 - autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2075:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos
+not ok 155 - imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2085:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada
+not ok 156 - mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2095:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta
+not ok 157 - mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2109:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: lista que chega depois da troca de workspace não é aplicada
+not ok 158 - lista que chega depois da troca de workspace não é aplicada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2120:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis
+not ok 159 - interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2132:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve
+not ok 160 - mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2144:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: falha ao carregar a lista oferece nova tentativa sem alterar nada
+not ok 161 - falha ao carregar a lista oferece nova tentativa sem alterar nada
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2153:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes
+not ok 162 - painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2170:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura
+not ok 163 - ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2185:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta
+not ok 164 - espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2255:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa
+not ok 165 - espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2268:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual
+not ok 166 - espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2279:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente
+not ok 167 - espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2299:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual
+not ok 168 - espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2313:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta
+not ok 169 - espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2323:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual
+not ok 170 - espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2343:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+not ok 171 - cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2365:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+not ok 172 - cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2408:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+not ok 173 - cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2427:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+not ok 174 - cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2439:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+not ok 175 - cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2456:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+not ok 176 - cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2475:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+not ok 177 - cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2508:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita
+not ok 178 - cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2533:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+not ok 179 - cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2563:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+not ok 180 - cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2598:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+not ok 181 - cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2610:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+not ok 182 - cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2629:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída
+not ok 183 - cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2647:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição
+not ok 184 - cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2680:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+# Subtest: cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior
+not ok 185 - cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior
+  ---
+  duration_ms: 0
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:2707:1'
+  failureType: 'cancelledByParent'
+  error: 'Promise resolution is still pending but the event loop has already resolved'
+  code: 'ERR_TEST_FAILURE'
+  stack: |-
+    process.emit (node:events:518:28)
+  ...
+1..185
+# tests 185
+# suites 0
+# pass 127
+# fail 5
+# cancelled 53
+# skipped 0
+# todo 0
+# duration_ms 836.628767

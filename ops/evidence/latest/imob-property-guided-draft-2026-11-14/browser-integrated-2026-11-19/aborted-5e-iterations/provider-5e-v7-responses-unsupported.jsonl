@@ -1,0 +1,1 @@
+{"at":"2026-11-19T16:37:55.249Z","seq":1,"host":"api.openai.com","path":"/v1/responses","method":"POST","contract":"responses","authorization":"present","messageChars":0,"answered":"unsupported","reason":"contrato /v1/responses não simulado (nenhum cenário o exige)"}

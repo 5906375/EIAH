@@ -56,3 +56,45 @@ export async function applyConversationChanges<T extends { conversationId: strin
   }
   return items.filter((item) => !deleted.has(item.conversationId)).map((item) => ({ ...item, title: titles.get(item.conversationId) ?? item.title }));
 }
+
+// Durable admission uses the same transaction/advisory-lock pattern as conversation management.
+// Lock by authenticated actor, not formId: changing a client ID cannot renew an open capture.
+export const PROPERTY_CAPTURE_SESSION = "property.capture.session.v1";
+export type PropertyCaptureScope = { tenantId: string; workspaceId: string; userId?: string | null };
+export async function withPropertyCaptureLock<T>(client: PrismaClient, scope: PropertyCaptureScope,
+  work: (tx: import("@repo/db").Prisma.TransactionClient) => Promise<T>): Promise<T> {
+  if (!scope.tenantId || !scope.workspaceId || !scope.userId) throw new Error("property_capture_scope_missing");
+  return client.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtextextended(${`property-capture:${scope.tenantId}:${scope.workspaceId}:${scope.userId}`}, 0))`;
+    return work(tx);
+  });
+}
+export function propertyCaptureSessionWhere(scope: PropertyCaptureScope) {
+  return { tenantId: scope.tenantId, workspaceId: scope.workspaceId, agentId: AGENT, key: PROPERTY_CAPTURE_SESSION,
+    metadata: { path: ["actorUserId"], equals: scope.userId! } };
+}
+
+/**
+ * The actor's open guided capture, if any. Server-side exclusion of legacy semantic/units dispatch uses it, and it names the exact session
+ * that an explicit recovery (`cancel`/`pause` with this `sessionRef`) may close. It never selects a target on the caller's behalf.
+ */
+export async function openPropertyCapture(client: PrismaClient, scope: PropertyCaptureScope, includePaused = false) {
+  if (!scope.userId) return null;
+  const events = await client.memoryEvent.findMany({ where: propertyCaptureSessionWhere(scope), orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, metadata: true } });
+  for (const { id, metadata } of events) {
+    const status = (metadata as { status?: unknown } | null)?.status;
+    if (status === "active" || includePaused && status === "paused") return { sessionRef: id, status };
+  }
+  return null;
+}
+/** The actor's open capture, as named to the client by the 409 conflict contract (`details`). Server-issued reference, authenticated scope only. */
+export type OpenPropertyCapture = { sessionRef: string; status: "active" | "paused" };
+/** Raised by the guided engine when an open capture of ANOTHER origin exists: same contract as the route guard (one 409 shape, one recovery path). */
+export class PropertyCaptureActiveError extends Error {
+  constructor(readonly open: OpenPropertyCapture) { super("IMOB_PROPERTY_CAPTURE_ACTIVE"); }
+}
+export const propertyCaptureActiveBody = (open: { sessionRef: string; status: unknown }) => ({ ok: false as const, error: { code: "IMOB_PROPERTY_CAPTURE_ACTIVE",
+  message: "Continue no cadastro guiado, revise, pause ou cancele antes de mudar de assunto.", details: { sessionRef: open.sessionRef, status: open.status } } });
+export async function hasActivePropertyCapture(client: PrismaClient, scope: PropertyCaptureScope, includePaused = false) {
+  return Boolean(await openPropertyCapture(client, scope, includePaused));
+}

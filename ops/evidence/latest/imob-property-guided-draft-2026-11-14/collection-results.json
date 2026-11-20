@@ -1,0 +1,657 @@
+{
+  "status": "parcial",
+  "branch": "chore/imob-intake-provider-diagnostics",
+  "head": "f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d",
+  "executor": "Codex sem subagentes",
+  "limits": [
+    "Sem provider real, banco, navegador ou prova multiprocesso",
+    "Primeira execução de formulários: contagens do retorno da ferramenta; saída completa não preservada, reprodução pendente"
+  ],
+  "executions": [
+    {
+      "id": "contracts-initial",
+      "exitCode": 0,
+      "tests": null,
+      "passed": null,
+      "failed": null,
+      "cancelled": null
+    },
+    {
+      "id": "intake-initial",
+      "exitCode": 0,
+      "tests": 16,
+      "passed": 16,
+      "failed": 0,
+      "cancelled": 0
+    },
+    {
+      "id": "forms-initial",
+      "exitCode": 1,
+      "tests": 185,
+      "passed": 127,
+      "failed": 5,
+      "cancelled": 53
+    }
+  ],
+  "preservation": {
+    "CODEX.md": "2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525",
+    "CLAUDE.md": "66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37",
+    "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff": "4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": "029d7bf41f54c58cc19d3df5c80a89557ef3e996872bcc896b192a7493df64f0",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/post-deploy-manual-intake.json": "1773f07ecd0f234471aaeafa470b86dae2873e0aa0754a367963f762406c72df"
+  },
+  "lastConfirmed": "All authorized pending opening verification completed: forms 197/197; guided intake 10/10; runtime/provider attempt tests 2/2 each; current API official typecheck and web build exit 0; final focal comparison has zero introduced diagnostics and retains exit 1 for baseline errors. Evidence README/Index updated additively.",
+  "activeProcesses": [],
+  "pending": [
+    "PostgreSQL transactional/multiprocess atomicity NOT COMPROVED; no real infrastructure test authorized",
+    "Real provider, browser/mobile and real save NOT EXECUTED",
+    "Integral web/focal TypeScript not fully approved; 2 old test +32 dependency diagnostics retained under focal baseline",
+    "Remote CI/operational rollout NOT EXECUTED"
+  ],
+  "typingCorrection": {
+    "production": "API official exit 0 after latest opening changes",
+    "tests": "Focal HEAD comparison after latest opening changes: 0 introduced; exit 1 retained for 2 legacy test diagnostics"
+  },
+  "fixtureReproduction": {
+    "exitCode": 1,
+    "tests": 185,
+    "passed": 127,
+    "failed": 5,
+    "cancelled": 53,
+    "failures": [
+      {
+        "name": "# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run",
+        "failureType": "'testCodeFailure'"
+      },
+      {
+        "name": "# Subtest: texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação",
+        "failureType": "'testCodeFailure'"
+      },
+      {
+        "name": "# Subtest: campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados",
+        "failureType": "'testCodeFailure'"
+      },
+      {
+        "name": "# Subtest: unidade singular livre usa intake e preserva seu nome no cadastro",
+        "failureType": "'testCodeFailure'"
+      },
+      {
+        "name": "# Subtest: corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente",
+        "failureType": "'testCodeFailure'"
+      }
+    ],
+    "log": "collection-legacy-fixture-reproduction-final.log"
+  },
+  "completedBatches": [
+    {
+      "id": "providers-final",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=guiado",
+        "packages/providers/tests/openai-provider-failure.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 1.033,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "intake-remaining",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=^coleta guiada v1: rota real",
+        "apps/api/src/tests/imob-property-capture-intake.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-remaining.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 0.919,
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "api-typecheck-final",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/api",
+        "typecheck"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-api-typecheck-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 9.48
+    },
+    {
+      "id": "forms-regression-final",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-regression-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 1.861,
+      "tests": 192,
+      "pass": 192,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "runtime-final",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=^runtime guiado:",
+        "apps/api/src/tests/llm-provider-failure.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 0.789,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    }
+  ],
+  "baselineComparison": {
+    "exitCode": 1,
+    "introduced": 0,
+    "focused": 2,
+    "dependency": 32,
+    "baseline": "HEAD virtual f0da60cd; exact same roots/settings",
+    "historicalEvidence": "intake-observability/preparation-typecheck.json corroborates the two blockers diagnostics and 16 shared dependency diagnostics"
+  },
+  "fixtureDiagnosis": "Exact HEAD-fixture reproduction: 5 failures because canonical opening now uses guided property_draft while old mocks treat every intake as property_units; test 133 waits unresolved opening before it can resolve intake, causing 53 cancelledByParent. Actual route tests cover guided opening; legacy unit/batch assertions retained under a non-exact legacy initiation. Current suite 192/192 passed. Real missing opening timeout also found and fixed/tested 1/1.",
+  "openingLifecycle": {
+    "id": "opening-lifecycle",
+    "command": [
+      "env",
+      "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+      "node",
+      "--import",
+      "tsx",
+      "--test-name-pattern=^coleta guiada v1 (abertura:|Front Door: abertura)",
+      "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+    ],
+    "state": "finished",
+    "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.log",
+    "pid": 2,
+    "exitCode": 0,
+    "durationSeconds": 1.087,
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "latestExecutions": [
+    {
+      "id": "opening-api-types",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/api",
+        "typecheck"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-api-types.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 15.425
+    },
+    {
+      "id": "opening-forms-regression",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-forms-regression.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 2.439,
+      "tests": 197,
+      "pass": 197,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "opening-intake-regression",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=^coleta guiada v1:",
+        "apps/api/src/tests/imob-property-capture-intake.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-intake-regression.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 1.575,
+      "tests": 10,
+      "pass": 10,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "opening-lifecycle",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=^coleta guiada v1 (abertura:|Front Door: abertura)",
+        "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 1.087,
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "opening-web-build",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/web",
+        "build"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-web-build.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 11.496
+    },
+    {
+      "id": "providers-build-final",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/providers",
+        "build"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 0.932
+    },
+    {
+      "id": "providers-final",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=guiado",
+        "packages/providers/tests/openai-provider-failure.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 1.033,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "id": "runtime-final",
+      "command": [
+        "env",
+        "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+        "node",
+        "--import",
+        "tsx",
+        "--test-name-pattern=^runtime guiado:",
+        "apps/api/src/tests/llm-provider-failure.test.ts"
+      ],
+      "state": "finished",
+      "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-final.log",
+      "pid": 2,
+      "exitCode": 0,
+      "durationSeconds": 0.789,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    }
+  ],
+  "typecheckOpening": {
+    "exitCode": 1,
+    "introduced": 0,
+    "focused": 2,
+    "dependency": 32,
+    "json": "collection-typecheck-opening.json",
+    "log": "collection-typecheck-opening.log",
+    "baseline": "collection-typecheck.json baseline, virtual HEAD f0da60cd with identical roots/options"
+  },
+  "reused": [
+    {
+      "name": "propertyCreateForm",
+      "tests": 19,
+      "pass": 19,
+      "fail": 0,
+      "cancelled": 0,
+      "exitCode": 0,
+      "log": "collection-property-tests.log"
+    },
+    {
+      "name": "imobPersistence",
+      "tests": 15,
+      "pass": 15,
+      "fail": 0,
+      "cancelled": 0,
+      "exitCode": 0,
+      "log": "collection-persistence-tests.log"
+    },
+    {
+      "name": "legacy intake",
+      "tests": 16,
+      "pass": 16,
+      "exitCode": 0,
+      "log": "collection-intake-second.log",
+      "note": "16 legacy cases in the 22/22 run; 10 current guided cases executed separately after later changes"
+    },
+    {
+      "name": "runtime legacy",
+      "tests": 8,
+      "pass": 8,
+      "exitCode": 0,
+      "log": "collection-runtime-tests.log",
+      "note": "8 unchanged cases in 9/9 run; two guided cases revalidated in collection-runtime-final.log"
+    },
+    {
+      "name": "OpenAI legacy",
+      "tests": 5,
+      "pass": 5,
+      "exitCode": 0,
+      "log": "collection-provider-tests.log",
+      "note": "5 unchanged cases in 6/6 run; two guided adapter/completion cases revalidated separately"
+    },
+    {
+      "name": "core/contracts builds",
+      "exitCode": 0,
+      "logs": [
+        "collection-core-build.log",
+        "collection-contracts-build.log"
+      ]
+    },
+    {
+      "name": "architecture gates",
+      "exitCode": 0,
+      "logs": [
+        "collection-launcher-gate.log",
+        "collection-entrypoint-gate.log",
+        "collection-snapshot-gate.log"
+      ]
+    }
+  ],
+  "openingLaterSessionProof": {
+    "test": "coleta guiada v1 abertura: cancelar antes/depois da admissão impede resposta tardia de substituir cadastro mais recente",
+    "log": "collection-opening-forms-regression.log",
+    "result": "APROVADO",
+    "rootTestNumber": 194,
+    "variants": [
+      "cancel before server opening admission",
+      "cancel after server opening admission"
+    ],
+    "assertions": [
+      "old session remains cancelled",
+      "newer form remains the only form",
+      "late old response does not replace newer session",
+      "zero model transports for opening/cancel/new opening"
+    ]
+  },
+  "scopeNotes": [
+    "Only the canonical explicit Cadastrar imóvel entry starts the new guided mode; other legacy entrypoints and batch behavior are retained.",
+    "At most one open guided registration per authenticated actor/tenant/workspace; start retries cannot renew eligibility by changing formId.",
+    "The same actor with an open guided registration cannot bypass its save requirements by omitting the session reference. Legacy consumers outside an open guided registration retain their permissive schema.",
+    "MemoryEvent metadata reuses the capture draft/proposal schemas to retain session state; no migration, draft table or competing registry.",
+    "Up to one authorized transport attempt per session is a design/enforcement claim with synthetic verification; cross-process atomicity remains unproved."
+  ],
+  "environment": {
+    "workspaceAccessible": true,
+    "reportedByUser": [
+      "Reconnecting /5",
+      "failed to load workspace requirements"
+    ],
+    "observedDuringCommands": [
+      "spawnSync git EPERM inside sandbox, retried outside sandbox for read-only comparison/reproduction",
+      "incompatible first reproduction loader failed before tests, corrected with async loader"
+    ],
+    "wslLoss": "not evidenced",
+    "restartsOrReinstalls": false
+  },
+  "preservationVerified": {
+    "CODEX.md": true,
+    "CLAUDE.md": true,
+    "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff": true,
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": true,
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/post-deploy-manual-intake.json": true
+  },
+  "sourceHashes": {
+    "apps/api/src/orchestrator/llmExecutor.ts": "f27089b76323dd32e8cf9abca586383704cd055bad6fb75f8d78673e2a679512",
+    "apps/api/src/routes/imob.ts": "47582f32d418f973f0cc7f238dfbaceadf8e055f9163d0a83977a2893edbecbd",
+    "apps/api/src/routes/imobCrmRouter.ts": "c2e9222b28be7653c3727b5bfe8972da7783f19de9e44a43c0cc87b3950c0e46",
+    "apps/api/src/services/imob/crm/imobCrmTurnEngine.ts": "6277da994f3e6db0bbc136c8d2b0deae80c026b63d2fe3c7d4cfde52e8d523a6",
+    "apps/api/src/services/imob/imobAgentContract.ts": "fc6970c1f085e1719641c8f32f2ce6ca1f0630c70e8b983005bf970693e23997",
+    "apps/api/src/services/imob/imobChatConversationManagement.ts": "99d07d5856d3acb0affe4e09ae261fc566c16aad5e1aa425bb18afdec6d42eb0",
+    "apps/api/src/services/imob/imobTurnResolver.ts": "130e85144cff8c086fa361135110a8f17a2658d6ddc739928702444fd7e08716",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts": "b69c1729bd8f9815905d18c24f137d5047c1889345e815ac9bff05023931026e",
+    "apps/api/src/tests/llm-provider-failure.test.ts": "62741cfbba9463c2193dcffbf4c5c3f1485153d665149348143d67c2690a1016",
+    "apps/web/src/components/agents/chatLauncherEngine.ts": "b2cc6deb5b12efb9180d49d869f6edc6aeec8525492878c5ccb8500bf6a18954",
+    "apps/web/src/features/imob/persistence/imobPersistence.test.ts": "dc200f4dd1b4c4c61bca8011bb68857c88d28c1956a2b171491a294ee33bf722",
+    "apps/web/src/features/imob/structured/ImobFrontDoorPart.tsx": "aa0644811860c1ea6aad35cb7f41935f439ed9db9440f2155c8375d9619cfb4f",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts": "eec3fd78f45d102f2c7288152f39c327319590bfafcbcbc7b7c813f69f0c2d39",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.ts": "783e748e38e4a40e57631a5a96855057192c11efe11f5cc9786f9fa0719098e5",
+    "apps/web/src/features/imob/structured/types.ts": "db2af880639e672b1121f537513fb8bf42b2701ab8fdc78b5d4493cbd311f822",
+    "apps/web/src/features/imob/structured/useImobFormState.ts": "1d60ee17988bb6eb427820c34a1f9fbb9b0c4eaa9d0684286ebd1d3a7a777658",
+    "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts": "d3ae86e435562357ce742a5cfb9f6d1a9049e1bd5a3f6b786961caf9352c10ef",
+    "apps/web/src/pages/app/imob/propertyCreateForm.test.ts": "067b8af763d5911430ca070a1afbb86bc1fc82521c1d51c93f4d0cd6aef3db59",
+    "apps/web/src/pages/app/imob/propertyCreateForm.ts": "95a6fe0e08a83d9b23f2df9f5fb8a101cca731596a4d6709e9bd72c847824765",
+    "packages/contracts/src/imobPropertyCapture.ts": "41eab795a25ac41806ba631da7a8d8c064093674640259bd184f0c9f65b2aa12",
+    "packages/core/src/llm/completionEngine.ts": "fb36c563f4d21fe5d1b9bad6cf39e09039fd27adfe27ce106d0e47c9f6990e7a",
+    "packages/core/src/llm/types.ts": "10e5b07f22d4707fc7b1caaa645d53a9ae94eae1c28506a08d342ebf8e048182",
+    "packages/providers/src/AnthropicProvider.ts": "1c1e2a4546129d4cb3f432eeb42674b46a4b018069431f36e97edf3f725b9863",
+    "packages/providers/src/DeepSeekProvider.ts": "90707d2fb4fc2a7d386f049c3e8c58a5435e441a8725ee40a15d937d2b8f85b2",
+    "packages/providers/src/GeminiProvider.ts": "bb5b5a1a4723d5bfee400bed9715479063c77c47f6172c78010abfcbfde160bc",
+    "packages/providers/src/OpenAIProvider.ts": "5e7da3fa336beb79856ca462229e426bb077a63f2ad14aefca26e21d52d799be",
+    "packages/providers/tests/openai-provider-failure.test.ts": "5ef90f5e506bf9ca013ae9bf44fcf738fa8d6ebbae1ab24a70506811efb471ae",
+    "apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts": "a271a4ae627d50e5b38165e82fea26803e25bba356feb4c3ada73cb66c5ad9d7",
+    "apps/api/src/tests/fixtures/imob/guided-property-capture.fixture.ts": "ad93a0d2bf5f31038ec94ea4bb139a97d3d8f12e14dbe52573b04ca58271f60f"
+  },
+  "finalGit": {
+    "branch": "chore/imob-intake-provider-diagnostics",
+    "head": "f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d",
+    "staged": [],
+    "sourcePaths": [
+      "apps/api/src/orchestrator/llmExecutor.ts",
+      "apps/api/src/routes/imob.ts",
+      "apps/api/src/routes/imobCrmRouter.ts",
+      "apps/api/src/services/imob/crm/imobCrmTurnEngine.ts",
+      "apps/api/src/services/imob/imobAgentContract.ts",
+      "apps/api/src/services/imob/imobChatConversationManagement.ts",
+      "apps/api/src/services/imob/imobTurnResolver.ts",
+      "apps/api/src/tests/imob-property-capture-intake.test.ts",
+      "apps/api/src/tests/llm-provider-failure.test.ts",
+      "apps/web/src/components/agents/chatLauncherEngine.ts",
+      "apps/web/src/features/imob/persistence/imobPersistence.test.ts",
+      "apps/web/src/features/imob/structured/ImobFrontDoorPart.tsx",
+      "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "apps/web/src/features/imob/structured/createImobStructuredForms.ts",
+      "apps/web/src/features/imob/structured/types.ts",
+      "apps/web/src/features/imob/structured/useImobFormState.ts",
+      "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+      "apps/web/src/pages/app/imob/propertyCreateForm.test.ts",
+      "apps/web/src/pages/app/imob/propertyCreateForm.ts",
+      "packages/contracts/src/imobPropertyCapture.ts",
+      "packages/core/src/llm/completionEngine.ts",
+      "packages/core/src/llm/types.ts",
+      "packages/providers/src/AnthropicProvider.ts",
+      "packages/providers/src/DeepSeekProvider.ts",
+      "packages/providers/src/GeminiProvider.ts",
+      "packages/providers/src/OpenAIProvider.ts",
+      "packages/providers/tests/openai-provider-failure.test.ts",
+      "apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts",
+      "apps/api/src/tests/fixtures/imob/guided-property-capture.fixture.ts"
+    ],
+    "preexisting": [
+      "CODEX.md",
+      "CLAUDE.md",
+      "docs/EVIDENCE_INDEX.md (7 existing added lines preserved)",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/post-deploy-manual-intake.json"
+    ],
+    "status": [
+      " M CLAUDE.md",
+      " M CODEX.md",
+      " M apps/api/src/orchestrator/llmExecutor.ts",
+      " M apps/api/src/routes/imob.ts",
+      " M apps/api/src/routes/imobCrmRouter.ts",
+      " M apps/api/src/services/imob/crm/imobCrmTurnEngine.ts",
+      " M apps/api/src/services/imob/imobAgentContract.ts",
+      " M apps/api/src/services/imob/imobChatConversationManagement.ts",
+      " M apps/api/src/services/imob/imobTurnResolver.ts",
+      " M apps/api/src/tests/imob-property-capture-intake.test.ts",
+      " M apps/api/src/tests/llm-provider-failure.test.ts",
+      " M apps/web/src/components/agents/chatLauncherEngine.ts",
+      " M apps/web/src/features/imob/persistence/imobPersistence.test.ts",
+      " M apps/web/src/features/imob/structured/ImobFrontDoorPart.tsx",
+      " M apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      " M apps/web/src/features/imob/structured/createImobStructuredForms.ts",
+      " M apps/web/src/features/imob/structured/types.ts",
+      " M apps/web/src/features/imob/structured/useImobFormState.ts",
+      " M apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+      " M apps/web/src/pages/app/imob/propertyCreateForm.test.ts",
+      " M apps/web/src/pages/app/imob/propertyCreateForm.ts",
+      " M docs/EVIDENCE_INDEX.md",
+      " M ops/evidence/latest/imob-property-guided-draft-2026-11-14/README.md",
+      " M ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md",
+      " M packages/contracts/src/imobPropertyCapture.ts",
+      " M packages/core/src/llm/completionEngine.ts",
+      " M packages/core/src/llm/types.ts",
+      " M packages/providers/src/AnthropicProvider.ts",
+      " M packages/providers/src/DeepSeekProvider.ts",
+      " M packages/providers/src/GeminiProvider.ts",
+      " M packages/providers/src/OpenAIProvider.ts",
+      " M packages/providers/tests/openai-provider-failure.test.ts",
+      "?? apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts",
+      "?? apps/api/src/tests/fixtures/imob/guided-property-capture.fixture.ts",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-api-typecheck-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-regression-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-frontdoor-finish.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-remaining.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-api-types.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-forms-regression.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-intake-regression.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-recovery.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-web-build.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-results.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-final.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-opening.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck.json",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck.mjs",
+      "?? ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-web-build-final.json",
+      "?? ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/post-deploy-manual-intake.json"
+    ]
+  },
+  "temporaryArtifacts": {
+    "purpose": "Local execution, HEAD comparison/reproduction and reconnect recovery; retained intentionally until review",
+    "paths": [
+      "/tmp/imob-guided-api-types.log",
+      "/tmp/imob-guided-batch.json",
+      "/tmp/imob-guided-collection-preservation.json",
+      "/tmp/imob-guided-contracts-build.log",
+      "/tmp/imob-guided-core-build.log",
+      "/tmp/imob-guided-entrypoint-gate.log",
+      "/tmp/imob-guided-finish.json",
+      "/tmp/imob-guided-forms-corrected.log",
+      "/tmp/imob-guided-forms-final.log",
+      "/tmp/imob-guided-forms-second.log",
+      "/tmp/imob-guided-forms-third.log",
+      "/tmp/imob-guided-intake-final.log",
+      "/tmp/imob-guided-intake-first.log",
+      "/tmp/imob-guided-intake-second.log",
+      "/tmp/imob-guided-launcher-gate.log",
+      "/tmp/imob-guided-legacy-repro-loader.mjs",
+      "/tmp/imob-guided-legacy-repro-register.mjs",
+      "/tmp/imob-guided-official-api-types.log",
+      "/tmp/imob-guided-opening-only.json",
+      "/tmp/imob-guided-opening-regression.json",
+      "/tmp/imob-guided-persistence-tests.log",
+      "/tmp/imob-guided-property-tests.log",
+      "/tmp/imob-guided-provider-tests.log",
+      "/tmp/imob-guided-providers-build.log",
+      "/tmp/imob-guided-run.py",
+      "/tmp/imob-guided-runtime-tests.log",
+      "/tmp/imob-guided-sequential.json",
+      "/tmp/imob-guided-snapshot-gate.log",
+      "/tmp/imob-guided-types.json",
+      "/tmp/imob-guided-web-types.log"
+    ],
+    "removed": []
+  },
+  "finalDiffCheck": {
+    "exitCode": 0
+  },
+  "localExecutionStatus": "Verificações locais autorizadas registradas; incremento permanece parcial pelas limitações explicitadas."
+}

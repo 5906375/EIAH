@@ -1,0 +1,534 @@
+{
+  "roots": [
+    "apps/api/src/orchestrator/llmExecutor.ts",
+    "apps/api/src/routes/imob.ts",
+    "apps/api/src/routes/imobCrmRouter.ts",
+    "apps/api/src/services/imob/crm/imobCrmTurnEngine.ts",
+    "apps/api/src/services/imob/imobAgentContract.ts",
+    "apps/api/src/services/imob/imobChatConversationManagement.ts",
+    "apps/api/src/services/imob/imobTurnResolver.ts",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts",
+    "apps/api/src/tests/llm-provider-failure.test.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.ts",
+    "apps/web/src/features/imob/persistence/imobPersistence.test.ts",
+    "apps/web/src/features/imob/structured/ImobFrontDoorPart.tsx",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.ts",
+    "apps/web/src/features/imob/structured/types.ts",
+    "apps/web/src/features/imob/structured/useImobFormState.ts",
+    "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+    "apps/web/src/pages/app/imob/propertyCreateForm.test.ts",
+    "apps/web/src/pages/app/imob/propertyCreateForm.ts",
+    "packages/contracts/src/imobPropertyCapture.ts",
+    "packages/core/src/llm/completionEngine.ts",
+    "packages/core/src/llm/types.ts",
+    "packages/providers/src/AnthropicProvider.ts",
+    "packages/providers/src/DeepSeekProvider.ts",
+    "packages/providers/src/GeminiProvider.ts",
+    "packages/providers/src/OpenAIProvider.ts",
+    "packages/providers/tests/openai-provider-failure.test.ts",
+    "apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts",
+    "apps/api/src/tests/fixtures/imob/guided-property-capture.fixture.ts",
+    "apps/web/src/vite-env.d.ts",
+    "packages/core/src/llm/LLMProviderError.ts",
+    "packages/core/src/llm/types.ts",
+    "packages/core/src/llm/completionEngine.ts",
+    "packages/core/src/utils/retry.ts",
+    "packages/providers/src/OpenAIProvider.ts",
+    "apps/api/src/orchestrator/llmExecutor.ts",
+    "packages/contracts/src/imobPropertyCapture.ts",
+    "apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts",
+    "apps/api/src/routes/imob.ts",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts",
+    "apps/api/src/tests/llm-provider-failure.test.ts",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+    "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+    "apps/api/src/services/capabilityExecution.ts",
+    "apps/api/src/tests/capability-execution.test.ts"
+  ],
+  "baseline": [
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 79,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 88,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 96,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 114,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 115,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 115,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 144,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 187,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 191,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 93,
+      "message": "Property 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 127,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 129,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 130,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobRevocationGate.ts",
+      "code": 2339,
+      "line": 48,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/components/agents/eiahTutorContracts.ts",
+      "code": 2339,
+      "line": 2391,
+      "message": "Property 'vertical' does not exist on type 'IntentLibraryEntryV1'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "code": 2551,
+      "line": 986,
+      "message": "Property 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?",
+      "focused": true
+    },
+    {
+      "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "code": 2551,
+      "line": 1305,
+      "message": "Property 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?",
+      "focused": true
+    },
+    {
+      "file": "apps/web/src/hooks/useAgentExecution.ts",
+      "code": 2345,
+      "line": 99,
+      "message": "Argument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.\n  Types of property 'agent' are incompatible.\n    Type 'string | undefined' is not assignable to type 'string'.\n      Type 'undefined' is not assignable to type 'string'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 299,
+      "message": "Property 'proof' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 552,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 552,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 553,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2322,
+      "line": 1961,
+      "message": "Type '{ [k: string]: unknown; } | undefined' is not assignable to type 'Record<string, string> | undefined'.\n  Type '{ [k: string]: unknown; }' is not assignable to type 'Record<string, string>'.\n    'string' index signatures are incompatible.\n      Type 'unknown' is not assignable to type 'string'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2051,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2051,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2052,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5854,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5855,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5856,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 9,
+      "message": "Property 'presentationMetadata' does not exist on type 'ImobChatMessage'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 21,
+      "message": "Property 'proof' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 24,
+      "message": "Property 'runId' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2344,
+      "line": 44,
+      "message": "Type '\"proof\" | \"presentationMetadata\"' does not satisfy the constraint 'keyof ImobChatMessage'.\n  Type '\"presentationMetadata\"' is not assignable to type 'keyof ImobChatMessage'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2345,
+      "line": 46,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Pick<ImobPresentationMetadata, \"canonicalSnapshot\"> | Pick<any, \"canonicalSnapshot\"> | null | undefined'.",
+      "focused": false
+    }
+  ],
+  "current": [
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 79,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 88,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 96,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 114,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 115,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 115,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 144,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 187,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/middlewares/enforceTenant.ts",
+      "code": 2339,
+      "line": 191,
+      "message": "Property 'logger' does not exist on type 'TenantAwareRequest'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 93,
+      "message": "Property 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 127,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 129,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobAccessGate.ts",
+      "code": 2339,
+      "line": 130,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/api/src/services/imob/imobRevocationGate.ts",
+      "code": 2339,
+      "line": 48,
+      "message": "Property 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/components/agents/eiahTutorContracts.ts",
+      "code": 2339,
+      "line": 2391,
+      "message": "Property 'vertical' does not exist on type 'IntentLibraryEntryV1'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "code": 2551,
+      "line": 991,
+      "message": "Property 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?",
+      "focused": true
+    },
+    {
+      "file": "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "code": 2551,
+      "line": 1310,
+      "message": "Property 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?",
+      "focused": true
+    },
+    {
+      "file": "apps/web/src/hooks/useAgentExecution.ts",
+      "code": 2345,
+      "line": 99,
+      "message": "Argument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.\n  Types of property 'agent' are incompatible.\n    Type 'string | undefined' is not assignable to type 'string'.\n      Type 'undefined' is not assignable to type 'string'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 299,
+      "message": "Property 'proof' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 552,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 552,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 553,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2322,
+      "line": 1961,
+      "message": "Type '{ [k: string]: unknown; } | undefined' is not assignable to type 'Record<string, string> | undefined'.\n  Type '{ [k: string]: unknown; }' is not assignable to type 'Record<string, string>'.\n    'string' index signatures are incompatible.\n      Type 'unknown' is not assignable to type 'string'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2051,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2051,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 2339,
+      "line": 2052,
+      "message": "Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5854,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5855,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chat.tsx",
+      "code": 18048,
+      "line": 5856,
+      "message": "'sc' is possibly 'undefined'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 9,
+      "message": "Property 'presentationMetadata' does not exist on type 'ImobChatMessage'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 21,
+      "message": "Property 'proof' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2339,
+      "line": 24,
+      "message": "Property 'runId' does not exist on type 'ImobPresentationCard'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2344,
+      "line": 44,
+      "message": "Type '\"proof\" | \"presentationMetadata\"' does not satisfy the constraint 'keyof ImobChatMessage'.\n  Type '\"presentationMetadata\"' is not assignable to type 'keyof ImobChatMessage'.",
+      "focused": false
+    },
+    {
+      "file": "apps/web/src/pages/app/imob/chatProof.ts",
+      "code": 2345,
+      "line": 46,
+      "message": "Argument of type 'unknown' is not assignable to parameter of type 'Pick<ImobPresentationMetadata, \"canonicalSnapshot\"> | Pick<any, \"canonicalSnapshot\"> | null | undefined'.",
+      "focused": false
+    }
+  ],
+  "introduced": [],
+  "focusedDiagnostics": 2,
+  "dependencyDiagnostics": 32,
+  "scope": "All changed TS roots plus the existing focal roots, no integral API/web certification; all diagnostics preserved, no filtering of the exit status for focused errors",
+  "baselineSource": "delta-typecheck.json (same HEAD and compiler settings; not rerun)"
+}

@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: dedupeRunMessages colapsa duplicata assistente legado sem runId inicial
+ok 1 - dedupeRunMessages colapsa duplicata assistente legado sem runId inicial
+  ---
+  duration_ms: 10.301768
+  type: 'test'
+  ...
+# Subtest: dedupeRunMessages preserva mensagens assistente semanticamente distintas
+ok 2 - dedupeRunMessages preserva mensagens assistente semanticamente distintas
+  ---
+  duration_ms: 0.484799
+  type: 'test'
+  ...
+# Subtest: dedupeRunMessages mantém fallback por runId para started e terminal do mesmo run
+ok 3 - dedupeRunMessages mantém fallback por runId para started e terminal do mesmo run
+  ---
+  duration_ms: 0.364431
+  type: 'test'
+  ...
+# Subtest: normalizeImobAccessGateErrorPresentation preserves backend message, reasonCode and CTA
+ok 4 - normalizeImobAccessGateErrorPresentation preserves backend message, reasonCode and CTA
+  ---
+  duration_ms: 1.274399
+  type: 'test'
+  ...
+# Subtest: normalizeImobAccessGateErrorPresentation does not invent CTA when backend omits it
+ok 5 - normalizeImobAccessGateErrorPresentation does not invent CTA when backend omits it
+  ---
+  duration_ms: 0.199211
+  type: 'test'
+  ...
+# Subtest: normalizeImobAccessGateErrorPresentation uses safe fallback without backend message
+ok 6 - normalizeImobAccessGateErrorPresentation uses safe fallback without backend message
+  ---
+  duration_ms: 0.203555
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation renders loading without CTA
+ok 7 - buildImobFrontdoorStatePresentation renders loading without CTA
+  ---
+  duration_ms: 0.258061
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation renders empty front door without invented next step
+ok 8 - buildImobFrontdoorStatePresentation renders empty front door without invented next step
+  ---
+  duration_ms: 0.207833
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation renders generic structured error without CTA
+ok 9 - buildImobFrontdoorStatePresentation renders generic structured error without CTA
+  ---
+  duration_ms: 0.31278
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation preserves F0.1 entitlement CTA when backend sends it
+ok 10 - buildImobFrontdoorStatePresentation preserves F0.1 entitlement CTA when backend sends it
+  ---
+  duration_ms: 0.411826
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation preserves entitlement without invented CTA
+ok 11 - buildImobFrontdoorStatePresentation preserves entitlement without invented CTA
+  ---
+  duration_ms: 0.156895
+  type: 'test'
+  ...
+# Subtest: buildImobFrontdoorStatePresentation fails closed for unknown state
+ok 12 - buildImobFrontdoorStatePresentation fails closed for unknown state
+  ---
+  duration_ms: 0.130154
+  type: 'test'
+  ...
+# Subtest: IMOB front door UX rendering evidence covers F0.1 and F0.2 states
+ok 13 - IMOB front door UX rendering evidence covers F0.1 and F0.2 states
+  ---
+  duration_ms: 1.012628
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 536.145904

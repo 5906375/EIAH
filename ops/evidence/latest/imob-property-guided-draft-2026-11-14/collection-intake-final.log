@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+ok 1 - coleta guiada v1: abertura sem IA; sequenciamento, zero, inválido, pular, retomar e revisão
+  ---
+  duration_ms: 8.888664
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+ok 2 - coleta guiada v1: proposta 2/1, confirmação contextual uma vez e adulteração bloqueada sem outra IA
+  ---
+  duration_ms: 5.853663
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+ok 3 - coleta guiada v1: admissão concorrente/repetida, formId arbitrário, falha, timeout e resultado desconhecido não renovam
+  ---
+  duration_ms: 9.548876
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+ok 4 - coleta guiada v1: pausa/reload conservador, escopo antigo, cancelamento e resposta tardia não restauram autoridade
+  ---
+  duration_ms: 8.040698
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+ok 5 - coleta guiada v1: indisponibilidade persistente mantém coleta estruturada e bloqueia só interpretação
+  ---
+  duration_ms: 0.703919
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+ok 6 - coleta guiada v1: save revalida domínio no caminho existente, flags omitidas/adulteradas, legado separado
+  ---
+  duration_ms: 1.244328
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: isolamento autenticado, correção invalida proposta e nova tentativa só em cadastro explicitamente novo
+ok 7 - coleta guiada v1: isolamento autenticado, correção invalida proposta e nova tentativa só em cadastro explicitamente novo
+  ---
+  duration_ms: 2.451327
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: recuperação do controle indisponível preserva preenchimento e não concede interpretação
+ok 8 - coleta guiada v1: recuperação do controle indisponível preserva preenchimento e não concede interpretação
+  ---
+  duration_ms: 0.463295
+  type: 'test'
+  ...
+# Subtest: coleta guiada v1: callback real POST /properties usa requisitos de servidor e preserva createProperty legado
+ok 9 - coleta guiada v1: callback real POST /properties usa requisitos de servidor e preserva createProperty legado
+  ---
+  duration_ms: 99.755649
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 160.493449

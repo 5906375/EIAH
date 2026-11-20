@@ -1,0 +1,824 @@
+{
+  "environment": {
+    "browser": "Chromium 149.0.7827.55 (Playwright headless)",
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "kind": "emulação de viewport (isMobile+touch), não aparelho físico"
+    },
+    "apiOrigin": "loopback (API real, NODE_ENV=test, sem workers/filas)",
+    "web": "Vite dev real em loopback"
+  },
+  "provider": {
+    "simulatedInvocations": 4,
+    "classifierInvocations": 1,
+    "unsupportedRequests": 0,
+    "entries": [
+      {
+        "seq": 1,
+        "host": "api.openai.com",
+        "path": "/v1/chat/completions",
+        "contract": "chat_completions",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 2,
+        "host": "api.openai.com",
+        "path": "/v1/chat/completions",
+        "contract": "chat_completions",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 3,
+        "host": "api.openai.com",
+        "path": "/v1/chat/completions",
+        "contract": "chat_completions",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 4,
+        "host": "api.openai.com",
+        "path": "/v1/chat/completions",
+        "contract": "chat_completions",
+        "answered": "proposal",
+        "messageChars": 27
+      },
+      {
+        "seq": 5,
+        "host": "api.openai.com",
+        "path": "/v1/responses",
+        "contract": "responses_intent",
+        "answered": "abstain",
+        "messageChars": 0
+      }
+    ]
+  },
+  "selection": {
+    "requested": "todos",
+    "executed": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "6",
+      "1b",
+      "5a",
+      "5b",
+      "5c",
+      "5d",
+      "5e",
+      "5f",
+      "7"
+    ],
+    "harnessSelfTest": {
+      "externalBlocked": true,
+      "providerRedirected": true,
+      "chatCompletionsSupported": true,
+      "responsesIntentSupported": true,
+      "responsesIntentShape": true,
+      "responsesOtherRejected": true,
+      "unknownTextRejected": true
+    }
+  },
+  "divergences": [
+    {
+      "id": "D-ROUTING-01",
+      "scenario": "5e",
+      "input": "quero ver meus imóveis",
+      "observedReply": "Isso parece um caso jurídico.",
+      "expected": "chegar à consulta IMOB ou apresentar restrição de acesso pertinente",
+      "providerCallsDuringTurn": 0,
+      "origin": "roteamento local preexistente do Front Door (legalContextResolver.isLegalRoutingQuestion); não é provider, fixture nem fallback do harness",
+      "status": "preexistente, não corrigido nesta etapa"
+    }
+  ],
+  "externalTraffic": {
+    "browserBlocked": {
+      "fonts.googleapis.com": 16
+    },
+    "backendBlocked": [],
+    "note": "nenhum acesso externo foi liberado; as entradas acima foram abortadas/rejeitadas"
+  },
+  "database": {
+    "properties": 2,
+    "sessions": [
+      {
+        "status": "saved",
+        "interpretation": "consumed",
+        "revision": 22
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 7
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 5
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 2
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "consumed",
+        "revision": 3
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "cancelled",
+        "interpretation": "declined",
+        "revision": 4
+      },
+      {
+        "status": "saved",
+        "interpretation": "declined",
+        "revision": 17
+      },
+      {
+        "status": "active",
+        "interpretation": "declined",
+        "revision": 1
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "1",
+      "name": "Abertura",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "fluxo guiado iniciado (resolve-turn 200 com sessão ativa)",
+          "ok": true
+        },
+        {
+          "what": "zero invocações do provider",
+          "ok": true
+        },
+        {
+          "what": "formulário completo ausente durante a coleta",
+          "ok": true
+        },
+        {
+          "what": "persistência de sessão ≠ imóvel: 1 sessão de controle, 0 imóveis",
+          "ok": true
+        },
+        {
+          "what": "alternativa \"Continuar sem IA\" disponível como controle visível e acionável",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "01-abertura.png"
+      ]
+    },
+    {
+      "id": "2",
+      "name": "Proposta inicial (IA simulada)",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "exatamente uma invocação do provider simulado, com a resposta de proposta",
+          "ok": true
+        },
+        {
+          "what": "proposta mostra Quartos=2 e Vagas=1",
+          "ok": true
+        },
+        {
+          "what": "dados ainda NÃO aplicados antes da confirmação (servidor)",
+          "ok": true
+        },
+        {
+          "what": "uma confirmação aplica uma vez, sem nova invocação",
+          "ok": true
+        },
+        {
+          "what": "\"sim\" repetido não reaplica nem chama modelo",
+          "ok": true
+        },
+        {
+          "what": "imóveis ainda 0",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "02-proposta.png"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "Coleta, um campo por vez",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "\"Continuar sem IA\" (digitado) segue sem modelo",
+          "ok": true
+        },
+        {
+          "what": "tipo é a primeira pergunta e bedrooms/garageSpots (já confirmados) não são repetidos",
+          "ok": true
+        },
+        {
+          "what": "entrada ambígua recebe orientação e não dispara outro modelo",
+          "ok": true
+        },
+        {
+          "what": "seletor do campo atual disponível",
+          "ok": true
+        },
+        {
+          "what": "seleção direta aplicou SOMENTE o campo escolhido",
+          "ok": true
+        },
+        {
+          "what": "entrada inválida em address recebe orientação (e fica no mesmo campo)",
+          "ok": true
+        },
+        {
+          "what": "entrada inválida em cep recebe orientação (e fica no mesmo campo)",
+          "ok": true
+        },
+        {
+          "what": "um campo por vez: nenhuma pergunta repetida (válidos e pulados não voltam)",
+          "ok": true
+        },
+        {
+          "what": "zero válido preservado (bathrooms=0)",
+          "ok": true
+        },
+        {
+          "what": "pulados registrados; obrigatório pulado (endereço) continua pendente",
+          "ok": true
+        },
+        {
+          "what": "nenhuma invocação do provider durante a coleta",
+          "ok": true
+        },
+        {
+          "what": "coleta encerrada leva à revisão",
+          "ok": true
+        },
+        {
+          "what": "corrigir/retomar: seletor \"Corrigir ou retomar campo\" reabre um pulado e só ele",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "03-coleta-selecao.png",
+        "04-coleta-fim.png"
+      ]
+    },
+    {
+      "id": "4",
+      "name": "Revisão e bloqueio de salvamento sem obrigatórios",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "formulário completo existente aparece na revisão",
+          "ok": true
+        },
+        {
+          "what": "mostra os valores confirmados",
+          "ok": true
+        },
+        {
+          "what": "revisão lista a pendência obrigatória (Endereço)",
+          "ok": true
+        },
+        {
+          "what": "obrigatório pulado bloqueia o save (UI): nenhum POST /properties e 0 imóveis",
+          "ok": true
+        },
+        {
+          "what": "servidor rejeita save sem obrigatórios mesmo com a validação visual contornada (com e sem referência)",
+          "ok": true
+        },
+        {
+          "what": "corrigir permite prosseguir (preencher Endereço na revisão remove a pendência)",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "05-revisao.png",
+        "06-revisao-bloqueada.png"
+      ]
+    },
+    {
+      "id": "6",
+      "name": "Salvamento integrado",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "POST /api/imob/properties respondeu 201",
+          "ok": true
+        },
+        {
+          "what": "registro persistido no banco descartável com valores, tenant e workspace corretos",
+          "ok": true
+        },
+        {
+          "what": "estado final da sessão: saved",
+          "ok": true
+        },
+        {
+          "what": "sem chamada adicional ao provider no salvamento",
+          "ok": true
+        },
+        {
+          "what": "clique duplo: comportamento efetivo registrado (cliques=2)",
+          "ok": true
+        },
+        {
+          "what": "reenvio do mesmo save (replay HTTP) não duplica: servidor rejeita sessão já salva",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "07-salvo.png"
+      ],
+      "doubleClick": {
+        "postRequests": 1,
+        "statuses": [
+          201
+        ],
+        "propertiesInDb": 1
+      },
+      "replay": {
+        "status": 400,
+        "code": "IMOB_PROPERTY_GUIDED_INVALID"
+      }
+    },
+    {
+      "id": "1b",
+      "name": "P-01 \"Continuar sem IA\" na abertura: clique, teclado (Enter/Espaço) e mobile, sem provider e sem formulário completo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "clique: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "clique: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "clique: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "clique: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "clique: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "teclado Enter: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: botão \"Continuar sem IA\" visível na abertura",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: abertura sem formulário completo e sem provider",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: comando determinístico \"collect\" → coleta de um campo, servidor com consumo recusado",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: nenhuma invocação do provider e formulário completo ainda oculto",
+          "ok": true
+        },
+        {
+          "what": "teclado Espaço: a ação deixa de ser oferecida e o histórico mostra a escolha",
+          "ok": true
+        },
+        {
+          "what": "mobile (emulação): botão visível dentro do viewport, sem corte e com alvo de toque ≥ 40px",
+          "ok": true
+        },
+        {
+          "what": "mobile (emulação): toque aciona a coleta sem provider",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "08-p01-abertura-com-botao.png",
+        "09-p01-depois-clique.png",
+        "10-p01-depois-teclado-Enter.png",
+        "11-p01-depois-teclado-Espaço.png",
+        "12-p01-mobile-abertura.png"
+      ]
+    },
+    {
+      "id": "5a",
+      "name": "Reload na mesma aba preserva rascunho e consumo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "provider chamado uma vez até aqui",
+          "ok": true
+        },
+        {
+          "what": "após reload a sessão do servidor está intacta (rascunho, pulados e consumo)",
+          "ok": true
+        },
+        {
+          "what": "após reload a conversa mostra a coleta em andamento (mesma aba)",
+          "ok": true
+        },
+        {
+          "what": "depois do reload, repetir a descrição NÃO renova a interpretação (sem novo provider)",
+          "ok": true
+        },
+        {
+          "what": "sessão continua única e aberta",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "13-reload.png"
+      ]
+    },
+    {
+      "id": "5b",
+      "name": "Pausa e retomada não renovam a interpretação",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "pausa registrada no servidor, dados e consumo preservados",
+          "ok": true
+        },
+        {
+          "what": "retomada: mesma sessão ativa, sem nova interpretação",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "14-pausado.png"
+      ]
+    },
+    {
+      "id": "5c",
+      "name": "Cancelar com revisão antiga (requisição em voo) e ação antiga não atinge cadastro novo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "o cancelamento saiu com revisão ANTIGA (menor que a do servidor)",
+          "ok": true
+        },
+        {
+          "what": "mesmo assim a sessão foi cancelada no banco (resposta reflete o estado persistido)",
+          "ok": true
+        },
+        {
+          "what": "cadastro novo é outra sessão",
+          "ok": true
+        },
+        {
+          "what": "ação atrasada com a referência antiga (replay HTTP) não encerra o cadastro novo",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "15-cancelado-revisao-antiga.png"
+      ]
+    },
+    {
+      "id": "5d",
+      "name": "Resposta tardia não reabre sessão cancelada nem substitui cadastro novo",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "o servidor processou a interpretação (provider +1) enquanto a resposta fica retida",
+          "ok": true
+        },
+        {
+          "what": "cadastro novo aberto",
+          "ok": true
+        },
+        {
+          "what": "a resposta tardia não exibiu a proposta nem substituiu o cadastro novo",
+          "ok": true
+        },
+        {
+          "what": "banco: antiga cancelada/sem proposta/consumo mantido; nova ativa e intacta",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "16-resposta-tardia.png"
+      ]
+    },
+    {
+      "id": "5e",
+      "name": "Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "P-02: abrir \"Cadastrar imóvel\" em nova aba com sessão de outra origem oferece a recuperação explícita (aviso 409 com ação), sem erro genérico nem marcador pendente",
+          "ok": true
+        },
+        {
+          "what": "nenhuma segunda sessão foi aberta e o provider não foi chamado nesses dois turnos",
+          "ok": true
+        },
+        {
+          "what": "o servidor respondeu 409 IMOB_PROPERTY_CAPTURE_ACTIVE a uma ação IMOB não guiada",
+          "ok": true
+        },
+        {
+          "what": "o cliente mostra orientação e a ação \"Cancelar cadastro do imóvel\" (sem erro genérico)",
+          "ok": true
+        },
+        {
+          "what": "sem loop e sem LLM: um único 409 por ação e nenhuma chamada de provider",
+          "ok": true
+        },
+        {
+          "what": "nada foi cancelado automaticamente",
+          "ok": true
+        },
+        {
+          "what": "escopo: outro usuário do mesmo workspace, com a referência da sessão do dono, NÃO a cancela",
+          "ok": true
+        },
+        {
+          "what": "escopo: sem credencial a referência não opera (401/403) e a sessão segue ativa",
+          "ok": true
+        },
+        {
+          "what": "escopo: o cancelamento exige ação explícita do próprio titular (nenhum cancelamento automático até aqui)",
+          "ok": true
+        },
+        {
+          "what": "a ação cancelou exatamente a sessão nomeada (por referência, sem origem)",
+          "ok": true
+        },
+        {
+          "what": "o usuário foi liberado: nova ação IMOB deixa de dar 409 e novo cadastro exige início explícito",
+          "ok": true
+        },
+        {
+          "what": "P-02: novo início explícito abre sessão distinta; a referência antiga (replay) não cancela a sessão posterior",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "17-divergencia-quero-ver-meus-imoveis.png",
+        "18-abertura-em-nova-aba.png",
+        "19-bloqueio-409.png",
+        "20-recuperado.png"
+      ],
+      "limits": [
+        "recuperação integral do RASCUNHO entre abas NÃO está implementada: a recuperação é o cancelamento explícito e autorizado por referência; o rascunho da sessão cancelada não é restaurado",
+        "sem TTL/expiração automática (decisão do owner)"
+      ]
+    },
+    {
+      "id": "5f",
+      "name": "P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "pré-condições: 1 sessão ativa em coleta com 1 campo confirmado",
+          "ok": true
+        },
+        {
+          "what": "A: nenhum claim é emitido pela aba em coleta ativa; o texto segue para a coleta guiada",
+          "ok": true
+        },
+        {
+          "what": "A: o rascunho não foi apagado, substituído nem cancelado (mesma sessão ativa, mesmo campo confirmado, 1 sessão aberta)",
+          "ok": true
+        },
+        {
+          "what": "A: a interface continua na coleta, com retorno visível ao usuário (não é silencioso)",
+          "ok": true
+        },
+        {
+          "what": "B: o servidor respondeu 200 claimed:true (consulta de agente) à aba sem contexto, com a sessão guiada aberta",
+          "ok": true
+        },
+        {
+          "what": "B: a interface mostra a resposta reivindicada, sem aviso de cadastro pendente e sem erro genérico",
+          "ok": true
+        },
+        {
+          "what": "B: a sessão e o rascunho do cadastro aberto ficaram idênticos; nenhum provider/classificador foi chamado",
+          "ok": true
+        },
+        {
+          "what": "C: a ação IMOB não guiada continua com 409, aviso e cancelamento explícito; sessão intacta",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "21-p04-mesma-aba-coleta-ativa.png",
+        "22-p04-outra-aba-claim-reivindicado.png",
+        "23-p04-operacao-incompativel-bloqueada.png"
+      ]
+    },
+    {
+      "id": "7",
+      "name": "Desktop e mobile (emulação de viewport): perguntas, seletores, botões, erros, formulário final, scroll, foco e teclado",
+      "status": "APROVADO",
+      "checks": [
+        {
+          "what": "mobile/abertura: sem rolagem horizontal nem controles cortados",
+          "ok": true
+        },
+        {
+          "what": "mobile: pergunta e mensagem de erro visíveis dentro do viewport",
+          "ok": true
+        },
+        {
+          "what": "mobile: seletor aplica o campo e avança",
+          "ok": true
+        },
+        {
+          "what": "mobile: coleta chegou à revisão",
+          "ok": true
+        },
+        {
+          "what": "mobile/revisão: formulário final sem corte horizontal; botão Salvar visível",
+          "ok": true
+        },
+        {
+          "what": "mobile: alvo de toque do botão Salvar ≥ 40px de altura",
+          "ok": true
+        },
+        {
+          "what": "teclado (mobile/desktop): Tab alcança o campo de mensagem e o botão Salvar cadastro",
+          "ok": true
+        },
+        {
+          "what": "foco: depois de enviar, o campo de mensagem mantém/recebe o foco",
+          "ok": true
+        },
+        {
+          "what": "mobile: nenhuma invocação do provider no percurso sem IA",
+          "ok": true
+        },
+        {
+          "what": "mobile: salvamento explícito → 201 e segundo imóvel persistido",
+          "ok": true
+        },
+        {
+          "what": "desktop/revisão: sem corte horizontal e botão Salvar visível",
+          "ok": true
+        },
+        {
+          "what": "desktop: o campo de mensagem permanece acessível por rolagem",
+          "ok": true
+        },
+        {
+          "what": "erros de página (pageerror) ausentes nas duas viewports",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "24-mobile-abertura.png",
+        "25-mobile-erro.png",
+        "26-mobile-revisao.png",
+        "27-mobile-salvo.png",
+        "28-desktop-revisao-vazia.png"
+      ],
+      "viewports": {
+        "desktop": {
+          "width": 1280,
+          "height": 900
+        },
+        "mobile": {
+          "width": 390,
+          "height": 844,
+          "emulation": "Chromium isMobile+touch (emulação; não é aparelho físico)"
+        },
+        "browser": "Chromium 149.0.7827.55 (Playwright headless)"
+      }
+    }
+  ]
+}

@@ -40,6 +40,7 @@ export class OpenAIProvider extends LLMProvider {
       observe("transport_attempt");
       response = await this.transport("https://api.openai.com/v1/chat/completions", {
         method: "POST",
+        redirect: req.transportPolicy === "imob_guided_single_attempt" ? "error" : "follow",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json",

@@ -91,6 +91,7 @@ import {
   buildPropertyBatchConfirmationText,
   buildPropertyBatchForm,
   buildPropertyBatchRequests,
+  buildGuidedPropertyCreateRequest,
   buildPropertyCreateConfirmationText,
   findDuplicateProperty,
   isPropertyBatchForm,
@@ -315,7 +316,15 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     const values = resolveFormValuesForMessage(message);
     const knownUnits = message.propertyUnitIntake?.status === "resolved" ? message.propertyUnitIntake.unitLabels
       : message.conversationState?.operational?.propertyDraft?.unitLabels;
-    let plan = planPropertyCreate(values, knownUnits?.length && values.unitLabel?.trim() === knownUnits.join(", ") ? knownUnits : undefined);
+    const guidedBuilt = message.propertyGuided ? buildGuidedPropertyCreateRequest(values, message.form!.fields) : null;
+    if (message.propertyGuided && (!message.propertyGuided.sessionRef || !message.propertyGuided.showFullForm || message.propertyGuided.status !== "active")) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: "Abra a revisão vigente no servidor antes de salvar." } }));
+      return;
+    }
+    let plan: ReturnType<typeof planPropertyCreate> = guidedBuilt
+      ? guidedBuilt.ok ? { ok: true, mode: "single", request: { ...guidedBuilt.request, metadata: { ...guidedBuilt.request.metadata,
+          propertyCaptureSessionRef: message.propertyGuided!.sessionRef } } } : guidedBuilt
+      : planPropertyCreate(values, knownUnits?.length && values.unitLabel?.trim() === knownUnits.join(", ") ? knownUnits : undefined);
     if (!plan.ok && plan.needsIntake) {
       const before = getSession();
       const contextKey = host.getFormContextKey?.();

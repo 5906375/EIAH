@@ -1,0 +1,71 @@
+
+> eiah-builder@ test:imob-claim-only-writes:integration /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --import tsx --test --test-concurrency=1 --test-force-exit apps/api/src/tests/imob-claim-only-writes.integration.test.ts
+
+TAP version 13
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# {"level":30,"time":"2026-11-19T22:25:53.034Z","service":"eiah","env":"test","traceId":"8aece226-4b95-4aa5-833b-0a8056012890","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"359","durationMs":123.307159,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:25:53.507Z","service":"eiah","env":"test","traceId":"d76ecd44-f86a-4824-adad-5ccfab3ae0b1","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14560","durationMs":119.024605,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4cv6a-6i4gqq-p04/workspace-p10-mwo4cv6a-6i4gqq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:25:53.894Z","service":"eiah","env":"test","traceId":"ae54bf4f-2947-48e3-b3d1-705e8c10a3c1","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":74.952468,"msg":"http.request.completed"}
+# Subtest: P-04: claimOnly não escreve (auditoria, telemetria, memória)
+    # Subtest: P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+    not ok 1 - P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+      ---
+      duration_ms: 1137.690868
+      type: 'test'
+      location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-claim-only-writes.integration.test.ts:1:1526'
+      failureType: 'testCodeFailure'
+      error: |-
+        a: sem caso: nenhuma transação de escrita (medido 12)
+        
+        12 !== 0
+        
+      code: 'ERR_ASSERTION'
+      name: 'AssertionError'
+      expected: 0
+      actual: 12
+      operator: 'strictEqual'
+      stack: |-
+        TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-claim-only-writes.integration.test.ts:75:16)
+        process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+        async Test.run (node:internal/test_runner/test:1054:7)
+        async Promise.all (index 0)
+        async Suite.run (node:internal/test_runner/test:1442:7)
+        async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+      ...
+    1..1
+not ok 1 - P-04: claimOnly não escreve (auditoria, telemetria, memória)
+  ---
+  duration_ms: 2375.911408
+  type: 'suite'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-claim-only-writes.integration.test.ts:1:1094'
+  failureType: 'subtestsFailed'
+  error: '1 subtest failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+1..1
+# tests 1
+# suites 1
+# pass 0
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3184.448944
+ ELIFECYCLE  Command failed with exit code 1.

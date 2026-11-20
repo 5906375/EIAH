@@ -1,0 +1,14 @@
+{
+  "id": "opening-api-types",
+  "command": [
+    "pnpm",
+    "--filter",
+    "@eiah/api",
+    "typecheck"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-api-types.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 15.425
+}

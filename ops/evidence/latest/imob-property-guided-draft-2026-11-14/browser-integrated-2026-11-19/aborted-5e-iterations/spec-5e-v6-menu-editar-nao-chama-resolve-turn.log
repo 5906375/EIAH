@@ -1,0 +1,5 @@
+[REPROVADO] 5e Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba — etapa crítica reprovada: o cliente mostra orientação e a ação "Cancelar cadastro do imóvel" (sem erro genérico)
+   ✗ abrir "Cadastrar imóvel" em nova aba com sessão abandonada oferece a recuperação explícita (achado P-02: mensagem de erro sem saída): sem ação de recuperação; texto: "Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessã"
+   ✗ o cliente mostra orientação e a ação "Cancelar cadastro do imóvel" (sem erro genérico): The input did not match the regular expression /cadastro de imóvel pendente em outra aba ou sessão/. Input: 'SYNTHETIC BROWSER TENANT\n' + '\n' + 'Agent Operations Console\n' + '\n' + 'SYNTHETIC BROWSER WORKSPACE\n' + '\n' + 'Runs\n' + 'Chat\n' + 'Billing\n' + 'Marketplace\n' + 'Self-service\n' + 'Perfil\n' + 'Chat ativo · IMOB\n' + '‹ Painel\n' + 'Nova conv
+
+CENÁRIOS: 1 | aprovados 0 | reprovados 1; provider simulado=0; hosts externos bloqueados no navegador={"fonts.googleapis.com":3}; no backend=0

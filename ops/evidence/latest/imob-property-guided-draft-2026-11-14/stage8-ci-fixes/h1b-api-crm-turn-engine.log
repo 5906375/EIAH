@@ -1,0 +1,635 @@
+TAP version 13
+# Subtest: intake de unidades usa boundary semântica e retorna sem chamar persistência ou outros fluxos
+ok 1 - intake de unidades usa boundary semântica e retorna sem chamar persistência ou outros fluxos
+  ---
+  duration_ms: 54.163616
+  type: 'test'
+  ...
+# Subtest: ambiguidade no turno normal de captação clarifica antes de writes e preserva a demanda
+ok 2 - ambiguidade no turno normal de captação clarifica antes de writes e preserva a demanda
+  ---
+  duration_ms: 11.34463
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine prioriza leitura consultiva forte antes da continuidade de intake
+ok 3 - IMOB_CRM turn engine prioriza leitura consultiva forte antes da continuidade de intake
+  ---
+  duration_ms: 6.394702
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine confirma ação pendente canônica de proprietário com 'confirmo'
+ok 4 - IMOB_CRM turn engine confirma ação pendente canônica de proprietário com 'confirmo'
+  ---
+  duration_ms: 3.463841
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine confirma ação pendente canônica de imóvel com 'confirmo'
+ok 5 - IMOB_CRM turn engine confirma ação pendente canônica de imóvel com 'confirmo'
+  ---
+  duration_ms: 3.359799
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine confirma ação pendente canônica de visita com 'confirmo'
+ok 6 - IMOB_CRM turn engine confirma ação pendente canônica de visita com 'confirmo'
+  ---
+  duration_ms: 1.738262
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine falha fechado quando 'confirmo' chega sem pendingAction
+ok 7 - IMOB_CRM turn engine falha fechado quando 'confirmo' chega sem pendingAction
+  ---
+  duration_ms: 1.857699
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine falha fechado quando cliente injeta pendingAction sem binding canônico persistido
+ok 8 - IMOB_CRM turn engine falha fechado quando cliente injeta pendingAction sem binding canônico persistido
+  ---
+  duration_ms: 1.918217
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine falha fechado quando pendingAction diverge do threadId atual
+ok 9 - IMOB_CRM turn engine falha fechado quando pendingAction diverge do threadId atual
+  ---
+  duration_ms: 2.1989
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine falha fechado quando client pendingAction diverge da ação canônica persistida
+ok 10 - IMOB_CRM turn engine falha fechado quando client pendingAction diverge da ação canônica persistida
+  ---
+  duration_ms: 2.181768
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine falha fechado quando fluxo ativo diverge da jornada da pendingAction
+ok 11 - IMOB_CRM turn engine falha fechado quando fluxo ativo diverge da jornada da pendingAction
+  ---
+  duration_ms: 1.539828
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo com pendências
+ok 12 - IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo com pendências
+  ---
+  duration_ms: 1.889125
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine keeps consultar caso read-only and valid during active workflow
+ok 13 - IMOB_CRM turn engine keeps consultar caso read-only and valid during active workflow
+  ---
+  duration_ms: 1.898379
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine prioriza recovery consultivo para 'o que falta' mesmo com property.create ativo
+ok 14 - IMOB_CRM turn engine prioriza recovery consultivo para 'o que falta' mesmo com property.create ativo
+  ---
+  duration_ms: 1.647176
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine propagates canonical proof surface from consultive case context
+ok 15 - IMOB_CRM turn engine propagates canonical proof surface from consultive case context
+  ---
+  duration_ms: 1.557425
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine prioriza comando operacional explícito antes da leitura consultiva
+ok 16 - IMOB_CRM turn engine prioriza comando operacional explícito antes da leitura consultiva
+  ---
+  duration_ms: 7.305819
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine mantém continuidade de intake para mensagens não consultivas
+ok 17 - IMOB_CRM turn engine mantém continuidade de intake para mensagens não consultivas
+  ---
+  duration_ms: 3.650801
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine injeta market scan read-only com provider interno quando o scan é explicitamente solicitado
+ok 18 - IMOB_CRM turn engine injeta market scan read-only com provider interno quando o scan é explicitamente solicitado
+  ---
+  duration_ms: 20.152748
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine does not promote ambiguous market scan capture to batch only from semantic composed intents
+ok 19 - IMOB_CRM turn engine does not promote ambiguous market scan capture to batch only from semantic composed intents
+  ---
+  duration_ms: 7.499146
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine retoma market scan snapshot persistido por caseId quando o threadState não carrega o snapshot
+ok 20 - IMOB_CRM turn engine retoma market scan snapshot persistido por caseId quando o threadState não carrega o snapshot
+  ---
+  duration_ms: 3.912253
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine uses tenant inventory provider when imported inventory exists for the workspace
+ok 21 - IMOB_CRM turn engine uses tenant inventory provider when imported inventory exists for the workspace
+  ---
+  duration_ms: 2.857862
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine preserves lead discovery capture during active qualification
+ok 22 - IMOB_CRM turn engine preserves lead discovery capture during active qualification
+  ---
+  duration_ms: 3.828353
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine contextualizes 'cadastros' from pending owner dedupe into owner list consult
+ok 23 - IMOB_CRM turn engine contextualizes 'cadastros' from pending owner dedupe into owner list consult
+  ---
+  duration_ms: 2.865748
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine contextualizes 'atualizar existente' from pending owner dedupe into direct owner edit
+ok 24 - IMOB_CRM turn engine contextualizes 'atualizar existente' from pending owner dedupe into direct owner edit
+  ---
+  duration_ms: 1.844028
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine blocks owner dedupe update fail-closed when matched entity id is missing
+ok 25 - IMOB_CRM turn engine blocks owner dedupe update fail-closed when matched entity id is missing
+  ---
+  duration_ms: 1.712543
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine blocks visit scheduling when property is not linked
+ok 26 - IMOB_CRM turn engine blocks visit scheduling when property is not linked
+  ---
+  duration_ms: 0.987623
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine does not reopen lead qualification when there are no pending fields
+ok 27 - IMOB_CRM turn engine does not reopen lead qualification when there are no pending fields
+  ---
+  duration_ms: 1.245022
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine prioritizes explicit visit transition over lead ready guard
+ok 28 - IMOB_CRM turn engine prioritizes explicit visit transition over lead ready guard
+  ---
+  duration_ms: 2.283313
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine prioritizes explicit documents transition over active case review fallback
+ok 29 - IMOB_CRM turn engine prioritizes explicit documents transition over active case review fallback
+  ---
+  duration_ms: 1.84186
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine canonicalizes lead-to-property linking into property capture
+ok 30 - IMOB_CRM turn engine canonicalizes lead-to-property linking into property capture
+  ---
+  duration_ms: 2.206699
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine does not parse case-reference lead CTA as literal lead entity
+ok 31 - IMOB_CRM turn engine does not parse case-reference lead CTA as literal lead entity
+  ---
+  duration_ms: 2.142224
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine offers owner registration instead of stale owner linking after property success when owner is missing
+ok 32 - IMOB_CRM turn engine offers owner registration instead of stale owner linking after property success when owner is missing
+  ---
+  duration_ms: 1.45878
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner
+ok 33 - IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner
+  ---
+  duration_ms: 1.513465
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine hides owner CTA after property success when linked owner comes from property context
+ok 34 - IMOB_CRM turn engine hides owner CTA after property success when linked owner comes from property context
+  ---
+  duration_ms: 1.717086
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine adds post-success property summary after property capture
+ok 35 - IMOB_CRM turn engine adds post-success property summary after property capture
+  ---
+  duration_ms: 1.613741
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine uses seasonal case planner action after property success
+ok 36 - IMOB_CRM turn engine uses seasonal case planner action after property success
+  ---
+  duration_ms: 1.854687
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine rewrites stale owner-link quick reply into canonical owner flow after property success
+ok 37 - IMOB_CRM turn engine rewrites stale owner-link quick reply into canonical owner flow after property success
+  ---
+  duration_ms: 2.923212
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine accepts validated recipe mission context as planner input
+ok 38 - IMOB_CRM turn engine accepts validated recipe mission context as planner input
+  ---
+  duration_ms: 1.707388
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine derives quick replies from the final presentation payload
+ok 39 - IMOB_CRM turn engine derives quick replies from the final presentation payload
+  ---
+  duration_ms: 2.497549
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine resolves a single lead nextAction and keeps payload coherent
+ok 40 - IMOB_CRM turn engine resolves a single lead nextAction and keeps payload coherent
+  ---
+  duration_ms: 1.000328
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine stamps canonical outcome and clears legacy property success card
+ok 41 - IMOB_CRM turn engine stamps canonical outcome and clears legacy property success card
+  ---
+  duration_ms: 1.020975
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine suppresses quick replies while canonical owner form is active
+ok 42 - IMOB_CRM turn engine suppresses quick replies while canonical owner form is active
+  ---
+  duration_ms: 1.657726
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM turn engine aceita voltar ao scan durante confirmação de seleção sem invalidar o caso
+ok 43 - IMOB_CRM turn engine aceita voltar ao scan durante confirmação de seleção sem invalidar o caso
+  ---
+  duration_ms: 2.465411
+  type: 'test'
+  ...
+# Subtest: Bug2: 'confirmo' com canonicalPendingAction=null (stale confirmado filtrado na rota) retorna PENDING_ACTION_MISSING
+ok 44 - Bug2: 'confirmo' com canonicalPendingAction=null (stale confirmado filtrado na rota) retorna PENDING_ACTION_MISSING
+  ---
+  duration_ms: 0.874406
+  type: 'test'
+  ...
+# Subtest: Bug2: 'confirmo' com pendingAction confirmed no client state e canonicalPendingAction=null é bloqueado
+ok 45 - Bug2: 'confirmo' com pendingAction confirmed no client state e canonicalPendingAction=null é bloqueado
+  ---
+  duration_ms: 0.734981
+  type: 'test'
+  ...
+# Subtest: Bug1+Bug2: canonicalPendingAction com status='confirmed' passado ao engine é bloqueado (defence-in-depth)
+ok 46 - Bug1+Bug2: canonicalPendingAction com status='confirmed' passado ao engine é bloqueado (defence-in-depth)
+  ---
+  duration_ms: 0.64261
+  type: 'test'
+  ...
+# Subtest: Lifecycle: 'confirmo' após cancelamento (status=cancelled filtrado na rota) retorna PENDING_ACTION_MISSING
+ok 47 - Lifecycle: 'confirmo' após cancelamento (status=cancelled filtrado na rota) retorna PENDING_ACTION_MISSING
+  ---
+  duration_ms: 0.664295
+  type: 'test'
+  ...
+# Subtest: Lifecycle: 'confirmo' com pendingAction cancelled no client state e canonicalPendingAction=null é bloqueado
+ok 48 - Lifecycle: 'confirmo' com pendingAction cancelled no client state e canonicalPendingAction=null é bloqueado
+  ---
+  duration_ms: 0.621409
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão Sim: sem provider, consultas, writes, run ou executionRequest
+ok 49 - FDC-03A revisão Sim: sem provider, consultas, writes, run ou executionRequest
+  ---
+  duration_ms: 1.009797
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão Não: sem provider, consultas, writes, run ou executionRequest
+ok 50 - FDC-03A revisão Não: sem provider, consultas, writes, run ou executionRequest
+  ---
+  duration_ms: 0.251842
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão Talvez: sem provider, consultas, writes, run ou executionRequest
+ok 51 - FDC-03A revisão Talvez: sem provider, consultas, writes, run ou executionRequest
+  ---
+  duration_ms: 0.23337
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão confirmo: sem provider, consultas, writes, run ou executionRequest
+ok 52 - FDC-03A revisão confirmo: sem provider, consultas, writes, run ou executionRequest
+  ---
+  duration_ms: 0.139521
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão pode executar: sem provider, consultas, writes, run ou executionRequest
+ok 53 - FDC-03A revisão pode executar: sem provider, consultas, writes, run ou executionRequest
+  ---
+  duration_ms: 0.185094
+  type: 'test'
+  ...
+# Subtest: FDC-03A colisão revisão/action: Sim nunca confirma action
+ok 54 - FDC-03A colisão revisão/action: Sim nunca confirma action
+  ---
+  duration_ms: 0.20174
+  type: 'test'
+  ...
+# Subtest: FDC-03A colisão revisão/action: confirmo nunca confirma action
+ok 55 - FDC-03A colisão revisão/action: confirmo nunca confirma action
+  ---
+  duration_ms: 0.106885
+  type: 'test'
+  ...
+# Subtest: FDC-03A colisão revisão/action: pode executar nunca confirma action
+ok 56 - FDC-03A colisão revisão/action: pode executar nunca confirma action
+  ---
+  duration_ms: 0.146286
+  type: 'test'
+  ...
+# Subtest: FDC-03A colisão revisão/action: Não nunca confirma action
+ok 57 - FDC-03A colisão revisão/action: Não nunca confirma action
+  ---
+  duration_ms: 0.188665
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (unknown_version) não cai na confirmação de action nem mutação
+ok 58 - FDC-03A pergunta inválida (unknown_version) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.183152
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (purpose) não cai na confirmação de action nem mutação
+ok 59 - FDC-03A pergunta inválida (purpose) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.073858
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (reference) não cai na confirmação de action nem mutação
+ok 60 - FDC-03A pergunta inválida (reference) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.073156
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (expired) não cai na confirmação de action nem mutação
+ok 61 - FDC-03A pergunta inválida (expired) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.087226
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (malformed_expiry) não cai na confirmação de action nem mutação
+ok 62 - FDC-03A pergunta inválida (malformed_expiry) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.067399
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (answered) não cai na confirmação de action nem mutação
+ok 63 - FDC-03A pergunta inválida (answered) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.062027
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (draft_changed) não cai na confirmação de action nem mutação
+ok 64 - FDC-03A pergunta inválida (draft_changed) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.064422
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (flow) não cai na confirmação de action nem mutação
+ok 65 - FDC-03A pergunta inválida (flow) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.055438
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (case) não cai na confirmação de action nem mutação
+ok 66 - FDC-03A pergunta inválida (case) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.103652
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (thread) não cai na confirmação de action nem mutação
+ok 67 - FDC-03A pergunta inválida (thread) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.082035
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (no_scoped_case) não cai na confirmação de action nem mutação
+ok 68 - FDC-03A pergunta inválida (no_scoped_case) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.081263
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (canonical_flow) não cai na confirmação de action nem mutação
+ok 69 - FDC-03A pergunta inválida (canonical_flow) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.072265
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (canonical_stage) não cai na confirmação de action nem mutação
+ok 70 - FDC-03A pergunta inválida (canonical_stage) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.067463
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (canonical_status) não cai na confirmação de action nem mutação
+ok 71 - FDC-03A pergunta inválida (canonical_status) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.068173
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (canonical_draft_changed) não cai na confirmação de action nem mutação
+ok 72 - FDC-03A pergunta inválida (canonical_draft_changed) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.109294
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (canonical_draft_missing) não cai na confirmação de action nem mutação
+ok 73 - FDC-03A pergunta inválida (canonical_draft_missing) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.071042
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (workspace) não cai na confirmação de action nem mutação
+ok 74 - FDC-03A pergunta inválida (workspace) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.068754
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (tenant) não cai na confirmação de action nem mutação
+ok 75 - FDC-03A pergunta inválida (tenant) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.069701
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta inválida (absent_question) não cai na confirmação de action nem mutação
+ok 76 - FDC-03A pergunta inválida (absent_question) não cai na confirmação de action nem mutação
+  ---
+  duration_ms: 0.068014
+  type: 'test'
+  ...
+# Subtest: FDC-03A tombstone sem replyRef impede que confirmação curta seja reinterpretada como autorização
+ok 77 - FDC-03A tombstone sem replyRef impede que confirmação curta seja reinterpretada como autorização
+  ---
+  duration_ms: 0.100924
+  type: 'test'
+  ...
+# Subtest: FDC-03A negativa seguida de detalhes só esclarece, mantendo draft e bloqueios
+ok 78 - FDC-03A negativa seguida de detalhes só esclarece, mantendo draft e bloqueios
+  ---
+  duration_ms: 0.301976
+  type: 'test'
+  ...
+# Subtest: FDC-03A extensão é opcional e contrato do agente não concede execução
+ok 79 - FDC-03A extensão é opcional e contrato do agente não concede execução
+  ---
+  duration_ms: 0.105747
+  type: 'test'
+  ...
+# Subtest: FDC-03A emissão adiciona pergunta a uma proposta pronta sem alterar contrato de execução existente
+ok 80 - FDC-03A emissão adiciona pergunta a uma proposta pronta sem alterar contrato de execução existente
+  ---
+  duration_ms: 0.336309
+  type: 'test'
+  ...
+# Subtest: FDC-03A contexto autenticado ausente invalida a pergunta sem alterar gates de entitlement
+ok 81 - FDC-03A contexto autenticado ausente invalida a pergunta sem alterar gates de entitlement
+  ---
+  duration_ms: 0.112446
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: allow_yes, leitura escopada e zero mutações
+ok 82 - FDC-03A route callback + real engine: allow_yes, leitura escopada e zero mutações
+  ---
+  duration_ms: 136.925258
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: allow_no, leitura escopada e zero mutações
+ok 83 - FDC-03A route callback + real engine: allow_no, leitura escopada e zero mutações
+  ---
+  duration_ms: 64.480412
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: stale_draft, leitura escopada e zero mutações
+ok 84 - FDC-03A route callback + real engine: stale_draft, leitura escopada e zero mutações
+  ---
+  duration_ms: 55.341627
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: missing_event, leitura escopada e zero mutações
+ok 85 - FDC-03A route callback + real engine: missing_event, leitura escopada e zero mutações
+  ---
+  duration_ms: 41.231189
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: cross_workspace, leitura escopada e zero mutações
+ok 86 - FDC-03A route callback + real engine: cross_workspace, leitura escopada e zero mutações
+  ---
+  duration_ms: 39.348014
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: permission_deny, leitura escopada e zero mutações
+ok 87 - FDC-03A route callback + real engine: permission_deny, leitura escopada e zero mutações
+  ---
+  duration_ms: 30.66392
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback + real engine: stage_deny, leitura escopada e zero mutações
+ok 88 - FDC-03A route callback + real engine: stage_deny, leitura escopada e zero mutações
+  ---
+  duration_ms: 29.121452
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback: captura guiada ativa bloqueia o turno de revisão do mesmo ator (409, sem motor nem leitura de caso)
+ok 89 - FDC-03A route callback: captura guiada ativa bloqueia o turno de revisão do mesmo ator (409, sem motor nem leitura de caso)
+  ---
+  duration_ms: 27.514499
+  type: 'test'
+  ...
+# Subtest: FDC-03A route callback: captura guiada pausada NÃO bloqueia o turno de revisão do mesmo ator (segue pelas autorizações normais, sessão intacta)
+ok 90 - FDC-03A route callback: captura guiada pausada NÃO bloqueia o turno de revisão do mesmo ator (segue pelas autorizações normais, sessão intacta)
+  ---
+  duration_ms: 45.54818
+  type: 'test'
+  ...
+# Subtest: FDC-03A aliases normalizados do decoder legado não escapam do tombstone conversacional
+ok 91 - FDC-03A aliases normalizados do decoder legado não escapam do tombstone conversacional
+  ---
+  duration_ms: 0.242336
+  type: 'test'
+  ...
+# Subtest: FDC-03A pendingAction histórica cancelled permanece preservada e não impede revisão de dados
+ok 92 - FDC-03A pendingAction histórica cancelled permanece preservada e não impede revisão de dados
+  ---
+  duration_ms: 0.176865
+  type: 'test'
+  ...
+# Subtest: FDC-03A pendingAction histórica expired permanece preservada e não impede revisão de dados
+ok 93 - FDC-03A pendingAction histórica expired permanece preservada e não impede revisão de dados
+  ---
+  duration_ms: 0.095287
+  type: 'test'
+  ...
+# Subtest: FDC-03A pendingAction histórica confirmed permanece preservada e não impede revisão de dados
+ok 94 - FDC-03A pendingAction histórica confirmed permanece preservada e não impede revisão de dados
+  ---
+  duration_ms: 0.082925
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects other_user without helpers or operational effects
+ok 95 - FDC-03A-R1 correlation rejects other_user without helpers or operational effects
+  ---
+  duration_ms: 0.206655
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects missing_user without helpers or operational effects
+ok 96 - FDC-03A-R1 correlation rejects missing_user without helpers or operational effects
+  ---
+  duration_ms: 0.105976
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects other_interaction without helpers or operational effects
+ok 97 - FDC-03A-R1 correlation rejects other_interaction without helpers or operational effects
+  ---
+  duration_ms: 0.099734
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects missing_capability without helpers or operational effects
+ok 98 - FDC-03A-R1 correlation rejects missing_capability without helpers or operational effects
+  ---
+  duration_ms: 0.123
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects invalid_capability without helpers or operational effects
+ok 99 - FDC-03A-R1 correlation rejects invalid_capability without helpers or operational effects
+  ---
+  duration_ms: 0.234337
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 correlation rejects descriptor_origin_changed without helpers or operational effects
+ok 100 - FDC-03A-R1 correlation rejects descriptor_origin_changed without helpers or operational effects
+  ---
+  duration_ms: 0.205886
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 legacy or unsupported consumers are never given a review question
+ok 101 - FDC-03A-R1 legacy or unsupported consumers are never given a review question
+  ---
+  duration_ms: 0.537984
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 review summary describes draft amount and type without exposing identity/contact/internal IDs
+ok 102 - FDC-03A-R1 review summary describes draft amount and type without exposing identity/contact/internal IDs
+  ---
+  duration_ms: 0.619148
+  type: 'test'
+  ...
+# Subtest: FDC-03A No → free-text details preserves clarification without presuming ownership or editing
+ok 103 - FDC-03A No → free-text details preserves clarification without presuming ownership or editing
+  ---
+  duration_ms: 0.607313
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 cancellation in review closes only the conversation question
+ok 104 - FDC-03A-R1 cancellation in review closes only the conversation question
+  ---
+  duration_ms: 0.41438
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 cancellation in clarification closes only the conversation question
+1..104
+# tests 104
+# suites 0
+# pass 104
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1529.789232

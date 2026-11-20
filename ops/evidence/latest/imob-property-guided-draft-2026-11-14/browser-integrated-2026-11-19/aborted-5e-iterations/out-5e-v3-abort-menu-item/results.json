@@ -1,0 +1,97 @@
+{
+  "environment": {
+    "browser": "Chromium 149.0.7827.55 (Playwright headless)",
+    "desktop": {
+      "width": 1280,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "kind": "emulação de viewport (isMobile+touch), não aparelho físico"
+    },
+    "apiOrigin": "loopback (API real, NODE_ENV=test, sem workers/filas)",
+    "web": "Vite dev real em loopback"
+  },
+  "provider": {
+    "simulatedInvocations": 0,
+    "unsupportedRequests": 0,
+    "entries": []
+  },
+  "selection": {
+    "requested": [
+      "5e"
+    ],
+    "executed": [
+      "5e"
+    ],
+    "harnessSelfTest": {
+      "externalBlocked": true,
+      "providerRedirected": true,
+      "chatCompletionsSupported": true,
+      "responsesRejected": true,
+      "unknownTextRejected": true
+    }
+  },
+  "divergences": [
+    {
+      "id": "D-ROUTING-01",
+      "scenario": "5e",
+      "input": "quero ver meus imóveis",
+      "observedReply": "Isso parece um caso jurídico.",
+      "expected": "chegar à consulta IMOB ou apresentar restrição de acesso pertinente",
+      "providerCallsDuringTurn": 0,
+      "origin": "roteamento local preexistente do Front Door (legalContextResolver.isLegalRoutingQuestion); não é provider, fixture nem fallback do harness",
+      "status": "preexistente, não corrigido nesta etapa"
+    }
+  ],
+  "externalTraffic": {
+    "browserBlocked": {
+      "fonts.googleapis.com": 3
+    },
+    "backendBlocked": [],
+    "note": "nenhum acesso externo foi liberado; as entradas acima foram abortadas/rejeitadas"
+  },
+  "database": {
+    "properties": 0,
+    "sessions": [
+      {
+        "status": "cancelled",
+        "interpretation": "available",
+        "revision": 1
+      },
+      {
+        "status": "active",
+        "interpretation": "available",
+        "revision": 0
+      }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "5e",
+      "name": "Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba",
+      "status": "REPROVADO",
+      "checks": [
+        {
+          "what": "abrir \"Cadastrar imóvel\" em nova aba com sessão abandonada oferece a recuperação explícita (achado P-02: mensagem de erro sem saída)",
+          "ok": false,
+          "error": "sem ação de recuperação; texto: \"Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessã\""
+        },
+        {
+          "what": "nenhuma segunda sessão foi aberta e o provider não foi chamado nesses dois turnos",
+          "ok": true
+        },
+        {
+          "what": "simulador: nenhuma requisição de provider fora dos contratos simulados (501 explícito)",
+          "ok": true
+        }
+      ],
+      "screenshots": [
+        "01-divergencia-quero-ver-meus-imoveis.png",
+        "02-abertura-em-nova-aba.png"
+      ],
+      "aborted": "menu: item \"Editar imóvel\" não clicável (locator.click: Timeout 8000ms exceeded.)"
+    }
+  ]
+}

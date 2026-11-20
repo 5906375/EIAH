@@ -194,3 +194,14 @@ test("conversa explicitamente selecionada não depende do limite da listagem rec
   assert.equal((await core.restore({ conversationId: "older", force: true }))?.conversationId, "older");
   assert.equal(core.getConversationId(), "older");
 });
+
+test("coleta guiada v1: histórico/outro dispositivo não restaura sessão, rascunho nem autoridade de interpretação", () => {
+  const body = buildFrontDoorPersistedMessage({ id: "guided", role: "assistant", text: "Revisão", propertyGuided: {
+    sessionRef: "fcf0dfc7-c554-4fb1-a06f-d71719be7a34", revision: 9, phase: "review", status: "active", interpretation: "consumed",
+    skipped: ["goal"], currentField: null, errors: {}, quickReplies: [], showFullForm: true,
+  }, form: { entity: "imovel", fields: [{ name: "city", label: "Cidade", type: "text", value: "Cidade sintética" }], actions: [] } as never });
+  assert.ok(body);
+  assert.doesNotMatch(JSON.stringify(body), /fcf0dfc7|Cidade sintética|sessionRef|interpretation/);
+  const restored = mapStoredMessageToFrontDoor(stored({ id: "guided", content: body.content, metadata: body.metadata }));
+  assert.equal(restored?.form, undefined); assert.equal(restored?.propertyGuided, undefined);
+});

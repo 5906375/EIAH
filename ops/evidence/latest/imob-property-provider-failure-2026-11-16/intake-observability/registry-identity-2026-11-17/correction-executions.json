@@ -1,0 +1,65 @@
+{
+  "date": "2026-11-17",
+  "scope": "Authorized one-line core splitting increment and compiled synthetic verification only",
+  "localHead": "97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6",
+  "branch": "chore/imob-intake-provider-diagnostics",
+  "stageInitiallyEmpty": true,
+  "historicalEvidenceBefore": {
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/verification.json": "dcf496889ffb9bfac6c8151928bb6ad738e2394fa703c5c3eae34b893b308daa",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs": "e828c966d3ffd931e144ba6754afd09e723501e21db64cdcde9e0c41d9ba561b",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/harness-initial.json": "31bc481f25238b97e9cc883043cf844bf15d4cc32806ff70c4edab7e9541dcbe",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json": "01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": "683e612374df4bb262baf6994f3c5134ada23a3f6131754432427ddbf6cdedf5"
+  },
+  "artifactLifecycle": {
+    "buildOutputs": "Ignored dist from official builds; retained for local verification",
+    "evidence": "Permanent records in existing evidence directory",
+    "temporaryArtifactsCreated": 0,
+    "backupsStashesWorktreesCreated": 0
+  },
+  "commands": [
+    {
+      "name": "core-build",
+      "command": "env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u GEMINI_API_KEY -u DEEPSEEK_API_KEY pnpm --filter @eiah/core build",
+      "startedAt": "2026-11-17T09:15:17.843Z",
+      "completionObservedAt": "2026-11-17T09:15:39.820Z",
+      "exitCode": 0,
+      "output": "correction-core-build.txt"
+    },
+    {
+      "name": "api-build",
+      "command": "env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY -u GEMINI_API_KEY -u DEEPSEEK_API_KEY pnpm --filter @eiah/api build",
+      "startedAt": "2026-11-17T09:15:39.820Z",
+      "completionObservedAt": "2026-11-17T09:17:18.815Z",
+      "exitCode": 0,
+      "output": "correction-api-build.txt"
+    },
+    {
+      "name": "compiled-registry-smoke",
+      "command": "node --input-type=module -e 'globalThis.resolveFromApi = specifier => import.meta.resolve(specifier); await import(\"../../ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs\")'",
+      "workingDirectory": "apps/api",
+      "startedAt": "2026-11-17T09:17:32.945Z",
+      "completionObservedAt": "2026-11-17T09:17:33.283Z",
+      "exitCode": 0,
+      "output": "{\"hypothesis\":\"CONFIRMED_LOCALLY_BEFORE_FIX\",\"invariant\":\"APROVADO\",\"checks\":{\"executed\":5,\"passed\":5,\"failed\":0,\"skipped\":0},\"syntheticAdapterCalls\":1,\"realProviderCalls\":0,\"exitCode\":0}\n"
+    },
+    {
+      "name": "evidence-index",
+      "command": "pnpm check:evidence-index",
+      "environment": "authorized outside sandbox; git subprocess required",
+      "exitCode": 0,
+      "output": "\n> eiah-builder@ check:evidence-index <REPO>\n> node --import tsx --test scripts/tests/checkEvidenceIndex.test.ts && node --import tsx scripts/checkEvidenceIndex.ts\n\nTAP version 13\n# Subtest: rejects local and temporary evidenceRef locations\nok 1 - rejects local and temporary evidenceRef locations\n  ---\n  duration_ms: 1.505517\n  type: 'test'\n  ...\n# Subtest: allows repository paths, commit anchors, and remote HTTP artifacts\nok 2 - allows repository paths, commit anchors, and remote HTTP artifacts\n  ---\n  duration_ms: 0.155565\n  type: 'test'\n  ...\n# Subtest: checks artifact cells, not historical path mentions in proof prose\nok 3 - checks artifact cells, not historical path mentions in proof prose\n  ---\n  duration_ms: 1.258435\n  type: 'test'\n  ...\n# Subtest: still checks a missing artifact and explicit links inside proof prose\nok 4 - still checks a missing artifact and explicit links inside proof prose\n  ---\n  duration_ms: 0.237624\n  type: 'test'\n  ...\n# Subtest: unrecognized tables and references outside tables stay fail-closed\nok 5 - unrecognized tables and references outside tables stay fail-closed\n  ---\n  duration_ms: 0.148707\n  type: 'test'\n  ...\n# Subtest: table parser preserves pipes within code and resets between tables\nok 6 - table parser preserves pipes within code and resets between tables\n  ---\n  duration_ms: 0.116469\n  type: 'test'\n  ...\n# Subtest: explicit evidenceRef locations remain checked inside narrative cells\nok 7 - explicit evidenceRef locations remain checked inside narrative cells\n  ---\n  duration_ms: 0.129026\n  type: 'test'\n  ...\n# Subtest: commit-pinned references are checked against the named Git object\nok 8 - commit-pinned references are checked against the named Git object\n  ---\n  duration_ms: 22.585736\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 201.686651\n{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 349874,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 975\n}\n",
+      "outputTreatment": "Only literal repository path replaced by <REPO>; no other changes",
+      "tests": {
+        "executed": 8,
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0
+      },
+      "referencesChecked": 975
+    }
+  ],
+  "finalIntegrity": {"result":"APROVADO","exitCode":0,"protectedFilesUnchanged":3,"historicalResultsUnchanged":true,"originalReadmePreserved":true,"onlyAuthorizedProductionLineChanged":true,"currentArtifactHashesVerified":43,"temporaryArtifactsCreated":0,"gitDiffCheckExitCode":0,"gitDiffCachedQuietExitCode":0,"stageEmpty":true,"productionChanges":["packages/core/tsup.config.ts: splitting false -> true"],"existingLocalChangesPreserved":["CLAUDE.md","CODEX.md","ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff"]},
+  "additionalDependencyBuilds": 0,
+  "realProviderCalls": 0
+}

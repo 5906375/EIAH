@@ -202,6 +202,8 @@ import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobP
 import { resolveImobTurn as dedicatedApi } from "@/features/imob/imobApiClient";
 import { parseImobPendingAction, buildImobExecuteResolutionFromPendingAction } from "../../../../../api/src/services/imob/crm/imobPendingActionRuntime";
 import { recordImobResolveTurnSemanticTelemetry } from "../../../../../api/src/services/imob/imobTelemetry";
+import { PROPERTY_CAPTURE_SESSION, PropertyCaptureActiveError, openPropertyCapture, propertyCaptureActiveBody } from "../../../../../api/src/services/imob/imobChatConversationManagement";
+import { guidedPropertyFixture } from "../../../../../api/src/tests/fixtures/imob/guided-property-capture.fixture";
 
 function dedicatedResolveTurnRoute() {
   const routeSource = ts.createSourceFile("imob.ts", readFileSync(new URL("../../../../../api/src/routes/imob.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
@@ -233,6 +235,9 @@ function dedicatedReviewHarness() {
   const caseIds: any = { current: {} };
   const origin = { current: { ref: "v1:dedicated-interaction", sequence: 0 } };
   const auth = { ...access, userId: "dedicated-user" };
+  // Estado de sessão guiada EXPLÍCITO (nenhuma sessão aberta) para o guard real da rota; as consultas ficam registradas.
+  const captureSessions = guidedPropertyFixture();
+  const sessionQueries: any[] = [];
   let canonical: any = null;
   let canonicalDraft: any = null;
   let draftRef: string | null = null;
@@ -271,7 +276,8 @@ function dedicatedReviewHarness() {
         threadState: { ...(body.threadState ?? {}), operational: { ...(body.threadState?.operational ?? {}), pendingAction: canonicalPendingAction } } } : body;
       let result: any;
       if (env.useRoute) {
-        const prisma = { imobCase: { findFirst: async (query: any) => {
+        const prisma = { memoryEvent: { findMany: async (query: any) => { sessionQueries.push(query); return (captureSessions.prisma as any).memoryEvent.findMany(query); } },
+          imobCase: { findFirst: async (query: any) => {
           assert.deepEqual(query.where, { id: "case-test", tenantId: auth.tenantId, workspaceId: auth.workspaceId });
           assert.deepEqual(query.select.events.where, { tenantId: auth.tenantId, workspaceId: auth.workspaceId });
           return { ...canonical, id: canonical.caseId, metadata: { pendingAction: canonicalPendingAction },
@@ -283,6 +289,8 @@ function dedicatedReviewHarness() {
           ensureImobWorkspacePermission: () => true, ensureImobStagePermission: () => true,
           resolveImobEntitlements: async () => access.entitlements, resolveImobTenantRecipeForWorkspace: async () => null,
           resolveImobRecipeMissionContext: () => null, IMOB_CHAT_AGENT_ID: "IMOB_CRM",
+          // Dependências do guard de captura guiada (implementação REAL, não um retorno fixo).
+          openPropertyCapture, PropertyCaptureActiveError, propertyCaptureActiveBody,
           imobCrmBusinessRead: { applyCanonicalJourneyToResolvedData: helpers.applyCanonicalJourneyToResolvedData } };
         const res: any = { json: (value: any) => { result = value.data; return res; }, status: () => res };
         await dedicatedResolveTurnRoute()(routeEnv)({ authContext: auth, prisma, body }, res);
@@ -307,7 +315,7 @@ function dedicatedReviewHarness() {
   const send: (text: string, options?: any) => Promise<void> = new Function("env", `with (env) { ${code} }`)(env);
   const built = buildProposalFormContinuation(form(), { propertyId: "4455", offerAmount: "100000", buyerName: "Maria", buyerPhone: "47999998888", contractType: "venda" }, initialState());
   assert.ok(built.ok);
-  return { send, env, messages, bodies, stateRef, origin, operationalHelpers,
+  return { send, env, messages, bodies, stateRef, origin, operationalHelpers, sessionQueries, captureSessions, auth,
     ready: () => send(built.request.message, { thread: { id: "thread-test", label: "Proposta" }, threadState: built.request.threadState }) };
 }
 
@@ -452,6 +460,11 @@ for (const answer of ["Sim", "ok", "confirmo", "pode executar", "Não"]) {
     assert.ok(Object.hasOwn(h.bodies.at(-1), "continuityReplyRef"));
     assert.equal(h.bodies.at(-1).continuityReplyRef, null);
     assert.match(h.messages.at(-1).text, /Não há uma pergunta/);
+    // O guard real da rota foi consultado uma vez, escopado ao ator, e não havia sessão guiada aberta.
+    assert.equal(h.sessionQueries.length, 1);
+    assert.deepEqual([h.sessionQueries[0].where.tenantId, h.sessionQueries[0].where.workspaceId, h.sessionQueries[0].where.key, h.sessionQueries[0].where.metadata.equals],
+      [h.auth.tenantId, h.auth.workspaceId, PROPERTY_CAPTURE_SESSION, h.auth.userId]);
+    assert.equal(h.captureSessions.events.size, 0);
     assert.deepEqual(h.operationalHelpers, before);
     assert.equal(h.stateRef.current["thread-test"].operational.pendingAction.status, "awaiting_confirmation");
     assert.deepEqual(h.env.canonicalPendingAction, pendingAction);

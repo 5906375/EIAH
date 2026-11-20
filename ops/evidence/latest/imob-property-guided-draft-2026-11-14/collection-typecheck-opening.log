@@ -1,0 +1,156 @@
+CURRENT TREE
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m79[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m79[0m       req.logger?.warn({ event: "auth.missing_bearer" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m88[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m88[0m       req.logger?.warn({ event: "auth.invalid_token" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m96[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m96[0m       req.logger?.warn({ event: "auth.token_expired" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m114[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m114[0m     if (req.logger) {
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m35[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m                                  ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m144[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m144[0m         req.logger?.warn({ error: disconnectError }, "auth.enforce.prisma_disconnect_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m187[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m187[0m         req.logger?.error({ error: ledgerError }, "guardrailLedger.write_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m191[0m:[93m9[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m191[0m     req.logger?.error({ error }, "auth.enforce.failure");
+[7m   [0m [91m        ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m93[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m93[0m   const traceId = req?.traceId?.trim();
+[7m  [0m [91m                       ~~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m127[0m:[93m10[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m127[0m     req?.logger?.error?.({ error }, "imob.access_denied.audit_failed");
+[7m   [0m [91m         ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m129[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m129[0m   if (!req?.logger?.warn) return;
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m130[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m130[0m   req.logger.warn(
+[7m   [0m [91m      ~~~~~~[0m
+[96mapps/api/src/services/imob/imobRevocationGate.ts[0m:[93m48[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m48[0m   req.logger?.warn?.(
+[7m  [0m [91m      ~~~~~~[0m
+[96mapps/web/src/components/agents/eiahTutorContracts.ts[0m:[93m2391[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'vertical' does not exist on type 'IntentLibraryEntryV1'.
+
+[7m2391[0m     (!params.intent || params.intent.vertical !== "core") &&
+[7m    [0m [91m                                     ~~~~~~~~[0m
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m991[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m991[0m     assert.deepEqual(harness.messages().at(-1)?.caseContext?.blockers, ["Aprovação necessária"]);
+[7m   [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m1310[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m1310[0m     assert.deepEqual(harness.messages().at(-1)!.caseContext?.blockers, ["Aprovação necessária"]);
+[7m    [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/hooks/useAgentExecution.ts[0m:[93m99[0m:[93m38[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.
+  Types of property 'agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+[7m99[0m       return apiCreateRunWithHeaders(body, headers);
+[7m  [0m [91m                                     ~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m299[0m:[93m17[0m - [91merror[0m[90m TS2339: [0mProperty 'proof' does not exist on type 'ImobPresentationCard'.
+
+[7m299[0m     proof: card.proof,
+[7m   [0m [91m                ~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m552[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m552[0m     typeof message.presentationMetadata?.dedupeKey === "string" && message.presentationMetadata.dedupeKey.trim().length > 0
+[7m   [0m [91m                                         ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m552[0m:[93m97[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m552[0m     typeof message.presentationMetadata?.dedupeKey === "string" && message.presentationMetadata.dedupeKey.trim().length > 0
+[7m   [0m [91m                                                                                                ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m553[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m553[0m       ? message.presentationMetadata.dedupeKey.trim()
+[7m   [0m [91m                                     ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m1961[0m:[93m5[0m - [91merror[0m[90m TS2322: [0mType '{ [k: string]: unknown; } | undefined' is not assignable to type 'Record<string, string> | undefined'.
+  Type '{ [k: string]: unknown; }' is not assignable to type 'Record<string, string>'.
+    'string' index signatures are incompatible.
+      Type 'unknown' is not assignable to type 'string'.
+
+[7m1961[0m     prefilled: prefilled && Object.keys(prefilled).length > 0 ? prefilled : undefined,
+[7m    [0m [91m    ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m2051[0m:[93m42[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m2051[0m             typeof presentationMetadata?.dedupeKey === "string" && presentationMetadata.dedupeKey.trim().length > 0
+[7m    [0m [91m                                         ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m2051[0m:[93m89[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m2051[0m             typeof presentationMetadata?.dedupeKey === "string" && presentationMetadata.dedupeKey.trim().length > 0
+[7m    [0m [91m                                                                                        ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m2052[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+
+[7m2052[0m               ? presentationMetadata.dedupeKey.trim()
+[7m    [0m [91m                                     ~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m5854[0m:[93m44[0m - [91merror[0m[90m TS18048: [0m'sc' is possibly 'undefined'.
+
+[7m5854[0m                             pendingFields={sc.fields}
+[7m    [0m [91m                                           ~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m5855[0m:[93m35[0m - [91merror[0m[90m TS18048: [0m'sc' is possibly 'undefined'.
+
+[7m5855[0m                             flow={sc.mission}
+[7m    [0m [91m                                  ~~[0m
+[96mapps/web/src/pages/app/imob/chat.tsx[0m:[93m5856[0m:[93m40[0m - [91merror[0m[90m TS18048: [0m'sc' is possibly 'undefined'.
+
+[7m5856[0m                             prefilled={sc.prefilled}
+[7m    [0m [91m                                       ~~[0m
+[96mapps/web/src/pages/app/imob/chatProof.ts[0m:[93m9[0m:[93m40[0m - [91merror[0m[90m TS2339: [0mProperty 'presentationMetadata' does not exist on type 'ImobChatMessage'.
+
+[7m9[0m     | Pick<NonNullable<ImobChatMessage["presentationMetadata"]>, "canonicalSnapshot">
+[7m [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chatProof.ts[0m:[93m21[0m:[93m110[0m - [91merror[0m[90m TS2339: [0mProperty 'proof' does not exist on type 'ImobPresentationCard'.
+
+[7m21[0m   const cardProof = isAuthoritativeCanonicalSnapshot(presentation.metadata) ? undefined : presentation.card?.proof;
+[7m  [0m [91m                                                                                                             ~~~~~[0m
+[96mapps/web/src/pages/app/imob/chatProof.ts[0m:[93m24[0m:[93m52[0m - [91merror[0m[90m TS2339: [0mProperty 'runId' does not exist on type 'ImobPresentationCard'.
+
+[7m24[0m   const runId = source.runId ?? presentation.card?.runId ?? null;
+[7m  [0m [91m                                                   ~~~~~[0m
+[96mapps/web/src/pages/app/imob/chatProof.ts[0m:[93m44[0m:[93m34[0m - [91merror[0m[90m TS2344: [0mType '"proof" | "presentationMetadata"' does not satisfy the constraint 'keyof ImobChatMessage'.
+  Type '"presentationMetadata"' is not assignable to type 'keyof ImobChatMessage'.
+
+[7m44[0m   message: Pick<ImobChatMessage, "proof" | "presentationMetadata"> & { card?: { proof?: ChatProofSurface } | null },
+[7m  [0m [91m                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[96mapps/web/src/pages/app/imob/chatProof.ts[0m:[93m46[0m:[93m40[0m - [91merror[0m[90m TS2345: [0mArgument of type 'unknown' is not assignable to parameter of type 'Pick<ImobPresentationMetadata, "canonicalSnapshot"> | Pick<any, "canonicalSnapshot"> | null | undefined'.
+
+[7m46[0m   if (isAuthoritativeCanonicalSnapshot(message.presentationMetadata)) {
+[7m  [0m [91m                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+{"focusedDiagnostics":2,"dependencyDiagnostics":32,"introduced":0}

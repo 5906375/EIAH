@@ -7,6 +7,7 @@ import { OpenAIProvider, AnthropicProvider, GeminiProvider, DeepSeekProvider } f
 import { fullMask, maskText } from "../services/masker";
 
 export type LlmExecutorParams = {
+  transportPolicy?: "imob_guided_single_attempt";
   profile: {
     model: string;
     maxTokens?: number;
@@ -201,6 +202,7 @@ export async function executeLlmStep({
   profile,
   userPrompt,
   metadata,
+  transportPolicy,
 }: LlmExecutorParams): Promise<LlmExecutorResult> {
   const traceId = llmDiagnosticIdentifier(metadata?.traceId);
   const diagnosticLogger = metadata?.source === "imob-property-capture-intake"
@@ -263,6 +265,7 @@ export async function executeLlmStep({
     stage = "provider_execution";
     const response = await runCompletion({
       model: profile.model,
+      transportPolicy,
       messages,
       maxTokens: profile.maxTokens,
       temperature: undefined,

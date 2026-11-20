@@ -174,7 +174,7 @@ export function useImobFormState(messages: StructuredMessage[]) {
         if (normalizeImobFormValue(values[field.name] ?? "")) continue;
         for (let index = messages.length - 1; index >= 0; index -= 1) {
           const candidate = messages[index];
-          if (candidate.id === message.id) continue;
+          if (message.propertyGuided || candidate.propertyGuided || candidate.id === message.id) continue;
           const candidateForm = candidate.form;
           if (!candidateForm) continue;
           if (candidateForm.entity !== form.entity || candidateForm.action !== form.action) continue;

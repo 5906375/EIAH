@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: IMOB backing specialists enrich proposal flow with commercial guidance
+ok 1 - IMOB backing specialists enrich proposal flow with commercial guidance
+  ---
+  duration_ms: 3.474956
+  type: 'test'
+  ...
+# Subtest: IMOB backing specialists use daily ops as contextual fallback for actionable cases
+ok 2 - IMOB backing specialists use daily ops as contextual fallback for actionable cases
+  ---
+  duration_ms: 0.332618
+  type: 'test'
+  ...
+# Subtest: IMOB backing specialists classify legal, financial and audit support by blocker
+ok 3 - IMOB backing specialists classify legal, financial and audit support by blocker
+  ---
+  duration_ms: 0.576736
+  type: 'test'
+  ...
+# Subtest: availability: leitura é fail-closed para mapa ausente, malformado, agente ausente e valor desconhecido
+ok 4 - availability: leitura é fail-closed para mapa ausente, malformado, agente ausente e valor desconhecido
+  ---
+  duration_ms: 0.349549
+  type: 'test'
+  ...
+# Subtest: availability: disponível preserva o candidato integralmente; os demais perdem ação e contexto, mantendo a necessidade
+ok 5 - availability: disponível preserva o candidato integralmente; os demais perdem ação e contexto, mantendo a necessidade
+  ---
+  duration_ms: 0.583961
+  type: 'test'
+  ...
+# Subtest: availability: filtro devolve somente os comprovadamente disponíveis, na ordem original
+ok 6 - availability: filtro devolve somente os comprovadamente disponíveis, na ordem original
+  ---
+  duration_ms: 0.194013
+  type: 'test'
+  ...
+# Subtest: availability: a lista de ids consultados é exatamente a dos candidatos do contrato
+ok 7 - availability: a lista de ids consultados é exatamente a dos candidatos do contrato
+  ---
+  duration_ms: 0.201947
+  type: 'test'
+  ...
+# Subtest: availability: especialista disponível mantém card, apoio, supportingAgents e pendingHandoffs como antes
+ok 8 - availability: especialista disponível mantém card, apoio, supportingAgents e pendingHandoffs como antes
+  ---
+  duration_ms: 58.267714
+  type: 'test'
+  ...
+# Subtest: availability: indisponível, não verificado, falha e mapa malformado aplicam o MESMO resultado em todas as superfícies
+ok 9 - availability: indisponível, não verificado, falha e mapa malformado aplicam o MESMO resultado em todas as superfícies
+  ---
+  duration_ms: 31.391708
+  type: 'test'
+  ...
+# Subtest: availability: o resultado de um agente não vaza para outro (somente J_360 indisponível)
+ok 10 - availability: o resultado de um agente não vaza para outro (somente J_360 indisponível)
+  ---
+  duration_ms: 3.200883
+  type: 'test'
+  ...
+# Subtest: availability: o caminho operacional (helpers do resolvedor) consulta no escopo e aplica o mesmo resultado
+ok 11 - availability: o caminho operacional (helpers do resolvedor) consulta no escopo e aplica o mesmo resultado
+  ---
+  duration_ms: 3.293979
+  type: 'test'
+  ...
+# Subtest: availability: a rota liga a verificação canônica aos dois resolvedores do turno, no escopo do tenant e do workspace, sem regra própria
+ok 12 - availability: a rota liga a verificação canônica aos dois resolvedores do turno, no escopo do tenant e do workspace, sem regra própria
+  ---
+  duration_ms: 1.625237
+  type: 'test'
+  ...
+# Subtest: availability: fin-nexus inferido por bloqueio financeiro só entra quando comprovadamente disponível
+ok 13 - availability: fin-nexus inferido por bloqueio financeiro só entra quando comprovadamente disponível
+  ---
+  duration_ms: 16.020891
+  type: 'test'
+  ...
+# Subtest: transversal: a necessidade é declarada por domínio e capacidade e disparada só por sinais estruturais
+ok 14 - transversal: a necessidade é declarada por domínio e capacidade e disparada só por sinais estruturais
+  ---
+  duration_ms: 0.7083
+  type: 'test'
+  ...
+# Subtest: transversal: o cartão aparece no caso IMOB por sinal estrutural e a conversa original é preservada
+ok 15 - transversal: o cartão aparece no caso IMOB por sinal estrutural e a conversa original é preservada
+  ---
+  duration_ms: 4.927698
+  type: 'test'
+  ...
+# Subtest: transversal: falha, retorno malformado ou formato inesperado não geram cartão nem ação
+ok 16 - transversal: falha, retorno malformado ou formato inesperado não geram cartão nem ação
+  ---
+  duration_ms: 13.033295
+  type: 'test'
+  ...
+# Subtest: transversal: o caminho operacional (helpers do resolvedor) apresenta o mesmo cartão, com tenant e workspace do turno
+ok 17 - transversal: o caminho operacional (helpers do resolvedor) apresenta o mesmo cartão, com tenant e workspace do turno
+  ---
+  duration_ms: 5.477901
+  type: 'test'
+  ...
+# Subtest: transversal: a rota liga a descoberta aos dois resolvedores e só consulta quando a necessidade se aplica
+ok 18 - transversal: a rota liga a descoberta aos dois resolvedores e só consulta quando a necessidade se aplica
+  ---
+  duration_ms: 2.03611
+  type: 'test'
+  ...
+# Subtest: P10 interpretação: divulgar, campanha e ajuda do Marketing viram necessidade transversal (variações equivalentes, não frase literal)
+ok 19 - P10 interpretação: divulgar, campanha e ajuda do Marketing viram necessidade transversal (variações equivalentes, não frase literal)
+  ---
+  duration_ms: 1.439875
+  type: 'test'
+  ...
+# Subtest: P10 interpretação: contratar o Marketing é contratação de AGENTE (estado ou pedido), nunca contrato imobiliário
+ok 20 - P10 interpretação: contratar o Marketing é contratação de AGENTE (estado ou pedido), nunca contrato imobiliário
+  ---
+  duration_ms: 0.615836
+  type: 'test'
+  ...
+# Subtest: P10 interpretação: 'convidar' sem referente claro pede esclarecimento; convite explícito ao workspace é orientação; com agente não é convite
+ok 21 - P10 interpretação: 'convidar' sem referente claro pede esclarecimento; convite explícito ao workspace é orientação; com agente não é convite
+  ---
+  duration_ms: 0.75424
+  type: 'test'
+  ...
+# Subtest: P10 interpretação: cadastro, contratos e demais fluxos legítimos seguem o roteamento existente (não são interceptados)
+ok 22 - P10 interpretação: cadastro, contratos e demais fluxos legítimos seguem o roteamento existente (não são interceptados)
+  ---
+  duration_ms: 0.619731
+  type: 'test'
+  ...
+# Subtest: P10 interpretação: o vocabulário vem do REGISTRO de capacidades (outro agente passa a ser reconhecido sem tocar o interpretador)
+ok 23 - P10 interpretação: o vocabulário vem do REGISTRO de capacidades (outro agente passa a ser reconhecido sem tocar o interpretador)
+  ---
+  duration_ms: 0.222012
+  type: 'test'
+  ...
+# Subtest: P10 'qual status desse caso' com ou sem artigo é o MESMO pedido de pipeline (o catálogo ignora artigos)
+ok 24 - P10 'qual status desse caso' com ou sem artigo é o MESMO pedido de pipeline (o catálogo ignora artigos)
+  ---
+  duration_ms: 4.31392
+  type: 'test'
+  ...
+# Subtest: P10 texto das respostas: só descreve o estado apurado, nunca afirma contratação, habilitação ou trabalho que não houve
+ok 25 - P10 texto das respostas: só descreve o estado apurado, nunca afirma contratação, habilitação ou trabalho que não houve
+  ---
+  duration_ms: 1.051742
+  type: 'test'
+  ...
+# Subtest: P11 etapa transversal (claimOnly) SEM caso explícito: recomendação sem caso; o caso mais recente NUNCA é lido (nem se fosse o único)
+ok 26 - P11 etapa transversal (claimOnly) SEM caso explícito: recomendação sem caso; o caso mais recente NUNCA é lido (nem se fosse o único)
+  ---
+  duration_ms: 1.588366
+  type: 'test'
+  ...
+# Subtest: P11 etapa transversal (claimOnly) COM caso explícito autorizado: lê só esse caso; negativa de escopo/etapa não lê nem substitui outro caso
+ok 27 - P11 etapa transversal (claimOnly) COM caso explícito autorizado: lê só esse caso; negativa de escopo/etapa não lê nem substitui outro caso
+  ---
+  duration_ms: 0.963232
+  type: 'test'
+  ...
+# Subtest: P11 etapa transversal (claimOnly): convite e turnos alheios não são reivindicados e não resolvem caso nem autorização; autorização negada não lê nada
+ok 28 - P11 etapa transversal (claimOnly): convite e turnos alheios não são reivindicados e não resolvem caso nem autorização; autorização negada não lê nada
+  ---
+  duration_ms: 1.403973
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 800.497271

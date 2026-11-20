@@ -1,4 +1,5 @@
 import {
+  imobPropertyGuidedErrors,
   IMOB_ASSET_DESTINATION_OPTIONS,
   looksLikeMultipleUnits,
   normalizeImobAssetDestination,
@@ -411,4 +412,21 @@ export function buildPropertyBatchConfirmationText(params: {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Presentation projection resolved from the guided IMOB view; keeps the existing review form and contextual selectors. */
+export function visiblePropertyCaptureForm(message: { form?: ImobPresentationForm; propertyGuided?: import("@eiah/contracts").ImobPropertyGuidedState }) {
+  const state = message.propertyGuided;
+  if (!state) return message.form;
+  if (!message.form || state.status !== "active") return undefined;
+  if (state.showFullForm) return message.form;
+  if (!state.currentField || state.phase !== "collecting") return undefined;
+  return { ...message.form, label: "", description: "", infoLines: [],
+    fields: message.form.fields.filter((field) => field.name === state.currentField).map((field) => ({ ...field, lookup: undefined })),
+    actions: [{ id: "submit" as const, label: "Continuar", kind: "primary" as const }, { id: "cancel" as const, label: "Cancelar cadastro", kind: "secondary" as const }],
+  };
+}
+export function buildGuidedPropertyCreateRequest(values: Record<string, string>, fields: ImobPresentationForm["fields"]): PropertyCreateFormResult {
+  const errors = imobPropertyGuidedErrors(fields, values);
+  return Object.keys(errors).length ? { ok: false, errors } : buildPropertyCreateRequest(values);
 }

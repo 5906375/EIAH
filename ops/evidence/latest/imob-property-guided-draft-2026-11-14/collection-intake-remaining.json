@@ -1,0 +1,22 @@
+{
+  "id": "intake-remaining",
+  "command": [
+    "env",
+    "TSX_TSCONFIG_PATH=apps/web/tsconfig.json",
+    "node",
+    "--import",
+    "tsx",
+    "--test-name-pattern=^coleta guiada v1: rota real",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts"
+  ],
+  "state": "finished",
+  "log": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-remaining.log",
+  "pid": 2,
+  "exitCode": 0,
+  "durationSeconds": 0.919,
+  "tests": 1,
+  "pass": 1,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0
+}

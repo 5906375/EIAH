@@ -1,0 +1,258 @@
+{
+  "recordedAt": "2026-11-17 11:42:16 UTC",
+  "status": "parcial",
+  "scope": "Focused read of the effective API staging build/deploy configuration; no Docker command or runtime test repeated.",
+  "branch": "chore/imob-intake-provider-diagnostics",
+  "head": "97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6",
+  "stageInitiallyEmpty": true,
+  "provenance": {
+    "source": "Render MCP get_service, read-only, exactly the existing API staging service; no service/deploy inventory, environment-variable retrieval or mutation.",
+    "tool": "mcp__codex_apps__render_get_service",
+    "args": {
+      "serviceId": "srv-db20abei0phs73cqbcgg",
+      "workspaceId": "tea-db1rhr1srm7s73d00bcg"
+    },
+    "isError": false,
+    "processExitCode": null,
+    "allowedFieldProjection": {
+      "serviceId": "srv-db20abei0phs73cqbcgg",
+      "name": "eiah-api-staging",
+      "type": "web_service",
+      "repo": "https://github.com/5906375/EIAH",
+      "branch": "main",
+      "autoDeploy": "no",
+      "rootDir": "",
+      "updatedAt": "2026-11-16T18:52:53.19707Z",
+      "runtime": "docker",
+      "envSpecificDetails": {
+        "dockerfilePath": "apps/api/Dockerfile.prod",
+        "dockerContext": ".",
+        "dockerCommand": "",
+        "preDeployCommand": "/app/node_modules/.bin/prisma migrate deploy --config /app/packages/db/prisma.config.ts"
+      }
+    },
+    "historicalReference": "../operational-comparison.json",
+    "limits": "Confirms current service recipe/path, context and commands. Does not attest the deployed Dockerfile bytes/revision, a new deploy, or deployment of the uncommitted local splitting correction."
+  },
+  "versionedConfiguration": {
+    "dockerfile": "apps/api/Dockerfile.prod",
+    "context": ".",
+    "dockerfileMatchesCurrentServicePath": true,
+    "trackedRenderBlueprintFound": false,
+    "lookup": "git ls-files '*render*' '.github/workflows/*' 'apps/api/Dockerfile*' 'package.json' 'packages/*/package.json' 'pnpm-workspace.yaml'",
+    "buildCommands": [
+      "corepack enable",
+      "apt-get update && apt-get install -y git python3 make g++ libc6 libstdc++6 libatomic1 libssl-dev && rm -rf /var/lib/apt/lists/*",
+      "pnpm install --frozen-lockfile --ignore-scripts",
+      "pnpm --filter @eiah/api... run build",
+      "apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*"
+    ],
+    "pnpmVersion": "10.12.4",
+    "workspaceBuildScope": [
+      "@eiah/contracts",
+      "@repo/db",
+      "@eiah/core",
+      "@eiah/providers",
+      "@repo/mcp-runner",
+      "@eiah/api"
+    ],
+    "dbBuild": "pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts",
+    "dbGenerate": "pnpm prisma generate",
+    "dbPostbuild": "node ./scripts/copy-publish-artifacts.mjs",
+    "prismaGenerator": {
+      "provider": "prisma-client-js",
+      "binaryTargets": [
+        "native",
+        "debian-openssl-3.0.x"
+      ],
+      "engineType": "binary"
+    },
+    "runtimeCopies": [
+      "/app/node_modules",
+      "/app/packages",
+      "/app/apps/api/node_modules",
+      "/app/apps/api/package.json",
+      "/app/apps/api/dist"
+    ],
+    "startCommand": [
+      "node",
+      "apps/api/dist/index.js"
+    ],
+    "preDeployCommandExecuted": false,
+    "dockerIgnore": "Excludes node_modules, all dist, local caches and .env variants; validated host dist/dependencies cannot substitute for the official clean builder.",
+    "releaseWorkflow": {
+      "file": ".github/workflows/release.yml",
+      "job": "publish_api_image",
+      "context": ".",
+      "dockerfile": "apps/api/Dockerfile.prod",
+      "push": true,
+      "role": "GHCR image publication, not proof of the effective Render staging deployment."
+    },
+    "deployWorkflow": {
+      "file": ".github/workflows/deploy.yml",
+      "role": "Explicit DEPLOY_NOT_IMPLEMENTED scaffold, exits 1; not an implemented API rollout."
+    },
+    "renderServiceConfiguration": "Current branch/rootDir/runtime/docker paths/command overrides/pre-deploy command are service metadata, not a tracked Render Blueprint."
+  },
+  "reusedDockerEvidence": {
+    "file": "docker-image-validation.json",
+    "rereadOnly": true,
+    "firstConfirmedMissingResource": "node:22-bookworm-slim",
+    "previousInspectExitCode": 1,
+    "builderBasePreviouslyPresent": "node:22-bookworm",
+    "fullBuildkitCachePreviouslyAudited": false,
+    "conclusion": "First confirmed missing local image reference, not proof it is the only blocker. No new cache or image inventory."
+  },
+  "dependenciesNotVerified": [
+    {
+      "resource": "docker/dockerfile:1.7 frontend",
+      "need": "May require external image/manifest resolution unless available to the selected builder."
+    },
+    {
+      "resource": "Corepack-managed pnpm@10.12.4",
+      "need": "May require download on the first pnpm invocation unless already cached inside the build."
+    },
+    {
+      "resource": "APT indexes/packages in builder and runtime",
+      "need": "Uncached apt-get update RUN steps require repository access. Cached .deb files alone do not make these exact RUN steps offline; the matching successful layers must be reusable."
+    },
+    {
+      "resource": "Lockfile dependencies/pnpm store including build tools and native packages",
+      "need": "Installation uses --frozen-lockfile --ignore-scripts but not --offline. Complete local cache and install/build viability are unverified."
+    },
+    {
+      "resource": "Prisma generation/engines/generated client",
+      "need": "Explicit DB build invokes prisma generate despite install --ignore-scripts; schema requests binary engines for native/debian-openssl-3.0.x. Cache and generation without real configuration are unverified."
+    },
+    {
+      "resource": "Whole recursive build in clean builder and runtime workspace links",
+      "need": "Already-passing host core/API builds do not prove every dependency compiles from the Docker context with install scripts disabled."
+    }
+  ],
+  "remainingPackagingValidation": [
+    "Build the official Dockerfile/context from the corrected tree using available local resources, recording source hashes, image ID and platform; do not publish.",
+    "Inspect the corrected image stopped, without entrypoint: core/API dist, full transitive chunks, package exports and workspace symlink targets; also Prisma CLI/config/schema/migrations needed by the recorded pre-deploy command.",
+    "Run only the necessary existing synthetic harness inside that corrected image with explicit entrypoint, no provider configuration and network none, if the harness can run in isolation. Distinguish static inspection from effective execution; do not boot API/workers/queues/databases or execute migrations."
+  ],
+  "minimumProcedure": {
+    "executed": false,
+    "preparation": "Supply the confirmed-missing runtime base via trusted offline import or a separately authorized download. Establish local availability of the conditional frontend/Corepack/APT/pnpm/Prisma resources; import matching layers/caches where necessary. Stop on missing resources under current restrictions.",
+    "downloads": {
+      "confirmedMissingImageReference": [
+        "node:22-bookworm-slim"
+      ],
+      "conditional": [
+        "docker/dockerfile:1.7",
+        "pnpm@10.12.4",
+        "APT indexes and listed packages for both stages",
+        "dependencies fixed by pnpm-lock.yaml",
+        "Prisma engines required by schema"
+      ],
+      "builderBase": "node:22-bookworm was present; no need established to download again."
+    },
+    "futureCommandFromRepoRoot": "docker build --pull=false --network=none -f apps/api/Dockerfile.prod -t eiah-imob-registry-packaging:local .",
+    "commandIsProposalOnly": true,
+    "offlineCaveat": "--pull=false and --network=none do not alone guarantee absence of frontend/base resolution requests; ensure the selected builder is offline and its required image/frontend metadata and cache are usable before invocation. Do not run the proposed command under the current no-build/read-only request.",
+    "followUp": "Record provenance, inspect filesystem, then an isolated harness in the new image only. A successful local image does not authorize or prove a Render deployment."
+  },
+  "commands": [
+    {
+      "command": "cat CODEX.md CLAUDE.md AGENTS.md; mandatory references read with cat",
+      "exitCode": 0,
+      "role": "Instruction reads only; not a test."
+    },
+    {
+      "command": "git branch --show-current / git rev-parse HEAD / git status --short / git diff --cached --name-only",
+      "exitCode": 0,
+      "role": "Working tree/stage baseline, no mutation."
+    },
+    {
+      "command": "Focused git ls-files, rg, cat, sed, nl and JSON projection of versioned recipes/manifests and existing evidence",
+      "exitCode": 0,
+      "role": "Static reads; no image inventory or imports."
+    },
+    {
+      "command": "cat scripts/prebuild-check.sh packages/db/prisma.config.ts packages/db/scripts/copy-publish-artifacts.mjs .npmrc pnpm-workspace.yaml apps/api/Dockerfile.prod .dockerignore",
+      "exitCode": 1,
+      "role": "Optional root .npmrc absent; requested existing files were read. Not a product/build failure. No .npmrc was created."
+    },
+    {
+      "command": "mcp__codex_apps__render_get_service(serviceId=srv-db20abei0phs73cqbcgg, workspaceId=tea-db1rhr1srm7s73d00bcg)",
+      "exitCode": null,
+      "isError": false,
+      "role": "Focused successful current service metadata read; MCP has no process exit code."
+    },
+    {
+      "command": "Python hashlib of existing evidence and protected/versioned inputs",
+      "exitCode": 0,
+      "role": "Integrity baseline only; no package build/import."
+    }
+  ],
+  "baselineSha256": {
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/docker-connection-diagnostic.json": "3d5904e23b7f54a508c25ba9b419c396f5a6b8b7a4fb94a426f1cfbd3ce51f91",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/verification.json": "dcf496889ffb9bfac6c8151928bb6ad738e2394fa703c5c3eae34b893b308daa",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-results.json": "a9babe523c468d98f08def4f3c136ec6318267d7f88688bedfc4903a765997e6",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/harness-initial.json": "31bc481f25238b97e9cc883043cf844bf15d4cc32806ff70c4edab7e9541dcbe",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/delivery-executions.json": "67efb856eee19748c62afdcc4717db17149c172e43c2d6b90f1e41280b4b7041",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json": "01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-results.json": "2a429c470ba90b3487023fdc59a14cd6a4229e40cbd05a31771b871c9c99ea86",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-api-build.txt": "6c63df1dbc2ea8c18422be5e12e909d1549b8e2df719c552afa5fea6ca54b0f1",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": "32a49dae90edc62cd93806c76d90784fab35a43864038b558e7ea9533ed5ee1a",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs": "7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-core-build.txt": "61f26e2cbd3d59f1ffd3d7a1c8c998a84f5ad7773c3a5292708f82d15f196c04",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-executions.json": "a9d8c61d45d6ec1166db922341793c8a6e77ae189cef266b32ea24b5366832cd",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/docker-image-validation.json": "affa5e2bbb74cded877dcba8d51b7c7664ee6c893db280150c76f1c2daf0332a",
+    "CLAUDE.md": "66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37",
+    "CODEX.md": "2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525",
+    "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff": "4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2",
+    "packages/core/tsup.config.ts": "2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b",
+    "apps/api/Dockerfile.prod": "ac9cc4e1fa2cbbc6fbf8a47270a350f25a458bde62ae9ddd376e420c2f1515b6",
+    ".dockerignore": "28c303bad27e3afbb975949964adb83def283d0cc20ac2a9731f907167f4a892",
+    ".github/workflows/release.yml": "556598f1b3ab69e1a7c35331b7bbcca9626ca8999d12b39f85fb1d6eec021899",
+    ".github/workflows/deploy.yml": "55f6f87dfdeddb69941a0b3bae89e526b6cb2c90b4c07c984e1737fa89af61f9",
+    "pnpm-lock.yaml": "31478a28da61c43e456e05550561985e4343f09807159adaacc74944c3cdee1c",
+    "package.json": "bd853f2ebd9aa754e5753ebaae305d222a721eb3fd9f23e2b2401b4e3a712e22",
+    "packages/db/package.json": "829bc689b57e8c737009edb04737fee298f5b64459f7bb6c3337eadfd9afbfdc",
+    "packages/db/prisma/schema.prisma": "d226eeef8a152fb21596a0a72d497332bbb236804373d7e65b3144d77a225a41"
+  },
+  "limits": {
+    "registrySmokeRepeated": false,
+    "consumerSmokesRepeated": false,
+    "dockerCommands": 0,
+    "imageInspections": 0,
+    "builds": 0,
+    "pulls": 0,
+    "downloads": 0,
+    "remoteBuilds": 0,
+    "servicesStarted": 0,
+    "migrationsExecuted": 0,
+    "realProviderCalls": 0,
+    "subagents": 0,
+    "productionChanges": 0,
+    "gitMutations": 0,
+    "typecheck": "Focal historical typecheck remains failed with pre-existing diagnostics; no new approval.",
+    "realTwoBedroomsOneParkingFlow": "Pending and not approved; no general core/staging homologation."
+  },
+  "lifecycle": {
+    "temporaryFilesCreated": 0,
+    "preserved": "Permanent sanitized focused metadata/analysis evidence, README append and Evidence Index entry; earlier evidence intact.",
+    "cleanupRequired": false
+  },
+  "documentationCheck": {
+    "command": "node --import tsx scripts/checkEvidenceIndex.ts",
+    "exitCode": 0,
+    "refsChecked": 981,
+    "unitTestsRepeated": 0,
+    "execution": "Outside sandbox, using existing narrowly scoped authorization; checker only."
+  },
+  "finalIntegrity": {
+    "command": "Focused Python SHA-256 comparison against this stage baseline",
+    "exitCode": 0,
+    "unchangedProtectedAndPriorFiles": 25,
+    "readmeHistoricalPrefixPreserved": true,
+    "mismatches": [],
+    "gitDiffCheckExitCode": 0,
+    "stageEmpty": true
+  }
+}

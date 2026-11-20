@@ -1,0 +1,594 @@
+[
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/agents",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/vertical-access/notices",
+    "status": 200
+  },
+  {
+    "page": "desktop",
+    "method": "GET",
+    "path": "/api/chat/vertical-registry",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/agents",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/vertical-access/notices",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/chat/vertical-registry",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/imob/chat/runtime-shadow-state",
+    "status": 404
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/chat/vertical-handoff",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/chat/vertical-handoff",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/imob/chat/conversations",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/imob/chat/conversations/conv_d622cb65082030d8/messages",
+    "status": 200
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab1",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 200,
+    "action": "start",
+    "sentSessionRef": false,
+    "status_s": "active",
+    "phase": "start",
+    "currentField": null,
+    "revision": 0,
+    "interpretation": "available",
+    "errors": [
+      "propertyType",
+      "city",
+      "address"
+    ]
+  },
+  {
+    "page": "tab1",
+    "method": "GET",
+    "path": "/api/imob/owners",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/agents",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/marketplace",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/delegations",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/plans/quotas",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/billing/tenant/summary",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/billing/agents/summary",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/chat/vertical-registry",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/vertical-access/notices",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 409,
+    "errorCode": "IMOB_PROPERTY_CAPTURE_ACTIVE"
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/conversations",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/conversations/conv_537f6e2a0c18d7a2/messages",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/runtime-shadow-state",
+    "status": 404
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/chat/vertical-handoff",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/session/context",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/chat/vertical-handoff",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/imob/chat/conversations",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "GET",
+    "path": "/api/imob/chat/conversations/conv_537f6e2a0c18d7a2/messages",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/helpdesk/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 200,
+    "action": "start",
+    "sentSessionRef": false
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 409,
+    "errorCode": "IMOB_PROPERTY_CAPTURE_ACTIVE"
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/conversations/conv_537f6e2a0c18d7a2/messages",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/telemetry",
+    "status": 201
+  },
+  {
+    "page": "scope-other-user",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 200,
+    "action": "cancel",
+    "sentSessionRef": true,
+    "status_s": "cancelled",
+    "phase": "start",
+    "currentField": null,
+    "revision": 1,
+    "interpretation": "available",
+    "errors": [
+      "propertyType",
+      "city",
+      "address"
+    ]
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/resolve-turn",
+    "status": 200
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/conversations/conv_537f6e2a0c18d7a2/messages",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/telemetry",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/conversations/conv_537f6e2a0c18d7a2/messages",
+    "status": 201
+  },
+  {
+    "page": "tab2",
+    "method": "POST",
+    "path": "/api/imob/chat/telemetry",
+    "status": 201
+  }
+]

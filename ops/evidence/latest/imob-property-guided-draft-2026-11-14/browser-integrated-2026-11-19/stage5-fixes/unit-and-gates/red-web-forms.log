@@ -1,0 +1,86 @@
+TAP version 13
+# Subtest: P-01 abertura guiada: Continuar sem IA é botão nativo acionável, sem provider e sem formulário completo antecipado
+not ok 1 - P-01 abertura guiada: Continuar sem IA é botão nativo acionável, sem provider e sem formulário completo antecipado
+  ---
+  duration_ms: 64.048241
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1:177953'
+  failureType: 'testCodeFailure'
+  error: 'controle visível e acionável (botão nativo: Tab/Enter/Espaço)'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: '<div class="flex w-full flex-col gap-3 text-sm text-foreground"><p class="whitespace-pre-line leading-relaxed">Vamos cadastrar um imóvel, um campo por vez. Se quiser, descreva os dados iniciais para uma interpretação por IA, ou escolha Continuar sem IA. Nada será salvo antes da revisão e da sua ação no botão Salvar cadastro.</p><label class="text-xs text-muted-foreground">Corrigir ou retomar campo<select aria-label="Corrigir ou retomar campo" class="ml-2 rounded border border-white/10 bg-surface p-2"><option value="" selected="">Selecione um campo</option><option value="propertyType">Tipo</option><option value="goal">Destinação inicial</option><option value="unitLabel">Identificação da unidade</option><option value="ownerId">Proprietário</option><option value="occupancy">Situação</option><option value="city">Cidade</option><option value="address">Endereço</option><option value="neighborhood">Bairro</option><option value="cep">CEP (opcional)</option><option value="areaM2">Área (m²)</option><option value="bedrooms">Quartos</option><option value="bathrooms">Banheiros</option><option value="garageSpots">Vagas de garagem</option></select></label></div>'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:3120:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async startSubtestAfterBootstrap (node:internal/test_runner/harness:296:3)
+  ...
+# Subtest: P-01 o clique é equivalente ao texto digitado: mesmos efeitos no servidor; abertura duplicada/concorrente não repete a escolha
+not ok 2 - P-01 o clique é equivalente ao texto digitado: mesmos efeitos no servidor; abertura duplicada/concorrente não repete a escolha
+  ---
+  duration_ms: 34.927471
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1:179550'
+  failureType: 'testCodeFailure'
+  error: 'byClick.structuredForms.selectGuidedReply is not a function'
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:3139:27)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: P-02 Front Door: Cadastrar imóvel com sessão de outra origem mostra o aviso explícito, sem erro genérico, sem marcador pendente, sem LLM e sem cancelamento automático
+not ok 3 - P-02 Front Door: Cadastrar imóvel com sessão de outra origem mostra o aviso explícito, sem erro genérico, sem marcador pendente, sem LLM e sem cancelamento automático
+  ---
+  duration_ms: 10.528389
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:1:180606'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input was expected to not match the regular expression /Não consegui confirmar a abertura/. Input:
+    
+    'Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessão.\n' +
+      'Há um cadastro de imóvel pendente em outra aba ou sessão. Nada foi salvo e nenhuma interpretação por IA foi feita. Para seguir com outro assunto, cancele o cadastro pendente (os dados dele serão descartados) ou retome-o na aba em que foi iniciado.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: |-
+    Não consegui confirmar a abertura do cadastro. Tente Cadastrar imóvel novamente para sincronizar a mesma sessão.
+    Há um cadastro de imóvel pendente em outra aba ou sessão. Nada foi salvo e nenhuma interpretação por IA foi feita. Para seguir com outro assunto, cancele o cadastro pendente (os dados dele serão descartados) ou retome-o na aba em que foi iniciado.
+  operator: 'doesNotMatch'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/features/imob/structured/createImobStructuredForms.test.ts:3159:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: P-02 a mesma origem retoma a sessão (sem conflito); a abertura retomada não renova a interpretação
+ok 4 - P-02 a mesma origem retoma a sessão (sem conflito); a abertura retomada não renova a interpretação
+  ---
+  duration_ms: 8.626509
+  type: 'test'
+  ...
+# Subtest: P-04 interface: durante a coleta ativa na mesma aba o texto vai para a coleta (nenhum claim é emitido) e o rascunho permanece
+ok 5 - P-04 interface: durante a coleta ativa na mesma aba o texto vai para a coleta (nenhum claim é emitido) e o rascunho permanece
+  ---
+  duration_ms: 14.741534
+  type: 'test'
+  ...
+# Subtest: P-04 interface: aba sem o contexto guiado (origem perdida) recebe o claim reivindicado e não toca a sessão aberta
+ok 6 - P-04 interface: aba sem o contexto guiado (origem perdida) recebe o claim reivindicado e não toca a sessão aberta
+  ---
+  duration_ms: 6.709234
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 3
+# fail 3
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1174.775018

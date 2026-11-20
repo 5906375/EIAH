@@ -1,3 +1,4 @@
+import { PropertyCaptureActiveError, openPropertyCapture, propertyCaptureActiveBody } from "../services/imob/imobChatConversationManagement";
 import { createLogger } from "@eiah/core/logging/logger";
 import { llmFailureDiagnostic, llmDiagnosticIdentifier } from "@eiah/core/llm/LLMProviderError";
 import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
@@ -1726,6 +1727,17 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     return;
   }
 
+  // A guided session cannot silently fall through to a semantic classifier or the batch intake.
+  // `claimOnly` is the Front Door's read-only consult (below): it never reads-for-write or touches the capture session, so it is not an incompatible
+  // operation. Only a request that REALLY reaches that branch is exempt: `claimOnly` must be exactly `true` and no capture intake may be present
+  // (those branches run earlier and would call the provider). Authentication, entitlement and role checks above still apply to it.
+  const reachesClaimBranch = body.claimOnly === true && body.intake !== "property_draft" && body.intake !== "property_units";
+  if (!reachesClaimBranch && !(body.intake === "property_draft" && asObject(body.propertyCapture)?.guided)) {
+    // The response names the actor's own open session so the client can offer an explicit, targeted recovery; nothing is closed here.
+    const open = await openPropertyCapture(prisma, authContext, body.intake === "property_draft" || body.intake === "property_units");
+    if (open) return res.status(409).json(propertyCaptureActiveBody(open));
+  }
+
   // Contextual continuation of an editable property form. The client supplies draft DATA, never access or authority.
   // As with field intake, return before resolving cases, recipes or operational mutations.
   if (body.intake === "property_draft") {
@@ -1736,8 +1748,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     // The request middleware owns this ID; never replace it with a completion/provider ID.
     const traceId = llmDiagnosticIdentifier(res.getHeader("x-trace-id"));
     const intakeLogger = createLogger({ component: "imob-property-capture", traceId });
-    return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
-      traceId,
+    try { return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      prisma, traceId,
       scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId },
       observe: (diagnostic) => intakeLogger.info(diagnostic, "imob.property_capture.intake"),
       interpret: async ({ systemPrompt, userPrompt }) => {
@@ -1753,12 +1765,18 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
             throw error;
           }
         })();
-        const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
+        const result = await executeLlmStep({ transportPolicy: parsed.data.guided ? "imob_guided_single_attempt" : undefined,
+          profile: { model: profile.model, maxTokens: 1000, systemPrompt,
           knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
           metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId } });
         return result.outputText;
       },
     }) });
+    } catch (error) {
+      // A guided start/recovery from another origin while a capture is open: the engine names the server-owned session (same 409 contract as the guard above).
+      if (error instanceof PropertyCaptureActiveError) return res.status(409).json(propertyCaptureActiveBody(error.open));
+      throw error;
+    }
   }
 
   // Intake de campo: auth/escopo, revogação, instalação, vínculo ativo e imob.chat.use já passaram; exige REAL_ESTATE_CORE.

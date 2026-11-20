@@ -1,0 +1,114 @@
+{
+  "check": "e2e:imob-chat-parity",
+  "ok": true,
+  "generatedAt": "2026-11-19T22:32:31.985Z",
+  "parity": [
+    {
+      "step": "abrir Cadastrar proprietário",
+      "imobChat": true,
+      "frontDoor": true
+    },
+    {
+      "step": "salvar proprietário",
+      "imobChat": true,
+      "frontDoor": true
+    },
+    {
+      "step": "salvar imóvel do proprietário",
+      "imobChat": true,
+      "frontDoor": true
+    },
+    {
+      "step": "salvar locação e abrir contrato preenchido",
+      "imobChat": true,
+      "frontDoor": true
+    },
+    {
+      "step": "encerrar locação pela barra",
+      "imobChat": true,
+      "frontDoor": true
+    },
+    {
+      "step": "nenhuma run criada",
+      "imobChat": true,
+      "frontDoor": true
+    }
+  ],
+  "results": [
+    {
+      "surface": "/app/imob/chat",
+      "step": "abrir Cadastrar proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/imob/chat",
+      "step": "salvar proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/imob/chat",
+      "step": "salvar imóvel do proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/imob/chat",
+      "step": "salvar locação e abrir contrato preenchido",
+      "ok": true
+    },
+    {
+      "surface": "/app/imob/chat",
+      "step": "encerrar locação pela barra",
+      "ok": true
+    },
+    {
+      "surface": "/app/imob/chat",
+      "step": "nenhuma run criada",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "abrir Cadastrar proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "salvar proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "salvar imóvel do proprietário",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "salvar locação e abrir contrato preenchido",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "encerrar locação pela barra",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat",
+      "step": "nenhuma run criada",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat (ativação)",
+      "step": "pedido sem IMOB oferece ativar",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat (ativação)",
+      "step": "proposta não ativa",
+      "ok": true
+    },
+    {
+      "surface": "/app/chat (ativação)",
+      "step": "confirmação explícita ativa e segue com o IMOB",
+      "ok": true
+    }
+  ]
+}

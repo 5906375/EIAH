@@ -1,0 +1,18 @@
+# Saída literal de diag-claim-real.mjs (ambiente descartável, tenant sintético br-t-ee301d3b, harness com simulador corrigido)
+# Execução 1 (estado inicial sujo: havia uma sessão guiada aberta, deixada pelo cenário 7 da rodada anterior) — todo claim já respondeu 409:
+A sem sessão | Isso já contratou o Marketing? {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+A sem sessão | Quero divulgar este apartamento do Batel. {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+A sem sessão | quero ver meus imóveis {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+início guiado {"http":200,"status":null,"hasRef":false}
+sem sessão guiada aberta: não foi possível executar B (estado inicial sujo?)
+# Execução 2 (após cancelar a sessão sintética residual por referência — mesmo mecanismo do reset do spec):
+reset do estado inicial (cancelamento por referência) 200 cancelled
+A sem sessão | Isso já contratou o Marketing? {"http":200,"claimed":true,"action":"crm.case.transversal.agent_engagement","err":null,"reasonCode":null}
+A sem sessão | Quero divulgar este apartamento do Batel. {"http":200,"claimed":true,"action":"crm.case.transversal.request_capability","err":null,"reasonCode":null}
+A sem sessão | quero ver meus imóveis {"http":200,"claimed":false,"action":null,"err":null,"reasonCode":null}
+início guiado {"http":200,"status":"active","hasRef":true}
+B com sessão   | Isso já contratou o Marketing? {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+B com sessão   | Quero divulgar este apartamento do Batel. {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+B com sessão   | quero ver meus imóveis {"http":409,"claimed":null,"action":null,"err":"IMOB_PROPERTY_CAPTURE_ACTIVE","reasonCode":null}
+limpeza (cancelamento por referência) 200 cancelled
+C após cancelar | Isso já contratou o Marketing? {"http":200,"claimed":true,"action":"crm.case.transversal.agent_engagement","err":null,"reasonCode":null}

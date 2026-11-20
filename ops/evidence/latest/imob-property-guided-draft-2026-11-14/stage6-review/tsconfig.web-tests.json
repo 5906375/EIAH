@@ -1,0 +1,17 @@
+{
+  "//": "Configuração focal de tipagem: as MESMAS opções de apps/web/tsconfig.json, sem excluir *.test.ts(x). typeRoots espelha a resolução implícita de apps/web (o diretório do config altera @types visíveis). Usada só por typecheck-baseline-compare.mjs.",
+  "extends": "../../../../../apps/web/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "typeRoots": [
+      "../../../../../apps/web/node_modules/@types",
+      "../../../../../node_modules/@types"
+    ]
+  },
+  "include": [
+    "../../../../../apps/web/src",
+    "../../../../../docs/RunViewer.js",
+    "../../../../../docs/AgentBuilder/RunTimeline.js"
+  ],
+  "exclude": []
+}

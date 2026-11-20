@@ -1,0 +1,396 @@
+TAP version 13
+# Subtest: proposta usa draft estruturado e não serializa campos como texto
+ok 1 - proposta usa draft estruturado e não serializa campos como texto
+  ---
+  duration_ms: 23.632107
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor 100000 independentes
+ok 2 - form values → builder → resolver mantém imóvel 4455 e valor 100000 independentes
+  ---
+  duration_ms: 8.167879
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 98765 e valor 450000 independentes
+ok 3 - form values → builder → resolver mantém imóvel 98765 e valor 450000 independentes
+  ---
+  duration_ms: 2.777823
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel imovel-AB12 e valor 450000 independentes
+ok 4 - form values → builder → resolver mantém imóvel imovel-AB12 e valor 450000 independentes
+  ---
+  duration_ms: 3.670141
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor R$ 100.000,75 independentes
+ok 5 - form values → builder → resolver mantém imóvel 4455 e valor R$ 100.000,75 independentes
+  ---
+  duration_ms: 2.291702
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor 100000.50 independentes
+ok 6 - form values → builder → resolver mantém imóvel 4455 e valor 100000.50 independentes
+  ---
+  duration_ms: 1.931843
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor ausente independentes
+ok 7 - form values → builder → resolver mantém imóvel 4455 e valor ausente independentes
+  ---
+  duration_ms: 2.405016
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel ausente e valor 100000 independentes
+ok 8 - form values → builder → resolver mantém imóvel ausente e valor 100000 independentes
+  ---
+  duration_ms: 2.143856
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel ausente e valor ausente independentes
+ok 9 - form values → builder → resolver mantém imóvel ausente e valor ausente independentes
+  ---
+  duration_ms: 2.0808
+  type: 'test'
+  ...
+# Subtest: valor inválido inválido bloqueia construção
+ok 10 - valor inválido inválido bloqueia construção
+  ---
+  duration_ms: 1.476317
+  type: 'test'
+  ...
+# Subtest: valor inválido -10 bloqueia construção
+ok 11 - valor inválido -10 bloqueia construção
+  ---
+  duration_ms: 1.16586
+  type: 'test'
+  ...
+# Subtest: valor inválido 0 bloqueia construção
+ok 12 - valor inválido 0 bloqueia construção
+  ---
+  duration_ms: 1.180876
+  type: 'test'
+  ...
+# Subtest: valor inválido Infinity bloqueia construção
+ok 13 - valor inválido Infinity bloqueia construção
+  ---
+  duration_ms: 1.105624
+  type: 'test'
+  ...
+# Subtest: valor inválido 100000.001 bloqueia construção
+ok 14 - valor inválido 100000.001 bloqueia construção
+  ---
+  duration_ms: 1.138013
+  type: 'test'
+  ...
+# Subtest: valor inválido 900719925474099100 bloqueia construção
+ok 15 - valor inválido 900719925474099100 bloqueia construção
+  ---
+  duration_ms: 2.642941
+  type: 'test'
+  ...
+# Subtest: contexto ausente ou de outro fluxo não produz request de proposta
+ok 16 - contexto ausente ou de outro fluxo não produz request de proposta
+  ---
+  duration_ms: 3.111426
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo venda
+ok 17 - continuidade preserva o tipo venda
+  ---
+  duration_ms: 3.628264
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo locação
+ok 18 - continuidade preserva o tipo locação
+  ---
+  duration_ms: 4.029857
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo administração
+ok 19 - continuidade preserva o tipo administração
+  ---
+  duration_ms: 7.321535
+  type: 'test'
+  ...
+# Subtest: submit dedicado envia draft ao CRM engine no mesmo contexto; cancelamento não envia criação
+ok 20 - submit dedicado envia draft ao CRM engine no mesmo contexto; cancelamento não envia criação
+  ---
+  duration_ms: 14.445691
+  type: 'test'
+  ...
+# Subtest: demais formulários legados mantêm a serialização textual
+ok 21 - demais formulários legados mantêm a serialização textual
+  ---
+  duration_ms: 0.297529
+  type: 'test'
+  ...
+# Subtest: tipo de proposta inválido não produz request
+ok 22 - tipo de proposta inválido não produz request
+  ---
+  duration_ms: 3.582997
+  type: 'test'
+  ...
+# Subtest: campo vazio é mantido ausente mesmo quando o draft anterior possuía dados
+ok 23 - campo vazio é mantido ausente mesmo quando o draft anterior possuía dados
+  ---
+  duration_ms: 1.884249
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Sim → validation, zero execution
+ok 24 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Sim → validation, zero execution
+  ---
+  duration_ms: 93.732156
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Não → validation, zero execution
+ok 25 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Não → validation, zero execution
+  ---
+  duration_ms: 38.859557
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Cancelar proposta → validation, zero execution
+ok 26 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Cancelar proposta → validation, zero execution
+  ---
+  duration_ms: 27.301124
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale history_remount fails closed
+ok 27 - FDC-03A-R1 dedicated stale history_remount fails closed
+  ---
+  duration_ms: 25.867907
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_conversation fails closed
+ok 28 - FDC-03A-R1 dedicated stale another_conversation fails closed
+  ---
+  duration_ms: 21.09946
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_vertical fails closed
+ok 29 - FDC-03A-R1 dedicated stale another_vertical fails closed
+  ---
+  duration_ms: 25.471525
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_assistant fails closed
+ok 30 - FDC-03A-R1 dedicated stale another_assistant fails closed
+  ---
+  duration_ms: 18.526341
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated delayed response cannot replace a switched conversation
+ok 31 - FDC-03A-R1 dedicated delayed response cannot replace a switched conversation
+  ---
+  duration_ms: 19.99011
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated transport preserves correlation over HTTP; legacy fields remain optional
+ok 32 - FDC-03A-R1 dedicated transport preserves correlation over HTTP; legacy fields remain optional
+  ---
+  duration_ms: 20.675872
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated concurrent replies present latest only and neither authorizes execution
+ok 33 - FDC-03A-R1 dedicated concurrent replies present latest only and neither authorizes execution
+  ---
+  duration_ms: 31.432022
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session tenantId switch is discarded before render
+ok 34 - FDC-03A-R1 dedicated response after session tenantId switch is discarded before render
+  ---
+  duration_ms: 17.089315
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session workspaceId switch is discarded before render
+ok 35 - FDC-03A-R1 dedicated response after session workspaceId switch is discarded before render
+  ---
+  duration_ms: 19.40705
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session userId switch is discarded before render
+ok 36 - FDC-03A-R1 dedicated response after session userId switch is discarded before render
+  ---
+  duration_ms: 16.582814
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session token switch is discarded before render
+ok 37 - FDC-03A-R1 dedicated response after session token switch is discarded before render
+  ---
+  duration_ms: 17.950084
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session activeDomain switch is discarded before render
+ok 38 - FDC-03A-R1 dedicated response after session activeDomain switch is discarded before render
+  ---
+  duration_ms: 15.529396
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → Sim never confirms canonical action
+not ok 39 - FDC-03A-R3 actual persisted review → restored history → Sim never confirms canonical action
+  ---
+  duration_ms: 64.404731
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:2:19785'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Não há uma pergunta/. Input:
+    
+    'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:454:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → ok never confirms canonical action
+not ok 40 - FDC-03A-R3 actual persisted review → restored history → ok never confirms canonical action
+  ---
+  duration_ms: 51.034007
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:2:19785'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Não há uma pergunta/. Input:
+    
+    'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:454:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → confirmo never confirms canonical action
+not ok 41 - FDC-03A-R3 actual persisted review → restored history → confirmo never confirms canonical action
+  ---
+  duration_ms: 66.384766
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:2:19785'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Não há uma pergunta/. Input:
+    
+    'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:454:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → pode executar never confirms canonical action
+not ok 42 - FDC-03A-R3 actual persisted review → restored history → pode executar never confirms canonical action
+  ---
+  duration_ms: 50.434052
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:2:19785'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Não há uma pergunta/. Input:
+    
+    'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:454:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → Não never confirms canonical action
+not ok 43 - FDC-03A-R3 actual persisted review → restored history → Não never confirms canonical action
+  ---
+  duration_ms: 45.88726
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:2:19785'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /Não há uma pergunta/. Input:
+    
+    'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/web/src/pages/app/imob/chat.formSubmission.test.ts:454:12)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: FDC-03A-R3 legacy review action and malformed stored marker restore only a tombstone
+ok 44 - FDC-03A-R3 legacy review action and malformed stored marker restore only a tombstone
+  ---
+  duration_ms: 0.275219
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated another_assistant during request cannot resurrect review or change state maps
+ok 45 - FDC-03A-R3 dedicated another_assistant during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 21.359531
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated same_message_new_question during request cannot resurrect review or change state maps
+ok 46 - FDC-03A-R3 dedicated same_message_new_question during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 15.890307
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated same_message_invalidated_question during request cannot resurrect review or change state maps
+ok 47 - FDC-03A-R3 dedicated same_message_invalidated_question during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 14.586256
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated transport failure → safe retry preserves reference, draft and blockers
+ok 48 - FDC-03A-R3 dedicated transport failure → safe retry preserves reference, draft and blockers
+  ---
+  duration_ms: 20.143388
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 a separate explicit action presentation remains confirmable without a review carrier
+ok 49 - FDC-03A-R3 a separate explicit action presentation remains confirmable without a review carrier
+  ---
+  duration_ms: 16.676131
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: sender dedicado preserva dúvida e correção até uma escolha explícita, sem execução
+ok 50 - FDC mínimo: sender dedicado preserva dúvida e correção até uma escolha explícita, sem execução
+  ---
+  duration_ms: 13.242074
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: mudar de assunto não autoriza action e permite novo pedido independente no chat dedicado
+ok 51 - FDC mínimo: mudar de assunto não autoriza action e permite novo pedido independente no chat dedicado
+  ---
+  duration_ms: 31.917926
+  type: 'test'
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 46
+# fail 5
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2202.579816

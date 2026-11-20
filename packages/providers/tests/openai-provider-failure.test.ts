@@ -1,3 +1,5 @@
+import { llmRegistry } from "@eiah/core/llm/LLMRegistry";
+import { runCompletion } from "@eiah/core/llm/completionEngine";
 import test, { before, after, type TestContext } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -177,5 +179,35 @@ test("IDs: generateText mantém completion e referência legada, sem inventar re
   } finally {
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previousKey;
     if (previousMode === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = previousMode;
+  }
+});
+
+test("OpenAI guiado: uma chamada de transporte, sem retry de adaptador/SDK e sem seguir redirect", async () => {
+  for (const status of [302, 503]) {
+    let transports = 0;
+    const provider = adapter(async (_url, options) => {
+      transports++; assert.equal(options?.redirect, "error");
+      return response({ error: { type: "server_error" } }, status, { location: "https://synthetic.invalid/another-provider" });
+    });
+    llmRegistry.register(provider);
+    await assert.rejects(runCompletion({ ...request, transportPolicy: "imob_guided_single_attempt" }));
+    assert.equal(transports, 1);
+  }
+});
+
+import { AnthropicProvider } from "../src/AnthropicProvider";
+import { GeminiProvider } from "../src/GeminiProvider";
+import { DeepSeekProvider } from "../src/DeepSeekProvider";
+
+test("adapters guiados: Anthropic/Gemini/DeepSeek fazem um transporte direto sem SDK/retry/redirect", async () => {
+  for (const Provider of [AnthropicProvider, GeminiProvider, DeepSeekProvider]) {
+    let transports = 0;
+    const provider = new Provider("synthetic-test-only", async (_url, options) => {
+      transports++; assert.equal(options?.redirect, "error"); return response({ error: { type: "server_error" } }, 503);
+    });
+    llmRegistry.register(provider);
+    // Legacy adapters can return empty content on HTTP failure. Guided intake rejects it; the admission remains consumed.
+    const result = await runCompletion({ ...request, model: `${provider.name}:synthetic-model`, transportPolicy: "imob_guided_single_attempt" });
+    assert.equal(result.output, ""); assert.equal(transports, 1);
   }
 });

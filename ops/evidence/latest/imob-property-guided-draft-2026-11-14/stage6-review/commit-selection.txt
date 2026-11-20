@@ -1,0 +1,315 @@
+# Seleção PROPOSTA para o futuro commit (nada foi colocado no stage). HEAD base: f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d
+# Arquivos individuais (diretórios não rastreados expandidos); `git status --short` agrupa diretórios, então não comparar contagens agregadas com estas.
+
+## A. PRODUÇÃO (22 arquivos)
+apps/api/src/orchestrator/llmExecutor.ts
+apps/api/src/routes/imob.ts
+apps/api/src/routes/imobCrmRouter.ts
+apps/api/src/services/imob/crm/imobCrmTurnEngine.ts
+apps/api/src/services/imob/imobAgentContract.ts
+apps/api/src/services/imob/imobChatConversationManagement.ts
+apps/api/src/services/imob/imobTurnResolver.ts
+apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts  [NOVO]
+apps/web/src/components/agents/chatLauncherEngine.ts
+apps/web/src/features/imob/structured/ImobFrontDoorPart.tsx
+apps/web/src/features/imob/structured/createImobStructuredForms.ts
+apps/web/src/features/imob/structured/types.ts
+apps/web/src/features/imob/structured/useImobFormState.ts
+apps/web/src/features/imob/structured/useImobFrontDoorForms.ts
+apps/web/src/pages/app/imob/propertyCreateForm.ts
+packages/contracts/src/imobPropertyCapture.ts
+packages/core/src/llm/completionEngine.ts
+packages/core/src/llm/types.ts
+packages/providers/src/AnthropicProvider.ts
+packages/providers/src/DeepSeekProvider.ts
+packages/providers/src/GeminiProvider.ts
+packages/providers/src/OpenAIProvider.ts
+
+## B. TESTES, HARNESS E SCRIPT QA (13 arquivos)
+apps/api/src/tests/fixtures/imob/guided-property-capture.fixture.ts  [NOVO]
+apps/api/src/tests/imob-claim-only-writes.integration.test.ts  [NOVO]
+apps/api/src/tests/imob-property-capture-intake.test.ts
+apps/api/src/tests/imob-property-guided-admission.integration.test.ts  [NOVO]
+apps/api/src/tests/llm-provider-failure.test.ts
+apps/api/src/tests/marketplace.installations.activate.test.ts
+apps/api/src/tests/support/imobClaimFixture.ts  [NOVO]
+apps/api/src/tests/support/imobGuidedBrowserHarness.ts  [NOVO]
+apps/web/src/features/imob/persistence/imobPersistence.test.ts
+apps/web/src/features/imob/structured/createImobStructuredForms.test.ts
+apps/web/src/pages/app/imob/propertyCreateForm.test.ts
+packages/providers/tests/openai-provider-failure.test.ts
+scripts/qa/imob-guided-browser.mjs  [NOVO]
+
+## B2. CI E CONFIGURAÇÃO (2 arquivos; correção de B1)
+package.json  # +1 script test:imob-claim-only-writes:integration
+.github/workflows/ci.yml  # +1 passo no job logistica_core_integration (banco eiah_logistica_core_ci + EIAH_DISPOSABLE_INFRA=1)
+
+## C. DOCUMENTAÇÃO (2)
+docs/EVIDENCE_INDEX.md  # SOMENTE o hunk 2 (linhas "Coleta conversacional IMOB…"); o hunk 1 (pós-deploy) fica fora
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/README.md
+
+## D. EVIDÊNCIA NOVA (198 arquivos; 95 são *.log ignorados pelo .gitignore:17 e exigem `git add -f`, como os 124 logs já rastreados em ops/evidence)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v2-abort-menu-selector/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v2-abort-menu-selector/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v3-abort-menu-item/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v3-abort-menu-item/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v4-abort-menu-item/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v4-abort-menu-item/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v5-abort-menuitem-role/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v5-abort-menuitem-role/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v6-menu-editar-nao-chama-resolve-turn/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v6-menu-editar-nao-chama-resolve-turn/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v7-responses-unsupported/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/out-5e-v7-responses-unsupported/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/provider-5e-v7-responses-unsupported.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v2-abort-menu-selector.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v3-abort-menu-item.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v4-abort-menu-item.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v5-abort-menuitem-role.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v6-menu-editar-nao-chama-resolve-turn.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/aborted-5e-iterations/spec-5e-v7-responses-unsupported.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/claim-com-e-sem-sessao.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/inicio-guiado-outra-origem.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/menu-imoveis-acoes.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/incident/api-incident-real-openai-calls.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/spec-5e.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/01-abertura.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/12-divergencia-quero-ver-meus-imoveis.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/13-abertura-em-nova-aba.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/14-bloqueio-409.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/blocked.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/provider.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/spec-run5.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/provider-spec4-until-diag.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/spec-4.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/out-p-focus1/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/out-p-focus1/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/out-p-focus2/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/out-p-focus2/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/provider-focus-runs.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/spec-p-focus1.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/focused-iterations/spec-p-focus2.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/01-abertura.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/02-proposta.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/03-coleta-selecao.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/04-coleta-fim.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/05-revisao.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/06-revisao-bloqueada.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/07-salvo.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/08-p01-abertura-com-botao.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/09-p01-depois-clique.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/10-p01-depois-teclado-Enter.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/11-p01-depois-teclado-Espaço.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/12-p01-mobile-abertura.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/13-reload.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/14-pausado.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/15-cancelado-revisao-antiga.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/16-resposta-tardia.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/17-divergencia-quero-ver-meus-imoveis.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/18-abertura-em-nova-aba.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/19-bloqueio-409.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/20-recuperado.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/21-p04-mesma-aba-coleta-ativa.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/22-p04-outra-aba-claim-reivindicado.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/23-p04-operacao-incompativel-bloqueada.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/24-mobile-abertura.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/25-mobile-erro.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/26-mobile-revisao.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/27-mobile-salvo.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/28-desktop-revisao-vazia.png
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/blocked.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/http-trace.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/provider.jsonl
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/run-valid/spec-stage5.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/baseline-api-intake.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/baseline-web-forms-wrong-tsconfig.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/baseline-web-forms.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/gate-docs-link.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/gate-evidence-index.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/gate-launcher-render-only.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-api-imob-specialist-bridge.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-api-intake.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-api-marketplace.installations.activate.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-pg-integration.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-web-chat.assistantDedupe.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-web-forms.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-web-imobPersistence.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/green-web-propertyCreateForm.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/red-api-intake.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/red-web-forms.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/typecheck-api-official.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/typecheck-api-with-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/stage5-fixes/unit-and-gates/typecheck-web.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-api-typecheck-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-api-typecheck-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-api-types.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-contracts-build.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-core-build.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-entrypoint-gate.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-corrected.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-regression-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-regression-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-second.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-forms-third.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-frontdoor-finish.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-frontdoor-finish.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-first.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-remaining.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-remaining.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-intake-second.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-launcher-gate.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-legacy-fixture-reproduction-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-legacy-fixture-reproduction-retry.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-legacy-fixture-reproduction.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-official-api-types.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-api-types.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-api-types.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-forms-regression.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-forms-regression.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-intake-regression.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-intake-regression.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-lifecycle.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-recovery.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-recovery.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-web-build.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-opening-web-build.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-persistence-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-property-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-provider-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-build.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-providers-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-results.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-runtime-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-snapshot-gate.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-opening.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-opening.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck-retry.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-typecheck.mjs
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-web-build-final.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-web-build-final.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/collection-web-types.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/forms-first.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/intake-first.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-check-w4-non-regression.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-guard-negative-control-db-name.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-guard-negative-control.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-run-claim-only-writes.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-run-w4-original.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-tsc-real-api-official.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-tsc-real-api-with-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-typecheck-compare-api-official.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-typecheck-compare-api-official.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-typecheck-compare-api-with-tests.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/b1-typecheck-compare-api-with-tests.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/build-commit-selection.py
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/commit-selection.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/explore-paused-same-tab.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/final-api-intake.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/final-web-forms.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/local-only-sha256.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/p11-claim-writes-run1.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/p11-claim-writes-run2.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/tsc-real-api-official.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/tsc-real-api-with-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/tsc-real-web-with-tests.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/tsc-real-web.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/tsconfig.web-tests.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-baseline-compare.mjs
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-api-official.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-api-official.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-api-with-tests.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-api-with-tests.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-web-with-tests.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-web-with-tests.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-web.json
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/stage6-review/typecheck-compare-web.stdout.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/transactional-environment.txt
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/transactional-migrations.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/transactional-run-1.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/transactional-run-2.log  [FORCE]
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/web-build.log  [FORCE]
+
+## E. PRESERVADOS LOCALMENTE, FORA DO COMMIT (53 arquivos; hashes em local-only-sha256.txt)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/diag-claim-real.mjs  # script de diagnóstico não portável (caminhos absolutos e manifesto de scratchpad já removido); a saída .txt integra o commit
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/diag-menu-items.mjs  # script de diagnóstico não portável (caminhos absolutos e manifesto de scratchpad já removido); a saída .txt integra o commit
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/diag-start-ui.mjs  # script de diagnóstico não portável (caminhos absolutos e manifesto de scratchpad já removido); a saída .txt integra o commit
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/diagnostics/diag-start.mjs  # script de diagnóstico não portável (caminhos absolutos e manifesto de scratchpad já removido); a saída .txt integra o commit
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/01-abertura.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/02-proposta.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/03-coleta-selecao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/04-coleta-fim.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/05-revisao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/06-revisao-bloqueada.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/07-reload.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/08-pausado.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/09-cancelado-revisao-antiga.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/10-resposta-tardia.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/11-turno-digitado-409-claim.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/12-abertura-em-nova-aba.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/13-mobile-abertura.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/14-mobile-erro.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/invalid-run-5e/15-mobile-revisao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/02-proposta.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/03-coleta-selecao.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/04-coleta-fim.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/05-revisao.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/06-revisao-bloqueada.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/07-salvo.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/08-reload.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/09-pausado.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/10-cancelado-revisao-antiga.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/11-resposta-tardia.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/15-recuperado.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/16-mobile-abertura.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/17-mobile-erro.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/18-mobile-revisao.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/19-mobile-salvo.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/run-valid/20-desktop-revisao-vazia.png  # captura da rodada da etapa 4 superada pela etapa 5; hash no manifesto (as 4 que provam P-01/P-02/D-ROUTING-01 integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/01-abertura.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/02-proposta.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/03-coleta-selecao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/04-coleta-fim.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/05-revisao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/06-revisao-bloqueada.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/07-salvo.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/08-reload.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/09-pausado.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/10-cancelado-revisao-antiga.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/11-resposta-tardia.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/12-turno-digitado-409-claim.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/13-mobile-abertura.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/14-mobile-erro.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/15-mobile-revisao.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/16-mobile-salvo.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/browser-integrated-2026-11-19/spec-4-partial/17-desktop-revisao-vazia.png  # captura de execução parcial/inválida preservada localmente; hash no manifesto (resultados e logs integram o commit)
+ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff  # idêntico ao changes.diff.gz já rastreado (redundante)
+
+## F. FORA DO ESCOPO DO INCREMENTO (não incluir)
+CLAUDE.md  # mudança preexistente de política (+32 linhas), idêntica em CODEX.md; não é parte do incremento — commit separado por decisão do owner
+CODEX.md  # idem CLAUDE.md (as duas devem mudar juntas)
+ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md  # evidência pós-deploy (2026-11-17) de outra frente (provider failure); não misturar com o novo incremento
+ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/post-deploy-manual-intake.json  # idem: evidência pós-deploy anterior ao incremento
+previa-imob-revisada.html  # mockup HTML na raiz sem vínculo com o incremento (origem não atribuída a esta tarefa); preservar local e decidir à parte
+
+## G. B1 — RESOLVIDO LOCALMENTE (etapa 7)
+O teste de P-04 está em imob-claim-only-writes.integration.test.ts (guarda preservada), executado no job logistica_core_integration do CI; validado em PostgreSQL descartável: dedicado 1/1 (EIAH_DISPOSABLE_INFRA=1) e arquivo original do W4 32/32 (sem a variável), exit 0. CI remoto não executado.
+docs/EVIDENCE_INDEX.md (hunk 1: seção "Intake IMOB — tentativa manual após deploy…")  # mesma evidência pós-deploy; commit separado

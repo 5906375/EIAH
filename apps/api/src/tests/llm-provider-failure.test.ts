@@ -251,3 +251,29 @@ test("IDs: executor e capacidade preservam chave do breakdown; ausência bloquei
   await assert.rejects(capability(params), isLLMProviderError);
   assert.equal(writes.length, before, "a provider refusal never enters the breakdown writer");
 });
+
+test("runtime guiado: política interna limita transitório e timeout a um despacho sem mudar retries legados", async () => {
+  let calls = 0;
+  register(async (req) => {
+    calls++; assert.equal(req.transportPolicy, "imob_guided_single_attempt");
+    throw new LLMProviderError({ provider: "openai", model: "gpt-4.1", httpStatus: 503, providerType: "server_error" });
+  });
+  await assert.rejects(executeLlmStep({ profile, userPrompt: "fixture", transportPolicy: "imob_guided_single_attempt", metadata: request.metadata }));
+  assert.equal(calls, 1);
+  assert.equal(process.env.LLM_RETRIES, "3");
+  // Client metadata cannot opt into the private typed policy or silently change the legacy path.
+  calls = 0;
+  register(async (req) => { calls++; assert.equal(req.transportPolicy, undefined); throw new Error("synthetic transient"); });
+  await assert.rejects(executeLlmStep({ profile, userPrompt: "fixture", metadata: { ...request.metadata, transportPolicy: "imob_guided_single_attempt" } }));
+  assert.equal(calls, 3);
+});
+
+test("runtime guiado: timeout consome o único despacho e não inicia segunda tentativa", async (t) => {
+  const before = process.env.LLM_TIMEOUT_MS;
+  process.env.LLM_TIMEOUT_MS = "3";
+  t.after(() => { if (before === undefined) delete process.env.LLM_TIMEOUT_MS; else process.env.LLM_TIMEOUT_MS = before; });
+  let calls = 0;
+  register(async () => { calls++; return new Promise(() => {}); });
+  await assert.rejects(executeLlmStep({ profile, userPrompt: "fixture", transportPolicy: "imob_guided_single_attempt" }));
+  assert.equal(calls, 1);
+});

@@ -1,0 +1,7 @@
+[APROVADO] 1 Abertura
+[APROVADO] 1b P-01 "Continuar sem IA" na abertura: clique, teclado (Enter/Espaço) e mobile, sem provider e sem formulário completo
+[APROVADO] 5e Aba/origem perdida: bloqueio, 409 com cancelamento explícito autorizado, abertura em nova aba
+[REPROVADO] 5f P-04 claim pela interface: coleta ativa na mesma aba e aba sem contexto guiado; o claim não apaga, substitui nem cancela o rascunho — menu: grupo "Imóveis" não clicável (locator.click: Timeout 8000ms exceeded. | Call log: | - waiting for getByRole('button', { name: /^Imóveis\b/ }).first() | )
+   ✗ B: a interface mostra a resposta reivindicada, sem aviso de cadastro pendente e sem erro genérico: The input did not match the regular expression /Ainda não/. Input: 'SYNTHETIC BROWSER TENANT\n' + '\n' + 'Agent Operations Console\n' + '\n' + 'SYNTHETIC BROWSER WORKSPACE\n' + '\n' + 'Runs\n' + 'Chat\n' + 'Billing\n' + 'Marketplace\n' + 'Self-service\n' + 'Perfil\n' + 'Chat ativo · EIAH\n' + '‹ Painel\n' + 'Nova conversa\n' + 'Workspace no mês: R$ 0,00\n' +
+
+CENÁRIOS: 4 | aprovados 3 | reprovados 1; provider simulado: interpretação=0, classificador=1, não suportadas=0; hosts externos bloqueados no navegador={"fonts.googleapis.com":9}; no backend=0

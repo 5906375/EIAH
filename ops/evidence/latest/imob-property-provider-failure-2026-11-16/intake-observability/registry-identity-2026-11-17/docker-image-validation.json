@@ -1,0 +1,451 @@
+{
+  "date": "2026-11-17",
+  "recordedAt": "2026-11-17T11:33:17.721Z",
+  "status": "PARCIAL",
+  "scope": "Docker image provenance and stopped-filesystem inspection only",
+  "branch": "chore/imob-intake-provider-diagnostics",
+  "head": "97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6",
+  "stageInitiallyEmpty": true,
+  "baseline": {
+    "evidenceBefore": {
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/docker-connection-diagnostic.json": "3d5904e23b7f54a508c25ba9b419c396f5a6b8b7a4fb94a426f1cfbd3ce51f91",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/verification.json": "dcf496889ffb9bfac6c8151928bb6ad738e2394fa703c5c3eae34b893b308daa",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-results.json": "a9babe523c468d98f08def4f3c136ec6318267d7f88688bedfc4903a765997e6",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/harness-initial.json": "31bc481f25238b97e9cc883043cf844bf15d4cc32806ff70c4edab7e9541dcbe",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/delivery-executions.json": "67efb856eee19748c62afdcc4717db17149c172e43c2d6b90f1e41280b4b7041",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json": "01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-results.json": "2a429c470ba90b3487023fdc59a14cd6a4229e40cbd05a31771b871c9c99ea86",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-api-build.txt": "6c63df1dbc2ea8c18422be5e12e909d1549b8e2df719c552afa5fea6ca54b0f1",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/README.md": "fd0253d3e619c59abf3f586ea7741f816323b0662b23744751fafce1a835bd30",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs": "7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-core-build.txt": "61f26e2cbd3d59f1ffd3d7a1c8c998a84f5ad7773c3a5292708f82d15f196c04",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/correction-executions.json": "a9d8c61d45d6ec1166db922341793c8a6e77ae189cef266b32ea24b5366832cd"
+    },
+    "localCoreConfigSha256": "2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b",
+    "dockerfileSha256": "ac9cc4e1fa2cbbc6fbf8a47270a350f25a458bde62ae9ddd376e420c2f1515b6"
+  },
+  "daemon": {
+    "available": true,
+    "evidence": "docker image ls succeeded after operator started Docker",
+    "startedByThisExecution": false
+  },
+  "inventory": {
+    "command": "docker image ls --no-trunc --format '{{json .}}'",
+    "exitCode": 0,
+    "images": [
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-27 07:13:40 -0300 -03",
+        "CreatedSince": "3 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e",
+        "Repository": "pf77-eiah-api",
+        "SharedSize": "N/A",
+        "Size": "705MB",
+        "Tag": "77c91444-nocache",
+        "UniqueSize": "N/A",
+        "VirtualSize": "704.9MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-27 07:10:00 -0300 -03",
+        "CreatedSince": "3 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:3f0c531b2f31302876446156abe3422b2277338ea520361f3eb4061828be6011",
+        "Repository": "pf77-eiah-api",
+        "SharedSize": "N/A",
+        "Size": "705MB",
+        "Tag": "77c91444",
+        "UniqueSize": "N/A",
+        "VirtualSize": "704.9MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-06 08:04:53 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:e238ee3fc4e0b8e4186318d6164e1fffd52a344270a8a16c51fdf3bbb33c5403",
+        "Repository": "eiah-api-runtime-esm",
+        "SharedSize": "N/A",
+        "Size": "708MB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "708.2MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-06 07:02:50 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:0bc73d59a29cd81f73bb82ec3e753b565ee2a4c6e8df784d9479c67563da3b90",
+        "Repository": "<none>",
+        "SharedSize": "N/A",
+        "Size": "1.23GB",
+        "Tag": "<none>",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.226GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 17:22:36 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:e47117b01fbc0322c9639f5cc2a99d0c13fcb1b961172a3509f4c84923f14f57",
+        "Repository": "eiah-api-runtime-links-test",
+        "SharedSize": "N/A",
+        "Size": "706MB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "705.6MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 16:05:51 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:7cf61d817e002ab19055e2d44dfdecf857f1951543d9823faeb710ce7cc23013",
+        "Repository": "eiah-api-openssl-test",
+        "SharedSize": "N/A",
+        "Size": "706MB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "705.6MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 16:05:01 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:984df2f7686b17d6193f5c6852620cf3a61bb2e080b6d7b130cac258b61f0f75",
+        "Repository": "eiah-api-builder-test",
+        "SharedSize": "N/A",
+        "Size": "1.7GB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.697GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 15:29:34 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:197ff975e0355dc3d2302f2dbff126b99c30d5f8c58d88c9cd0b09de035a335d",
+        "Repository": "eiah-api-main-test",
+        "SharedSize": "N/A",
+        "Size": "698MB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "697.6MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 14:54:49 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:e44152cd61564e623440c925c4c909b4b8e323931b40cdb8a9158d56fefb901b",
+        "Repository": "eiah-api-build-test",
+        "SharedSize": "N/A",
+        "Size": "698MB",
+        "Tag": "latest",
+        "UniqueSize": "N/A",
+        "VirtualSize": "697.6MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 14:43:04 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:fa40a2399c0cf623b09284367a6b67c3c53fa114593c48e9e8f14e29f3a9ec59",
+        "Repository": "<none>",
+        "SharedSize": "N/A",
+        "Size": "697MB",
+        "Tag": "<none>",
+        "UniqueSize": "N/A",
+        "VirtualSize": "697.5MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-10-05 13:44:59 -0300 -03",
+        "CreatedSince": "6 weeks ago",
+        "Digest": "<none>",
+        "ID": "sha256:66aa3c942861322ddec2f0ad3319b1a95c3c3fe6a35d501093c6627c810025af",
+        "Repository": "<none>",
+        "SharedSize": "N/A",
+        "Size": "1.24GB",
+        "Tag": "<none>",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.236GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-08-13 18:25:50 -0300 -03",
+        "CreatedSince": "3 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7",
+        "Repository": "pgvector/pgvector",
+        "SharedSize": "N/A",
+        "Size": "438MB",
+        "Tag": "pg16",
+        "UniqueSize": "N/A",
+        "VirtualSize": "438.4MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-06-24 01:21:11 -0300 -03",
+        "CreatedSince": "4 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:177e8051ee1a65d22c52db66c943eb84238dcac7f7ea84ef24f5ea1466af3b87",
+        "Repository": "node",
+        "SharedSize": "N/A",
+        "Size": "1.13GB",
+        "Tag": "22-bookworm",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.132GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-06-23 17:01:45 -0300 -03",
+        "CreatedSince": "4 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:89924b46ec81c1c0eb0055a7d72790b8067a16a5d0d0512e8117a01aa4a5d7ee",
+        "Repository": "mcr.microsoft.com/playwright",
+        "SharedSize": "N/A",
+        "Size": "2.44GB",
+        "Tag": "v1.61.1-noble",
+        "UniqueSize": "N/A",
+        "VirtualSize": "2.441GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2026-01-30 15:05:08 -0300 -03",
+        "CreatedSince": "9 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:a52573c8203c3a8ff696e160e6a6b2a0ea63f7ed99325e8eac12e76ba053c8ee",
+        "Repository": "<none>",
+        "SharedSize": "N/A",
+        "Size": "1.21GB",
+        "Tag": "<none>",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.215GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2025-11-25 13:52:21 -0300 -03",
+        "CreatedSince": "11 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:c07ac7d6dbedae7e726ea8286914090dbeaf657bf0a1e154f812909c46c58693",
+        "Repository": "node",
+        "SharedSize": "N/A",
+        "Size": "1.1GB",
+        "Tag": "20-bookworm",
+        "UniqueSize": "N/A",
+        "VirtualSize": "1.096GB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2025-11-18 02:05:01 -0300 -03",
+        "CreatedSince": "12 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:07a03ad21d6a480ccdc52071d141c1311225c7547d198338b5e1daeb009e2f4e",
+        "Repository": "redis",
+        "SharedSize": "N/A",
+        "Size": "117MB",
+        "Tag": "7",
+        "UniqueSize": "N/A",
+        "VirtualSize": "117MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2025-11-18 02:00:20 -0300 -03",
+        "CreatedSince": "12 months ago",
+        "Digest": "<none>",
+        "ID": "sha256:05c1acb89ae44b0bc936fdad9c7bcf32a2300ef1dbab9407bb6dd12eaee1c8c3",
+        "Repository": "postgres",
+        "SharedSize": "N/A",
+        "Size": "451MB",
+        "Tag": "16",
+        "UniqueSize": "N/A",
+        "VirtualSize": "450.8MB"
+      },
+      {
+        "Containers": "N/A",
+        "CreatedAt": "2025-11-13 20:06:04 -0300 -03",
+        "CreatedSince": "12 months ago",
+        "Digest": "",
+        "ID": "sha256:68f823d56bc9172e799a8b4ed7ef4a407b39328f5359dd7e90f3319a38b6a19b",
+        "Repository": "pgvector/pgvector",
+        "SharedSize": "N/A",
+        "Size": "507MB",
+        "Tag": "<none>",
+        "UniqueSize": "N/A",
+        "VirtualSize": "506.6MB"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "name": "api-image-metadata-initial",
+      "command": "docker image inspect <943466e904ac / 3f0c531b2f31 / e238ee3fc4e0 IDs> --format '<Id> <Created> <RepoTags> revision=<OCI revision label>'",
+      "exitCode": 1,
+      "result": "PARTIAL_HARNESS_TEMPLATE_ERROR",
+      "output": "\"sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e\" \"2026-10-27T07:13:40.123537372-03:00\" [\"pf77-eiah-api:77c91444-nocache\"] revision=null\n\"sha256:3f0c531b2f31302876446156abe3422b2277338ea520361f3eb4061828be6011\" \"2026-10-27T07:10:00.025603523-03:00\" [\"pf77-eiah-api:77c91444\"] revision=null\nTemplate parsing error: template: :1:67: executing \"\" at <index .Config.Labels \"org.opencontainers.image.revision\">: error calling index: index of untyped nil\n",
+      "note": "First two image metadata lines valid; third label map nil stopped formatting. Not a product failure."
+    },
+    {
+      "name": "runtime-base-local",
+      "command": "docker image inspect node:22-bookworm-slim --format '{{json .Id}} {{json .Created}}'",
+      "exitCode": 1,
+      "result": "BLOQUEADO",
+      "output": "Error: No such image: node:22-bookworm-slim\n\n"
+    },
+    {
+      "name": "builder-base-local",
+      "command": "docker image inspect node:22-bookworm --format '{{json .Id}} {{json .Created}}'",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "output": "\"sha256:177e8051ee1a65d22c52db66c943eb84238dcac7f7ea84ef24f5ea1466af3b87\" \"2026-06-24T04:21:11.91436015Z\"\n"
+    },
+    {
+      "name": "buildx-version",
+      "command": "docker buildx version",
+      "exitCode": 0,
+      "output": "github.com/docker/buildx v0.23.0 28c90ea\n"
+    },
+    {
+      "name": "api-image-metadata-third-fixed",
+      "command": "docker image inspect sha256:e238ee3fc4e0b8e4186318d6164e1fffd52a344270a8a16c51fdf3bbb33c5403 --format '<Id> <Created> <RepoTags> revision=<if labels, OCI revision; else null>'",
+      "exitCode": 0,
+      "output": "\"sha256:e238ee3fc4e0b8e4186318d6164e1fffd52a344270a8a16c51fdf3bbb33c5403\" \"2026-10-06T08:04:53.993478788-03:00\" [\"eiah-api-runtime-esm:latest\"] revision=null\n"
+    },
+    {
+      "name": "stopped-image-filesystem",
+      "command": "python3: docker create --network none --entrypoint /bin/true <known existing image ID>; docker cp <created container>:<four whitelisted paths> -; hash-only in-memory tar reads; docker rm <created container>",
+      "exitCode": 0,
+      "result": "READ_COMPLETED_IMAGE_DOES_NOT_MATCH",
+      "inspection": {
+        "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e",
+        "inspection": "stopped container filesystem only",
+        "commands": [
+          {
+            "command": "docker create --network none --entrypoint /bin/true sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e",
+            "exitCode": 0
+          },
+          {
+            "command": "docker rm <container-created-by-this-execution>",
+            "exitCode": 0
+          }
+        ],
+        "entrypointExecuted": false,
+        "servicesStarted": false,
+        "containerStarted": false,
+        "imagesModified": false,
+        "containerCreatedByThisExecution": "c47ec8dd9be9d195c7d098272d448a94fdf33da1e01b4ab96e964cddf704207e",
+        "artifacts": [
+          {
+            "path": "/app/packages/core/tsup.config.ts",
+            "dockerCpExitCode": 0,
+            "localPath": "packages/core/tsup.config.ts",
+            "size": 867,
+            "sha256": "c206e777bbb7f2ec4a492b920ad7ce6a5834104fb9879bc86f8adc97897b582b",
+            "localSha256": "2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b",
+            "matchesLocal": false,
+            "splitting": "false"
+          },
+          {
+            "path": "/app/packages/core/dist/llm/LLMRegistry.js",
+            "dockerCpExitCode": 0,
+            "localPath": "packages/core/dist/llm/LLMRegistry.js",
+            "size": 525,
+            "sha256": "483b8ce166ca5d092f015a2cd7cdd6e45d1d4ab333cdbd00497011ded1af0eef",
+            "localSha256": "5873adaf78c0746404a29fc82713572a9ae974a983abf5ce04a366a1d64531d5",
+            "matchesLocal": false,
+            "relativeChunkImports": [],
+            "registryAllocations": 1
+          },
+          {
+            "path": "/app/packages/core/dist/llm/completionEngine.js",
+            "dockerCpExitCode": 0,
+            "localPath": "packages/core/dist/llm/completionEngine.js",
+            "size": 6282,
+            "sha256": "7430d1b68f778360643246a89d8ec0bdcdf243d9b59fd2f1ec5bdc2f04e96356",
+            "localSha256": "7c34b73c3cd0e8e01dc790787e95e0d50cb41dc803972b9ff65698507e732518",
+            "matchesLocal": false,
+            "relativeChunkImports": [],
+            "registryAllocations": 1
+          },
+          {
+            "path": "/app/apps/api/dist/index.js",
+            "dockerCpExitCode": 0,
+            "localPath": "apps/api/dist/index.js",
+            "size": 3658402,
+            "sha256": "e88e3beb2e3baffaea70a9c2f26a21f5e9a5b6783015f23a30650fdd2852e26a",
+            "localSha256": "51818a07f81930f1d1cf43f651a19c9e874db0d1b2c8178300a8c403dd95682c",
+            "matchesLocal": false,
+            "relativeChunkImports": [],
+            "registryAllocations": 0
+          }
+        ],
+        "correctedImageValidated": false,
+        "imageCorrespondsToCurrentArtifacts": false,
+        "temporaryContainerRemoved": true
+      }
+    }
+  ],
+  "provenance": {
+    "mostRecentApiImage": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e",
+    "tag": "pf77-eiah-api:77c91444-nocache",
+    "created": "2026-10-27T07:13:40.123537372-03:00",
+    "ociRevision": null,
+    "sourceRevisionClaim": "77c91444 appears in tag only; not independently established by a signed build record",
+    "matchesCorrection": false,
+    "evidence": "Image core config splitting=false; all four copied artifacts differ from current corrected local hashes; registry/completion each allocate independent registry and have no relative chunk imports in inspected entries"
+  },
+  "build": {
+    "officialDockerfile": "apps/api/Dockerfile.prod",
+    "attempted": false,
+    "result": "BLOQUEADO_IN_PREFLIGHT",
+    "requiredRuntimeBase": "node:22-bookworm-slim",
+    "basePresentInLocalImageStore": false,
+    "builderBasePresent": true,
+    "reason": "Required runtime FROM reference is not locally addressable. Stop before invoking builder to avoid external base resolution/pull. --network=none constrains RUN steps and does not alone guarantee offline image/frontend resolution.",
+    "buildkitCacheCompletelyAudited": false,
+    "otherCaches": "Frontend/apt/pnpm cache sufficiency not established; stop at first missing required local base",
+    "pulls": 0,
+    "dependencyDownloads": 0,
+    "productionFileChanges": 0
+  },
+  "coverage": {
+    "correctedImageValidated": false,
+    "oldImageFilesystemInspected": true,
+    "artifactComparisons": {
+      "executed": 4,
+      "matched": 0,
+      "different": 4
+    },
+    "containerSmokeExecuted": false,
+    "registrySmokeRepeated": false,
+    "consumerSmokeRepeated": false,
+    "localPackageBuildsRepeated": false,
+    "servicesStarted": false,
+    "realProviderCalls": 0
+  },
+  "lifecycle": {
+    "newContainersCreated": 1,
+    "containerStarted": false,
+    "temporaryContainerRemoved": true,
+    "preexistingImagesModified": false,
+    "preexistingContainersModified": false,
+    "temporaryFilesCreated": 0,
+    "rawFilesystemContentsWrittenToDisk": false
+  },
+  "nextMinimumStep": "Provide node:22-bookworm-slim to the local Docker image store from a trusted offline artifact, then resume official-build cache preflight without network/pull; stop again if any required frontend/build dependency is unavailable.",
+  "documentationCheck": {"command":"node --import tsx scripts/checkEvidenceIndex.ts","exitCode":0,"output":"{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 354415,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 980\n}\n","referencesChecked":980,"unitTestsRepeated":0},
+  "finalIntegrity": {"result":"APROVADO","exitCode":0,"priorEvidenceFilesPreserved":13,"READMEAppendOnly":true,"protectedFilesUnchanged":3,"priorArtifactHashesUnchanged":43,"coreConfigAndDockerfileUnchanged":true,"temporaryContainerRemoved":true,"temporaryFilesCreated":0,"stageEmpty":true,"gitDiffCheckExitCode":0,"gitDiffCachedQuietExitCode":0,"newProductionChanges":0},
+  "limits": [
+    "Only old image was inspected; it does not validate corrected chunks",
+    "No corrected image build, rootfs inspection or isolated smoke was possible",
+    "Previous focal typecheck remains failed; registry 5/5 and consumers 7/7 not repeated",
+    "No staging or real 2 bedrooms/1 parking approval"
+  ]
+}

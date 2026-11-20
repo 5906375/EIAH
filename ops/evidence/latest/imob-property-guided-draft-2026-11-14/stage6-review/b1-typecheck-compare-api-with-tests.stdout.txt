@@ -1,0 +1,1 @@
+{"project":"api-with-tests","config":"apps/api/tsconfig.typecheck.json","typescript":"5.9.3","headCommit":"f0da60cd2a8a1e8204ae25f33f1251ca2d665c0d","baselineFiles":791,"currentFiles":797,"newFilesInCurrentProgram":6,"baselineDiagnostics":297,"currentDiagnostics":297,"presentInBaseline":297,"introduced":0,"resolved":0,"introducedInNewFiles":0,"seconds":49}
