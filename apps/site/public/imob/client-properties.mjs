@@ -38,10 +38,10 @@ function normalizeEdit(id, edit) {
   return { ...text, ...numbers, finalidade: edit.finalidade, cover, photos };
 }
 
-export function readClientProperties() {
+export function readClientProperties({ onlyEdited = false } = {}) {
   const edits = readEdits();
   const originals = new Map(examples.map(property => [property.id, property]));
-  const properties = new Map(originals);
+  const properties = onlyEdited ? new Map() : new Map(originals);
   for (const [id, record] of Object.entries(edits)) {
     const edit = normalizeEdit(id, record);
     if (!edit) continue;

@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Site IMOB — cadastro, publicação e especialistas em demonstração (2026-11-20)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Continuidade da Prévia 02 | `docs/ops/evidence/latest/imob-site-setup-demo-2026-11-20.md` | Verificação em navegador local do perfil e da importação, publicação simulada após confirmação, preservação da versão anterior e contratação/ativação simuladas de especialistas. |
+
 ## Avaliação gratuita IMOB — validação com PostgreSQL/Redis/Prisma reais (2026-11-14) — PARCIAL
 
 | Assunto | Arquivo | O que prova |
