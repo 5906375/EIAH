@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Personalizar meu site · EIAH IMOB</title>
+  <link rel="stylesheet" href="../../catalog.css">
+  <link rel="stylesheet" href="../../visual.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../../" aria-label="Produtos IMOB"><img src="../../eiah-logo.png" width="80" height="39" alt="EIAH"><span>IMOB</span></a>
+    <a class="quiet-link" href="../" data-storefront-link>Ver site da imobiliária</a>
+  </div>
+</header>
+<main class="wrap brand-editor">
+  <h1>Personalizar meu site</h1>
+  <p class="lead">Personalize a marca, a apresentação, os imóveis e os contatos. Confira as alterações antes de aplicar à prévia neste navegador.</p>
+  <div class="editor-grid">
+    <div class="editor-panel">
+      <nav class="next-actions editor-sections" aria-label="Seções de personalização">
+        <button class="btn btn-ghost" type="button" aria-pressed="true" data-editor-section="editorBrand" aria-controls="editorBrand">Marca</button>
+        <button class="btn btn-ghost" type="button" aria-pressed="false" data-editor-section="editorIntro" aria-controls="editorIntro">Apresentação</button>
+        <button class="btn btn-ghost" type="button" aria-pressed="false" data-editor-section="propertyEditor" aria-controls="propertyEditor">Imóveis</button>
+        <button class="btn btn-ghost" type="button" aria-pressed="false" data-editor-section="editorContact" aria-controls="editorContact">Contatos</button>
+      </nav>
+      <form id="brandEditor" autocomplete="off">
+        <section id="editorBrand" class="editor-section">
+          <h2>Identidade da imobiliária</h2>
+          <label class="field-label" for="brandName">Nome da imobiliária</label>
+          <input id="brandName" name="name" required maxlength="70" placeholder="Ex.: Imobiliária Exemplo">
+          <label class="field-label" for="brandColor">Cor principal</label>
+          <div class="editor-color">
+            <input id="brandColor" name="accent" type="text" placeholder="Ex.: #087566"
+              maxlength="7" pattern="#[0-9A-Fa-f]{6}" spellcheck="false" aria-describedby="brandColorHelp">
+            <input id="brandColorPicker" type="color" aria-label="Escolher cor no seletor">
+          </div>
+          <output class="field-help" id="brandColorValue" for="brandColor" hidden></output>
+          <p class="field-help" id="brandColorHelp">Digite um código hexadecimal ou use o seletor. Tons claros podem ser ajustados para manter a legibilidade.</p>
+          <fieldset class="logo-field">
+            <legend class="field-label">Logo (opcional)</legend>
+            <div class="next-actions logo-options" role="group" aria-label="Como adicionar o logo">
+              <button class="btn btn-ghost logo-option" id="chooseLogo" type="button" aria-pressed="true" aria-controls="logoUpload">Enviar do computador</button>
+              <button class="btn btn-ghost logo-option" id="createLogo" type="button" aria-pressed="false" aria-controls="logoCreation">Criar com um prompt</button>
+            </div>
+            <div id="logoUpload">
+              <label class="field-label" for="brandLogo">Arquivo de imagem</label>
+              <input id="brandLogo" type="file" accept="image/png,image/jpeg,image/webp" aria-describedby="logoHelp">
+              <p class="field-help" id="logoHelp">PNG, JPG ou WebP, até 10 MB. Ex.: logo-imobiliaria.png.</p>
+            </div>
+            <div id="logoCreation" hidden>
+              <label class="field-label" for="logoDirection">Como você imagina seu logo? (opcional)</label>
+              <textarea id="logoDirection" rows="3" maxlength="360" placeholder="Ex.: linhas simples, símbolo que una o mar e a arquitetura."></textarea>
+              <button class="btn btn-ghost logo-generate" id="generateLogoPrompt" type="button">Gerar prompt</button>
+              <div id="logoPromptResult" hidden>
+                <label class="field-label" for="logoPrompt">Prompt do logo</label>
+                <textarea id="logoPrompt" rows="7" aria-describedby="logoPromptHelp"></textarea>
+                <p class="field-help" id="logoPromptHelp">Copie o prompt e abra uma das ferramentas abaixo. Quando o logo estiver pronto, envie o arquivo do computador.</p>
+                <div class="next-actions">
+                  <button class="btn btn-ghost" id="copyLogoPrompt" type="button">Copiar prompt</button>
+                </div>
+                <p class="field-help" id="logoProviderHelp">Opções gratuitas com limites de uso. ChatGPT e Gemini geram imagens. Claude ajuda a refinar o prompt.</p>
+                <div class="next-actions" role="group" aria-label="Ferramentas de IA" aria-describedby="logoProviderHelp">
+                  <a class="btn btn-ghost" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPT</a>
+                  <a class="btn btn-ghost" href="https://claude.ai/" target="_blank" rel="noopener noreferrer">Claude</a>
+                  <a class="btn btn-ghost" href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer">Gemini</a>
+                </div>
+              </div>
+              <p class="field-help" id="logoPromptFeedback" role="status"></p>
+            </div>
+            <button id="removeLogo" class="btn btn-ghost logo-remove" type="button" hidden>Usar iniciais</button>
+          </fieldset>
+        </section>
+        <section id="editorIntro" class="editor-section" hidden>
+          <h2>Apresentação do site</h2>
+          <label class="field-label" for="brandIntro">Texto de apresentação</label>
+          <textarea id="brandIntro" name="introduction" rows="4" required maxlength="280" placeholder="Ex.: Encontre imóveis para comprar ou alugar no litoral catarinense."></textarea>
+        </section>
+        <section id="editorContact" class="editor-section" hidden>
+          <h2>Contatos e rodapé</h2>
+          <label class="field-label" for="brandContact">Nome da equipe de atendimento</label>
+          <input id="brandContact" name="contact" maxlength="60" placeholder="Ex.: Equipe de atendimento imobiliário">
+          <fieldset class="editor-footer-fields" aria-describedby="footerHelp">
+            <legend>Dados públicos do rodapé</legend>
+            <p class="field-help" id="footerHelp">Preencha os campos que você quer exibir na vitrine. Todos são opcionais.</p>
+            <div class="editor-footer-grid">
+              <label class="field-label editor-full">Razão social ou nome profissional
+                <input name="footerLegalName" maxlength="100" placeholder="Ex.: Imobiliária Exemplo Ltda.">
+              </label>
+              <label class="field-label">Nome do responsável
+                <input name="footerResponsible" maxlength="80" placeholder="Ex.: Nome do corretor ou gestor">
+              </label>
+              <label class="field-label">Função do responsável
+                <input name="footerRole" maxlength="50" placeholder="Ex.: Corretor responsável">
+              </label>
+              <label class="field-label">CNPJ
+                <input name="footerCnpj" maxlength="24" placeholder="Ex.: 00.000.000/0000-00">
+              </label>
+              <label class="field-label">CRECI e UF
+                <input name="footerCreci" maxlength="40" placeholder="Ex.: CRECI-SC 00000">
+              </label>
+              <label class="field-label editor-full">Endereço comercial
+                <textarea name="footerAddress" rows="2" maxlength="180" placeholder="Ex.: Rua Exemplo, 100, Centro, Itapema – SC"></textarea>
+              </label>
+              <label class="field-label">Telefone com DDD
+                <input name="footerPhone" type="tel" maxlength="25" placeholder="Ex.: (47) 0000-0000">
+              </label>
+              <label class="field-label">WhatsApp com DDD
+                <input name="footerWhatsapp" type="tel" maxlength="25" placeholder="Ex.: (47) 00000-0000">
+              </label>
+              <label class="field-label editor-full">E-mail de contato
+                <input name="footerEmail" type="email" maxlength="120" placeholder="Ex.: contato@example.com">
+              </label>
+            </div>
+          </fieldset>
+        </section>
+        <div class="next-actions editor-actions">
+          <button id="saveBrand" class="btn btn-primary" type="submit">Aplicar à prévia 02</button>
+          <button id="loadSavedBrand" class="btn btn-ghost" type="button" hidden>Carregar dados salvos</button>
+          <a class="btn btn-ghost" href="../" data-storefront-link>Ver site da imobiliária</a>
+        </div>
+        <p id="brandFeedback" role="status"></p>
+      </form>
+      <form id="propertyEditor" class="editor-section" hidden>
+        <h2>Imóveis da vitrine</h2>
+        <p class="field-help">Edite um imóvel de demonstração ou adicione um novo. Use dados e fotos fictícios.</p>
+        <label class="field-label" for="propertyChoice">Escolher imóvel</label>
+        <select id="propertyChoice"></select>
+        <div class="editor-fields">
+          <label class="field-label editor-full">Título do anúncio
+            <input name="titulo" required maxlength="100" placeholder="Ex.: Apartamento com varanda">
+          </label>
+          <label class="field-label">Finalidade
+            <select name="finalidade" required>
+              <option value="" disabled>Selecione (ex.: Venda)</option>
+              <option value="venda">Venda</option>
+              <option value="locacao">Aluguel anual</option>
+              <option value="temporada">Temporada</option>
+            </select>
+          </label>
+          <label class="field-label">Tipo do imóvel
+            <input name="tipo" required maxlength="40" placeholder="Ex.: Apartamento">
+          </label>
+          <label class="field-label">Cidade
+            <input name="cidade" required maxlength="60" placeholder="Ex.: Balneário Camboriú">
+          </label>
+          <label class="field-label">Bairro
+            <input name="bairro" required maxlength="60" placeholder="Ex.: Centro">
+          </label>
+          <label class="field-label">Preço (R$)
+            <input type="number" name="preco" min="0.01" step="0.01" required placeholder="Ex.: 650000">
+          </label>
+          <label class="field-label">Área (m²)
+            <input type="number" name="area" min="0" step="0.01" placeholder="Ex.: 82">
+          </label>
+          <label class="field-label">Quartos
+            <input type="number" name="quartos" min="0" step="1" placeholder="Ex.: 2">
+          </label>
+          <label class="field-label">Suítes
+            <input type="number" name="suites" min="0" step="1" placeholder="Ex.: 1">
+          </label>
+          <label class="field-label">Banheiros
+            <input type="number" name="banheiros" min="0" step="1" placeholder="Ex.: 2">
+          </label>
+          <label class="field-label">Vagas
+            <input type="number" name="vagas" min="0" step="1" placeholder="Ex.: 1">
+          </label>
+          <label class="field-label">Condomínio mensal (R$)
+            <input type="number" name="condominio" min="0" step="0.01" placeholder="Ex.: 680">
+          </label>
+          <label class="field-label">IPTU mensal (R$)
+            <input type="number" name="iptu" min="0" step="0.01" placeholder="Ex.: 120">
+          </label>
+        </div>
+        <div class="editor-fields" id="seasonPropertyFields" hidden>
+          <label class="field-label">Capacidade de hóspedes
+            <input type="number" name="maxGuests" min="1" max="12" step="1" placeholder="Ex.: 4">
+          </label>
+          <label class="field-label">Limpeza (R$)
+            <input type="number" name="cleaning" min="0" step="0.01" placeholder="Ex.: 180">
+          </label>
+        </div>
+        <label class="field-label">Características, separadas por vírgula
+          <input name="caracteristicas" maxlength="300" placeholder="Ex.: Varanda, elevador">
+        </label>
+        <label class="field-label">Descrição do imóvel
+          <textarea name="descricao" rows="4" maxlength="800" placeholder="Ex.: Apartamento de dois quartos, com varanda e uma vaga de garagem."></textarea>
+        </label>
+        <label class="field-label" for="propertyCover">Fotos do imóvel (opcional)</label>
+        <input id="propertyCover" type="file" accept="image/png,image/jpeg,image/webp" multiple aria-describedby="propertyCoverHelp">
+        <p id="propertyCoverHelp" class="field-help">Selecione as fotos da galeria em PNG, JPG ou WebP, até 10 MB por arquivo. A primeira será a capa. Uma nova seleção substitui a anterior.</p>
+        <p id="propertyPhotoCount" class="field-help" role="status"></p>
+        <div class="next-actions editor-actions">
+          <button class="btn btn-primary" type="submit" id="saveProperty">Aplicar imóvel à vitrine</button>
+          <a class="btn btn-ghost" href="../#vitrine" data-storefront-link data-storefront-hash="#vitrine">Ver imóveis no site</a>
+          <button class="btn btn-ghost" type="button" id="resetProperty" hidden>Restaurar imóvel de exemplo</button>
+        </div>
+        <p id="propertyFeedback" role="status"></p>
+      </form>
+    </div>
+    <section class="editor-panel design-preview" id="designPreview" aria-labelledby="designTitle">
+      <h2 id="designTitle">Prévia da marca</h2>
+      <div class="brand-sample">
+        <div class="brand"><span class="brand-monogram" data-client-logo aria-hidden="true"></span><span data-client-name></span></div>
+        <img class="brand-sample-art" src="../../assets/eiah-imoveis-conceito.webp" width="1536" height="1024" alt="">
+        <div class="brand-sample-copy">
+          <p class="brand-sample-heading">Encontre seu imóvel.</p>
+          <p data-client-intro></p>
+          <span class="btn btn-primary">Iniciar atendimento</span>
+        </div>
+        <div class="sample-footer" data-client-footer></div>
+      </div>
+    </section>
+    <section class="editor-panel design-preview" id="propertyDesignPreview" aria-labelledby="propertyDesignTitle" hidden>
+      <h2 id="propertyDesignTitle">Prévia do anúncio</h2>
+      <div class="brand-sample">
+        <img id="propertyCoverPreview" class="brand-sample-art" alt="Foto de capa do imóvel" hidden>
+        <div class="brand-sample-copy">
+          <p id="samplePropertyPlace" class="field-help"></p>
+          <h3 id="samplePropertyTitle" class="brand-sample-heading"></h3>
+          <p id="samplePropertyPrice"></p>
+          <p id="samplePropertyDescription"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <section class="editor-panel voice-editor" aria-labelledby="voiceEditorTitle">
+    <h2 id="voiceEditorTitle">Mensagens de voz dos assistentes</h2>
+    <p class="lead">Grave ou envie uma mensagem curta para a etapa que você escolher. O áudio fica salvo neste navegador.</p>
+    <label class="field-label" for="voiceRole">Assistente</label>
+    <select id="voiceRole">
+      <option value="welcome">Recepção</option>
+      <option value="property">Imóvel</option>
+      <option value="review">Revisão</option>
+    </select>
+    <p class="voice-script"><strong>Sugestão de fala</strong><br><span id="voiceScript"></span></p>
+    <div class="next-actions">
+      <button class="btn btn-primary" type="button" id="voiceRecord">Gravar minha voz</button>
+      <button class="btn btn-ghost" type="button" id="voiceStop" hidden>Parar gravação</button>
+    </div>
+    <label class="field-label" for="voiceFile">Ou escolha um arquivo de áudio</label>
+    <input id="voiceFile" type="file" accept=".mp3,.m4a,.wav,.ogg,.webm,audio/*" aria-describedby="voiceHelp">
+    <p class="field-help" id="voiceHelp">Até 30 segundos e 4 MB. Ao gravar, o navegador pede acesso ao microfone.</p>
+    <p id="voiceStatus" role="status"></p>
+    <audio controls preload="metadata" id="voiceListen" aria-label="Conferir mensagem de voz" hidden></audio>
+    <div class="next-actions">
+      <button class="btn btn-primary" type="button" id="voiceApply" hidden>Aplicar áudio à etapa</button>
+      <button class="btn btn-ghost" type="button" id="voiceRemove" hidden>Remover áudio salvo</button>
+    </div>
+  </section>
+</main>
+<script type="module" src="../../brand-editor.mjs"></script>
+<script type="module" src="../../property-editor.mjs"></script>
+<script type="module" src="../../guide-voice-editor.mjs"></script>
+</body>
+</html>
