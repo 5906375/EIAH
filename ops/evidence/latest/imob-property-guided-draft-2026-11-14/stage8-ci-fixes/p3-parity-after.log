@@ -1,0 +1,12 @@
+
+> eiah-builder@ test:e2e-imob-chat-parity /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> node --import tsx scripts/e2e/imobChatParity.ts
+
+Error: administrador EIAH do E2E (parity-admin@e2e.local) não pôde ser criado; use um banco novo ou outro E2E_ADMIN_EMAIL: Error: POST /auth/onboarding → 409 {"ok":false,"error":{"code":"USER_EXISTS","message":"User already exists"}}
+    at <anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/scripts/e2e/imobChatParity.ts:61:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async platformAdmin (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/scripts/e2e/imobChatParity.ts:55:22)
+    at async approveImobForTenant (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/scripts/e2e/imobChatParity.ts:70:17)
+    at async provisionSession (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/scripts/e2e/imobChatParity.ts:87:3)
+    at async main (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/scripts/e2e/imobChatParity.ts:375:21)
+ ELIFECYCLE  Command failed with exit code 1.

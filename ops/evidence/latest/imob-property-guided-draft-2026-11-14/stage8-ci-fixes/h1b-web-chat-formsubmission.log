@@ -1,0 +1,316 @@
+TAP version 13
+# Subtest: proposta usa draft estruturado e não serializa campos como texto
+ok 1 - proposta usa draft estruturado e não serializa campos como texto
+  ---
+  duration_ms: 18.615256
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor 100000 independentes
+ok 2 - form values → builder → resolver mantém imóvel 4455 e valor 100000 independentes
+  ---
+  duration_ms: 6.882422
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 98765 e valor 450000 independentes
+ok 3 - form values → builder → resolver mantém imóvel 98765 e valor 450000 independentes
+  ---
+  duration_ms: 3.453284
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel imovel-AB12 e valor 450000 independentes
+ok 4 - form values → builder → resolver mantém imóvel imovel-AB12 e valor 450000 independentes
+  ---
+  duration_ms: 2.962271
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor R$ 100.000,75 independentes
+ok 5 - form values → builder → resolver mantém imóvel 4455 e valor R$ 100.000,75 independentes
+  ---
+  duration_ms: 1.976959
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor 100000.50 independentes
+ok 6 - form values → builder → resolver mantém imóvel 4455 e valor 100000.50 independentes
+  ---
+  duration_ms: 1.743499
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel 4455 e valor ausente independentes
+ok 7 - form values → builder → resolver mantém imóvel 4455 e valor ausente independentes
+  ---
+  duration_ms: 1.916848
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel ausente e valor 100000 independentes
+ok 8 - form values → builder → resolver mantém imóvel ausente e valor 100000 independentes
+  ---
+  duration_ms: 1.832788
+  type: 'test'
+  ...
+# Subtest: form values → builder → resolver mantém imóvel ausente e valor ausente independentes
+ok 9 - form values → builder → resolver mantém imóvel ausente e valor ausente independentes
+  ---
+  duration_ms: 2.033272
+  type: 'test'
+  ...
+# Subtest: valor inválido inválido bloqueia construção
+ok 10 - valor inválido inválido bloqueia construção
+  ---
+  duration_ms: 1.565486
+  type: 'test'
+  ...
+# Subtest: valor inválido -10 bloqueia construção
+ok 11 - valor inválido -10 bloqueia construção
+  ---
+  duration_ms: 1.524036
+  type: 'test'
+  ...
+# Subtest: valor inválido 0 bloqueia construção
+ok 12 - valor inválido 0 bloqueia construção
+  ---
+  duration_ms: 1.077769
+  type: 'test'
+  ...
+# Subtest: valor inválido Infinity bloqueia construção
+ok 13 - valor inválido Infinity bloqueia construção
+  ---
+  duration_ms: 1.097388
+  type: 'test'
+  ...
+# Subtest: valor inválido 100000.001 bloqueia construção
+ok 14 - valor inválido 100000.001 bloqueia construção
+  ---
+  duration_ms: 1.156268
+  type: 'test'
+  ...
+# Subtest: valor inválido 900719925474099100 bloqueia construção
+ok 15 - valor inválido 900719925474099100 bloqueia construção
+  ---
+  duration_ms: 2.777343
+  type: 'test'
+  ...
+# Subtest: contexto ausente ou de outro fluxo não produz request de proposta
+ok 16 - contexto ausente ou de outro fluxo não produz request de proposta
+  ---
+  duration_ms: 1.916004
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo venda
+ok 17 - continuidade preserva o tipo venda
+  ---
+  duration_ms: 1.93134
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo locação
+ok 18 - continuidade preserva o tipo locação
+  ---
+  duration_ms: 2.805804
+  type: 'test'
+  ...
+# Subtest: continuidade preserva o tipo administração
+ok 19 - continuidade preserva o tipo administração
+  ---
+  duration_ms: 7.167677
+  type: 'test'
+  ...
+# Subtest: submit dedicado envia draft ao CRM engine no mesmo contexto; cancelamento não envia criação
+ok 20 - submit dedicado envia draft ao CRM engine no mesmo contexto; cancelamento não envia criação
+  ---
+  duration_ms: 13.695432
+  type: 'test'
+  ...
+# Subtest: demais formulários legados mantêm a serialização textual
+ok 21 - demais formulários legados mantêm a serialização textual
+  ---
+  duration_ms: 0.155257
+  type: 'test'
+  ...
+# Subtest: tipo de proposta inválido não produz request
+ok 22 - tipo de proposta inválido não produz request
+  ---
+  duration_ms: 3.223208
+  type: 'test'
+  ...
+# Subtest: campo vazio é mantido ausente mesmo quando o draft anterior possuía dados
+ok 23 - campo vazio é mantido ausente mesmo quando o draft anterior possuía dados
+  ---
+  duration_ms: 2.45649
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Sim → validation, zero execution
+ok 24 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Sim → validation, zero execution
+  ---
+  duration_ms: 72.61082
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Não → validation, zero execution
+ok 25 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Não → validation, zero execution
+  ---
+  duration_ms: 31.789561
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated actual sender: emitted review → presentation → Cancelar proposta → validation, zero execution
+ok 26 - FDC-03A-R1 dedicated actual sender: emitted review → presentation → Cancelar proposta → validation, zero execution
+  ---
+  duration_ms: 26.026196
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale history_remount fails closed
+ok 27 - FDC-03A-R1 dedicated stale history_remount fails closed
+  ---
+  duration_ms: 28.822763
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_conversation fails closed
+ok 28 - FDC-03A-R1 dedicated stale another_conversation fails closed
+  ---
+  duration_ms: 19.821015
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_vertical fails closed
+ok 29 - FDC-03A-R1 dedicated stale another_vertical fails closed
+  ---
+  duration_ms: 23.23215
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated stale another_assistant fails closed
+ok 30 - FDC-03A-R1 dedicated stale another_assistant fails closed
+  ---
+  duration_ms: 19.552688
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated delayed response cannot replace a switched conversation
+ok 31 - FDC-03A-R1 dedicated delayed response cannot replace a switched conversation
+  ---
+  duration_ms: 21.951104
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated transport preserves correlation over HTTP; legacy fields remain optional
+ok 32 - FDC-03A-R1 dedicated transport preserves correlation over HTTP; legacy fields remain optional
+  ---
+  duration_ms: 13.852459
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated concurrent replies present latest only and neither authorizes execution
+ok 33 - FDC-03A-R1 dedicated concurrent replies present latest only and neither authorizes execution
+  ---
+  duration_ms: 33.167637
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session tenantId switch is discarded before render
+ok 34 - FDC-03A-R1 dedicated response after session tenantId switch is discarded before render
+  ---
+  duration_ms: 20.727559
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session workspaceId switch is discarded before render
+ok 35 - FDC-03A-R1 dedicated response after session workspaceId switch is discarded before render
+  ---
+  duration_ms: 20.76451
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session userId switch is discarded before render
+ok 36 - FDC-03A-R1 dedicated response after session userId switch is discarded before render
+  ---
+  duration_ms: 16.637333
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session token switch is discarded before render
+ok 37 - FDC-03A-R1 dedicated response after session token switch is discarded before render
+  ---
+  duration_ms: 20.034494
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 dedicated response after session activeDomain switch is discarded before render
+ok 38 - FDC-03A-R1 dedicated response after session activeDomain switch is discarded before render
+  ---
+  duration_ms: 16.243532
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → Sim never confirms canonical action
+ok 39 - FDC-03A-R3 actual persisted review → restored history → Sim never confirms canonical action
+  ---
+  duration_ms: 66.553331
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → ok never confirms canonical action
+ok 40 - FDC-03A-R3 actual persisted review → restored history → ok never confirms canonical action
+  ---
+  duration_ms: 55.255176
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → confirmo never confirms canonical action
+ok 41 - FDC-03A-R3 actual persisted review → restored history → confirmo never confirms canonical action
+  ---
+  duration_ms: 48.393355
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → pode executar never confirms canonical action
+ok 42 - FDC-03A-R3 actual persisted review → restored history → pode executar never confirms canonical action
+  ---
+  duration_ms: 42.074496
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 actual persisted review → restored history → Não never confirms canonical action
+ok 43 - FDC-03A-R3 actual persisted review → restored history → Não never confirms canonical action
+  ---
+  duration_ms: 45.623849
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 legacy review action and malformed stored marker restore only a tombstone
+ok 44 - FDC-03A-R3 legacy review action and malformed stored marker restore only a tombstone
+  ---
+  duration_ms: 0.262476
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated another_assistant during request cannot resurrect review or change state maps
+ok 45 - FDC-03A-R3 dedicated another_assistant during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 19.153794
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated same_message_new_question during request cannot resurrect review or change state maps
+ok 46 - FDC-03A-R3 dedicated same_message_new_question during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 18.450474
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated same_message_invalidated_question during request cannot resurrect review or change state maps
+ok 47 - FDC-03A-R3 dedicated same_message_invalidated_question during request cannot resurrect review or change state maps
+  ---
+  duration_ms: 15.962217
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 dedicated transport failure → safe retry preserves reference, draft and blockers
+ok 48 - FDC-03A-R3 dedicated transport failure → safe retry preserves reference, draft and blockers
+  ---
+  duration_ms: 17.931027
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 a separate explicit action presentation remains confirmable without a review carrier
+ok 49 - FDC-03A-R3 a separate explicit action presentation remains confirmable without a review carrier
+  ---
+  duration_ms: 19.22491
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: sender dedicado preserva dúvida e correção até uma escolha explícita, sem execução
+ok 50 - FDC mínimo: sender dedicado preserva dúvida e correção até uma escolha explícita, sem execução
+  ---
+  duration_ms: 16.522209
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: mudar de assunto não autoriza action e permite novo pedido independente no chat dedicado
+ok 51 - FDC mínimo: mudar de assunto não autoriza action e permite novo pedido independente no chat dedicado
+  ---
+  duration_ms: 36.591299
+  type: 'test'
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1992.959816

@@ -2324,6 +2324,8 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { parseImobPendingAction } from "../services/imob/crm/imobPendingActionRuntime";
 import { recordImobResolveTurnSemanticTelemetry } from "../services/imob/imobTelemetry";
+import { PROPERTY_CAPTURE_SESSION, PropertyCaptureActiveError, openPropertyCapture, propertyCaptureActiveBody } from "../services/imob/imobChatConversationManagement";
+import { guidedPropertyFixture } from "./fixtures/imob/guided-property-capture.fixture";
 
 // Exercise the actual route callback with authenticated fixtures and the real engine.
 // This does not claim to exercise Express middleware or a real database.
@@ -2351,7 +2353,11 @@ for (const scenario of ["allow_yes", "allow_no", "stale_draft", "missing_event",
         flow: "proposal.create", operationalStatus: "ready_for_review", proposalDraft: params.body.threadState.operational.proposalDraft } }] };
     if (scenario === "stale_draft") scopedCase.events[0].payload.proposalDraft = { ...scopedCase.events[0].payload.proposalDraft, offerAmount: 99000 };
     if (scenario === "missing_event") scopedCase.events = [];
-    const prisma = { imobCase: { findFirst: async (query: any) => {
+    // Estado de sessão guiada EXPLÍCITO: nenhuma sessão aberta. O guard real (`openPropertyCapture`) consulta este armazenamento escopado.
+    const sessions = guidedPropertyFixture();
+    const sessionQueries: any[] = [];
+    const prisma = { memoryEvent: { findMany: async (query: any) => { sessionQueries.push(query); return (sessions.prisma as any).memoryEvent.findMany(query); } },
+      imobCase: { findFirst: async (query: any) => {
       queries.push(query);
       assert.deepEqual(query.where, { id: params.body.caseId, tenantId: params.authContext.tenantId, workspaceId: params.authContext.workspaceId });
       assert.deepEqual(query.select.events.where, { tenantId: params.authContext.tenantId, workspaceId: params.authContext.workspaceId });
@@ -2374,10 +2380,16 @@ for (const scenario of ["allow_yes", "allow_no", "stale_draft", "missing_event",
       imobCrmBusinessRead: { applyCanonicalJourneyToResolvedData: params.helpers.applyCanonicalJourneyToResolvedData },
       resolveImobCrmTurnEngine: async (input: any) => { engineCalls++; return resolveImobCrmTurnEngine(input); },
       recordImobResolveTurnSemanticTelemetry,
+      // Dependências do guard de captura guiada (implementação REAL, não um retorno fixo).
+      openPropertyCapture, PropertyCaptureActiveError, propertyCaptureActiveBody,
       IMOB_CHAT_AGENT_ID: "IMOB_CRM",
     };
     await reviewRouteCallback()(environment)({ authContext: params.authContext, prisma,
       body: { ...params.body, reviewCase: params.reviewCase, reviewDraftRef: params.reviewDraftRef } }, res);
+    // O guard roda depois da permissão base do IMOB e antes de qualquer leitura do caso: consulta escopada ao ator, sem sessão aberta.
+    assert.equal(sessionQueries.length, scenario === "permission_deny" ? 0 : 1, "guard de captura consultado exatamente quando esperado");
+    for (const query of sessionQueries) assert.deepEqual([query.where.tenantId, query.where.workspaceId, query.where.key, query.where.metadata.equals],
+      [params.authContext.tenantId, params.authContext.workspaceId, PROPERTY_CAPTURE_SESSION, params.authContext.userId]);
     if (scenario.endsWith("deny")) {
       assert.equal(status, 403);
       assert.equal(engineCalls, 0);
@@ -2397,6 +2409,47 @@ for (const scenario of ["allow_yes", "allow_no", "stale_draft", "missing_event",
   });
 }
 
+
+// Regra do guard: `openPropertyCapture(..., includePaused)` só considera sessão PAUSADA quando a rota recebe intake de cadastro
+// (imobChatConversationManagement.ts:86, routes/imob.ts:1737). A ATIVA bloqueia qualquer turno; a pausada não bloqueia este turno de revisão.
+for (const sessionStatus of ["active", "paused"] as const) {
+  test(`FDC-03A route callback: captura guiada ${sessionStatus === "active" ? "ativa bloqueia" : "pausada NÃO bloqueia"} o turno de revisão do mesmo ator (${sessionStatus === "active" ? "409, sem motor nem leitura de caso" : "segue pelas autorizações normais, sessão intacta"})`, async () => {
+    const params = reviewEngineParams("Sim");
+    const sessions = guidedPropertyFixture();
+    const sessionRow = (id: string, actorUserId: string, status: string) => ({ id, key: PROPERTY_CAPTURE_SESSION, tenantId: params.authContext.tenantId, workspaceId: params.authContext.workspaceId,
+      agentId: "imob-chat", metadata: { actorUserId, status, revision: 3, draft: { city: "Itajaí" } } });
+    sessions.events.set("own-session", sessionRow("own-session", params.authContext.userId, sessionStatus));
+    sessions.events.set("other-actor", sessionRow("other-actor", "outro-ator", "active")); // sessão de OUTRO ator: não bloqueia nem aparece
+    const sessionsBefore = JSON.stringify([...sessions.events.values()]);
+    const scopedCase = { id: params.body.caseId, threadId: params.body.threadId, flow: "proposal.create", status: "ready_for_review", stage: "ready_for_review", metadata: {},
+      ownerResponsible: "Corretor", nextStep: "Revisão humana", blockers: ["Aprovação necessária"], pendingItems: ["Revisão humana"],
+      events: [{ payload: { flow: "proposal.create", operationalStatus: "ready_for_review", proposalDraft: params.body.threadState.operational.proposalDraft } }] };
+    let engineCalls = 0, caseQueries = 0, payload: any = null, status = 200;
+    const res: any = { json: (body: any) => { payload = body; return res; }, status: (code: number) => { status = code; return res; } };
+    const prisma = { memoryEvent: (sessions.prisma as any).memoryEvent, imobCase: { findFirst: async () => { caseQueries++; return scopedCase; } } };
+    const environment = {
+      ...params.helpers, asObject: (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value : null, asString: params.helpers.asString,
+      parseImobPendingAction, proposalDraftRef, recordImobResolveTurnSemanticTelemetry,
+      readImobWorkspaceAccessProfile: async () => ({ permissions: ["imob.chat.use", "imob.stage.*"], responsibleLabel: "Corretor" }),
+      ensureImobWorkspacePermission: () => true, ensureImobStagePermission: () => true, resolveImobEntitlements: async () => params.entitlements,
+      resolveImobTenantRecipeForWorkspace: async () => null, resolveImobRecipeMissionContext: () => null,
+      imobCrmBusinessRead: { applyCanonicalJourneyToResolvedData: params.helpers.applyCanonicalJourneyToResolvedData },
+      resolveImobCrmTurnEngine: async (input: any) => { engineCalls++; return resolveImobCrmTurnEngine(input); },
+      openPropertyCapture, PropertyCaptureActiveError, propertyCaptureActiveBody, IMOB_CHAT_AGENT_ID: "IMOB_CRM",
+    };
+    await reviewRouteCallback()(environment)({ authContext: params.authContext, prisma,
+      body: { ...params.body, reviewCase: params.reviewCase, reviewDraftRef: params.reviewDraftRef } }, res);
+    if (sessionStatus === "active") {
+      assert.equal(status, 409); assert.equal(payload.error.code, "IMOB_PROPERTY_CAPTURE_ACTIVE");
+      assert.deepEqual(payload.error.details, { sessionRef: "own-session", status: "active" }, "nomeia só a sessão do próprio ator");
+      assert.equal(engineCalls, 0); assert.equal(caseQueries, 0);
+    } else {
+      assert.equal(status, 200); assert.equal(payload.ok, true); assert.equal(payload.data.mode, "consult");
+      assert.equal(engineCalls, 1); assert.equal(caseQueries, 1, "leitura escopada do caso pelas autorizações normais");
+    }
+    assert.equal(JSON.stringify([...sessions.events.values()]), sessionsBefore, "a sessão guiada não foi cancelada, consumida nem alterada");
+  });
+}
 
 test("FDC-03A aliases normalizados do decoder legado não escapam do tombstone conversacional", async () => {
   const params = reviewEngineParams("confírmo");

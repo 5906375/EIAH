@@ -1,0 +1,93 @@
+
+> eiah-builder@ test:imob-claim-only-writes:integration /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --import tsx --test --test-concurrency=1 --test-force-exit apps/api/src/tests/imob-claim-only-writes.integration.test.ts
+
+TAP version 13
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# {"level":30,"time":"2026-11-19T22:26:53.549Z","service":"eiah","env":"test","traceId":"e8042d35-48b1-43fa-b853-ca9a88212d4b","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"359","durationMs":95.560905,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:54.043Z","service":"eiah","env":"test","traceId":"9d984002-3762-4ced-9704-493e629c93a3","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14560","durationMs":144.497388,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:54.421Z","service":"eiah","env":"test","traceId":"049c88f0-d550-42d4-b287-f4bf080c7a09","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2321","durationMs":70.032603,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:54.810Z","service":"eiah","env":"test","traceId":"4142437a-9e29-44e9-b961-49e8be4d8dd6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14491","durationMs":82.309478,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:55.188Z","service":"eiah","env":"test","traceId":"efa60a15-489f-42ff-bba3-02e6ab9cf02d","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2252","durationMs":70.101317,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:55.558Z","service":"eiah","env":"test","traceId":"c664d9eb-ac35-4b62-8125-1ed8a49a1b95","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2155","durationMs":60.635927,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# {"level":30,"time":"2026-11-19T22:26:55.947Z","service":"eiah","env":"test","traceId":"20beca63-a883-4550-8d0d-bbd581e226b4","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"469","durationMs":80.2098,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# {"level":30,"time":"2026-11-19T22:26:56.326Z","service":"eiah","env":"test","traceId":"dc383ed0-656b-4f2b-866a-6d77e3a8b795","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"479","durationMs":72.26528,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# {"level":30,"time":"2026-11-19T22:26:56.677Z","service":"eiah","env":"test","traceId":"43649e8e-6ca5-4190-8245-774e50dc7ce6","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"39","durationMs":42.789849,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:57.049Z","service":"eiah","env":"test","traceId":"7aa37de8-e5fa-440f-832d-d1c439f162fc","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"14484","durationMs":60.636997,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-p10-mwo4e63l-hrm4zq-p04/workspace-p10-mwo4e63l-hrm4zq-p04
+# prisma:error 
+# Invalid `prisma.$queryRaw()` invocation:
+# Raw query failed. Code: `42P01`. Message: `relation "tenant_recipes" does not exist`
+# {"level":30,"time":"2026-11-19T22:26:57.448Z","service":"eiah","env":"test","traceId":"df47f6d0-ff0a-49d0-847e-450a85065983","component":"api","httpMethod":"POST","path":"/api/imob/chat/resolve-turn","statusCode":200,"contentLength":"2372","durationMs":88.358511,"msg":"http.request.completed"}
+# P04-CLAIM-WRITES {"control":11,"outcomes":{"a: caso explícito":"200/claimed=true","a: sem caso":"200/claimed=true","b: caso explícito":"200/claimed=true","b: sem caso":"200/claimed=true","a: estado de agente":"200/claimed=true","a: caso de outro workspace (negado)":"200/claimed=true","c: etapa não permitida (negado)":"200/claimed=true","a: não reivindicado":"200/claimed=false","a: marcadores de fluxo/caso no threadState":"200/claimed=true","a: marcadores de fluxo sem caseId":"200/claimed=true"}}
+# Subtest: P-04: claimOnly não escreve (auditoria, telemetria, memória)
+    # Subtest: P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+    ok 1 - P-04 claimOnly (reivindicado com e sem caso, negado, não reivindicado, com marcadores de fluxo no threadState) não abre transação de escrita nem cria memory_events
+      ---
+      duration_ms: 4172.635724
+      type: 'test'
+      ...
+    1..1
+ok 1 - P-04: claimOnly não escreve (auditoria, telemetria, memória)
+  ---
+  duration_ms: 5110.100232
+  type: 'suite'
+  ...
+1..1
+# tests 1
+# suites 1
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5728.092678

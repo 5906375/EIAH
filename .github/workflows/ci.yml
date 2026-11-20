@@ -1757,3 +1757,13 @@ jobs:
         env:
           EIAH_DISPOSABLE_INFRA: "1"
         timeout-minutes: 10
+
+      # IMOB coleta guiada (admissão da interpretação única): concorrência real entre instâncias Prisma independentes, advisory lock, consumo,
+      # rollback, recuperação por referência, salvamento atômico e corrida F-04. Exige a guarda de banco descartável (assertDisposableDatabase):
+      # eiah_logistica_core_ci efêmero do runner + EIAH_DISPOSABLE_INFRA. Passo próprio e SEQUENCIAL (roda depois do passo de claimOnly, nunca em
+      # paralelo a ele no mesmo banco); falha do teste reprova o passo (sem continue-on-error, sem skip). Substitui o arquivo órfão do checker.
+      - name: Run IMOB guided property admission integration (PostgreSQL real descartável)
+        run: pnpm test:imob-property-guided-admission:integration
+        env:
+          EIAH_DISPOSABLE_INFRA: "1"
+        timeout-minutes: 10

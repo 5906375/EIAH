@@ -1,0 +1,157 @@
+
+> eiah-builder@ test:imob-property-guided-admission:integration /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --import tsx --test --test-concurrency=1 --test-force-exit apps/api/src/tests/imob-property-guided-admission.integration.test.ts
+
+TAP version 13
+# Subtest: 0. equivalência da chave do lock: o segurador independente bloqueia a admissão de produção
+ok 1 - 0. equivalência da chave do lock: o segurador independente bloqueia a admissão de produção
+  ---
+  duration_ms: 155.555118
+  type: 'test'
+  ...
+# Subtest: 1. duas solicitações concorrentes (instâncias A e B) para a mesma sessão: somente uma admissão
+ok 2 - 1. duas solicitações concorrentes (instâncias A e B) para a mesma sessão: somente uma admissão
+  ---
+  duration_ms: 71.169148
+  type: 'test'
+  ...
+# Subtest: 2. repetição após consumo: nenhuma nova admissão (revisão vigente ou antiga)
+ok 3 - 2. repetição após consumo: nenhuma nova admissão (revisão vigente ou antiga)
+  ---
+  duration_ms: 33.790742
+  type: 'test'
+  ...
+# Subtest: 3. nova instância/processo após consumo: o consumo permanece
+ok 4 - 3. nova instância/processo após consumo: o consumo permanece
+  ---
+  duration_ms: 56.107478
+  type: 'test'
+  ...
+# Subtest: 4. falha após o commit da admissão e antes do transporte: consumo permanece; zero nova tentativa
+ok 5 - 4. falha após o commit da admissão e antes do transporte: consumo permanece; zero nova tentativa
+  ---
+  duration_ms: 30.158243
+  type: 'test'
+  ...
+# Subtest: 5. timeout/resultado desconhecido: nenhuma renovação; resposta tardia não altera o estado
+ok 6 - 5. timeout/resultado desconhecido: nenhuma renovação; resposta tardia não altera o estado
+  ---
+  duration_ms: 188.174266
+  type: 'test'
+  ...
+# Subtest: 6. rollback da admissão: nenhum transporte autorizado e nenhum consumo persistido
+ok 7 - 6. rollback da admissão: nenhum transporte autorizado e nenhum consumo persistido
+  ---
+  duration_ms: 40.200839
+  type: 'test'
+  ...
+# Subtest: 7a. cancelamento DEPOIS da admissão e com o transporte em voo: o transporte autorizado não é recolhido; a resposta tardia não reativa
+ok 8 - 7a. cancelamento DEPOIS da admissão e com o transporte em voo: o transporte autorizado não é recolhido; a resposta tardia não reativa
+  ---
+  duration_ms: 18.315496
+  type: 'test'
+  ...
+# Subtest: 7b. cancelamento ANTES da admissão: nenhuma admissão; sessão encerrada não é reaberta
+ok 9 - 7b. cancelamento ANTES da admissão: nenhuma admissão; sessão encerrada não é reaberta
+  ---
+  duration_ms: 16.6207
+  type: 'test'
+  ...
+# Subtest: 7c. cancelamento por origem (sem sessionRef) e admissão concorrentes: resultado coerente com a ordem transacional (qualquer ordem)
+ok 10 - 7c. cancelamento por origem (sem sessionRef) e admissão concorrentes: resultado coerente com a ordem transacional (qualquer ordem)
+  ---
+  duration_ms: 39.329964
+  type: 'test'
+  ...
+# Subtest: 7c. cancelamento por referência (sem origem, revisão antiga) e admissão concorrentes: resultado coerente com a ordem transacional (qualquer ordem)
+ok 11 - 7c. cancelamento por referência (sem origem, revisão antiga) e admissão concorrentes: resultado coerente com a ordem transacional (qualquer ordem)
+  ---
+  duration_ms: 39.414703
+  type: 'test'
+  ...
+# Subtest: 7d. cancelar/pausar com revisão antiga (F-02): valida a sessão, não exige a última revisão, não aplica rascunho antigo e é idempotente
+ok 12 - 7d. cancelar/pausar com revisão antiga (F-02): valida a sessão, não exige a última revisão, não aplica rascunho antigo e é idempotente
+  ---
+  duration_ms: 35.495148
+  type: 'test'
+  ...
+# Subtest: 12. recuperação (F-01): origem perdida; encerra só a sessão nomeada, com escopo validado; ação atrasada não atinge o cadastro novo
+ok 13 - 12. recuperação (F-01): origem perdida; encerra só a sessão nomeada, com escopo validado; ação atrasada não atinge o cadastro novo
+  ---
+  duration_ms: 28.808009
+  type: 'test'
+  ...
+# Subtest: 13. revisão alterada durante o transporte (F-03): sincronização preserva a proposta; mudança real a descarta sem nova interpretação
+ok 14 - 13. revisão alterada durante o transporte (F-03): sincronização preserva a proposta; mudança real a descarta sem nova interpretação
+  ---
+  duration_ms: 41.875637
+  type: 'test'
+  ...
+# Subtest: 8. sessões e escopos distintos: isolamento, sem acesso cruzado e sem bloqueio entre atores
+ok 15 - 8. sessões e escopos distintos: isolamento, sem acesso cruzado e sem bloqueio entre atores
+  ---
+  duration_ms: 48.129228
+  type: 'test'
+  ...
+# Subtest: 9. repetição da abertura com a mesma origem: mesma sessão e mesmo consumo (inclusive concorrente)
+ok 16 - 9. repetição da abertura com a mesma origem: mesma sessão e mesmo consumo (inclusive concorrente)
+  ---
+  duration_ms: 46.832693
+  type: 'test'
+  ...
+# Subtest: 10. a transação da admissão termina antes do transporte (advisory lock livre no despacho)
+ok 17 - 10. a transação da admissão termina antes do transporte (advisory lock livre no despacho)
+  ---
+  duration_ms: 22.691534
+  type: 'test'
+  ...
+# Subtest: 11. salvamento guiado: imóvel e sessão `saved` na mesma transação; falha após a inserção reverte ambos; reenvio não duplica
+ok 18 - 11. salvamento guiado: imóvel e sessão `saved` na mesma transação; falha após a inserção reverte ambos; reenvio não duplica
+  ---
+  duration_ms: 57.912362
+  type: 'test'
+  ...
+# Subtest: 14a. F-04 legado autorizado ANTES da abertura e gravando DEPOIS: equivale à ordem serial (legado, abertura); depois da abertura visível o legado é bloqueado
+ok 19 - 14a. F-04 legado autorizado ANTES da abertura e gravando DEPOIS: equivale à ordem serial (legado, abertura); depois da abertura visível o legado é bloqueado
+  ---
+  duration_ms: 51.93022
+  type: 'test'
+  ...
+# F-04 observação: o imóvel legado foi confirmado com a sessão active aberta (invariante forte não asserido). Linha do tempo: L: leitura de autorização viu 0 sessões abertas → S: abertura guiada confirmada (commit) → L: gravação do imóvel confirmada → fim
+# Subtest: 14b. F-04 abertura confirmada ANTES da autorização legada: o save legado é bloqueado (ordem serial abertura, legado)
+ok 20 - 14b. F-04 abertura confirmada ANTES da autorização legada: o save legado é bloqueado (ordem serial abertura, legado)
+  ---
+  duration_ms: 20.125753
+  type: 'test'
+  ...
+# Subtest: 14c. F-04 corrida livre (12 rodadas, duas instâncias, sem pausa artificial): todo desfecho é uma ordem serial válida
+ok 21 - 14c. F-04 corrida livre (12 rodadas, duas instâncias, sem pausa artificial): todo desfecho é uma ordem serial válida
+  ---
+  duration_ms: 198.684246
+  type: 'test'
+  ...
+# F-04 corrida livre: {"legadoCriou":12,"legadoBloqueado":0} (ambos os desfechos são ordens seriais válidas; nenhum desfecho inconsistente)
+# prisma:error 
+# Invalid `tx.memoryEvent.create()` invocation in
+# /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/services/imob/intake/imobPropertyGuidedCapture.ts:130:30
+#   127 session = { actorUserId: deps.scope.userId!, sessionRef: randomUUID(), origin: request.origin!, revision: 0,
+#   128   phase: recovery ? "collecting" : "start", status: "active", interpretation: recovery ? "declined" : "available",
+#   129   skipped: recovery ? command.fallbackView?.skipped ?? [] : [], focus: null, draft: { ...request.draft, ...(command.ownerId ? { ownerId: command.ownerId } : {}) }, pending: null };
+# → 130 await tx.memoryEvent.create(
+# Foreign key constraint violated on the constraint: `memory_events_tenant_id_fkey`
+# LOCK-WAIT-EVIDENCE observacoes=[1,1,2,1,2,1,2,1,2] maximo=2
+# Subtest: 15. P-02 início de outra origem em PostgreSQL real: conflito com a referência do servidor, restrito ao escopo; mesma origem retoma; nada é cancelado nem renovado
+ok 22 - 15. P-02 início de outra origem em PostgreSQL real: conflito com a referência do servidor, restrito ao escopo; mesma origem retoma; nada é cancelado nem renovado
+  ---
+  duration_ms: 59.42175
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1652.671766

@@ -1,0 +1,20 @@
+
+> eiah-builder@ test:e2e-imob-chat-parity /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> node --import tsx scripts/e2e/imobChatParity.ts
+
+ok   [/app/imob/chat] abrir Cadastrar proprietário
+ok   [/app/imob/chat] salvar proprietário
+ok   [/app/imob/chat] salvar imóvel do proprietário
+ok   [/app/imob/chat] salvar locação e abrir contrato preenchido
+ok   [/app/imob/chat] encerrar locação pela barra
+ok   [/app/imob/chat] nenhuma run criada
+ok   [/app/chat] abrir Cadastrar proprietário
+ok   [/app/chat] salvar proprietário
+ok   [/app/chat] salvar imóvel do proprietário
+ok   [/app/chat] salvar locação e abrir contrato preenchido
+ok   [/app/chat] encerrar locação pela barra
+ok   [/app/chat] nenhuma run criada
+ok   [/app/chat (ativação)] pedido sem IMOB oferece ativar
+ok   [/app/chat (ativação)] proposta não ativa
+ok   [/app/chat (ativação)] confirmação explícita ativa e segue com o IMOB
+PARIDADE OK

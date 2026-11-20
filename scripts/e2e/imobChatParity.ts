@@ -177,21 +177,74 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     const owners = await api<{ data: { items: Array<{ name: string }> } }>(session, "GET", "/imob/owners");
     if (!owners.data.items.some((owner) => owner.name === ownerName)) throw new Error("proprietário não gravado");
   });
+  const ownerSelected = (timeout: number) => page.waitForFunction(
+    (name) => [...document.querySelectorAll("select")].some((select) => (select as HTMLSelectElement).selectedOptions[0]?.textContent?.includes(name)),
+    ownerName,
+    { timeout },
+  );
   await step("salvar imóvel do proprietário", async () => {
     await page.getByRole("button", { name: "Cadastrar imóvel deste proprietário" }).last().click();
-    await field(page, "Salvar cadastro", "Identificação da unidade").waitFor({ timeout: 30000 });
-    await page.waitForFunction(
-      (name) => [...document.querySelectorAll("select")].some((select) => (select as HTMLSelectElement).selectedOptions[0]?.textContent?.includes(name)),
-      ownerName,
-      { timeout: 20000 },
-    );
-    await field(page, "Salvar cadastro", "Tipo").selectOption("kitnet");
-    await field(page, "Salvar cadastro", "Destinação inicial").selectOption("locacao");
-    await field(page, "Salvar cadastro", "Identificação da unidade").fill(unit);
-    await field(page, "Salvar cadastro", "Cidade").fill("Cidade Paridade");
-    await field(page, "Salvar cadastro", "Endereço").fill(`Rua Paridade ${tag}, ${STAMP}`);
-    await formWith(page, "Salvar cadastro").getByRole("button", { name: "Salvar cadastro", exact: true }).click();
+    if (surface === "/app/chat") {
+      // Front Door: coleta GUIADA, um campo por vez. O formulário completo só existe na revisão e salvar é uma ação explícita.
+      // Todas as ações abaixo são as do produto (botão, seletor de campo, formulário de coleta, comando digitado); nada é forçado por estado interno.
+      await page.getByText("um campo por vez", { exact: false }).last().waitFor({ timeout: 30000 });
+      if (await formWith(page, "Salvar cadastro").count()) throw new Error("formulário completo visível antes da revisão");
+      const turn = () => page.waitForResponse(
+        (response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/imob/chat/resolve-turn"),
+        { timeout: 30000 },
+      );
+      const turnOk = async (action: () => Promise<unknown>, what: string) => {
+        const pending = turn(); pending.catch(() => undefined);
+        await action();
+        const response = await pending;
+        if (response.status() !== 200) throw new Error(`${what}: resolve-turn → ${response.status()}`);
+      };
+      await turnOk(() => page.getByRole("button", { name: "Continuar sem IA", exact: true }).last().click(), "Continuar sem IA");
+      const answer = async (label: string, value: string, kind: "select" | "text") => {
+        await turnOk(() => page.locator('select[aria-label="Corrigir ou retomar campo"]').last().selectOption({ label }), `focar ${label}`);
+        const control = field(page, "Continuar", label);
+        await control.waitFor({ timeout: 30000 });
+        if (kind === "select") await turnOk(() => control.selectOption(value), `responder ${label}`);
+        else {
+          await control.fill(value);
+          await turnOk(() => formWith(page, "Continuar").getByRole("button", { name: "Continuar", exact: true }).click(), `responder ${label}`);
+        }
+      };
+      await answer("Tipo", "kitnet", "select");
+      await answer("Destinação inicial", "locacao", "select");
+      await answer("Identificação da unidade", unit, "text");
+      await answer("Cidade", "Cidade Paridade", "text");
+      await answer("Endereço", `Rua Paridade ${tag}, ${STAMP}`, "text");
+      if (await formWith(page, "Salvar cadastro").count()) throw new Error("formulário completo visível antes de pedir a revisão");
+      await turnOk(() => send(page, "Revisar cadastro"), "Revisar cadastro");
+      // Revisão: agora o formulário completo existe, com o proprietário já vinculado e os valores coletados.
+      await field(page, "Salvar cadastro", "Identificação da unidade").waitFor({ timeout: 30000 });
+      await ownerSelected(20000);
+      if ((await field(page, "Salvar cadastro", "Identificação da unidade").inputValue()) !== unit) throw new Error("unidade coletada não aparece na revisão");
+      if ((await field(page, "Salvar cadastro", "Cidade").inputValue()) !== "Cidade Paridade") throw new Error("cidade coletada não aparece na revisão");
+      await formWith(page, "Salvar cadastro").getByRole("button", { name: "Salvar cadastro", exact: true }).click();
+    } else {
+      await field(page, "Salvar cadastro", "Identificação da unidade").waitFor({ timeout: 30000 });
+      await ownerSelected(20000);
+      await field(page, "Salvar cadastro", "Tipo").selectOption("kitnet");
+      await field(page, "Salvar cadastro", "Destinação inicial").selectOption("locacao");
+      await field(page, "Salvar cadastro", "Identificação da unidade").fill(unit);
+      await field(page, "Salvar cadastro", "Cidade").fill("Cidade Paridade");
+      await field(page, "Salvar cadastro", "Endereço").fill(`Rua Paridade ${tag}, ${STAMP}`);
+      await formWith(page, "Salvar cadastro").getByRole("button", { name: "Salvar cadastro", exact: true }).click();
+    }
     await page.getByText(`Imóvel cadastrado: ${unit}`, { exact: false }).last().waitFor({ timeout: 20000 });
+    if (surface === "/app/chat") {
+      // Persistência pela API do domínio, no escopo autenticado: o imóvel existe, está vinculado ao proprietário desta jornada e traz os dados coletados.
+      const owners = await api<{ data: { items: Array<{ id: string; name: string }> } }>(session, "GET", "/imob/owners");
+      const owner = owners.data.items.find((item) => item.name === ownerName);
+      const properties = await api<{ data: { items: Array<{ ownerId?: string | null; city?: string | null; address?: string | null; metadata?: { externalPropertyRef?: string } }> } }>(session, "GET", "/imob/properties");
+      const saved = properties.data.items.filter((item) => item.metadata?.externalPropertyRef === unit);
+      if (!owner) throw new Error("proprietário da jornada não encontrado");
+      if (saved.length !== 1) throw new Error(`imóvel persistido ${saved.length}x (esperado 1)`);
+      if (saved[0]!.ownerId !== owner.id) throw new Error("imóvel não vinculado ao proprietário da jornada");
+      if (saved[0]!.city !== "Cidade Paridade" || saved[0]!.address !== `Rua Paridade ${tag}, ${STAMP}`) throw new Error("dados persistidos diferem dos coletados");
+    }
     // Destinação "Locação" → próximos passos resolvidos pelo contrato; nenhum abre locação ou contrato sozinho.
     for (const chip of ["Registrar locação atual", "Registrar locação encerrada", "Iniciar nova locação"]) {
       await page.getByRole("button", { name: chip, exact: true }).last().waitFor({ timeout: 20000 });
