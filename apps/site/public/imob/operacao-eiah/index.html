@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Operação EIAH | EIAH IMOB</title>
+  <link rel="stylesheet" href="../catalog.css">
+  <link rel="stylesheet" href="../step-guides.css">
+  <link rel="stylesheet" href="../visual.css">
+</head>
+<body data-product="operacao-eiah">
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="../eiah-logo.png" alt="" width="80" height="39"><span>EIAH Imóveis</span></a>
+    <button class="btn btn-ghost menu-toggle" type="button" id="menuToggle" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Navegação principal">
+      <a href="#vitrine">Vitrine</a>
+      <a href="./equipe/">Visão da equipe</a>
+      <a href="../">Produtos IMOB</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <section class="intro" id="inicio">
+    <div class="wrap intro-grid">
+      <div class="intro-copy">
+        <p class="eyebrow">Operação EIAH</p>
+        <h1>Encontre seu imóvel.<br><em>Ou apresente o seu.</em></h1>
+        <p class="lead">Explore a jornada de atendimento e revisão de pedidos prevista para a equipe no Front Door da EIAH.</p>
+        <div class="next-actions"><button class="btn btn-primary" type="button" data-journey>Iniciar atendimento</button><a class="btn btn-ghost" href="#vitrine">Explorar imóveis</a><button class="btn btn-ghost" type="button" data-journey="cadastrar">Anunciar meu imóvel</button></div>
+        <ul class="guide-family" aria-label="Agentes do atendimento">
+  <li><span class="family-face" aria-hidden="true"></span><span>Assistente de Recepção</span></li>
+  <li><span class="family-face" aria-hidden="true"></span><span>Assistente de Imóvel</span></li>
+  <li><span class="family-face" aria-hidden="true"></span><span>Assistente de Revisão</span></li>
+</ul>
+      </div>
+      <figure class="intro-art"><img src="../assets/eiah-imoveis-conceito.webp" width="1536" height="1024" fetchpriority="high" alt="Maquete de um edifício residencial e uma casa junto ao litoral"></figure>
+    </div>
+  </section>
+  <div class="wrap demo-notice">Prévia interativa com dados fictícios. O atendimento e a gravação são simulados neste navegador.</div>
+  <section class="journey-section" id="jornada" hidden>
+  <div class="wrap journey-layout">
+    <aside class="journey-sidebar">
+      <a class="quiet-link" href="#inicio" id="journeyClose">Voltar à vitrine</a>
+      <h2 id="journeyTitle" tabindex="-1">Seu pedido de atendimento</h2>
+      <nav aria-label="Etapas do atendimento">
+        <ol class="stepper" id="requestProgress">
+          <li><a href="#jornada-recepcao"><span aria-hidden="true">1</span> Recepção</a></li>
+          <li><a href="#jornada-imovel"><span aria-hidden="true">2</span> Imóvel</a></li>
+          <li><a href="#jornada-revisao"><span aria-hidden="true">3</span> Revisão</a></li>
+        </ol>
+      </nav>
+    </aside>
+    <div class="journey-box">
+      <form id="requestForm" novalidate>
+        <section id="requestStagePreview" class="state-note" aria-labelledby="requestStageTitle" hidden>
+          <h3 id="requestStageTitle" tabindex="-1"></h3>
+          <p id="requestStageDescription"></p>
+          <a class="quiet-link" id="requestStageReturn" href="#jornada">Voltar ao ponto do atendimento</a>
+        </section>
+        <section class="request-chat" aria-label="Conversa de atendimento">
+          <aside id="requestProperty" aria-label="Imóvel da conversa" tabindex="-1" hidden></aside>
+          <div class="request-chat-thread" id="requestChatHistory" aria-label="Histórico da conversa" tabindex="0"></div>
+          <div id="requestChatPrompt" class="request-chat-message" hidden>
+            <p id="requestChatSpeaker" class="request-chat-speaker"></p>
+            <p id="requestChatQuestion" role="status"></p>
+            <div id="requestChatOptions" class="request-goal-options" role="group" aria-labelledby="requestChatQuestion"></div>
+          </div>
+          <div class="request-property-actions" id="requestPropertyActions" hidden>
+            <button class="btn btn-ghost" type="button" id="requestPropertyReview">Revisar pedido</button>
+          </div>
+          <div id="requestChatComposer">
+            <label class="field-label" for="requestReply">Sua mensagem</label>
+            <div class="request-composer">
+              <textarea id="requestReply" rows="2" maxlength="1200" placeholder="Escreva uma mensagem ou grave um áudio" aria-describedby="requestChatQuestion requestVoiceHelp"></textarea>
+              <p id="requestVoiceStatus" class="field-help" role="status"></p>
+              <div class="composer-actions">
+                <button class="composer-icon composer-mic" id="recordRequest" type="button" aria-label="Gravar pedido em voz" title="Gravar pedido em voz" aria-describedby="requestVoiceHelp">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <rect x="9" y="3" width="6" height="12" rx="3"/>
+                    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/>
+                  </svg>
+                </button>
+                <button class="composer-icon composer-stop" id="stopRequestRecording" type="button" aria-label="Parar gravação" title="Parar gravação" hidden>
+                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                    <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>
+                  </svg>
+                </button>
+                <button class="composer-icon composer-send" id="sendRequestOpening" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20V4m-7 7 7-7 7 7"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <p id="requestVoiceHelp" class="field-help">Você pode gravar até 30 segundos por mensagem.</p>
+          </div>
+        </section>
+        <fieldset id="requestReview" hidden>
+          <legend id="proposalTitle" tabindex="-1">Proposta para revisão</legend>
+          <dl id="requestSummary" class="request-summary"></dl>
+          <div id="draftNotice" class="state-note" hidden><strong>Rascunho atualizado</strong><p>Salve o pedido para simular o recebimento pela equipe.</p></div>
+          <div id="receipt" class="state-note receipt" tabindex="-1" hidden><strong>Pedido salvo nesta prévia</strong><p>O pedido foi salvo nesta aba.</p><a class="quiet-link" href="./equipe/">Ver pedido na visão da equipe</a></div>
+          <div class="next-actions" id="reviewActions">
+            <button type="button" class="btn btn-primary" id="confirmDraft">Confirmar proposta</button>
+            <button type="button" class="btn btn-primary" id="saveRequest" hidden>Salvar pedido</button>
+            <button type="button" class="btn btn-ghost" id="copyRequest">Copiar resumo</button>
+          </div>
+          <p id="copyFeedback" role="status" class="field-feedback"></p>
+        </fieldset>
+
+        <p id="requestError" role="alert"></p>
+        <p id="requestStatus" class="sr-only" role="status"></p>
+        <div class="wizard-actions">
+          <button class="btn btn-ghost" type="button" id="requestBack" hidden>Editar última resposta</button>
+          <button class="btn btn-ghost" type="button" id="newRequest" hidden>Novo pedido</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+  <div id="vitrine">
+    <section class="catalog-heading">
+      <div class="wrap">
+        <h2>Vitrine de imóveis</h2>
+        <p class="lead">Busque por características, filtre e compare os imóveis de exemplo.</p>
+        <div class="search-card" role="search">
+      <div class="mode-tabs" role="group" aria-label="Finalidade da busca">
+        <button class="active" data-mode="venda" aria-pressed="true">Comprar</button>
+        <button data-mode="locacao" aria-pressed="false">Aluguel anual</button>
+        <button data-mode="temporada" aria-pressed="false">Temporada</button>
+      </div>
+      <form class="ai-search" id="aiForm">
+        <label class="sr-only" for="aiInput">Descreva o imóvel que você procura</label>
+        <input id="aiInput" placeholder="Ex.: alugar apartamento no Centro" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+      </form>
+      <div class="ai-hint">Sugestões de busca
+        <button type="button" data-example="apartamento no Centro até 1 milhão">apartamento no Centro até 1 milhão</button>
+        <button type="button" data-example="alugar apartamento com 2 quartos">alugar apartamento com 2 quartos</button>
+        <button type="button" data-example="temporada em Itapema">temporada em Itapema</button>
+      </div>
+      <div class="ai-understood" id="aiUnderstood" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="results" id="imoveis">
+  <div class="wrap">
+    <h3 id="listTitle">Imóveis à venda</h3>
+    <section class="stay-panel" id="stayPanel" aria-labelledby="stayTitle" hidden>
+      <h4 id="stayTitle">Consulte as datas da sua estadia</h4>
+      <p class="field-help">Disponibilidade e valores fictícios para testar a consulta.</p>
+      <form id="stayForm">
+        <div class="stay-fields">
+          <label>Entrada<input name="arrival" type="date" required></label>
+          <label>Saída<input name="departure" type="date" required></label>
+          <label>Hóspedes<input name="guests" type="number" min="1" max="12" value="2" required></label>
+        </div>
+        <div class="next-actions">
+          <button class="btn btn-primary" type="submit">Consultar disponibilidade</button>
+          <button class="btn btn-ghost" id="staySample" type="button">Usar datas de exemplo</button>
+        </div>
+      </form>
+      <p class="field-help" id="stayMessage" role="status"></p>
+    </section>
+    <div class="filters" aria-label="Filtros">
+      <div><label for="fMode">Finalidade</label><select id="fMode"><option value="venda">Comprar</option><option value="locacao">Aluguel anual</option><option value="temporada">Temporada</option></select></div>
+      <div><label for="fType">Tipo</label><select id="fType"><option value="">Todos</option></select></div>
+      <div><label for="fCity">Cidade / bairro</label><select id="fCity"><option value="">Todas</option></select></div>
+      <div><label for="fBeds">Quartos</label><select id="fBeds"><option value="0">Qualquer</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></div>
+      <div><label for="fMax">Valor até (R$)</label><input id="fMax" inputmode="numeric" placeholder="Sem limite"></div>
+      <div><label for="fSort">Ordenar</label><select id="fSort"><option value="rel">Mais relevantes</option><option value="asc">Menor valor</option><option value="desc">Maior valor</option><option value="area">Maior área</option></select></div>
+    </div>
+
+    <div class="results-bar">
+      <span class="count" id="count" aria-live="polite"></span>
+      <span>
+        <button class="btn btn-ghost" id="onlyFav" type="button" aria-pressed="false">♡ Favoritos</button>
+        <button class="btn btn-ghost" id="clearFilters" type="button">Limpar filtros</button>
+      </span>
+    </div>
+
+    <div class="grid-cards" id="cards"></div>
+  </div>
+</section>
+
+
+
+  </div>
+</main>
+<footer class="client-footer" id="contato">
+  <div class="wrap client-footer-shell">
+    <div data-client-footer></div>
+  </div>
+</footer>
+<div class="compare-bar" id="compareBar" role="region" aria-label="Comparação de imóveis">
+  <span id="compareCount"></span>
+  <button class="btn btn-primary" id="compareOpen" type="button">Comparar</button>
+  <button class="btn btn-ghost" id="compareClear" type="button">Limpar</button>
+</div>
+<dialog class="modal" id="modal" aria-labelledby="modalTitle"><div class="modal-box" id="modalBox"></div></dialog>
+<script type="module" src="../journey-visual.mjs"></script>
+<script type="module" src="../catalog.mjs"></script>
+</body></html>
