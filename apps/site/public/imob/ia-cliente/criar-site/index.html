@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Criar meu site · EIAH IMOB</title>
+  <link rel="stylesheet" href="../../catalog.css">
+  <link rel="stylesheet" href="../../visual.css">
+  <link rel="stylesheet" href="../../site-setup.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../../" aria-label="Produtos IMOB"><img src="../../eiah-logo.png" width="80" height="39" alt="EIAH"><span>IMOB</span></a>
+    <a class="quiet-link" href="../personalizar/">Voltar ao editor</a>
+  </div>
+</header>
+<main class="wrap setup" id="main">
+  <p class="eyebrow">Demonstração</p>
+  <h1>Criar meu site</h1>
+  <p class="lead">Use dados fictícios para testar o cadastro da imobiliária, a publicação da vitrine e a contratação de especialistas.</p>
+  <div class="setup-layout">
+    <nav class="setup-steps" aria-label="Etapas do site">
+      <ol>
+        <li><a href="#perfil" aria-current="step">Perfil e personalização</a></li>
+        <li><a href="#publicacao">Plano e publicação</a></li>
+        <li><a href="#especialistas">Especialistas EIAH</a></li>
+      </ol>
+    </nav>
+    <div class="setup-panels">
+      <section class="setup-panel" id="perfil" aria-labelledby="profile-heading">
+        <h2 id="profile-heading">Perfil da imobiliária</h2>
+        <form id="profile-form">
+          <div class="setup-fields">
+            <label>Seu nome <input name="name" required maxlength="70" placeholder="Pessoa Exemplo"></label>
+            <label>Imobiliária ou nome profissional <input name="business" required maxlength="70" placeholder="Imobiliária Exemplo"></label>
+            <label>E-mail profissional <input name="email" type="email" required maxlength="160" placeholder="pessoa@example.com" autocomplete="off"></label>
+          </div>
+          <div class="next-actions">
+            <button class="btn btn-primary" type="submit">Salvar perfil de demonstração</button>
+            <button class="btn btn-ghost" id="profile-example" type="button">Usar dados de exemplo</button>
+          </div>
+        </form>
+        <div class="setup-divider" id="draft-controls" hidden>
+          <h3>Rascunho da vitrine</h3>
+          <p id="draft-status">Recupere as edições feitas na Prévia 02 neste navegador.</p>
+          <div class="next-actions">
+            <button class="btn btn-ghost" type="button" id="import-draft">Importar personalização da demo</button>
+            <a class="quiet-link" href="../personalizar/">Revisar no editor</a>
+          </div>
+        </div>
+      </section>
+      <section class="setup-panel" id="publicacao" aria-labelledby="publish-heading">
+        <h2 id="publish-heading">Plano e publicação</h2>
+        <p id="plan-locked">Salve o perfil e importe a personalização para seguir.</p>
+        <div id="plan-controls" hidden>
+          <h3>Site IMOB personalizado</h3>
+          <dl class="setup-details">
+            <div><dt>Inclui</dt><dd>Vitrine com sua marca, editor e equipe no espaço de trabalho</dd></div>
+            <div><dt>Cobrança</dt><dd>Mensalidade definida na contratação real</dd></div>
+            <div><dt>IA própria</dt><dd>Consumo na conta do provedor da imobiliária</dd></div>
+          </dl>
+          <div class="next-actions">
+            <button class="btn btn-primary" type="button" id="simulate-payment">Simular pagamento</button>
+            <button class="btn btn-primary" type="button" id="publish-site" hidden>Publicar na demonstração</button>
+            <a class="btn btn-ghost" href="./vitrine/" id="published-link" hidden>Ver vitrine publicada na demo</a>
+          </div>
+          <p class="setup-note" id="plan-status">A simulação dispensa dados de pagamento.</p>
+        </div>
+      </section>
+      <section class="setup-panel" id="especialistas" aria-labelledby="experts-heading">
+        <h2 id="experts-heading">Especialistas EIAH</h2>
+        <p id="experts-locked">Publique a vitrine na demonstração para testar a contratação de adicionais.</p>
+        <div id="experts-controls" hidden>
+          <p>Escolha um especialista para revisar o escopo antes de simular a contratação.</p>
+          <div class="setup-experts" id="expert-options"></div>
+          <div class="setup-divider" id="expert-review" hidden></div>
+        </div>
+      </section>
+      <p id="setup-feedback" class="setup-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
+    </div>
+  </div>
+</main>
+<script type="module" src="../../site-setup.mjs"></script>
+</body>
+</html>

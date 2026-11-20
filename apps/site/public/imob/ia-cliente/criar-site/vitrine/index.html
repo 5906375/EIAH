@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Vitrine publicada na demo · EIAH IMOB</title>
+  <link rel="stylesheet" href="../../../catalog.css">
+  <link rel="stylesheet" href="../../../visual.css">
+  <link rel="stylesheet" href="../../../step-guides.css">
+  <link rel="stylesheet" href="../../../site-setup.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="../" aria-label="Voltar à configuração do site"><span class="brand-monogram" data-client-logo aria-hidden="true">IM</span><span data-client-name>Minha imobiliária</span></a>
+    <a class="quiet-link" href="../#publicacao">Voltar à publicação</a>
+  </div>
+</header>
+<main class="wrap setup" id="published-preview">
+  <p class="eyebrow">Publicação simulada</p>
+  <p class="setup-note" id="published-status" role="status">Carregando a versão salva neste navegador…</p>
+  <div id="published-site" hidden>
+    <div class="intro-grid">
+      <div>
+        <h1 data-client-name></h1>
+        <p class="lead" data-client-intro></p>
+      </div>
+      <figure class="intro-art">
+        <img src="../../../assets/eiah-imoveis-conceito.webp" alt="" width="1536" height="1024">
+      </figure>
+    </div>
+    <section class="setup-panel" aria-labelledby="properties-heading">
+      <h2 id="properties-heading">Imóveis</h2>
+      <p id="no-properties">Os imóveis editados na personalização aparecerão na próxima versão publicada.</p>
+      <div class="setup-homes" id="published-homes"></div>
+    </section>
+  </div>
+</main>
+<footer class="client-footer" id="published-footer" hidden><div class="wrap" data-client-footer></div></footer>
+<script type="module" src="../../../site-published-preview.mjs"></script>
+</body>
+</html>
