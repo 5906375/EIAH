@@ -20,7 +20,7 @@
     Sem foto, aparece um espaço reservado "Foto do imóvel".
   - Endereço público: só bairro e cidade (rua e número são passados depois do contato).
   - Formulários: neste modelo o envio está desativado e isso é dito na tela; na vitrine do EIAH
-    o interesse vai para o CRM da imobiliária como lead.
+    a conexão ao CRM ainda precisa ser implementada e validada.
 */
 :root{
   --brand:#0e7c66; --brand-2:#14a37f; --brand-soft:#e6f6f1;
@@ -201,6 +201,9 @@ footer a:hover{color:#fff}
 </style>
 </head>
 <body>
+<aside id="demoNotice" style="background:#0b1f33;color:white;padding:14px 24px;text-align:center;font-size:14px" aria-label="Sobre esta demonstração">
+<strong>Demonstração comercial EIAH.</strong> Marca, imóveis e valores ilustrativos. Contatos e envios desativados; integração ao IMOB ainda não conectada.
+</aside>
 
 <header class="topbar">
   <div class="wrap">
@@ -318,8 +321,8 @@ footer a:hover{color:#fff}
         <input name="local" placeholder="Bairro e cidade do imóvel" aria-label="Bairro e cidade do imóvel">
         <textarea name="mensagem" placeholder="Conte um pouco sobre o imóvel (área, quartos, se está ocupado…)" aria-label="Sobre o imóvel"></textarea>
         <button class="btn btn-light" type="submit">Quero uma avaliação</button>
-        <div class="demo-msg" role="status">Este é um modelo de demonstração: o envio está desativado. No site da imobiliária, o pedido chega direto ao corretor responsável.</div>
-        <p class="note">Usamos seus dados só para responder este pedido (LGPD).</p>
+        <div class="demo-msg" role="status">Este é um modelo de demonstração: o envio está desativado. Nesta demonstração, nenhum pedido é enviado ou registrado no IMOB.</div>
+        <p class="note">Demonstração: não informe dados pessoais reais; nenhum pedido será enviado.</p>
       </form>
     </div>
   </div>
@@ -386,6 +389,7 @@ footer a:hover{color:#fff}
 <script>
 /* ===== CONFIG: dados da imobiliária ===== */
 const CONFIG = {
+  contactsEnabled: false,
   nome: "Imobiliária Modelo",
   sigla: "IM",
   creci: "CRECI 00000-J",
@@ -453,14 +457,23 @@ const PHOTO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const photoSlot = (label = "Foto do imóvel") => `<div class="photo-slot"><div>${PHOTO_SVG}${label}</div></div>`;
 const monthlyTotal = (p) => p.finalidade === "locacao" ? p.preco + p.condominio + Math.round(p.iptu) : null;
 const priceLabel = (p) => p.finalidade === "venda" ? brl(p.preco) : `${brl(p.preco)} <small>/${p.unidadePreco || "mês"}</small>`;
-const waLink = (text) => `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
+const waLink = (text) => CONFIG.contactsEnabled && /^55\d{10,11}$/.test(CONFIG.whatsapp) && !/^550+$/.test(CONFIG.whatsapp)
+  ? `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}` : "#demoNotice";
+// Não abrir contatos fictícios; formulários continuam sem envio ao servidor.
+document.addEventListener("click", (event) => {
+  const link = event.target.closest('a[href="#demoNotice"], #footPhone, #footEmail');
+  if (link && !CONFIG.contactsEnabled) {
+    event.preventDefault();
+    document.querySelector("#demoNotice").scrollIntoView({ block: "center" });
+  }
+});
 
 /* ===== marca ===== */
 function applyConfig() {
   $("#brandName").textContent = CONFIG.nome; $("#brandMark").textContent = CONFIG.sigla; $("#brandCreci").textContent = CONFIG.creci;
   $("#footName").textContent = CONFIG.nome; $("#footAddress").textContent = CONFIG.endereco;
-  $("#footPhone").textContent = CONFIG.telefone; $("#footPhone").href = `tel:+${CONFIG.whatsapp}`;
-  $("#footEmail").textContent = CONFIG.email; $("#footEmail").href = `mailto:${CONFIG.email}`;
+  $("#footPhone").textContent = CONFIG.telefone; $("#footPhone").href = CONFIG.contactsEnabled ? `tel:+${CONFIG.whatsapp}` : "#demoNotice";
+  $("#footEmail").textContent = CONFIG.email; $("#footEmail").href = CONFIG.contactsEnabled ? `mailto:${CONFIG.email}` : "#demoNotice";
   $("#footWhats").href = waLink(`Olá! Vim pelo site da ${CONFIG.nome}.`); $("#waFloat").href = $("#footWhats").href;
   $("#legalLine").textContent = `${CONFIG.nome} • ${CONFIG.creci} • CNPJ ${CONFIG.cnpj}`;
   document.title = `${CONFIG.nome} — compra, venda e locação`;
@@ -642,9 +655,9 @@ function openDetail(id) {
           <input name="telefone" placeholder="Telefone / WhatsApp" aria-label="Telefone ou WhatsApp" inputmode="tel" required>
           <select name="quando" aria-label="Melhor horário"><option>Melhor horário: manhã</option><option>Melhor horário: tarde</option><option>Melhor horário: noite</option></select>
           <button class="btn btn-primary" type="submit">${ctaText}</button>
-          <div class="demo-msg" role="status">Modelo de demonstração: o envio está desativado. No site da imobiliária, este pedido vira um atendimento para o corretor, ligado a este imóvel.</div>
+          <div class="demo-msg" role="status">Modelo de demonstração: o envio está desativado. Nenhum atendimento é criado no IMOB nesta demonstração.</div>
           <a class="btn btn-ghost" href="${waLink(`Olá! Tenho interesse no imóvel ${p.id} — ${p.titulo} (${p.bairro}, ${p.cidade}).`)}" target="_blank" rel="noopener">Falar no WhatsApp</a>
-          <p class="note">Usamos seus dados só para este atendimento (LGPD).</p>
+          <p class="note">Demonstração: não informe dados pessoais reais; nenhum atendimento será criado.</p>
         </form>
       </aside>
     </div>`;
