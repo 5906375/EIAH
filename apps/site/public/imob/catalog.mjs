@@ -1,6 +1,7 @@
 import { clientPropertyStorageKey, readClientProperties, storefrontProperties as IMOVEIS } from './client-properties.mjs';
 import { money as brl, quoteStay, stayDate, validStay } from './stay-visual.mjs';
 import { findProperty, monthlyTotal } from './property-context.mjs';
+import { seasonalRequestUrl } from './seasonal-cases.mjs';
 
 /* ===== util ===== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -15,7 +16,9 @@ const PHOTO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const photoSlot = (label = "Foto do imóvel") => `<div class="photo-slot"><div>${PHOTO_SVG}${label}</div></div>`;
 const priceLabel = (p) => p.finalidade === "venda" ? brl(p.preco) : `${brl(p.preco)} <small>/${p.unidadePreco || "mês"}</small>`;
 /* ===== estado e filtros ===== */
-const state = { mode: "venda", type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] };
+const initialMode = document.body.dataset.product === 'ia-cliente' &&
+  new URLSearchParams(location.search).get('finalidade') === 'temporada' ? 'temporada' : 'venda';
+const state = { mode: initialMode, type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] };
 let favorites = new Set(store.get("im_favs", []));
 let compare = new Set();
 let staySelection = null;
@@ -85,6 +88,12 @@ function matchNote(property) {
 function stayBreakdown(quote) {
   if (!quote) return "";
   return `<p class="stay-quote"><strong>${brl(quote.total)} no período</strong><br>${quote.nights} noite(s): ${brl(quote.lodging)} + limpeza: ${brl(quote.cleaning)}</p>`;
+}
+
+function seasonalRequestLink(property) {
+  if (document.body.dataset.product !== 'ia-cliente' || !property.stay) return '';
+  const selection = staySelection && quoteStay(property, staySelection) ? staySelection : null;
+  return `<a class="btn btn-ghost" href="${esc(seasonalRequestUrl(property, selection))}">Pedir datas</a>`;
 }
 
 function filtered() {
@@ -161,6 +170,7 @@ function render() {
           <div class="card-actions">
             <button class="btn btn-primary" data-open="${p.id}">Ver detalhes</button>
             ${propertyChatLink(p)}
+            ${seasonalRequestLink(p)}
           </div>
         </div>
       </article>`;
@@ -338,6 +348,7 @@ function openDetail(id) {
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
       ${propertyChatLink(property)}
+      ${seasonalRequestLink(property)}
     </div>`;
   showModal();
 }
