@@ -21,6 +21,9 @@ const colorValue = document.getElementById('brandColorValue');
 const sectionButtons = [...document.querySelectorAll('[data-editor-section]')];
 
 function showSection(id) {
+  const contacts = id === 'editorContact';
+  save.textContent = contacts ? 'Salvar dados do rodapé' : 'Aplicar à prévia 02';
+  save.formNoValidate = contacts;
   for (const button of sectionButtons) {
     const selected = button.dataset.editorSection === id;
     button.setAttribute('aria-pressed', String(selected));
@@ -49,8 +52,13 @@ form.addEventListener('invalid', event => {
 let logo = '';
 let selection = 0;
 
-const profileFields = ['name', 'introduction', 'contact', 'accent', ...footerFields];
-loadSaved.hidden = Object.keys(readSavedBrand()).length === 0;
+const contactFields = ['contact', ...footerFields];
+const profileFields = ['name', 'introduction', 'accent', ...contactFields];
+const savedAtOpen = readSavedBrand();
+for (const field of contactFields) {
+  form.elements.namedItem(field).value = savedAtOpen[field] ?? '';
+}
+loadSaved.hidden = Object.keys(savedAtOpen).length === 0;
 
 loadSaved.addEventListener('click', () => {
   const saved = readSavedBrand();
@@ -215,12 +223,19 @@ remove.addEventListener('click', () => {
 
 form.addEventListener('submit', event => {
   event.preventDefault();
+  const contactsOnly = save.formNoValidate;
   const current = profile();
-  if (!current.name || !current.introduction) {
+  if (!contactsOnly && (!current.name || !current.introduction)) {
     feedback.textContent = 'Preencha o nome e o texto de apresentação.';
     const input = form.elements.namedItem(current.name ? 'introduction' : 'name');
     showSection(input.closest('.editor-section').id);
     input.focus();
+    return;
+  }
+  const email = form.elements.namedItem('footerEmail');
+  if (!email.checkValidity()) {
+    showSection('editorContact');
+    email.reportValidity();
     return;
   }
   for (const field of ['footerPhone', 'footerWhatsapp']) {
@@ -235,9 +250,18 @@ form.addEventListener('submit', event => {
       return;
     }
   }
-  feedback.textContent = saveBrand({ ...current, footerConfirmed: true })
-    ? 'Personalização aplicada à prévia 02 neste navegador.'
-    : 'O navegador não conseguiu salvar a personalização. Mantenha a página aberta e tente novamente.';
+  const next = contactsOnly
+    ? { ...readSavedBrand(), ...Object.fromEntries(contactFields.map(field => [field, current[field]])) }
+    : current;
+  if (!saveBrand({ ...next, footerConfirmed: true })) {
+    feedback.textContent = 'O navegador não conseguiu salvar a personalização. Mantenha a página aberta e tente novamente.';
+    return;
+  }
+  loadSaved.hidden = false;
+  feedback.textContent = contactsOnly
+    ? 'Rodapé salvo neste navegador. Para atualizar a vitrine publicada na demo, importe a personalização e publique novamente.'
+    : 'Personalização aplicada à prévia 02 neste navegador.';
 });
 
+if (location.hash === '#editorContact') showSection('editorContact');
 refresh();
