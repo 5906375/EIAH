@@ -52,3 +52,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - A página passou a carregar diretamente o módulo que preenche o rodapé. No Chromium, a Operação EIAH e a Prévia 02 sem contatos salvos exibiram os campos de identificação e contato com dez valores de exemplo.
 - Na Prévia 02, salvei um e-mail de teste pelo editor. A vitrine exibiu o link com o e-mail salvo, e os demais campos vazios continuaram com os exemplos correspondentes. O dry-run do Wrangler passou.
+
+## Layout responsivo em uma coluna
+
+- Em Chromium, o catálogo, as duas vitrines, o editor, a criação do site, o pedido de temporada e a visão da equipe foram conferidos em 320, 390, 768, 1024 e 1440 px. As páginas ficaram sem rolagem horizontal. Nos layouts avaliados, os blocos, os filtros, os cartões, os formulários e os rodapés foram empilhados.
+- Na aba Imóveis do editor, a prévia do anúncio ficou abaixo do formulário, alinhada à mesma coluna e com a mesma largura. O dry-run do Wrangler passou.
