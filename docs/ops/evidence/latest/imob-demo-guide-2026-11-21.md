@@ -47,3 +47,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 - Em Chromium, a Prévia 01 abriu o convite pelo imóvel V-01 com ficha, galeria e identificação na mensagem. Com três de cinco campos preenchidos, a mesma mensagem foi preparada para WhatsApp e e-mail, e a cópia foi confirmada na interface. Nenhuma mensagem externa foi enviada.
 - Na Prévia 02, o convite apresentou a origem correta. O acesso pelo botão de anúncio acrescentou o contexto de proprietário e retornou à vitrine. O botão de temporada abriu o pedido de datas. Nas duas prévias, o compositor do chat ficou fora da página.
 - A sintaxe dos módulos, a correspondência das 28 narrações com o texto do guia e o dry-run do Wrangler passaram.
+
+## Rodapé de exemplo da Operação EIAH
+
+- A página passou a carregar diretamente o módulo que preenche o rodapé. No Chromium, a Operação EIAH e a Prévia 02 sem contatos salvos exibiram os campos de identificação e contato com dez valores de exemplo.
+- Na Prévia 02, salvei um e-mail de teste pelo editor. A vitrine exibiu o link com o e-mail salvo, e os demais campos vazios continuaram com os exemplos correspondentes. O dry-run do Wrangler passou.
