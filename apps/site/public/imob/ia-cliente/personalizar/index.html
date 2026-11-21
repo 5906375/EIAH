@@ -16,7 +16,7 @@
   </div>
 </header>
 <main class="wrap brand-editor">
-  <h1>Personalizar meu site</h1>
+  <h1 data-demo-guide-topic="site-cliente">Personalizar meu site</h1>
   <p class="lead">Personalize a marca, a apresentação, os imóveis e os contatos. Confira as alterações antes de aplicar à prévia neste navegador.</p>
   <p><a class="quiet-link" href="../criar-site/">Criar meu site com esta personalização</a></p>
   <div class="editor-grid">
@@ -29,7 +29,7 @@
       </nav>
       <form id="brandEditor" autocomplete="off">
         <section id="editorBrand" class="editor-section">
-          <h2>Identidade da imobiliária</h2>
+          <h2 data-demo-guide-topic="marca">Identidade da imobiliária</h2>
           <label class="field-label" for="brandName">Nome da imobiliária</label>
           <input id="brandName" name="name" required maxlength="70" placeholder="Ex.: Imobiliária Exemplo">
           <label class="field-label" for="brandColor">Cor principal</label>
@@ -41,7 +41,7 @@
           <output class="field-help" id="brandColorValue" for="brandColor" hidden></output>
           <p class="field-help" id="brandColorHelp">Digite um código hexadecimal ou use o seletor. Tons claros podem ser ajustados para manter a legibilidade.</p>
           <fieldset class="logo-field">
-            <legend class="field-label">Logo (opcional)</legend>
+            <legend data-demo-guide-topic="logo" class="field-label">Logo (opcional)</legend>
             <div class="next-actions logo-options" role="group" aria-label="Como adicionar o logo">
               <button class="btn btn-ghost logo-option" id="chooseLogo" type="button" aria-pressed="true" aria-controls="logoUpload">Enviar do computador</button>
               <button class="btn btn-ghost logo-option" id="createLogo" type="button" aria-pressed="false" aria-controls="logoCreation">Criar com um prompt</button>
@@ -75,16 +75,16 @@
           </fieldset>
         </section>
         <section id="editorIntro" class="editor-section" hidden>
-          <h2>Apresentação do site</h2>
+          <h2 data-demo-guide-topic="apresentacao">Apresentação do site</h2>
           <label class="field-label" for="brandIntro">Texto de apresentação</label>
           <textarea id="brandIntro" name="introduction" rows="4" required maxlength="280" placeholder="Ex.: Encontre imóveis para comprar ou alugar no litoral catarinense."></textarea>
         </section>
         <section id="editorContact" class="editor-section" hidden>
-          <h2>Contatos e rodapé</h2>
+          <h2 data-demo-guide-topic="rodape">Contatos e rodapé</h2>
           <label class="field-label" for="brandContact">Nome da equipe de atendimento</label>
           <input id="brandContact" name="contact" maxlength="60" placeholder="Ex.: Equipe de atendimento imobiliário">
           <fieldset class="editor-footer-fields" aria-describedby="footerHelp">
-            <legend>Dados públicos do rodapé</legend>
+            <legend data-demo-guide-topic="rodape">Dados públicos do rodapé</legend>
             <p class="field-help" id="footerHelp">Preencha os dados que você quer mostrar na vitrine e clique em Salvar dados do rodapé. Todos os campos são opcionais.</p>
             <div class="editor-footer-grid">
               <label class="field-label editor-full">Razão social ou nome profissional
@@ -125,7 +125,7 @@
         <p id="brandFeedback" role="status"></p>
       </form>
       <form id="propertyEditor" class="editor-section" hidden>
-        <h2>Imóveis da vitrine</h2>
+        <h2 data-demo-guide-topic="imoveis">Imóveis da vitrine</h2>
         <p class="field-help">Edite um imóvel de demonstração ou adicione um novo. Use dados e fotos fictícios.</p>
         <label class="field-label" for="propertyChoice">Escolher imóvel</label>
         <select id="propertyChoice"></select>
@@ -202,20 +202,20 @@
       </form>
     </div>
     <section class="editor-panel design-preview" id="designPreview" aria-labelledby="designTitle">
-      <h2 id="designTitle">Prévia da marca</h2>
+      <h2 data-demo-guide-topic="marca" id="designTitle">Prévia da marca</h2>
       <div class="brand-sample">
         <div class="brand"><span class="brand-monogram" data-client-logo aria-hidden="true"></span><span data-client-name></span></div>
         <img class="brand-sample-art" src="../../assets/eiah-imoveis-conceito.webp" width="1536" height="1024" alt="">
         <div class="brand-sample-copy">
           <p class="brand-sample-heading">Encontre seu imóvel.</p>
           <p data-client-intro></p>
-          <span class="btn btn-primary">Iniciar atendimento</span>
+          <span class="btn btn-primary">Solicitar demonstração com IA</span>
         </div>
         <div class="sample-footer" data-client-footer></div>
       </div>
     </section>
     <section class="editor-panel design-preview" id="propertyDesignPreview" aria-labelledby="propertyDesignTitle" hidden>
-      <h2 id="propertyDesignTitle">Prévia do anúncio</h2>
+      <h2 data-demo-guide-topic="imoveis" id="propertyDesignTitle">Prévia do anúncio</h2>
       <div class="brand-sample">
         <img id="propertyCoverPreview" class="brand-sample-art" alt="Foto de capa do imóvel" hidden>
         <div class="brand-sample-copy">
@@ -228,7 +228,7 @@
     </section>
   </div>
   <section class="editor-panel voice-editor" aria-labelledby="voiceEditorTitle">
-    <h2 id="voiceEditorTitle">Mensagens de voz dos assistentes</h2>
+    <h2 data-demo-guide-topic="voz" id="voiceEditorTitle">Mensagens de voz dos assistentes</h2>
     <p class="lead">Grave ou envie uma mensagem curta para a etapa que você escolher. O áudio fica salvo neste navegador.</p>
     <label class="field-label" for="voiceRole">Assistente</label>
     <select id="voiceRole">
@@ -255,5 +255,6 @@
 <script type="module" src="../../brand-editor.mjs"></script>
 <script type="module" src="../../property-editor.mjs"></script>
 <script type="module" src="../../guide-voice-editor.mjs"></script>
+<script type="module" src="../../demo-guide.mjs"></script>
 </body>
 </html>
