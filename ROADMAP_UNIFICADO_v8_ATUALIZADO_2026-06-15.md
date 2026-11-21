@@ -1,11 +1,13 @@
-# ROADMAP ATUALIZADO v8.1
+# ROADMAP ATUALIZADO v8.2
 
-Data de referência desta revisão: **2026-07-01**
+Data de referência desta revisão: **2026-11-21**
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
 >
-> Revisão v8.1: atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
+> **Status da revisão v8.2: RASCUNHO, pendente de registro pelo administrador (ADR-008).** As seções 1.3, 10.10, 11.2 (acréscimo), 11.4 (acréscimo), 14.1, 15.1 e 16 foram adicionadas a partir da leitura de `git log` (títulos de commit e PRs) até o commit `d5ad280` de 2026-11-21. O código de cada PR não foi revisado; as colunas "a indicar" exigem confirmação humana. Nenhum item novo é declarado `DONE`.
+>
+> Revisão v8.1 (preservada): atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
 
 ## Cláusula anti-drift interna
 
@@ -60,6 +62,28 @@ Leitura normativa correta após F0.45:
 - a cadeia F0.34–F0.44 comprova readiness, dry-run, preflight e gate reforçado, mas não fecha a Camada B produtiva;
 - a camada Conversação está consolidada documentalmente no plano interativo, porém continua `especificada/parcial`, não `DONE`;
 - F0/P0 transversal permanecem parciais e não devem ser declarados fechados sem decisão/evidência adicionais.
+
+## 1.3) Atualização executiva v8.2 — 2026-11-21 (rascunho)
+
+Esta revisão não reabre o roadmap v8; ela sincroniza o documento com o que o repositório contém em 2026-11-21 (`main`, commit `d5ad280`).
+
+Leitura consolidada:
+- Desde 2026-07-01 foram mergeados **296 PRs** (entre os commits sem merge: 121 `feat`, 101 `fix`, 195 `docs`, 38 `test`, 31 `ci`, 6 `evidence`).
+- O **Front Door único** (`/app/chat`) passou a ser a superfície operacional da plataforma, sob a ADR-010.
+- A **liberação de verticais** por tenant, workspace e vertical (ADR-011) foi implementada em PRs sequenciais (#481 a #486), com pedido e decisão pela conversa, acesso por link de uso único e billing antes da liberação. O status real da implementação deve ser confirmado (a ADR estava "implementação pendente" em 2026-10-02).
+- A **autorização** ganhou vínculo ativo e autoridade efetiva; o **billing** passou a exigir designação de autoridade financeira nas escritas de cota e ajuste.
+- A vertical **Logística** avançou com o Oráculo (preparação, decisão humana J17, contratos governados de consulta a fontes), sem alterar o status `PRE_DUIMP`/shadow do §15 nem a ordem oficial de rollout.
+- O **IMOB** continua acima do programado: destinação de ativo, intake agêntico de unidades, arquivamento governado em lote, rascunho guiado e cartões de especialistas, além das demos no site.
+- **MKT** segue como futura frente vertical (ordem `LEGAL -> MKT -> Financeiro -> URBAN -> Logística` inalterada); existe a ponte de leitura **P11 IMOB-MKT** (Front Door lê o caso e as necessidades transversais, sem escrita).
+- As edições posteriores a julho já presentes neste arquivo (gate PRE_DUIMP, rebaixamento do P1 de fechado para parcial, plano multicanal, checklist IMOB) foram **preservadas**.
+
+Reavaliações de estado **a confirmar com evidência** (a tabela do §2 não foi alterada):
+- **5.2 (policies e human approvals):** há avanço de autorização e de designação de autoridade; avaliar se muda de "Parcial avançada".
+- **Track P:** novas superfícies do Front Door e do site IMOB; avaliar se muda de "Parcial avançada+".
+
+Regra de decisão v8.2:
+- Não reabrir frentes fechadas sem decisão explícita; manter fora de escopo o que as ADR-010 e ADR-011 já declararam fora (billing/custo, IMOB Cost, ruleset, Evidence Index).
+- O Evidence Index só aponta para arquivos existentes e evidências geradas por execução real.
 
 ## 2) Estado consolidado por fase
 
@@ -396,6 +420,28 @@ Itens já implementados que não eram requisito explícito do backlog P0-P4, mas
 **Observação de governança**
 - Itens “implementado extra” não substituem DoD de P0-P4.
 - Promoção para “operacionalmente fechado” continua condicionada às métricas e evidências normativas do v8.
+
+### 10.10) Implementado extra desde o v8.1 (v8.2, rascunho)
+
+Classificação: **Além do programado**. Convenção da coluna Evidência: "existe" = arquivo confirmado no repositório; "a indicar" = caminho não confirmado nesta leitura. Os números de PR agrupam intervalos e devem ser confirmados um a um.
+
+| # | Tema | Referência (PR/commit) | Evidência | Estado proposto |
+| --- | --- | --- | --- | --- |
+| 1 | **Front Door único** (ADR-010): superfície operacional única EIAH-FD-001 no Chat Agent Launcher; base de especialistas; descoberta de capacidades | `c052960e` (2026-10-24) e anteriores de 2026-10-22; PRs #504, #505 | `apps/api/src/services/chat/verticalRegistryComposition.ts` (existe); demais a indicar | Implementado (código); evidência a indexar |
+| 2 | **Front Door — UX e ciclo de vida**: intake contextual, ciclo de vida do run, avaliação IMOB, histórico e sequência da conversa, layout responsivo | PRs #516 a #535 | a indicar | Implementado (código); evidência a indexar |
+| 3 | **Liberação de verticais** (ADR-011): pedido e decisão pela conversa, link de uso único, billing antes da liberação, fila de liberações | PRs #481 a #486 (2026-10-02 e 2026-10-03) | a indicar | Implementado (código); **confirmar status real** |
+| 4 | **Autorização**: vínculo ativo e histórico por titularidade, autoridade efetiva, sombra G2 de bootstrap e troca de workspace, capacidade da Logística por membro | `ca91c060`, `a0088070`, `53e90436`, `359714ab`, `1d5f7b45` (2026-10-22 a 2026-10-26) | a indicar | Implementado (código); evidência a indexar |
+| 5 | **Billing**: designação de autoridade financeira nas escritas de cota e ajuste | `3377afc5` (2026-10-24) | a indicar | Implementado (código); não altera preços nem o IMOB Cost |
+| 6 | **GuardrailLedger** referenciado no fluxo (`enforceTenant`, `runs`, `billing`, `governance`, `delegations`, `onboarding`, `help`, `checkDelegationPolicy`) | referências no código | `packages/core/src/audit/guardrailLedger.ts` (existe) | Parcial: ligação confirmada por referência; semântica e cobertura não verificadas |
+| 7 | **IMOB — destinação de ativo**, lotes e negócios | PR #514 (2026-11-07) | `packages/contracts/src/imobAssetDestination.ts` (existe) | Implementado (código); evidência a indexar |
+| 8 | **IMOB — intake agêntico de unidades**, guarda de unidade e CEP opcional, rascunho guiado | PRs #515, #536, #537 (2026-11-09 a 2026-11-16) | a indicar | Implementado (código); evidência a indexar |
+| 9 | **IMOB — arquivamento governado em lote** e leitura de arquivados | PRs #531, #532 (2026-11-11) | a indicar | Implementado (código); evidência a indexar |
+| 10 | **Site IMOB**: catálogo de demos, onboarding do site, cartões dos especialistas, Radar Social, gravação do rodapé | PRs #542 a #545 (2026-11-20 e 2026-11-21) | `docs/ops/evidence/latest/imob-demo-footer-save-2026-11-21.md` e `docs/ops/evidence/latest/imob-specialists-cards-demo-2026-11-21.md` (existem) | Implementado, com evidência indexada |
+| 11 | **P11 IMOB-MKT**: leitura transversal pelo Front Door, sem escrita | `c052960e` (2026-10-24); PR #512 (evidência sanitizada) | a indicar | Parcial: só leitura; MKT continua sem vertical |
+| 12 | **MCP — governança endurecida** (negar execução quando contrato ou guarda de DB falha; saída simulada tipada) | 11 commits no escopo `mcp` (2026-07-22 a 2026-07-28) | a indicar | Implementado (código); evidência a indexar |
+| 13 | **Provider**: propagação de falha do LLM | PR #538 | a indicar | Implementado (código) |
+| 14 | **P0 de operação**: observabilidade de staging, decisão Redis/IMOB, vista pública de agentes, encerramento gracioso da API | PRs #501, #502, #503, #509 | a indicar | Parcial: evidenciar |
+
 ## 11) Atualização operacional v8.1 — comparação roadmap vs código atual
 
 Esta seção registra o alinhamento entre o roadmap v8, o estado do código e os checklists operacionais mais recentes. Ela existe para reduzir drift entre documentação macro, runtime e evidências.
@@ -428,6 +474,8 @@ Esta seção registra o alinhamento entre o roadmap v8, o estado do código e os
 | #145 — IMOB Funnel/Team consolidation | Implementado | Consolida equipe dentro do funil e reduz duplicação de UX. |
 | #146 — IMOB Trilha B runtime mínimo | Implementado | `assignResponsibleActor()` passa a validar contrato canônico antes da persistência compat IMOB. |
 
+Acréscimo v8.2 (rascunho): os avanços posteriores a #146 estão na tabela do §10.10 (PRs #481 a #486, #501 a #505, #509, #510, #512, #514 a #545 e commits de autorização, billing, Oráculo e MCP), com a mesma leitura de governança: implementados além do backlog normativo, sem substituir DoD P0–P4.
+
 ### 11.3) Trilha B runtime mínimo — estado normativo
 
 O PR `PR-IMOB-DATA-TRILHA-B-RUNTIME-01` está registrado como concluído no checklist operacional com:
@@ -459,6 +507,13 @@ Ações remanescentes:
 6. Deixar o gate bloquear de fato.
 
 Enquanto isso não ocorrer, não declarar o v8 como “operacionalmente fechado” em termos de SLO.
+
+Acréscimo v8.2 (rascunho) — pendências adicionais a tratar:
+- Confirmar o status de implementação da **ADR-011** e registrar a evidência.
+- Indexar no Evidence Index as evidências dos itens 1 a 5, 7 a 9 e 12 a 14 do §10.10.
+- Revisar a data de referência do cabeçalho a cada ciclo documental (a de 2026-07-01 contradizia as edições posteriores).
+- Reconfirmar se a pendência de SLO acima e a ausência do checklist **IMOB Cost** (frente bloqueada até sua criação e ratificação) continuam verdadeiras; não foram reconfirmadas nesta revisão.
+- Reconciliar materiais de comunicação (por exemplo, o Kit Evento de 2026-06-28) com o estado atual: os números nele citados são anteriores a esta revisão.
 
 ## 12) Diretriz de atualização documental após v8.1
 
@@ -505,6 +560,16 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 - Risco residual: **regressão documental futura se novos roadmaps, evidências ou referências forem adicionados sem passar pelos gates de integridade documental**.
 
 **Status normativo desta revisão:** parcial avançado, não operacionalmente fechado.
+
+### 14.1) Status v8.2 (rascunho)
+
+- Front Door: **superfície única implementada** (código), evidência a indexar.
+- Liberação de verticais (ADR-011): **implementada em código**, status a confirmar.
+- Logística: **Oráculo e decisão humana J17 implementados** (código); `PRE_DUIMP` segue em shadow e a ordem oficial de rollout não muda.
+- MKT: **continua sem vertical**; a ponte P11 é somente leitura.
+- Risco residual: regressão documental se as evidências não forem indexadas.
+
+**Status normativo da revisão v8.2:** rascunho pendente de registro; parcial avançado, não operacionalmente fechado.
 
 ## 15) PRE_DUIMP — Gate de preparação técnica (vertical Logística)
 
@@ -581,3 +646,36 @@ Critérios verificáveis, ainda não satisfeitos nesta revisão:
 ### Relação com CORE-01A0b / CORE-01A0
 
 Nenhum DoD versionado explícito foi localizado para `CORE-01A0b` ou `CORE-01A0` nas fontes normativas vigentes na data desta revisão. `CORE-01A0b-R` está evidenciado (`ops/evidence/latest/core-01a0b-r-run-governance-validation-2026-08-26.md`), mas essa evidência não promove `CORE-01A0b` nem `CORE-01A0` a fechados — ambos permanecem `parcial` por ausência de DoD adicional localizado. A abertura documental de `PRE_DUIMP` nesta seção não depende do fechamento de `CORE-01A0b`/`CORE-01A0` e não os declara fechados.
+
+## 15.1) Logística — Oráculo e decisão humana J17 (v8.2, rascunho)
+
+Complementa o §15 (`PRE_DUIMP`), sem alterar a ordem oficial de rollout (`LEGAL -> MKT -> Financeiro -> URBAN -> Logística`) nem os critérios do §15, que continuam não satisfeitos. `Comex/DUIMP` segue como recorte interno da Logística, não como vertical pública adicional.
+
+| Frente | Referência | Estado proposto |
+| --- | --- | --- |
+| Reconhecimento do produto LOGISTICA, provisionamento fail-closed e contratos de preparação do Oráculo | `958f11a0` (2026-10-19) | Implementado (código); evidência a indexar |
+| API de acesso governado, canais de ativação, preparação do Oráculo e proteção de upload | `3e0c6274` (2026-10-19) | Implementado (código); evidência a indexar |
+| Front Door conectado ao cockpit do Oráculo, com continuidade explícita de caso | `4739b24b` (2026-10-19) | Implementado (código); evidência a indexar |
+| Decisão humana J17 no caso da Logística: contratos, serviço, repositório e API | `49634d3f` (2026-10-22) | Implementado (código); evidência a indexar |
+| Contratos governados de consulta a fontes | `a40f951e` (2026-11-04); PR #510 | Implementado (código); evidência a indexar |
+| Suítes de contrato, mock e integração registradas em CI | `f200ee96`, `57b226dd`, `e08c54d2` | Evidência de CI a indexar |
+
+Estado público: a promoção de `PRE_DUIMP` além de shadow continua dependendo dos critérios do §15 e de decisão própria. Nenhum item acima autoriza transmissão externa.
+
+## 16) Índice das ADRs vigentes (v8.2, rascunho)
+
+Até a v8.1 este roadmap não citava ADRs. O índice abaixo usa o nome dos arquivos em `docs/adr/`; **datas de decisão só onde o próprio arquivo as declara**.
+
+| ADR | Assunto (pelo nome do arquivo) | Data de decisão |
+| --- | --- | --- |
+| 001 | Stack de domínio e runtime | ver arquivo |
+| 002 | Banco de dados Postgres autogerenciado | ver arquivo |
+| 003 | Hierarquia do work registry | ver arquivo |
+| 004 | Semântica de bloqueio de required checks | ver arquivo |
+| 005 | Tratamento declarativo de evidência P2 (interop) | ver arquivo |
+| 006 | Detecção de circularidade estrutural | ver arquivo |
+| 007 | Realocação temporária de gate P1/P2 | ver arquivo |
+| 008 | Modelo de revisão por administrador único | ver arquivo |
+| 009 | Reconciliação de pendências das ADR-001 a 008 | ver arquivo |
+| 010 | Unificação do chat Front Door e das verticais | 2026-09-30 (declarada no arquivo) |
+| 011 | Liberação de verticais e acesso por convite | 2026-10-02 (declarada no arquivo) |
