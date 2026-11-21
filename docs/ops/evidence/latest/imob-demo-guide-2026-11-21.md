@@ -78,3 +78,9 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Em Chromium, o apartamento V-03 nas duas vitrines apresentou duas colunas a 320 e 390 px, quatro a 768 px e cinco a 1440 px. Os pares de rótulo e valor mantiveram a ordem, a descrição apareceu acima dos dados e a página ficou sem rolagem horizontal.
 - A ficha abriu e fechou nas duas prévias. As fichas de aluguel L-01 e temporada T-01 também foram conferidas em tela estreita. A checagem de sintaxe, `git diff --check` e o dry-run do Wrangler passaram.
+
+## Carrossel de agentes da imobiliária
+
+- Em Chromium a 320, 390, 768 e 1440 px, os três assistentes da jornada, os três especialistas e o espaço de expansão ficaram na mesma faixa, com avanço e retorno pelas setas e sem rolagem horizontal da página.
+- Em uma sessão de demonstração isolada a 390 px, o fluxo partiu do perfil de exemplo e passou pela publicação simulada, revisão de escopo, contratação e ativação do J_360. O foco voltou ao cartão após a contratação e a ativação, com a posição do carrossel e o exemplo aberto preservados.
+- As setas das duas vitrines de imóveis foram conferidas após a extração do código compartilhado. As 28 narrações foram conferidas, incluindo a gravação atualizada de agentes. A sintaxe, `git diff --check` e o dry-run do Wrangler passaram.
