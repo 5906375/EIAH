@@ -11,7 +11,7 @@ export function stopContextAudio() {
   playback.end('Áudio interrompido.');
 }
 
-function playbackButton(wrap, label, status, play, stop) {
+function playbackButton(wrap, label, status, play, stop, onUnavailable) {
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = label;
@@ -30,14 +30,16 @@ function playbackButton(wrap, label, status, play, stop) {
     active = current;
     button.textContent = 'Parar áudio';
     try {
-      play(message => {
+      play((message, unavailable) => {
         if (active !== current) return;
         active = null;
         end(message);
+        if (unavailable) onUnavailable?.();
       });
     } catch {
       active = null;
       end('Não foi possível iniciar o áudio.');
+      onUnavailable?.();
     }
   });
   return button;
@@ -53,32 +55,42 @@ function speakText(text, preferredVoice, status, done) {
   if (voice) utterance.voice = voice;
   utterance.lang = voice?.lang ?? 'pt-BR';
   utterance.onend = () => done('Leitura concluída.');
-  utterance.onerror = () => done('Leitura indisponível. Você pode seguir pela mensagem em texto.');
+  utterance.onerror = () => done('Leitura indisponível. Você pode seguir pela mensagem em texto.', true);
   status.textContent = 'Lendo a mensagem…';
   speech.speak(utterance);
 }
 
 const voiceKey = role => 'eiah-imob-visual:voice:' + document.body.dataset.product + ':' + role;
 
-export function createPromptAudio(text, role, beforePlay, label = 'Ouvir pergunta') {
+export function createPromptAudio(text, role, beforePlay, label = 'Ouvir pergunta', { fallbackSource } = {}) {
   const element = document.createElement('div');
   element.className = 'context-audio request-prompt-audio';
   const status = document.createElement('span');
   status.className = 'audio-status';
   status.setAttribute('role', 'status');
+  const fallback = fallbackSource ? document.createElement('div') : null;
+  if (fallback) {
+    fallback.hidden = Boolean(speech);
+    fallback.append(createRecordedPromptAudio(fallbackSource, 'Ouvir gravação alternativa'));
+  }
   if (speech) {
     playbackButton(element, label, status, done => {
       beforePlay();
+      if (fallback) fallback.hidden = true;
       let preferredVoice;
       try { preferredVoice = localStorage.getItem(voiceKey(role)); } catch {}
       speakText(text, preferredVoice, status, done);
-    }, () => speech.cancel());
+    }, () => speech.cancel(), () => { if (fallback) fallback.hidden = false; });
+    element.append(status);
+  } else if (fallback) {
+    status.textContent = 'Leitura por voz indisponível neste navegador.';
     element.append(status);
   }
+  if (fallback) element.append(fallback);
   return element;
 }
 
-export function createRecordedPromptAudio(source, label) {
+function createRecordedPromptAudio(source, label) {
   const element = document.createElement('div');
   element.className = 'context-audio request-prompt-audio';
   const status = document.createElement('span');

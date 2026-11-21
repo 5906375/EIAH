@@ -1,5 +1,5 @@
-import { createRecordedPromptAudio, stopContextAudio } from './context-audio.mjs';
-import { demoGuidePages, demoGuideTopics } from './demo-guide-content.mjs';
+import { createPromptAudio, stopContextAudio } from './context-audio.mjs';
+import { demoGuideNarration, demoGuidePages, demoGuideTopics } from './demo-guide-content.mjs';
 
 const base = new URL('./', import.meta.url);
 const page = location.pathname.slice(base.pathname.length).replace(/\/?index\.html$/, '').replace(/\/$/, '');
@@ -114,8 +114,10 @@ function renderTopic(topic, dialog, standalone = false) {
   const description = element('p', topic.description);
   const steps = element('ol');
   steps.append(...topic.steps.map(step => element('li', step)));
-  const audio = createRecordedPromptAudio(new URL('assets/guia-demo/' + topic.id + '.mp3', base), 'Ouvir passo a passo');
-  audio.querySelector('button').classList.add('btn', 'btn-ghost');
+  const role = document.body.dataset.guideRole ?? 'welcome';
+  const fallbackSource = new URL('assets/guia-demo/' + topic.id + '.mp3', base);
+  const audio = createPromptAudio(demoGuideNarration(topic), role, () => {}, 'Ouvir passo a passo', { fallbackSource });
+  for (const control of audio.querySelectorAll('button')) control.classList.add('btn', 'btn-ghost');
   details.append(description, steps, audio);
   const [label, destination] = topic.link;
   const target = new URL(destination, base);

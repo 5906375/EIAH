@@ -17,3 +17,10 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 - Em Chromium, ao alternar entre venda, aluguel anual e temporada na mesma página, o botão Como funciona? dos resultados abriu a orientação correspondente e reproduziu o áudio em cada modo.
 - A abertura direta também foi verificada na Vitrine de imóveis, na fila de temporada, em Contatos e rodapé e em Especialistas EIAH. Escape devolveu o foco ao botão de origem.
 - A checagem dos arquivos confirmou 44 atalhos nas oito páginas, 28 assuntos com destinos válidos e as 28 narrações atualizadas. A conferência de sintaxe e o dry-run do Wrangler passaram. O Wrangler reconheceu 130 arquivos estáticos.
+
+## Voz compartilhada com os assistentes
+
+- A leitura em **Como funciona?** usa a mesma síntese e a preferência de voz da etapa de atendimento. Nas demais páginas, usa a preferência de Recepção quando disponível e segue a seleção padrão de voz em português do navegador.
+- Um teste em Node com a síntese do navegador simulada confirmou a mesma voz escolhida nas perguntas e no guia para Recepção, Imóvel e Revisão. Também conferiu a leitura padrão em pt-BR, a interrupção e a oferta manual da gravação quando a síntese falha ou está indisponível.
+- Na etapa Imóvel da prévia local em Chromium, a síntese nativa ficou indisponível. O guia exibiu o texto e ofereceu a gravação alternativa. A reprodução começou após clicar na alternativa. Parar áudio interrompeu a reprodução e Escape devolveu o foco a **Como funciona?**.
+- A checagem de sintaxe, a conferência das 28 narrações alternativas e o dry-run do Wrangler passaram.
