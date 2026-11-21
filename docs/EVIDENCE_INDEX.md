@@ -10,6 +10,12 @@
 | --- | --- | --- |
 | Gravação do rodapé da Prévia 02 | `docs/ops/evidence/latest/imob-demo-footer-save-2026-11-21.md` | Teste JavaScript com DOM e armazenamento simulados da gravação isolada dos contatos, preservação da marca, validação e geração de links. |
 
+## Site IMOB — cartões dos especialistas na demonstração (2026-11-21)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Cartões de J_360 e FinNexus | `docs/ops/evidence/latest/imob-specialists-cards-demo-2026-11-21.md` | Verificação local dos retratos, dos exemplos de uso antes da publicação e da revisão e ativação simuladas após a publicação. |
+
 ## Site IMOB — cadastro, publicação e especialistas em demonstração (2026-11-20)
 
 | Assunto | Arquivo | O que prova |
