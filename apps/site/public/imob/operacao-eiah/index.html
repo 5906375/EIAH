@@ -99,14 +99,16 @@
       <div class="results-actions">
         <button class="btn btn-ghost" id="onlyFav" type="button" aria-pressed="false">♡ Favoritos</button>
         <button class="btn btn-ghost" id="clearFilters" type="button">Limpar filtros</button>
-        <div class="property-carousel-buttons" id="cardsNavigation" role="group" aria-label="Navegação dos imóveis" hidden>
-          <button class="btn btn-ghost property-carousel-arrow" id="cardsPrevious" type="button" aria-label="Imóveis anteriores" aria-controls="cards">‹</button>
-          <button class="btn btn-ghost property-carousel-arrow" id="cardsNext" type="button" aria-label="Próximos imóveis" aria-controls="cards">›</button>
-        </div>
       </div>
     </div>
 
-    <div class="grid-cards" id="cards" role="region" aria-labelledby="listTitle"></div>
+    <div class="cards-carousel" role="region" aria-labelledby="listTitle">
+      <div class="property-carousel-buttons cards-navigation" id="cardsNavigation" role="group" aria-label="Navegação dos imóveis" hidden>
+        <button class="btn btn-ghost property-carousel-arrow" id="cardsPrevious" type="button" aria-label="Imóveis anteriores" aria-controls="cards">‹</button>
+        <button class="btn btn-ghost property-carousel-arrow" id="cardsNext" type="button" aria-label="Próximos imóveis" aria-controls="cards">›</button>
+      </div>
+      <div class="grid-cards" id="cards" role="group" aria-label="Lista de imóveis"></div>
+    </div>
   </div>
 </section>
 

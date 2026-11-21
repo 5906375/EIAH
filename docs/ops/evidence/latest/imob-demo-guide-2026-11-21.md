@@ -68,3 +68,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Em Chromium, nas duas vitrines a 320, 390, 768 e 1440 px, os cartões ficaram na mesma linha, com rolagem restrita ao carrossel. As setas avançaram e voltaram e sinalizaram os limites. A ficha continuou acessível. Ao filtrar até não haver resultados, as setas ficaram ocultas. Limpar os filtros trouxe os cartões e restaurou a posição inicial.
 - O rodapé exibiu três colunas a 768 e 1440 px e uma coluna a 320 e 390 px. A checagem de sintaxe, `git diff --check` e o dry-run do Wrangler passaram.
+
+## Setas dentro do carrossel
+
+- Em Chromium, nas duas vitrines a 320, 390, 768, 1024 e 1440 px, as setas ficaram dentro da área do carrossel, uma em cada lateral na altura das fotos. Avançar e voltar movimentou os cartões e preservou a posição das setas. Ao filtrar até não haver resultados, as setas ficaram ocultas. Limpar os filtros restaurou a navegação sem rolagem horizontal da página.
+- `git diff --check` e o dry-run do Wrangler passaram.
