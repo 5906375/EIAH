@@ -219,13 +219,16 @@ footer a { text-decoration: underline; }
 /* Consulta de temporada e ficha entregue à equipe */
 .stay-panel { padding: clamp(14px, 3vw, 25px); margin-block: 14px; border: 1px solid var(--line); border-radius: 16px; background: #f8fbfc; }
 .stay-panel h4 { color: var(--navy); margin: 0; font-size: 1.15rem; }
-.stay-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+.stay-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
 .stay-fields label { min-width: 0; font-weight: 600; }
 .stay-fields input { margin-top: 4px; font-weight: 400; }
 .stay-quote { border-left: 3px solid var(--brand); padding-left: 9px; font-size: .9rem; color: var(--ink); }
 .match-note { background: var(--brand-soft); color: var(--ink); border-radius: 8px; padding: 8px; font-size: .875rem; }
 .request-summary > .review-highlight { color: #164a44; background: #edf6f3; padding-inline: 8px; }
 .team-status { color: #086450; font-weight: 750; font-size: .875rem; margin-bottom: 6px; }
+@media (max-width: 500px) {
+  .stay-fields { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+}
 
 .logo-field { min-width: 0; padding: 0; margin: 14px 0 0; border: 0; }
 .logo-field legend { padding: 0; }

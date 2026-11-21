@@ -57,3 +57,9 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Em Chromium, o catálogo, as duas vitrines, o editor, a criação do site, o pedido de temporada e a visão da equipe foram conferidos em 320, 390, 768, 1024 e 1440 px. As páginas ficaram sem rolagem horizontal. Nos layouts avaliados, os blocos, os filtros, os cartões, os formulários e os rodapés foram empilhados.
 - Na aba Imóveis do editor, a prévia do anúncio ficou abaixo do formulário, alinhada à mesma coluna e com a mesma largura. O dry-run do Wrangler passou.
+
+## Campos compactos nas vitrines
+
+- Nas duas prévias em Chromium, os cinco filtros ficaram distribuídos em cinco colunas a 1440 px, três a 768 px e duas a 390 e 320 px. Os campos de estadia apareceram lado a lado nas telas maiores e empilhados a 390 e 320 px. Em todas essas larguras, a introdução e os cartões ficaram em uma coluna, sem rolagem horizontal da página.
+- Comprar, Aluguel anual e Temporada funcionaram pelas abas. O seletor duplicado foi removido dos filtros. Limpar filtros preservou a aba escolhida. Um link direto para Temporada, a consulta com datas de exemplo e o atalho da busca de aluguel também passaram nas duas prévias.
+- A checagem de sintaxe do catálogo, `git diff --check` e o dry-run do Wrangler passaram.

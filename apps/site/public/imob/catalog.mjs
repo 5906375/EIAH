@@ -62,7 +62,7 @@ function fillSelects() {
 }
 
 function syncInputs() {
-  $("#fMode").value = state.mode; $("#fType").value = state.type; $("#fCity").value = state.place;
+  $("#fType").value = state.type; $("#fCity").value = state.place;
   $("#fBeds").value = String(state.beds); $("#fMax").value = state.max ? state.max.toLocaleString("pt-BR") : ""; $("#fSort").value = state.sort;
   $$(".mode-tabs button").forEach((b) => { const on = b.dataset.mode === state.mode; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on); });
   const listTitle = $("#listTitle");
@@ -304,12 +304,11 @@ document.addEventListener("change", (e) => {
     if (c.checked && compare.size >= 3) { c.checked = false; alert("Compare até 3 imóveis por vez."); return; }
     c.checked ? compare.add(c.dataset.compare) : compare.delete(c.dataset.compare); return updateCompareBar();
   }
-  if (e.target.id === "fMode") state.mode = e.target.value;
   if (e.target.id === "fType") state.type = e.target.value;
   if (e.target.id === "fCity") state.place = e.target.value;
   if (e.target.id === "fBeds") state.beds = Number(e.target.value);
   if (e.target.id === "fSort") state.sort = e.target.value;
-  if (["fMode", "fType", "fCity", "fBeds", "fSort"].includes(e.target.id)) render();
+  if (["fType", "fCity", "fBeds", "fSort"].includes(e.target.id)) render();
 });
 $("#fMax").addEventListener("change", (e) => { const v = Number(e.target.value.replace(/\D/g, "")); state.max = v || null; render(); });
 $("#aiForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#aiInput").value.trim(); if (v) { applyQuery(v); location.hash = "#imoveis"; } });
