@@ -1,6 +1,7 @@
 import { guideRecording, guideVoiceRoles } from './guide-voice-store.mjs';
 
 const speech = 'SpeechSynthesisUtterance' in window ? window.speechSynthesis : null;
+const questionAudioLabel = 'Ouvir pergunta';
 let active;
 
 export function stopContextAudio() {
@@ -11,10 +12,20 @@ export function stopContextAudio() {
   playback.end('Áudio interrompido.');
 }
 
-function playbackButton(wrap, label, status, play, stop) {
+function playbackButton(wrap, label, status, play, stop, { onUnavailable, headphones = false } = {}) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = label;
+  const setLabel = playing => {
+    const action = playing ? 'Parar áudio' : label;
+    const showIcon = headphones && !playing;
+    button.textContent = showIcon ? '🎧' : action;
+    if (headphones) {
+      button.setAttribute('aria-label', action);
+      button.title = action;
+      button.classList.toggle('audio-headphones', showIcon);
+    }
+  };
+  setLabel(false);
   wrap.append(button);
   button.addEventListener('click', () => {
     if (active?.button === button) {
@@ -23,21 +34,23 @@ function playbackButton(wrap, label, status, play, stop) {
     }
     stopContextAudio();
     const end = message => {
-      button.textContent = label;
+      setLabel(false);
       status.textContent = message;
     };
     const current = { button, stop, end };
     active = current;
-    button.textContent = 'Parar áudio';
+    setLabel(true);
     try {
-      play(message => {
+      play((message, unavailable) => {
         if (active !== current) return;
         active = null;
         end(message);
+        if (unavailable) onUnavailable?.();
       });
     } catch {
       active = null;
       end('Não foi possível iniciar o áudio.');
+      onUnavailable?.();
     }
   });
   return button;
@@ -53,28 +66,65 @@ function speakText(text, preferredVoice, status, done) {
   if (voice) utterance.voice = voice;
   utterance.lang = voice?.lang ?? 'pt-BR';
   utterance.onend = () => done('Leitura concluída.');
-  utterance.onerror = () => done('Leitura indisponível. Você pode seguir pela mensagem em texto.');
+  utterance.onerror = () => done('Leitura indisponível. Você pode seguir pela mensagem em texto.', true);
   status.textContent = 'Lendo a mensagem…';
   speech.speak(utterance);
 }
 
 const voiceKey = role => 'eiah-imob-visual:voice:' + document.body.dataset.product + ':' + role;
 
-export function createPromptAudio(text, role, beforePlay, label = 'Ouvir pergunta') {
+export function createPromptAudio(text, role, beforePlay, label = questionAudioLabel, {
+  fallbackSource, headphones = label === questionAudioLabel
+} = {}) {
   const element = document.createElement('div');
   element.className = 'context-audio request-prompt-audio';
   const status = document.createElement('span');
   status.className = 'audio-status';
   status.setAttribute('role', 'status');
+  const fallback = fallbackSource ? document.createElement('div') : null;
+  if (fallback) {
+    fallback.hidden = Boolean(speech);
+    fallback.append(createRecordedPromptAudio(fallbackSource, 'Ouvir gravação alternativa'));
+  }
   if (speech) {
     playbackButton(element, label, status, done => {
       beforePlay();
+      if (fallback) fallback.hidden = true;
       let preferredVoice;
       try { preferredVoice = localStorage.getItem(voiceKey(role)); } catch {}
       speakText(text, preferredVoice, status, done);
-    }, () => speech.cancel());
+    }, () => speech.cancel(), {
+      headphones,
+      onUnavailable: () => { if (fallback) fallback.hidden = false; }
+    });
+    element.append(status);
+  } else if (fallback) {
+    status.textContent = 'Leitura por voz indisponível neste navegador.';
     element.append(status);
   }
+  if (fallback) element.append(fallback);
+  return element;
+}
+
+function createRecordedPromptAudio(source, label) {
+  const element = document.createElement('div');
+  element.className = 'context-audio request-prompt-audio';
+  const status = document.createElement('span');
+  status.className = 'audio-status';
+  status.setAttribute('role', 'status');
+  const audio = new Audio();
+  audio.preload = 'none';
+  playbackButton(element, label, status, done => {
+    if (!audio.hasAttribute('src')) audio.src = source;
+    audio.onended = () => done('Áudio concluído.');
+    audio.onerror = () => done('Áudio indisponível. Você pode seguir pelos passos em texto.');
+    status.textContent = 'Reproduzindo a orientação…';
+    audio.play().catch(() => done('Áudio indisponível. Você pode seguir pelos passos em texto.'));
+  }, () => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+  element.append(status);
   return element;
 }
 

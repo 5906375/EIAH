@@ -61,11 +61,13 @@ export function renderPropertyContext(container, property, selection) {
   const list = document.createElement('dl');
   for (const [name, value] of facts) {
     if (value === undefined || value === '') continue;
+    const fact = document.createElement('div');
     const term = document.createElement('dt');
     const definition = document.createElement('dd');
     term.textContent = name;
     definition.textContent = value;
-    list.append(term, definition);
+    fact.append(term, definition);
+    list.append(fact);
   }
   details.append(label, description, list);
   container.append(details);

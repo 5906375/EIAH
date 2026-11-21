@@ -16,12 +16,18 @@ const PHOTO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const photoSlot = (label = "Foto do imóvel") => `<div class="photo-slot"><div>${PHOTO_SVG}${label}</div></div>`;
 const priceLabel = (p) => p.finalidade === "venda" ? brl(p.preco) : `${brl(p.preco)} <small>/${p.unidadePreco || "mês"}</small>`;
 /* ===== estado e filtros ===== */
-const initialMode = document.body.dataset.product === 'ia-cliente' &&
-  new URLSearchParams(location.search).get('finalidade') === 'temporada' ? 'temporada' : 'venda';
+const listTitles = { venda: "Imóveis à venda", locacao: "Imóveis para alugar", temporada: "Imóveis para temporada" };
+const requestedMode = new URLSearchParams(location.search).get("finalidade");
+const initialMode = Object.hasOwn(listTitles, requestedMode) ? requestedMode : "venda";
 const state = { mode: initialMode, type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] };
 let favorites = new Set(store.get("im_favs", []));
 let compare = new Set();
 let staySelection = null;
+let lastResultIds = "";
+const cards = $("#cards");
+const cardsNavigation = $("#cardsNavigation");
+const cardsPrevious = $("#cardsPrevious");
+const cardsNext = $("#cardsNext");
 const stayForm = $("#stayForm");
 stayForm.elements.arrival.min = stayDate();
 stayForm.elements.departure.min = stayDate(1);
@@ -61,10 +67,12 @@ function fillSelects() {
 }
 
 function syncInputs() {
-  $("#fMode").value = state.mode; $("#fType").value = state.type; $("#fCity").value = state.place;
+  $("#fType").value = state.type; $("#fCity").value = state.place;
   $("#fBeds").value = String(state.beds); $("#fMax").value = state.max ? state.max.toLocaleString("pt-BR") : ""; $("#fSort").value = state.sort;
   $$(".mode-tabs button").forEach((b) => { const on = b.dataset.mode === state.mode; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on); });
-  $("#listTitle").textContent = { venda: "Imóveis à venda", locacao: "Imóveis para alugar", temporada: "Imóveis para temporada" }[state.mode];
+  const listTitle = $("#listTitle");
+  listTitle.textContent = listTitles[state.mode];
+  listTitle.dataset.demoGuideTopic = state.mode === "temporada" ? "temporada-vitrine" : state.mode;
   $("#onlyFav").setAttribute("aria-pressed", state.onlyFav); $("#onlyFav").textContent = state.onlyFav ? "♥ Favoritos" : "♡ Favoritos";
 }
 
@@ -129,27 +137,52 @@ function media(p, i = 0) {
   return p.fotos && p.fotos[i] ? `<img src="${esc(p.fotos[i])}" alt="${esc(p.titulo)}" loading="lazy">` : photoSlot();
 }
 
-function propertyChatLink(property) {
+function propertyInterestLink(property) {
   const url = new URL(location.href);
   url.searchParams.set("imovel", property.id);
   url.searchParams.delete("objetivo");
   url.hash = "jornada";
   const href = url.pathname + url.search + url.hash;
-  return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-chat="${esc(property.id)}" aria-label="Conversar sobre este imóvel: ${esc(property.titulo)}">Conversar sobre este imóvel</a>`;
+  return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-interest="${esc(property.id)}" aria-label="Solicitar demonstração com este imóvel: ${esc(property.titulo)}">Solicitar demonstração com este imóvel</a>`;
 }
+
+function updateCardsNavigation() {
+  const maxScroll = cards.scrollWidth - cards.clientWidth;
+  const canScroll = maxScroll > 2;
+  cardsNavigation.hidden = !canScroll;
+  if (canScroll) cards.tabIndex = 0;
+  else cards.removeAttribute("tabindex");
+  cardsPrevious.setAttribute("aria-disabled", String(cards.scrollLeft <= 2));
+  cardsNext.setAttribute("aria-disabled", String(cards.scrollLeft >= maxScroll - 2));
+}
+
+for (const [button, direction] of [[cardsPrevious, -1], [cardsNext, 1]]) {
+  button.addEventListener("click", () => {
+    const [first, second] = cards.children;
+    if (!second || button.getAttribute("aria-disabled") === "true") return;
+    const stride = second.getBoundingClientRect().left - first.getBoundingClientRect().left;
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    cards.scrollBy({ left: direction * stride, behavior: reducedMotion ? "instant" : "smooth" });
+  });
+}
+cards.addEventListener("scroll", updateCardsNavigation, { passive: true });
+new ResizeObserver(updateCardsNavigation).observe(cards);
 
 function render() {
   syncInputs();
   $("#stayPanel").hidden = state.mode !== "temporada";
   const list = filtered();
+  const resultIds = list.map(property => property.id).join("|");
+  const scroll = resultIds === lastResultIds ? cards.scrollLeft : 0;
+  lastResultIds = resultIds;
   $("#count").textContent = `${list.length} imóve${list.length === 1 ? "l" : "is"} encontrado${list.length === 1 ? "" : "s"}`;
   if (!list.length) {
     const message = state.mode === "temporada" && staySelection
       ? "Nenhum imóvel de exemplo está disponível para essas datas, hóspedes e filtros."
       : "Nenhum imóvel de exemplo corresponde aos filtros.";
-    $("#cards").innerHTML = `<p class="empty">${message}</p>`;
+    cards.innerHTML = `<p class="empty">${message}</p>`;
   } else {
-    $("#cards").innerHTML = list.map((p) => {
+    cards.innerHTML = list.map((p) => {
       const total = monthlyTotal(p);
       const tag = { venda: '<span class="tag sale">Venda</span>', locacao: '<span class="tag rent">Locação</span>', temporada: '<span class="tag season">Temporada</span>' }[p.finalidade];
       return `<article class="card">
@@ -169,13 +202,15 @@ function render() {
           <label class="compare-check"><input type="checkbox" data-compare="${p.id}" ${compare.has(p.id) ? "checked" : ""}> Comparar</label>
           <div class="card-actions">
             <button class="btn btn-primary" data-open="${p.id}">Ver detalhes</button>
-            ${propertyChatLink(p)}
+            ${propertyInterestLink(p)}
             ${seasonalRequestLink(p)}
           </div>
         </div>
       </article>`;
     }).join("");
   }
+  cards.scrollLeft = scroll;
+  updateCardsNavigation();
   updateCompareBar();
 }
 
@@ -222,7 +257,7 @@ function applyQuery(raw) {
     state.keywords.length && `priorizando: ${state.keywords.join(", ")}`,
   ].filter(Boolean);
   const box = $("#aiUnderstood");
-  box.innerHTML = `<b>Entendi:</b> ${esc(bits.join(" · "))}. <a href="#imoveis">Ver resultados</a>`;
+  box.innerHTML = `<b>Filtros aplicados:</b> ${esc(bits.join(" · "))}. <a href="#imoveis">Ver resultados</a>`;
   box.classList.add("show");
   render();
 }
@@ -256,12 +291,12 @@ function openCompare() {
 
 /* ===== eventos ===== */
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-property-chat],[data-open],[data-fav],[data-mode],[data-example],#modalClose,#compareOpen,#compareClear,#onlyFav,#clearFilters,#menuToggle");
+  const t = e.target.closest("[data-property-interest],[data-open],[data-fav],[data-mode],[data-example],#modalClose,#compareOpen,#compareClear,#onlyFav,#clearFilters,#menuToggle");
   if (e.target === $("#modal")) return closeModal();
   if (!t) return;
-  if (t.dataset.propertyChat) {
+  if (t.dataset.propertyInterest) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    const property = findProperty(t.dataset.propertyChat);
+    const property = findProperty(t.dataset.propertyInterest);
     if (!property) return;
     e.preventDefault();
     const stay = staySelection && quoteStay(property, staySelection) ? { ...staySelection } : null;
@@ -301,12 +336,11 @@ document.addEventListener("change", (e) => {
     if (c.checked && compare.size >= 3) { c.checked = false; alert("Compare até 3 imóveis por vez."); return; }
     c.checked ? compare.add(c.dataset.compare) : compare.delete(c.dataset.compare); return updateCompareBar();
   }
-  if (e.target.id === "fMode") state.mode = e.target.value;
   if (e.target.id === "fType") state.type = e.target.value;
   if (e.target.id === "fCity") state.place = e.target.value;
   if (e.target.id === "fBeds") state.beds = Number(e.target.value);
   if (e.target.id === "fSort") state.sort = e.target.value;
-  if (["fMode", "fType", "fCity", "fBeds", "fSort"].includes(e.target.id)) render();
+  if (["fType", "fCity", "fBeds", "fSort"].includes(e.target.id)) render();
 });
 $("#fMax").addEventListener("change", (e) => { const v = Number(e.target.value.replace(/\D/g, "")); state.max = v || null; render(); });
 $("#aiForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#aiInput").value.trim(); if (v) { applyQuery(v); location.hash = "#imoveis"; } });
@@ -347,7 +381,7 @@ function openDetail(id) {
       ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : ""}
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
-      ${propertyChatLink(property)}
+      ${propertyInterestLink(property)}
       ${seasonalRequestLink(property)}
     </div>`;
   showModal();

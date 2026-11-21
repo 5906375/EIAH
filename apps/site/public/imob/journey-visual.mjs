@@ -6,7 +6,7 @@ import { isTeamContactRequest, propertyChatReply } from './property-chat-replies
 import './client-brand.mjs';
 import { money, quoteStay } from './stay-visual.mjs';
 import { requestVoice } from './request-voice.mjs';
-import { detailsByGoal, goals, inferGoal, matchOption, normalizedDetail, questions } from './request-chat-questions.mjs';
+import { detailKeys, detailQuestion, detailsByGoal, goals, inferGoal, listingModes, matchOption, normalizedDetail, questions } from './request-chat-questions.mjs';
 
 const get = id => document.getElementById(id);
 const journey = get('jornada');
@@ -80,8 +80,11 @@ function restoreWork(state) {
     state.question = 'propertyOpening';
   }
   state.question ??= state.step === 1 && Object.hasOwn(detailsByGoal, state.inputs.goal)
-    ? detailsByGoal[state.inputs.goal][0]
+    ? detailKeys(state.inputs).find(key => !state.inputs[key]) ?? 'notes'
     : state.audio || state.inputs.opening ? 'goal' : 'opening';
+  if (state.step === 1 && !state.propertyId && state.inputs.goal === 'cadastrar' && !Object.hasOwn(listingModes, state.inputs.purpose)) {
+    state.question = 'purpose';
+  }
   return state;
 }
 
@@ -116,8 +119,11 @@ const writeWork = (state = work) => writeLocal(workKey, state);
 
 function activeQuestion() {
   const key = work.question;
-  const question = questions[key];
+  const question = detailQuestion(key, work.inputs);
   const last = work.turns.at(-1);
+  if (key === 'purpose' && last?.key === key && last.audio) {
+    return { ...question, text: 'Recebi seu áudio. Para confirmar a finalidade, escolha venda, locação residencial ou temporada.' };
+  }
   if ((key === 'goal' || key === 'clarify') && last?.audio && last.key !== 'opening') {
     return { ...question, text: 'Recebi sua resposta em áudio. Para identificar o objetivo, toque em uma opção ou escreva sua escolha.' };
   }
@@ -385,7 +391,7 @@ resumeRequest.addEventListener('click', () => {
 });
 
 function recordingLabel(key) {
-  return questions[key]?.label ?? 'Objetivo';
+  return detailQuestion(key, work.inputs)?.label ?? 'Objetivo';
 }
 
 function recordings() {
@@ -396,7 +402,7 @@ function nextSteps(goal, values, property) {
   if (goal === 'cadastrar') {
     const missing = [];
     if (!values.get('listingTitle')?.trim()) missing.push('identificação do imóvel');
-    if (!values.get('budget')?.trim()) missing.push('valor pretendido');
+    if (!values.get('budget')?.trim()) missing.push(detailQuestion('budget', work.inputs).label.toLowerCase());
     if (!values.get('listingAvailability')?.trim()) missing.push('data de disponibilidade');
     if (values.get('listingPhotos') === 'Já tenho fotos') missing.push('receber e conferir as fotos');
     else missing.push('solicitar fotos');
@@ -417,8 +423,8 @@ function nextSteps(goal, values, property) {
 
 function prepareProposal() {
   const goal = work.inputs.goal;
-  const detailKeys = detailsByGoal[goal];
-  const values = new Map(detailKeys.map(key => [key, work.inputs[key] ?? '']));
+  const fields = detailKeys(work.inputs);
+  const values = new Map(fields.map(key => [key, work.inputs[key] ?? '']));
   const selected = findProperty(work.propertyId);
   const property = selected && propertyGoals[selected.finalidade] === goal ? selected : null;
   const entries = [['Objetivo', goals[goal]]];
@@ -429,13 +435,14 @@ function prepareProposal() {
     if (messages[0] === work.inputs.opening) messages.shift();
     if (messages.length) entries.push(['Mensagens da conversa', messages.join('\n')]);
   }
-  for (const key of detailKeys) {
+  for (const key of fields) {
     const value = values.get(key);
     const voiceAnswer = work.turns.some(turn => turn.key === key && turn.audio);
     if ((!value || value === 'A definir') && !voiceAnswer) continue;
-    const display = value && questions[key].date ? value.split('-').reverse().join('/') : value;
+    const question = detailQuestion(key, work.inputs);
+    const display = value && question.date ? value.split('-').reverse().join('/') : value;
     const purpose = key === 'purpose' ? questions.purpose.options.find(([id]) => id === value)?.[1] : undefined;
-    entries.push([questions[key].label, purpose ?? (display || 'Informado por áudio · a conferir')]);
+    entries.push([question.label, purpose ?? (display || 'Informado por áudio · a conferir')]);
   }
   if (goal === 'temporada' && property) {
     const quote = quoteStay(property, Object.fromEntries(values));
@@ -486,7 +493,7 @@ function submitMessage({ text = '', audio, selected, skip }) {
     if (Object.hasOwn(goals, nextQuestion)) {
       inputs.goal = nextQuestion;
       stage = 1;
-      nextQuestion = detailsByGoal[inputs.goal][0];
+      nextQuestion = detailKeys(inputs)[0];
     }
   } else if (key === 'propertyOpening') {
     if (text) inputs.opening ||= text;
@@ -506,18 +513,22 @@ function submitMessage({ text = '', audio, selected, skip }) {
         nextQuestion = 'goal';
       } else {
         inputs.goal = choice[0];
-        if (key === 'clarify' && inputs.goal === 'cadastrar') inputs.purpose = 'locacao';
+        if (key === 'clarify' && inputs.goal === 'cadastrar') {
+          inputs.purpose = 'locacao';
+          assistantReply = listingModes.locacao.confirmation;
+        }
         stage = 1;
-        nextQuestion = detailsByGoal[inputs.goal].find(field => !inputs[field]);
+        nextQuestion = detailKeys(inputs).find(field => !inputs[field]);
       }
     }
-  } else {
+  } else if (key !== 'purpose' || !audio) {
     let value = '';
     if (text) {
       if (current.options) {
         const choice = selected ? current.options.find(([id]) => id === selected) : matchOption(key, current.options, text);
         if (!choice) return 'Toque em uma das opções ou escreva como ela aparece na conversa.';
         value = choice[0];
+        if (key === 'purpose') assistantReply = listingModes[value].confirmation;
       } else {
         value = normalizedDetail(key, text, inputs);
         if (value === null) {
@@ -528,8 +539,14 @@ function submitMessage({ text = '', audio, selected, skip }) {
       }
     }
     inputs[key] = value;
-    const details = detailsByGoal[inputs.goal];
-    nextQuestion = details.slice(details.indexOf(key) + 1).find(field => !inputs[field]);
+    const details = detailKeys(inputs);
+    if (inputs.goal === 'cadastrar') {
+      const answered = new Set(work.turns.map(turn => turn.key));
+      answered.add(key);
+      nextQuestion = details.find(field => !inputs[field] && !answered.has(field));
+    } else {
+      nextQuestion = details.slice(details.indexOf(key) + 1).find(field => !inputs[field]);
+    }
     if (!nextQuestion) stage = 2;
   }
 

@@ -23,7 +23,7 @@
   <div id="published-site" hidden>
     <div class="intro-grid">
       <div>
-        <h1 data-client-name></h1>
+        <h1 data-demo-guide-topic="publicada" data-client-name></h1>
         <p class="lead" data-client-intro></p>
       </div>
       <figure class="intro-art">
@@ -31,13 +31,14 @@
       </figure>
     </div>
     <section class="setup-panel" aria-labelledby="properties-heading">
-      <h2 id="properties-heading">Imóveis</h2>
+      <h2 data-demo-guide-topic="publicada" id="properties-heading">Imóveis</h2>
       <p id="no-properties">Os imóveis editados na personalização aparecerão na próxima versão publicada.</p>
       <div class="setup-homes" id="published-homes"></div>
     </section>
   </div>
 </main>
-<footer class="client-footer" id="published-footer" hidden><div class="wrap" data-client-footer></div></footer>
+<footer data-demo-guide-topic="contato" class="client-footer" id="published-footer" hidden><div class="wrap client-footer-shell"><div data-client-footer></div></div></footer>
 <script type="module" src="../../../site-published-preview.mjs"></script>
+<script type="module" src="../../../demo-guide.mjs"></script>
 </body>
 </html>
