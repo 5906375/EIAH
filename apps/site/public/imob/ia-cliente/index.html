@@ -94,13 +94,17 @@
 
     <div class="results-bar">
       <span class="count" id="count" aria-live="polite"></span>
-      <span>
+      <div class="results-actions">
         <button class="btn btn-ghost" id="onlyFav" type="button" aria-pressed="false">♡ Favoritos</button>
         <button class="btn btn-ghost" id="clearFilters" type="button">Limpar filtros</button>
-      </span>
+        <div class="property-carousel-buttons" id="cardsNavigation" role="group" aria-label="Navegação dos imóveis" hidden>
+          <button class="btn btn-ghost property-carousel-arrow" id="cardsPrevious" type="button" aria-label="Imóveis anteriores" aria-controls="cards">‹</button>
+          <button class="btn btn-ghost property-carousel-arrow" id="cardsNext" type="button" aria-label="Próximos imóveis" aria-controls="cards">›</button>
+        </div>
+      </div>
     </div>
 
-    <div class="grid-cards" id="cards"></div>
+    <div class="grid-cards" id="cards" role="region" aria-labelledby="listTitle"></div>
   </div>
 </section>
 

@@ -23,6 +23,11 @@ const state = { mode: initialMode, type: "", place: "", beds: 0, max: null, sort
 let favorites = new Set(store.get("im_favs", []));
 let compare = new Set();
 let staySelection = null;
+let lastResultIds = "";
+const cards = $("#cards");
+const cardsNavigation = $("#cardsNavigation");
+const cardsPrevious = $("#cardsPrevious");
+const cardsNext = $("#cardsNext");
 const stayForm = $("#stayForm");
 stayForm.elements.arrival.min = stayDate();
 stayForm.elements.departure.min = stayDate(1);
@@ -141,18 +146,43 @@ function propertyInterestLink(property) {
   return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-interest="${esc(property.id)}" aria-label="Solicitar demonstração com este imóvel: ${esc(property.titulo)}">Solicitar demonstração com este imóvel</a>`;
 }
 
+function updateCardsNavigation() {
+  const maxScroll = cards.scrollWidth - cards.clientWidth;
+  const canScroll = maxScroll > 2;
+  cardsNavigation.hidden = !canScroll;
+  if (canScroll) cards.tabIndex = 0;
+  else cards.removeAttribute("tabindex");
+  cardsPrevious.setAttribute("aria-disabled", String(cards.scrollLeft <= 2));
+  cardsNext.setAttribute("aria-disabled", String(cards.scrollLeft >= maxScroll - 2));
+}
+
+for (const [button, direction] of [[cardsPrevious, -1], [cardsNext, 1]]) {
+  button.addEventListener("click", () => {
+    const [first, second] = cards.children;
+    if (!second || button.getAttribute("aria-disabled") === "true") return;
+    const stride = second.getBoundingClientRect().left - first.getBoundingClientRect().left;
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    cards.scrollBy({ left: direction * stride, behavior: reducedMotion ? "instant" : "smooth" });
+  });
+}
+cards.addEventListener("scroll", updateCardsNavigation, { passive: true });
+new ResizeObserver(updateCardsNavigation).observe(cards);
+
 function render() {
   syncInputs();
   $("#stayPanel").hidden = state.mode !== "temporada";
   const list = filtered();
+  const resultIds = list.map(property => property.id).join("|");
+  const scroll = resultIds === lastResultIds ? cards.scrollLeft : 0;
+  lastResultIds = resultIds;
   $("#count").textContent = `${list.length} imóve${list.length === 1 ? "l" : "is"} encontrado${list.length === 1 ? "" : "s"}`;
   if (!list.length) {
     const message = state.mode === "temporada" && staySelection
       ? "Nenhum imóvel de exemplo está disponível para essas datas, hóspedes e filtros."
       : "Nenhum imóvel de exemplo corresponde aos filtros.";
-    $("#cards").innerHTML = `<p class="empty">${message}</p>`;
+    cards.innerHTML = `<p class="empty">${message}</p>`;
   } else {
-    $("#cards").innerHTML = list.map((p) => {
+    cards.innerHTML = list.map((p) => {
       const total = monthlyTotal(p);
       const tag = { venda: '<span class="tag sale">Venda</span>', locacao: '<span class="tag rent">Locação</span>', temporada: '<span class="tag season">Temporada</span>' }[p.finalidade];
       return `<article class="card">
@@ -179,6 +209,8 @@ function render() {
       </article>`;
     }).join("");
   }
+  cards.scrollLeft = scroll;
+  updateCardsNavigation();
   updateCompareBar();
 }
 

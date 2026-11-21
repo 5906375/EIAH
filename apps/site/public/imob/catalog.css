@@ -79,7 +79,16 @@ section.block{padding:56px 0}
 @media(max-width:560px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* cards */
-.grid-cards{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.grid-cards{display:grid;gap:18px}
+.grid-cards:has(.card){
+  grid-auto-flow:column;
+  grid-auto-columns:max(min(16rem, 88%), 40%);
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scroll-snap-type:inline mandatory;
+  padding-bottom:12px;
+}
+.grid-cards .card{min-width:0;scroll-snap-align:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .media{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,#e9f1f6,#eef7f3);overflow:hidden}
 .media img{width:100%;height:100%;object-fit:cover}
