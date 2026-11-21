@@ -1,6 +1,7 @@
 import { guideRecording, guideVoiceRoles } from './guide-voice-store.mjs';
 
 const speech = 'SpeechSynthesisUtterance' in window ? window.speechSynthesis : null;
+const questionAudioLabel = 'Ouvir pergunta';
 let active;
 
 export function stopContextAudio() {
@@ -14,7 +15,18 @@ export function stopContextAudio() {
 function playbackButton(wrap, label, status, play, stop, onUnavailable) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = label;
+  const questionAudio = label === questionAudioLabel;
+  const setLabel = playing => {
+    const action = playing ? 'Parar áudio' : label;
+    const showIcon = questionAudio && !playing;
+    button.textContent = showIcon ? '🎧' : action;
+    if (questionAudio) {
+      button.setAttribute('aria-label', action);
+      button.title = action;
+      button.classList.toggle('question-audio-icon', showIcon);
+    }
+  };
+  setLabel(false);
   wrap.append(button);
   button.addEventListener('click', () => {
     if (active?.button === button) {
@@ -23,12 +35,12 @@ function playbackButton(wrap, label, status, play, stop, onUnavailable) {
     }
     stopContextAudio();
     const end = message => {
-      button.textContent = label;
+      setLabel(false);
       status.textContent = message;
     };
     const current = { button, stop, end };
     active = current;
-    button.textContent = 'Parar áudio';
+    setLabel(true);
     try {
       play((message, unavailable) => {
         if (active !== current) return;
@@ -62,7 +74,7 @@ function speakText(text, preferredVoice, status, done) {
 
 const voiceKey = role => 'eiah-imob-visual:voice:' + document.body.dataset.product + ':' + role;
 
-export function createPromptAudio(text, role, beforePlay, label = 'Ouvir pergunta', { fallbackSource } = {}) {
+export function createPromptAudio(text, role, beforePlay, label = questionAudioLabel, { fallbackSource } = {}) {
   const element = document.createElement('div');
   element.className = 'context-audio request-prompt-audio';
   const status = document.createElement('span');

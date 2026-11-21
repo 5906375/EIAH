@@ -30,3 +30,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 - Na Prévia 01 em Chromium, as opções Venda, Locação residencial e Temporada geraram confirmações próprias e abriram as perguntas sobre preço de venda, aluguel mensal e data para receber hóspedes. Editar a última resposta permitiu trocar de finalidade e receber a pergunta correspondente.
 - O anúncio de temporada chegou à Revisão com data de disponibilidade de 15/12/2026 e diária de R$ 350. Na Prévia 02, “venda ou temporada” manteve a escolha aberta e “quero anunciar para aluguel de temporada” abriu a pergunta de disponibilidade.
 - O teste em Node conferiu as modalidades, a equivalência das respostas por texto, a ausência de seleção para respostas ambíguas, a validação de datas e as perguntas dos demais objetivos. A sintaxe e o dry-run do Wrangler passaram.
+
+## Ícone de leitura das perguntas
+
+- Nas duas prévias em Chromium, o botão de leitura exibe 🎧 em uma área de 44 × 44 px e mantém o nome acessível “Ouvir pergunta”. A conferência incluiu a pergunta ativa e o histórico do anúncio de temporada na Prévia 01, além da abertura da Recepção na Prévia 02.
+- Com a síntese simulada em Node, o ícone retornou após parar, concluir ou falhar. Os botões “Ouvir resposta” e “Ouvir passo a passo” mantiveram seus rótulos. A sintaxe e o dry-run do Wrangler passaram.
