@@ -5,12 +5,18 @@ import { readSetup, updateSetup } from './site-setup-store.mjs';
 const experts = new Map([
   ['j360', {
     name: 'J_360',
-    purpose: 'Apoio à revisão documental de contratos de locação.',
+    origin: 'Especialista jurídico da EIAH',
+    image: 'especialista-j360.webp',
+    purpose: 'Revisa contratos e cláusulas, indica lacunas na documentação e destaca pontos que merecem análise jurídica.',
+    example: 'Se um pedido recebido pelo site avançar para locação, ajuda a equipe a conferir cláusulas como prazo, multa e garantias antes da revisão profissional.',
     scope: 'Documentos autorizados no caso IMOB selecionado.'
   }],
   ['fin-nexus', {
     name: 'FinNexus',
-    purpose: 'Apoio à análise financeira de uma proposta imobiliária.',
+    origin: 'Especialista financeiro da EIAH',
+    image: 'especialista-finnexus.webp',
+    purpose: 'Organiza valores, prazos e condições de pagamento e aponta dados financeiros que precisam ser conferidos.',
+    example: 'Quando um interessado envia uma proposta pelo site, ajuda a equipe a comparar entrada, parcelas e custos para preparar uma resposta.',
     scope: 'Dados financeiros autorizados da proposta selecionada.'
   }]
 ]);
@@ -51,14 +57,29 @@ function renderExperts() {
   const cards = [];
   for (const [id, expert] of experts) {
     const card = document.createElement('article');
-    card.className = 'setup-option';
-    card.append(textElement('h3', expert.name), textElement('p', expert.purpose));
+    card.className = 'setup-option setup-expert';
+    const heading = document.createElement('header');
+    const portrait = document.createElement('img');
+    portrait.src = new URL('./assets/' + expert.image, import.meta.url).href;
+    portrait.alt = '';
+    portrait.width = portrait.height = 384;
+    portrait.loading = 'lazy';
+    const identity = document.createElement('div');
+    identity.append(textElement('h3', expert.name), textElement('p', expert.origin));
+    heading.append(portrait, identity);
+    const details = document.createElement('dl');
+    details.className = 'setup-details';
+    details.append(
+      textElement('dt', 'O que faz'), textElement('dd', expert.purpose),
+      textElement('dt', 'Como ajuda na imobiliária'), textElement('dd', expert.example)
+    );
+    card.append(heading, details);
     if (state.experts[id] === 'active') {
       card.append(textElement('p', 'Ativo na demonstração'));
     } else if (state.experts[id] === 'contracted') {
       card.append(textElement('p', 'Contratação simulada registrada'));
       card.append(action('Ativar ' + expert.name, () => activateExpert(id)));
-    } else {
+    } else if (state.published) {
       card.append(action('Revisar ' + expert.name, () => {
         selectedExpert = id;
         renderExpertReview();
@@ -74,7 +95,7 @@ function renderExperts() {
 function renderExpertReview() {
   const review = get('expert-review');
   const expert = experts.get(selectedExpert);
-  review.hidden = !expert || Boolean(state.experts[selectedExpert]);
+  review.hidden = !state.published || !expert || Boolean(state.experts[selectedExpert]);
   if (review.hidden) {
     review.replaceChildren();
     return;
@@ -109,8 +130,7 @@ function render() {
       ? 'Pagamento simulado confirmado. Revise o rascunho e publique quando estiver pronto.'
       : 'A simulação dispensa dados de pagamento.';
   get('experts-locked').hidden = Boolean(state.published);
-  get('experts-controls').hidden = !state.published;
-  if (state.published) renderExperts();
+  renderExperts();
 }
 
 async function save(change, success, focusId) {

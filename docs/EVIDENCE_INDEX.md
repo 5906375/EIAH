@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Site IMOB — cartões dos especialistas na demonstração (2026-11-21)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Cartões de J_360 e FinNexus | `docs/ops/evidence/latest/imob-specialists-cards-demo-2026-11-21.md` | Verificação local dos retratos, dos exemplos de uso antes da publicação e da revisão e ativação simuladas após a publicação. |
+
 ## Site IMOB — cadastro, publicação e especialistas em demonstração (2026-11-20)
 
 | Assunto | Arquivo | O que prova |
