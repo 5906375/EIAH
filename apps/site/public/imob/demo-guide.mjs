@@ -124,6 +124,7 @@ function renderTopic(topic, dialog, standalone = false) {
   details.append(description, steps, audio);
   const [label, destination] = topic.link;
   const target = new URL(destination, base);
+  if (page === 'ia-cliente' && target.hash === '#jornada') target.pathname = new URL('ia-cliente/', base).pathname;
   const samePage = target.pathname === location.pathname && target.search === location.search;
   const anchor = samePage && target.hash ? document.getElementById(target.hash.slice(1)) : null;
   if (!samePage || (anchor && !anchor.hidden)) {

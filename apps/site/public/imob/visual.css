@@ -451,3 +451,18 @@ footer a { text-decoration: underline; }
 @media (max-width: 470px) {
   .request-goal-options button { width: 100%; }
 }
+
+#interest-title { margin-block: 12px; }
+.interest-intro { max-width: 72ch; margin-bottom: 22px; }
+.interest-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(16px, 4vw, 40px); align-items: start; }
+.interest-fields, .interest-actions { display: grid; gap: 12px; }
+.interest-fields label { display: grid; gap: 5px; font-weight: 700; }
+.interest-fields :is(input, select, textarea) { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; font-weight: 400; color: var(--navy); background: #fff; }
+.interest-summary { border: 1px solid var(--line); border-radius: 16px; padding: clamp(16px, 3vw, 26px); background: var(--brand-soft); }
+.interest-summary > * { margin-block: 0 10px; }
+.interest-summary > :last-child { margin-bottom: 0; }
+.interest-summary progress { width: 100%; accent-color: var(--brand); }
+.interest-summary summary { cursor: pointer; font-weight: 650; }
+.interest-summary pre { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 8px; font: inherit; }
+#interest-property:not([hidden]) { margin-bottom: 22px; }
+@media (max-width: 680px) { .interest-layout { grid-template-columns: minmax(0, 1fr); } }

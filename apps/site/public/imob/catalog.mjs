@@ -132,13 +132,13 @@ function media(p, i = 0) {
   return p.fotos && p.fotos[i] ? `<img src="${esc(p.fotos[i])}" alt="${esc(p.titulo)}" loading="lazy">` : photoSlot();
 }
 
-function propertyChatLink(property) {
+function propertyInterestLink(property) {
   const url = new URL(location.href);
   url.searchParams.set("imovel", property.id);
   url.searchParams.delete("objetivo");
   url.hash = "jornada";
   const href = url.pathname + url.search + url.hash;
-  return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-chat="${esc(property.id)}" aria-label="Conversar sobre este imóvel: ${esc(property.titulo)}">Conversar sobre este imóvel</a>`;
+  return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-interest="${esc(property.id)}" aria-label="Solicitar demonstração com este imóvel: ${esc(property.titulo)}">Solicitar demonstração com este imóvel</a>`;
 }
 
 function render() {
@@ -172,7 +172,7 @@ function render() {
           <label class="compare-check"><input type="checkbox" data-compare="${p.id}" ${compare.has(p.id) ? "checked" : ""}> Comparar</label>
           <div class="card-actions">
             <button class="btn btn-primary" data-open="${p.id}">Ver detalhes</button>
-            ${propertyChatLink(p)}
+            ${propertyInterestLink(p)}
             ${seasonalRequestLink(p)}
           </div>
         </div>
@@ -225,7 +225,7 @@ function applyQuery(raw) {
     state.keywords.length && `priorizando: ${state.keywords.join(", ")}`,
   ].filter(Boolean);
   const box = $("#aiUnderstood");
-  box.innerHTML = `<b>Entendi:</b> ${esc(bits.join(" · "))}. <a href="#imoveis">Ver resultados</a>`;
+  box.innerHTML = `<b>Filtros aplicados:</b> ${esc(bits.join(" · "))}. <a href="#imoveis">Ver resultados</a>`;
   box.classList.add("show");
   render();
 }
@@ -259,12 +259,12 @@ function openCompare() {
 
 /* ===== eventos ===== */
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-property-chat],[data-open],[data-fav],[data-mode],[data-example],#modalClose,#compareOpen,#compareClear,#onlyFav,#clearFilters,#menuToggle");
+  const t = e.target.closest("[data-property-interest],[data-open],[data-fav],[data-mode],[data-example],#modalClose,#compareOpen,#compareClear,#onlyFav,#clearFilters,#menuToggle");
   if (e.target === $("#modal")) return closeModal();
   if (!t) return;
-  if (t.dataset.propertyChat) {
+  if (t.dataset.propertyInterest) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    const property = findProperty(t.dataset.propertyChat);
+    const property = findProperty(t.dataset.propertyInterest);
     if (!property) return;
     e.preventDefault();
     const stay = staySelection && quoteStay(property, staySelection) ? { ...staySelection } : null;
@@ -350,7 +350,7 @@ function openDetail(id) {
       ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : ""}
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
-      ${propertyChatLink(property)}
+      ${propertyInterestLink(property)}
       ${seasonalRequestLink(property)}
     </div>`;
   showModal();

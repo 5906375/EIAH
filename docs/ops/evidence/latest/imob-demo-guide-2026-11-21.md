@@ -40,3 +40,10 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Os botões de **Ouvir passo a passo** exibiram 🎧 com nome acessível e área de 44 × 44 px no catálogo, em **Como funciona?**, e nos guias da Operação EIAH e do Site com IA do Cliente em Chromium.
 - Com a síntese indisponível no Chromium local, o botão voltou ao ícone e ofereceu a gravação alternativa. O teste em Node também conferiu os estados de leitura, interrupção e conclusão. A sintaxe e o dry-run do Wrangler passaram.
+
+## Convite para demonstração com IA
+
+- As duas vitrines substituíram o chat simulado por um convite que explica que a prévia funciona sem IA. O formulário segue o padrão de resumo, pré-visualização e envio manual da [Vertical Legal](https://eiah.ia.br/legal/#responder).
+- Em Chromium, a Prévia 01 abriu o convite pelo imóvel V-01 com ficha, galeria e identificação na mensagem. Com três de cinco campos preenchidos, a mesma mensagem foi preparada para WhatsApp e e-mail, e a cópia foi confirmada na interface. Nenhuma mensagem externa foi enviada.
+- Na Prévia 02, o convite apresentou a origem correta. O acesso pelo botão de anúncio acrescentou o contexto de proprietário e retornou à vitrine. O botão de temporada abriu o pedido de datas. Nas duas prévias, o compositor do chat ficou fora da página.
+- A sintaxe dos módulos, a correspondência das 28 narrações com o texto do guia e o dry-run do Wrangler passaram.

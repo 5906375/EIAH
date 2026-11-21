@@ -3,9 +3,9 @@ export const demoGuideTopics = [
   {
     id: 'demos',
     title: 'Escolher uma demonstração',
-    description: 'As duas prévias do IMOB usam dados fictícios. Você pode explorar como hóspede ou interessado e depois assumir o papel da equipe.',
+    description: 'As duas prévias do IMOB usam dados fictícios e funcionam sem IA.',
     steps: [
-      'Abra Operação EIAH para simular um atendimento e consultar a visão da equipe.',
+      'Abra Operação EIAH para explorar os imóveis e acompanhar pedidos de temporada na visão da equipe.',
       'Abra Site com IA do Cliente para explorar os imóveis ou personalizar a vitrine com uma marca de exemplo.'
     ],
     link: ['Ver as duas prévias', './']
@@ -17,7 +17,7 @@ export const demoGuideTopics = [
     steps: [
       'Escolha a finalidade. Digite o que procura na busca ou filtre por bairro, tipo, quartos e valor.',
       'Use o coração para favoritar ou marque Comparar nos imóveis que quer ver lado a lado.',
-      'Abra Ver detalhes para consultar a ficha e a galeria. Em Conversar sobre este imóvel, o atendimento já abre com o imóvel selecionado.'
+      'Abra Ver detalhes para consultar a ficha e a galeria. Em Solicitar demonstração com este imóvel, a ficha já aparece ao lado do convite.'
     ],
     link: ['Ir à vitrine de imóveis', './ia-cliente/#vitrine']
   },
@@ -26,9 +26,9 @@ export const demoGuideTopics = [
     title: 'Começar pela vitrine',
     description: 'A página inicial reúne três caminhos para explorar a demonstração.',
     steps: [
-      'Use Iniciar atendimento para contar se quer comprar, alugar ou tirar uma dúvida.',
+      'Use Solicitar demonstração com IA para dizer o que gostaria de testar.',
       'Use Explorar imóveis para navegar pela vitrine e aplicar filtros.',
-      'Use Anunciar meu imóvel para preparar um pedido de anúncio com dados fictícios.'
+      'Use Quero anunciar um imóvel para incluir esse objetivo no seu pedido de demonstração.'
     ],
     link: ['Ir à vitrine', './ia-cliente/#vitrine']
   },
@@ -39,7 +39,7 @@ export const demoGuideTopics = [
     steps: [
       'Filtre por cidade, bairro, quartos ou valor até encontrar as opções que interessam.',
       'Em Ver detalhes, confira as fotos, o preço e, quando informado, o condomínio.',
-      'Marque Comparar para ver os imóveis lado a lado ou converse sobre um deles para simular o atendimento de compra.'
+      'Marque Comparar para ver os imóveis lado a lado. Você também pode usar um imóvel de exemplo na demonstração que solicitar.'
     ],
     link: ['Abrir a lista de imóveis à venda', './ia-cliente/?finalidade=venda#imoveis']
   },
@@ -49,7 +49,7 @@ export const demoGuideTopics = [
     description: 'A categoria Aluguel anual mostra opções de locação mensal. Quando há valores informados, a ficha estima o total com condomínio e IPTU.',
     steps: [
       'Filtre por bairro, número de quartos e valor. Compare o aluguel anunciado com a estimativa mensal de encargos.',
-      'Abra os detalhes, veja as fotos e converse sobre o imóvel para informar seu prazo de mudança ou tirar dúvidas sobre os custos.'
+      'Abra os detalhes e veja as fotos. Para conhecer o atendimento com IA, solicite uma demonstração usando o imóvel de exemplo.'
     ],
     link: ['Abrir a lista de imóveis para alugar', './ia-cliente/?finalidade=locacao#imoveis']
   },
@@ -66,36 +66,36 @@ export const demoGuideTopics = [
   },
   {
     id: 'conversa',
-    title: 'Conversar por texto ou áudio',
-    description: 'Os assistentes da demo orientam as etapas de recepção, imóvel e revisão.',
+    title: 'Solicitar uma demonstração com IA',
+    description: 'Esta prévia funciona sem IA. A equipe da EIAH pode apresentar o atendimento com a IA da EIAH ou com a sua própria IA.',
     steps: [
-      'Clique em Iniciar atendimento e conte o que precisa. Você pode escrever ou gravar até trinta segundos por mensagem.',
-      'Escolha o objetivo e responda às perguntas. Use a opção de ouvir a pergunta se quiser acompanhar por áudio.',
-      'Confira o resumo na revisão. Confirme a proposta para guardar o rascunho e clique em Salvar pedido. Na Operação EIAH, você pode abrir a visão da equipe pela confirmação do pedido.'
+      'Abra Solicitar demonstração com IA e conte o que gostaria de testar.',
+      'Se quiser, deixe um contato de retorno e escolha qual opção de IA deseja conhecer.',
+      'Confira a mensagem no resumo. Você pode enviar por WhatsApp, por e-mail ou copiar o texto.'
     ],
-    link: ['Abrir Operação EIAH', './operacao-eiah/#inicio']
+    link: ['Solicitar demonstração com IA', './operacao-eiah/?objetivo=novo#jornada']
   },
   {
     id: 'anuncio',
     title: 'Pedir ajuda para anunciar um imóvel',
-    description: 'O atendimento reúne as informações iniciais e aponta o que a equipe precisaria conferir com o proprietário.',
+    description: 'Você pode solicitar uma demonstração focada no atendimento a proprietários.',
     steps: [
-      'Abra Anunciar meu imóvel e indique se é para venda, locação residencial ou temporada.',
-      'Inclua as características, o valor pretendido, a disponibilidade e se já tem fotos.',
-      'Revise e salve o pedido na demo para praticar o encaminhamento.'
+      'Abra Quero anunciar um imóvel. Essa escolha acompanha a mensagem.',
+      'Se quiser, descreva como você recebe anúncios de venda, aluguel ou temporada.',
+      'Confira a mensagem e escolha um canal para falar com a equipe EIAH.'
     ],
-    link: ['Ir ao atendimento', './operacao-eiah/#inicio']
+    link: ['Conhecer o atendimento a proprietários', './operacao-eiah/?objetivo=cadastrar#jornada']
   },
   {
     id: 'revisar',
-    title: 'Revisar e salvar o pedido',
-    description: 'A revisão reúne as respostas, os dados do imóvel, as gravações e a próxima ação sugerida.',
+    title: 'Conferir a mensagem de interesse',
+    description: 'O resumo reúne sua preferência de IA, o cenário de interesse e os dados de contato que você escolheu informar.',
     steps: [
-      'Leia o resumo e corrija o que precisar nesta etapa do atendimento.',
-      'Clique em Confirmar proposta. Depois, clique em Salvar pedido para concluir o teste.',
-      'Use Copiar resumo se quiser guardar o texto. Na Operação EIAH, o pedido salvo aparece na fila desta aba.'
+      'Abra Ver a mensagem para conferir o que vai ser enviado.',
+      'Envie a mensagem pelo WhatsApp ou pelo seu aplicativo de e-mail.',
+      'Use Copiar mensagem se preferir guardar o texto ou enviá-lo por outro canal.'
     ],
-    link: ['Abrir Operação EIAH', './operacao-eiah/#inicio']
+    link: ['Solicitar demonstração com IA', './operacao-eiah/?objetivo=novo#jornada']
   },
   {
     id: 'temporada',
@@ -111,20 +111,20 @@ export const demoGuideTopics = [
   {
     id: 'equipe',
     title: 'Acompanhar atendimentos na fila',
-    description: 'A visão da equipe mostra o resumo, o imóvel e os áudios dos atendimentos salvos na Operação EIAH.',
+    description: 'A visão da equipe acompanha pedidos de temporada de teste e exibe o histórico de simulações já salvas na aba.',
     steps: [
-      'Envie um pedido pela Operação EIAH e escolha Ver pedido na visão da equipe.',
-      'Na seção Outros pedidos de atendimento, confira o objetivo, o resumo e as gravações. Para esse fluxo, mantenha a mesma aba.'
+      'Crie um pedido de datas pela vitrine de temporada e abra a visão da equipe para procurar o protocolo.',
+      'Em Histórico da simulação anterior, confira os pedidos de teste que já estavam salvos nesta aba.'
     ],
     link: ['Abrir visão da equipe', './operacao-eiah/equipe/']
   },
   {
     id: 'fila',
     title: 'Entender a visão da equipe',
-    description: 'Esta página reúne pedidos de temporada e outros atendimentos de demonstração.',
+    description: 'Esta página reúne pedidos de temporada e o histórico das simulações anteriores.',
     steps: [
       'Em Pedidos de temporada, procure pelo protocolo gerado na vitrine. Essa fila é compartilhada entre abas do mesmo navegador.',
-      'Em Outros pedidos de atendimento, veja os pedidos que você salvou na Operação EIAH nesta mesma aba.'
+      'Em Histórico da simulação anterior, veja os pedidos de teste que já estavam salvos nesta aba.'
     ],
     link: ['Abrir a visão da equipe', './operacao-eiah/equipe/']
   },
@@ -152,9 +152,9 @@ export const demoGuideTopics = [
   {
     id: 'site-cliente',
     title: 'Explorar o site da imobiliária',
-    description: 'A Prévia 02 combina a vitrine editável, o atendimento e a jornada de temporada com uma marca de exemplo.',
+    description: 'A Prévia 02 combina a vitrine editável e a jornada de temporada com uma marca de exemplo.',
     steps: [
-      'Abra a vitrine para testar como um interessado vê os imóveis e faz um pedido.',
+      'Explore a vitrine e solicite uma demonstração para conhecer o atendimento com a sua própria IA.',
       'Em Personalizar meu site, altere a marca, os anúncios e os contatos para conferir como apareceriam na demo.',
       'Use Criar meu site para guardar uma versão publicada neste navegador.'
     ],

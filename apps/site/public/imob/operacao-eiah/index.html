@@ -28,8 +28,8 @@
       <div class="intro-copy">
         <p class="eyebrow">Operação EIAH</p>
         <h1 data-demo-guide-topic="inicio-vitrine">Encontre seu imóvel.<br><em>Ou apresente o seu.</em></h1>
-        <p class="lead">Explore a jornada de atendimento e revisão de pedidos prevista para a equipe no Front Door da EIAH.</p>
-        <div class="next-actions"><button class="btn btn-primary" type="button" data-journey>Iniciar atendimento</button><a class="btn btn-ghost" href="#vitrine">Explorar imóveis</a><button class="btn btn-ghost" type="button" data-journey="cadastrar">Anunciar meu imóvel</button></div>
+        <p class="lead">Explore a vitrine e a visão da equipe. Solicite uma demonstração para conhecer o atendimento com a IA da EIAH.</p>
+        <div class="next-actions"><a class="btn btn-primary" href="?objetivo=novo#jornada" data-interest>Solicitar demonstração com IA</a><a class="btn btn-ghost" href="#vitrine">Explorar imóveis</a><a class="btn btn-ghost" href="?objetivo=cadastrar#jornada" data-interest="anuncio">Quero anunciar um imóvel</a></div>
         <ul class="guide-family" aria-label="Agentes do atendimento">
   <li><span class="family-face" aria-hidden="true"></span><span>Assistente de Recepção</span></li>
   <li><span class="family-face" aria-hidden="true"></span><span>Assistente de Imóvel</span></li>
@@ -39,88 +39,8 @@
       <figure class="intro-art"><img src="../assets/eiah-imoveis-conceito.webp" width="1536" height="1024" fetchpriority="high" alt="Maquete de um edifício residencial e uma casa junto ao litoral"></figure>
     </div>
   </section>
-  <div class="wrap demo-notice">Prévia interativa com dados fictícios. O atendimento e a gravação são simulados neste navegador.</div>
-  <section class="journey-section" id="jornada" hidden>
-  <div class="wrap journey-layout">
-    <aside class="journey-sidebar">
-      <a class="quiet-link" href="#inicio" id="journeyClose">Voltar à vitrine</a>
-      <h2 data-demo-guide-topic="conversa" id="journeyTitle" tabindex="-1">Seu pedido de atendimento</h2>
-      <nav aria-label="Etapas do atendimento">
-        <ol class="stepper" id="requestProgress">
-          <li><a href="#jornada-recepcao"><span aria-hidden="true">1</span> Recepção</a></li>
-          <li><a href="#jornada-imovel"><span aria-hidden="true">2</span> Imóvel</a></li>
-          <li><a href="#jornada-revisao"><span aria-hidden="true">3</span> Revisão</a></li>
-        </ol>
-      </nav>
-    </aside>
-    <div class="journey-box">
-      <form id="requestForm" novalidate>
-        <section id="requestStagePreview" class="state-note" aria-labelledby="requestStageTitle" hidden>
-          <h3 data-demo-guide-topic="conversa" id="requestStageTitle" tabindex="-1"></h3>
-          <p id="requestStageDescription"></p>
-          <a class="quiet-link" id="requestStageReturn" href="#jornada">Voltar ao ponto do atendimento</a>
-        </section>
-        <section class="request-chat" aria-label="Conversa de atendimento">
-          <aside id="requestProperty" aria-label="Imóvel da conversa" tabindex="-1" hidden></aside>
-          <div class="request-chat-thread" id="requestChatHistory" aria-label="Histórico da conversa" tabindex="0"></div>
-          <div id="requestChatPrompt" class="request-chat-message" hidden>
-            <p id="requestChatSpeaker" class="request-chat-speaker"></p>
-            <p id="requestChatQuestion" role="status"></p>
-            <div id="requestChatOptions" class="request-goal-options" role="group" aria-labelledby="requestChatQuestion"></div>
-          </div>
-          <div class="request-property-actions" id="requestPropertyActions" hidden>
-            <button class="btn btn-ghost" type="button" id="requestPropertyReview">Revisar pedido</button>
-          </div>
-          <div id="requestChatComposer">
-            <label class="field-label" for="requestReply">Sua mensagem</label>
-            <div class="request-composer">
-              <textarea id="requestReply" rows="2" maxlength="1200" placeholder="Escreva uma mensagem ou grave um áudio" aria-describedby="requestChatQuestion requestVoiceHelp"></textarea>
-              <p id="requestVoiceStatus" class="field-help" role="status"></p>
-              <div class="composer-actions">
-                <button class="composer-icon composer-mic" id="recordRequest" type="button" aria-label="Gravar pedido em voz" title="Gravar pedido em voz" aria-describedby="requestVoiceHelp">
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-                    <rect x="9" y="3" width="6" height="12" rx="3"/>
-                    <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/>
-                  </svg>
-                </button>
-                <button class="composer-icon composer-stop" id="stopRequestRecording" type="button" aria-label="Parar gravação" title="Parar gravação" hidden>
-                  <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                    <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>
-                  </svg>
-                </button>
-                <button class="composer-icon composer-send" id="sendRequestOpening" type="submit" aria-label="Enviar mensagem" title="Enviar mensagem">
-                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M12 20V4m-7 7 7-7 7 7"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <p id="requestVoiceHelp" class="field-help">Você pode gravar até 30 segundos por mensagem.</p>
-          </div>
-        </section>
-        <fieldset id="requestReview" hidden>
-          <legend data-demo-guide-topic="revisar" id="proposalTitle" tabindex="-1">Proposta para revisão</legend>
-          <dl id="requestSummary" class="request-summary"></dl>
-          <div id="draftNotice" class="state-note" hidden><strong>Rascunho atualizado</strong><p>Salve o pedido para simular o recebimento pela equipe.</p></div>
-          <div id="receipt" class="state-note receipt" tabindex="-1" hidden><strong>Pedido salvo nesta prévia</strong><p>O pedido foi salvo nesta aba.</p><a class="quiet-link" href="./equipe/">Ver pedido na visão da equipe</a></div>
-          <div class="next-actions" id="reviewActions">
-            <button type="button" class="btn btn-primary" id="confirmDraft">Confirmar proposta</button>
-            <button type="button" class="btn btn-primary" id="saveRequest" hidden>Salvar pedido</button>
-            <button type="button" class="btn btn-ghost" id="copyRequest">Copiar resumo</button>
-          </div>
-          <p id="copyFeedback" role="status" class="field-feedback"></p>
-        </fieldset>
-
-        <p id="requestError" role="alert"></p>
-        <p id="requestStatus" class="sr-only" role="status"></p>
-        <div class="wizard-actions">
-          <button class="btn btn-ghost" type="button" id="requestBack" hidden>Editar última resposta</button>
-          <button class="btn btn-ghost" type="button" id="newRequest" hidden>Novo pedido</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</section>
+  <div class="wrap demo-notice">Esta prévia usa imóveis fictícios e funciona sem IA.</div>
+  <section class="journey-section" id="jornada" aria-labelledby="interest-title" hidden></section>
   <div id="vitrine">
     <section class="catalog-heading">
       <div class="wrap">
@@ -202,7 +122,7 @@
   <button class="btn btn-ghost" id="compareClear" type="button">Limpar</button>
 </div>
 <dialog class="modal" id="modal" aria-labelledby="modalTitle"><div class="modal-box" id="modalBox"></div></dialog>
-<script type="module" src="../journey-visual.mjs"></script>
+<script type="module" src="../demo-interest.mjs"></script>
 <script type="module" src="../catalog.mjs"></script>
 <script type="module" src="../demo-guide.mjs"></script>
 </body></html>
