@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Site IMOB — gravação dos contatos do rodapé (2026-11-21)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Gravação do rodapé da Prévia 02 | `docs/ops/evidence/latest/imob-demo-footer-save-2026-11-21.md` | Teste JavaScript com DOM e armazenamento simulados da gravação isolada dos contatos, preservação da marca, validação e geração de links. |
+
 ## Site IMOB — cadastro, publicação e especialistas em demonstração (2026-11-20)
 
 | Assunto | Arquivo | O que prova |
