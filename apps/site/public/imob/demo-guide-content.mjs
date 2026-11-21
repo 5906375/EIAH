@@ -22,6 +22,49 @@ export const demoGuideTopics = [
     link: ['Ir à vitrine de imóveis', './ia-cliente/#vitrine']
   },
   {
+    id: 'inicio-vitrine',
+    title: 'Começar pela vitrine',
+    description: 'A página inicial reúne três caminhos para explorar a demonstração.',
+    steps: [
+      'Use Iniciar atendimento para contar se quer comprar, alugar ou tirar uma dúvida.',
+      'Use Explorar imóveis para navegar pela vitrine e aplicar filtros.',
+      'Use Anunciar meu imóvel para preparar um pedido de anúncio com dados fictícios.'
+    ],
+    link: ['Ir à vitrine', './ia-cliente/#vitrine']
+  },
+  {
+    id: 'venda',
+    title: 'Imóveis à venda',
+    description: 'Nesta lista, o valor anunciado corresponde ao preço de compra do imóvel.',
+    steps: [
+      'Filtre por cidade, bairro, quartos ou valor até encontrar as opções que interessam.',
+      'Em Ver detalhes, confira as fotos, o preço e, quando informado, o condomínio.',
+      'Marque Comparar para ver os imóveis lado a lado ou converse sobre um deles para simular o atendimento de compra.'
+    ],
+    link: ['Abrir a lista de imóveis à venda', './ia-cliente/?finalidade=venda#imoveis']
+  },
+  {
+    id: 'locacao',
+    title: 'Imóveis para alugar',
+    description: 'A categoria Aluguel anual mostra opções de locação mensal. Quando há valores informados, a ficha estima o total com condomínio e IPTU.',
+    steps: [
+      'Filtre por bairro, número de quartos e valor. Compare o aluguel anunciado com a estimativa mensal de encargos.',
+      'Abra os detalhes, veja as fotos e converse sobre o imóvel para informar seu prazo de mudança ou tirar dúvidas sobre os custos.'
+    ],
+    link: ['Abrir a lista de imóveis para alugar', './ia-cliente/?finalidade=locacao#imoveis']
+  },
+  {
+    id: 'temporada-vitrine',
+    title: 'Imóveis para temporada',
+    description: 'Nesta lista, o valor é por diária. Ao consultar as datas, a estimativa soma as noites e a taxa de limpeza.',
+    steps: [
+      'Informe entrada, saída e número de hóspedes ou clique em Usar datas de exemplo.',
+      'Veja as opções que atendem à consulta e abra os detalhes para conferir a capacidade e o valor estimado.',
+      'Na Prévia 02, use Pedir datas para enviar o período à fila de demonstração.'
+    ],
+    link: ['Abrir a consulta de temporada', './ia-cliente/?finalidade=temporada#imoveis']
+  },
+  {
     id: 'conversa',
     title: 'Conversar por texto ou áudio',
     description: 'Os assistentes da demo orientam as etapas de recepção, imóvel e revisão.',
@@ -42,6 +85,17 @@ export const demoGuideTopics = [
       'Revise e salve o pedido na demo para praticar o encaminhamento.'
     ],
     link: ['Ir ao atendimento', './operacao-eiah/#inicio']
+  },
+  {
+    id: 'revisar',
+    title: 'Revisar e salvar o pedido',
+    description: 'A revisão reúne as respostas, os dados do imóvel, as gravações e a próxima ação sugerida.',
+    steps: [
+      'Leia o resumo e corrija o que precisar nesta etapa do atendimento.',
+      'Clique em Confirmar proposta. Depois, clique em Salvar pedido para concluir o teste.',
+      'Use Copiar resumo se quiser guardar o texto. Na Operação EIAH, o pedido salvo aparece na fila desta aba.'
+    ],
+    link: ['Abrir Operação EIAH', './operacao-eiah/#inicio']
   },
   {
     id: 'temporada',
@@ -65,6 +119,16 @@ export const demoGuideTopics = [
     link: ['Abrir visão da equipe', './operacao-eiah/equipe/']
   },
   {
+    id: 'fila',
+    title: 'Entender a visão da equipe',
+    description: 'Esta página reúne pedidos de temporada e outros atendimentos de demonstração.',
+    steps: [
+      'Em Pedidos de temporada, procure pelo protocolo gerado na vitrine. Essa fila é compartilhada entre abas do mesmo navegador.',
+      'Em Outros pedidos de atendimento, veja os pedidos que você salvou na Operação EIAH nesta mesma aba.'
+    ],
+    link: ['Abrir a visão da equipe', './operacao-eiah/equipe/']
+  },
+  {
     id: 'checkin',
     title: 'Confirmar datas e simular o check-in',
     description: 'Em Pedidos de temporada, a equipe recebe o protocolo gerado na vitrine. A demo compartilha essa fila entre abas do mesmo navegador.',
@@ -82,6 +146,37 @@ export const demoGuideTopics = [
     steps: [
       'Em Marca, preencha o nome e escolha a cor. Envie um logo do computador, use as iniciais ou gere um prompt para criar a imagem com uma das ferramentas indicadas.',
       'Em Apresentação, escreva a introdução do site. Confira a prévia e clique em Aplicar à prévia 02.'
+    ],
+    link: ['Abrir o editor', './ia-cliente/personalizar/']
+  },
+  {
+    id: 'site-cliente',
+    title: 'Explorar o site da imobiliária',
+    description: 'A Prévia 02 combina a vitrine editável, o atendimento e a jornada de temporada com uma marca de exemplo.',
+    steps: [
+      'Abra a vitrine para testar como um interessado vê os imóveis e faz um pedido.',
+      'Em Personalizar meu site, altere a marca, os anúncios e os contatos para conferir como apareceriam na demo.',
+      'Use Criar meu site para guardar uma versão publicada neste navegador.'
+    ],
+    link: ['Abrir a Prévia 02', './ia-cliente/']
+  },
+  {
+    id: 'logo',
+    title: 'Escolher o logo da vitrine',
+    description: 'A marca pode usar uma imagem enviada do computador, as iniciais ou um logo criado a partir de um prompt.',
+    steps: [
+      'Em Marca, abra Enviar do computador e escolha uma imagem ou use as iniciais.',
+      'Para criar um logo, escolha Criar com um prompt, descreva a ideia e use o texto gerado em uma das ferramentas indicadas. Depois envie a imagem pelo editor.'
+    ],
+    link: ['Abrir o editor de marca', './ia-cliente/personalizar/']
+  },
+  {
+    id: 'apresentacao',
+    title: 'Editar a apresentação do site',
+    description: 'O texto de apresentação aparece na abertura da vitrine personalizável.',
+    steps: [
+      'Abra Apresentação e escreva uma introdução curta para a imobiliária.',
+      'Confira o resultado na Prévia da marca e clique em Aplicar à prévia 02 para salvar junto com a identidade da imobiliária.'
     ],
     link: ['Abrir o editor', './ia-cliente/personalizar/']
   },
@@ -107,6 +202,16 @@ export const demoGuideTopics = [
     link: ['Abrir Contatos', './ia-cliente/personalizar/#editorContact']
   },
   {
+    id: 'contato',
+    title: 'Conferir os contatos da imobiliária',
+    description: 'O rodapé apresenta os dados profissionais e os canais de atendimento configurados para esta vitrine.',
+    steps: [
+      'Procure o responsável, o endereço e os canais de contato preenchidos.',
+      'Na vitrine personalizável, abra Contatos no editor para escolher o que será exibido.'
+    ],
+    link: ['Abrir os contatos no editor', './ia-cliente/personalizar/#editorContact']
+  },
+  {
     id: 'voz',
     title: 'Personalizar as mensagens de voz',
     description: 'O editor aceita uma gravação curta para cada assistente da vitrine personalizável.',
@@ -129,6 +234,57 @@ export const demoGuideTopics = [
     link: ['Abrir Criar meu site', './ia-cliente/criar-site/']
   },
   {
+    id: 'perfil',
+    title: 'Salvar o perfil da demonstração',
+    description: 'O perfil identifica a imobiliária para preparar o rascunho da vitrine.',
+    steps: [
+      'Clique em Usar dados de exemplo ou preencha o nome, a imobiliária e o e-mail profissional com dados fictícios.',
+      'Clique em Salvar perfil de demonstração para liberar a importação da personalização.'
+    ],
+    link: ['Abrir o perfil na demo', './ia-cliente/criar-site/#perfil']
+  },
+  {
+    id: 'rascunho',
+    title: 'Importar a personalização para o rascunho',
+    description: 'O rascunho reúne as alterações que foram salvas no editor deste navegador.',
+    steps: [
+      'Clique em Importar personalização da demo depois de salvar o perfil.',
+      'Para ajustar a marca, os imóveis ou o rodapé, use o editor. Volte e importe novamente para incluir as mudanças.'
+    ],
+    link: ['Abrir a preparação da vitrine', './ia-cliente/criar-site/#perfil']
+  },
+  {
+    id: 'publicada',
+    title: 'Conferir a vitrine publicada na demo',
+    description: 'Esta página mostra a versão da marca, dos imóveis e do rodapé que você publicou neste navegador.',
+    steps: [
+      'Confira o nome, as informações do rodapé e as fichas dos imóveis que editou.',
+      'Em um imóvel de temporada, use Pedir datas para testar o envio à visão da equipe.',
+      'Depois de editar a vitrine, volte a Criar meu site, importe a personalização e publique outra versão.'
+    ],
+    link: ['Abrir a vitrine da demo', './ia-cliente/criar-site/vitrine/']
+  },
+  {
+    id: 'pedido-datas',
+    title: 'Enviar as datas à equipe',
+    description: 'O formulário registra o imóvel, a entrada, a saída e o número de hóspedes no mesmo pedido de temporada.',
+    steps: [
+      'Confira as datas e a quantidade de hóspedes preenchidas.',
+      'Clique em Enviar pedido à equipe e guarde o protocolo para acompanhar o andamento.'
+    ],
+    link: ['Consultar um imóvel de temporada', './ia-cliente/?finalidade=temporada#imoveis']
+  },
+  {
+    id: 'acompanhar',
+    title: 'Acompanhar o protocolo de temporada',
+    description: 'O protocolo identifica o mesmo pedido na vitrine e na fila da equipe.',
+    steps: [
+      'No mesmo navegador, reabra o link do pedido para consultar as datas e o status.',
+      'Depois da resposta da equipe, o protocolo mostra Disponibilidade confirmada ou Período indisponível. Após o teste de chegada, mostra Check-in registrado.'
+    ],
+    link: ['Abrir a fila de temporada', './operacao-eiah/equipe/#temporada']
+  },
+  {
     id: 'especialistas',
     title: 'Conhecer e ativar especialistas',
     description: 'Na demo, J_360 apresenta o apoio jurídico, FinNexus o apoio financeiro e Radar Social a escuta de mercado.',
@@ -142,14 +298,14 @@ export const demoGuideTopics = [
 ];
 
 export const demoGuidePages = {
-  '': ['demos', 'vitrine', 'conversa', 'temporada', 'publicar'],
-  'operacao-eiah': ['conversa', 'anuncio', 'vitrine', 'equipe'],
-  'operacao-eiah/equipe': ['checkin', 'equipe', 'temporada'],
-  'ia-cliente': ['vitrine', 'temporada', 'conversa', 'anuncio', 'marca'],
-  'ia-cliente/personalizar': ['marca', 'imoveis', 'rodape', 'voz', 'publicar'],
-  'ia-cliente/criar-site': ['publicar', 'rodape', 'especialistas'],
-  'ia-cliente/criar-site/vitrine': ['vitrine', 'publicar', 'rodape', 'temporada'],
-  'ia-cliente/temporada': ['temporada', 'checkin']
+  '': ['demos', 'conversa', 'site-cliente', 'temporada', 'publicar'],
+  'operacao-eiah': ['inicio-vitrine', 'conversa', 'anuncio', 'vitrine', 'venda', 'locacao', 'temporada-vitrine', 'revisar', 'equipe', 'contato'],
+  'operacao-eiah/equipe': ['checkin', 'fila', 'equipe', 'temporada'],
+  'ia-cliente': ['vitrine', 'inicio-vitrine', 'venda', 'locacao', 'temporada-vitrine', 'temporada', 'conversa', 'revisar', 'anuncio', 'marca', 'contato'],
+  'ia-cliente/personalizar': ['marca', 'logo', 'apresentacao', 'imoveis', 'rodape', 'voz', 'publicar', 'site-cliente'],
+  'ia-cliente/criar-site': ['publicar', 'perfil', 'rascunho', 'rodape', 'especialistas'],
+  'ia-cliente/criar-site/vitrine': ['publicada', 'contato', 'rodape', 'temporada'],
+  'ia-cliente/temporada': ['temporada', 'pedido-datas', 'acompanhar', 'checkin']
 };
 
 export function demoGuideNarration(topic) {

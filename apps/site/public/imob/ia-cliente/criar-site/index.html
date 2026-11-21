@@ -19,7 +19,7 @@
 </header>
 <main class="wrap setup" id="main">
   <p class="eyebrow">Demonstração</p>
-  <h1>Criar meu site</h1>
+  <h1 data-demo-guide-topic="publicar">Criar meu site</h1>
   <p class="lead">Use dados fictícios para testar o cadastro da imobiliária, a publicação da vitrine e a contratação de especialistas.</p>
   <div class="setup-layout">
     <nav class="setup-steps" aria-label="Etapas do site">
@@ -31,7 +31,7 @@
     </nav>
     <div class="setup-panels">
       <section class="setup-panel" id="perfil" aria-labelledby="profile-heading">
-        <h2 id="profile-heading">Perfil da imobiliária</h2>
+        <h2 data-demo-guide-topic="perfil" id="profile-heading">Perfil da imobiliária</h2>
         <form id="profile-form">
           <div class="setup-fields">
             <label>Seu nome <input name="name" required maxlength="70" placeholder="Pessoa Exemplo"></label>
@@ -44,7 +44,7 @@
           </div>
         </form>
         <div class="setup-divider" id="draft-controls" hidden>
-          <h3>Rascunho da vitrine</h3>
+          <h3 data-demo-guide-topic="rascunho">Rascunho da vitrine</h3>
           <p id="draft-status">Recupere as edições feitas na Prévia 02 neste navegador.</p>
           <p class="setup-note">O rodapé usa os dados que você salva em Contatos. Após editar, importe a personalização novamente.</p>
           <div class="next-actions">
@@ -55,10 +55,10 @@
         </div>
       </section>
       <section class="setup-panel" id="publicacao" aria-labelledby="publish-heading">
-        <h2 id="publish-heading">Plano e publicação</h2>
+        <h2 data-demo-guide-topic="publicar" id="publish-heading">Plano e publicação</h2>
         <p id="plan-locked">Salve o perfil e importe a personalização para seguir.</p>
         <div id="plan-controls" hidden>
-          <h3>Site IMOB personalizado</h3>
+          <h3 data-demo-guide-topic="publicar">Site IMOB personalizado</h3>
           <dl class="setup-details">
             <div><dt>Inclui</dt><dd>Vitrine com sua marca, editor e equipe no espaço de trabalho</dd></div>
             <div><dt>Cobrança</dt><dd>Mensalidade definida na contratação real</dd></div>
@@ -73,7 +73,7 @@
         </div>
       </section>
       <section class="setup-panel" id="especialistas" aria-labelledby="experts-heading">
-        <h2 id="experts-heading">Especialistas EIAH</h2>
+        <h2 data-demo-guide-topic="especialistas" id="experts-heading">Especialistas EIAH</h2>
         <p>Conheça os especialistas da EIAH que podem apoiar a imobiliária na revisão de contratos, na análise financeira e no acompanhamento do mercado. Nesta demo, você pode simular a contratação e a ativação.</p>
         <p id="experts-locked" class="setup-note">Publique a vitrine na demonstração para liberar a contratação simulada.</p>
         <div class="setup-experts" id="expert-options"></div>

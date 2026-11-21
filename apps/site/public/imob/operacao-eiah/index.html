@@ -27,7 +27,7 @@
     <div class="wrap intro-grid">
       <div class="intro-copy">
         <p class="eyebrow">Operação EIAH</p>
-        <h1>Encontre seu imóvel.<br><em>Ou apresente o seu.</em></h1>
+        <h1 data-demo-guide-topic="inicio-vitrine">Encontre seu imóvel.<br><em>Ou apresente o seu.</em></h1>
         <p class="lead">Explore a jornada de atendimento e revisão de pedidos prevista para a equipe no Front Door da EIAH.</p>
         <div class="next-actions"><button class="btn btn-primary" type="button" data-journey>Iniciar atendimento</button><a class="btn btn-ghost" href="#vitrine">Explorar imóveis</a><button class="btn btn-ghost" type="button" data-journey="cadastrar">Anunciar meu imóvel</button></div>
         <ul class="guide-family" aria-label="Agentes do atendimento">
@@ -44,7 +44,7 @@
   <div class="wrap journey-layout">
     <aside class="journey-sidebar">
       <a class="quiet-link" href="#inicio" id="journeyClose">Voltar à vitrine</a>
-      <h2 id="journeyTitle" tabindex="-1">Seu pedido de atendimento</h2>
+      <h2 data-demo-guide-topic="conversa" id="journeyTitle" tabindex="-1">Seu pedido de atendimento</h2>
       <nav aria-label="Etapas do atendimento">
         <ol class="stepper" id="requestProgress">
           <li><a href="#jornada-recepcao"><span aria-hidden="true">1</span> Recepção</a></li>
@@ -56,7 +56,7 @@
     <div class="journey-box">
       <form id="requestForm" novalidate>
         <section id="requestStagePreview" class="state-note" aria-labelledby="requestStageTitle" hidden>
-          <h3 id="requestStageTitle" tabindex="-1"></h3>
+          <h3 data-demo-guide-topic="conversa" id="requestStageTitle" tabindex="-1"></h3>
           <p id="requestStageDescription"></p>
           <a class="quiet-link" id="requestStageReturn" href="#jornada">Voltar ao ponto do atendimento</a>
         </section>
@@ -99,7 +99,7 @@
           </div>
         </section>
         <fieldset id="requestReview" hidden>
-          <legend id="proposalTitle" tabindex="-1">Proposta para revisão</legend>
+          <legend data-demo-guide-topic="revisar" id="proposalTitle" tabindex="-1">Proposta para revisão</legend>
           <dl id="requestSummary" class="request-summary"></dl>
           <div id="draftNotice" class="state-note" hidden><strong>Rascunho atualizado</strong><p>Salve o pedido para simular o recebimento pela equipe.</p></div>
           <div id="receipt" class="state-note receipt" tabindex="-1" hidden><strong>Pedido salvo nesta prévia</strong><p>O pedido foi salvo nesta aba.</p><a class="quiet-link" href="./equipe/">Ver pedido na visão da equipe</a></div>
@@ -124,7 +124,7 @@
   <div id="vitrine">
     <section class="catalog-heading">
       <div class="wrap">
-        <h2>Vitrine de imóveis</h2>
+        <h2 data-demo-guide-topic="vitrine">Vitrine de imóveis</h2>
         <p class="lead">Busque por características, filtre e compare os imóveis de exemplo.</p>
         <div class="search-card" role="search">
       <div class="mode-tabs" role="group" aria-label="Finalidade da busca">
@@ -149,9 +149,9 @@
 
 <section class="results" id="imoveis">
   <div class="wrap">
-    <h3 id="listTitle">Imóveis à venda</h3>
+    <h3 data-demo-guide-topic="venda" id="listTitle">Imóveis à venda</h3>
     <section class="stay-panel" id="stayPanel" aria-labelledby="stayTitle" hidden>
-      <h4 id="stayTitle">Consulte as datas da sua estadia</h4>
+      <h4 data-demo-guide-topic="temporada-vitrine" id="stayTitle">Consulte as datas da sua estadia</h4>
       <p class="field-help">Disponibilidade e valores fictícios para testar a consulta.</p>
       <form id="stayForm">
         <div class="stay-fields">
@@ -191,7 +191,7 @@
 
   </div>
 </main>
-<footer class="client-footer" id="contato">
+<footer data-demo-guide-topic="contato" class="client-footer" id="contato">
   <div class="wrap client-footer-shell">
     <div data-client-footer></div>
   </div>

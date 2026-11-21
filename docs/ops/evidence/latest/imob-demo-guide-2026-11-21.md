@@ -11,3 +11,9 @@ Base `e63a22facebf8e5f77bc6397d93644ecd4ef6188` do piloto de temporada. As verif
 | Pacote | `node --check` nos módulos alterados e `wrangler deploy --dry-run --config apps/site/wrangler.jsonc` passaram. O Wrangler reconheceu 115 arquivos estáticos. |
 
 O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da interface e a origem das narrações. Após editar um assunto, regenere as faixas com `node scripts/generateImobDemoGuideAudio.mjs /caminho/espeak-ng.js` e valide com `--check`. O gerador documenta a versão do eSpeak NG usada. A prévia distribui somente o áudio gerado. A verificação é do guia instrucional da demo.
+
+## Ajuda de cada seção
+
+- Em Chromium, ao alternar entre venda, aluguel anual e temporada na mesma página, o botão Como funciona? dos resultados abriu a orientação correspondente e reproduziu o áudio em cada modo.
+- A abertura direta também foi verificada na Vitrine de imóveis, na fila de temporada, em Contatos e rodapé e em Especialistas EIAH. Escape devolveu o foco ao botão de origem.
+- A checagem dos arquivos confirmou 44 atalhos nas oito páginas, 28 assuntos com destinos válidos e as 28 narrações atualizadas. A conferência de sintaxe e o dry-run do Wrangler passaram. O Wrangler reconheceu 130 arquivos estáticos.

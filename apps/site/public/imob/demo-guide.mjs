@@ -5,6 +5,7 @@ const base = new URL('./', import.meta.url);
 const page = location.pathname.slice(base.pathname.length).replace(/\/?index\.html$/, '').replace(/\/$/, '');
 const pageTopics = demoGuidePages[page];
 const brand = document.querySelector('.topbar .brand');
+const topicsById = new Map(demoGuideTopics.map(topic => [topic.id, topic]));
 
 if (pageTopics && brand) mountGuide();
 
@@ -56,9 +57,14 @@ function mountGuide() {
     stopContextAudio();
     current.setAttribute('aria-pressed', String(!showAll));
     all.setAttribute('aria-pressed', String(showAll));
-    const topics = showAll ? demoGuideTopics : pageTopics.map(id => demoGuideTopics.find(topic => topic.id === id));
+    title.textContent = 'Guia da demo IMOB';
+    intro.hidden = false;
+    filter.hidden = false;
+    const topics = showAll ? demoGuideTopics : pageTopics.map(id => topicsById.get(id));
     list.replaceChildren(...topics.map(topic => renderTopic(topic, dialog)));
-    const hashTopic = topics.findIndex(topic => location.hash && new URL(topic.link[1], base).hash === location.hash);
+    const anchor = location.hash ? document.getElementById(location.hash.slice(1)) : null;
+    const preferred = anchor?.dataset.demoGuideTopic ?? anchor?.querySelector('[data-demo-guide-topic]')?.dataset.demoGuideTopic;
+    const hashTopic = topics.findIndex(topic => topic.id === preferred);
     list.children[Math.max(0, hashTopic)].open = true;
   }
 
@@ -70,18 +76,47 @@ function mountGuide() {
   dialog.addEventListener('close', stopContextAudio);
   current.addEventListener('click', () => render(false));
   all.addEventListener('click', () => render(true));
+
+  document.querySelectorAll('[data-demo-guide-topic]').forEach((section, index) => {
+    const help = button('Como funciona?', 'btn btn-ghost demo-guide-section');
+    help.setAttribute('aria-haspopup', 'dialog');
+    help.setAttribute('aria-controls', dialog.id);
+    if (section.matches('footer')) {
+      help.setAttribute('aria-label', 'Como funciona? Contato e rodapé');
+      section.querySelector('.wrap').prepend(help);
+    } else {
+      section.id ||= 'demo-guide-section-' + index;
+      help.setAttribute('aria-describedby', section.id);
+      section.after(help);
+    }
+    help.addEventListener('click', () => {
+      const topic = topicsById.get(section.dataset.demoGuideTopic);
+      if (!topic) return;
+      stopContextAudio();
+      title.textContent = topic.title;
+      intro.hidden = true;
+      filter.hidden = true;
+      list.replaceChildren(renderTopic(topic, dialog, true));
+      dialog.showModal();
+    });
+  });
 }
 
-function renderTopic(topic, dialog) {
-  const details = element('details', '', 'demo-guide-topic');
-  details.name = 'imob-demo-topics';
-  const summary = element('summary', topic.title);
+function renderTopic(topic, dialog, standalone = false) {
+  const details = element(standalone ? 'div' : 'details', '', 'demo-guide-topic');
+  if (!standalone) {
+    details.name = 'imob-demo-topics';
+    details.append(element('summary', topic.title));
+    details.addEventListener('toggle', () => {
+      if (!details.open) stopContextAudio();
+    });
+  }
   const description = element('p', topic.description);
   const steps = element('ol');
   steps.append(...topic.steps.map(step => element('li', step)));
   const audio = createRecordedPromptAudio(new URL('assets/guia-demo/' + topic.id + '.mp3', base), 'Ouvir passo a passo');
   audio.querySelector('button').classList.add('btn', 'btn-ghost');
-  details.append(summary, description, steps, audio);
+  details.append(description, steps, audio);
   const [label, destination] = topic.link;
   const target = new URL(destination, base);
   const samePage = target.pathname === location.pathname && target.search === location.search;
@@ -92,8 +127,5 @@ function renderTopic(topic, dialog) {
     link.addEventListener('click', () => dialog.close());
     details.append(link);
   }
-  details.addEventListener('toggle', () => {
-    if (!details.open) stopContextAudio();
-  });
   return details;
 }
