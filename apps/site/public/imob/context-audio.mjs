@@ -78,6 +78,28 @@ export function createPromptAudio(text, role, beforePlay, label = 'Ouvir pergunt
   return element;
 }
 
+export function createRecordedPromptAudio(source, label) {
+  const element = document.createElement('div');
+  element.className = 'context-audio request-prompt-audio';
+  const status = document.createElement('span');
+  status.className = 'audio-status';
+  status.setAttribute('role', 'status');
+  const audio = new Audio();
+  audio.preload = 'none';
+  playbackButton(element, label, status, done => {
+    if (!audio.hasAttribute('src')) audio.src = source;
+    audio.onended = () => done('Áudio concluído.');
+    audio.onerror = () => done('Áudio indisponível. Você pode seguir pelos passos em texto.');
+    status.textContent = 'Reproduzindo a orientação…';
+    audio.play().catch(() => done('Áudio indisponível. Você pode seguir pelos passos em texto.'));
+  }, () => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+  element.append(status);
+  return element;
+}
+
 export function createContextAudio(textProvider) {
   const element = document.createElement('div');
   element.className = 'context-audio';
