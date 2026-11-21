@@ -36,6 +36,13 @@ img { max-width: 100%; display: block; }
 .btn-primary { background: var(--brand); color: #fff; }
 .btn-primary:hover { background: #075c51; }
 .btn-ghost:hover { background: var(--brand-soft); }
+.request-prompt-audio.context-audio button.audio-headphones {
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 20px;
+}
 .quiet-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 650; text-underline-offset: 3px; }
 .skip-link { position: fixed; top: 8px; left: 8px; z-index: 120; padding: 12px; background: #fff; transform: translateY(-150%); }
 .skip-link:focus { transform: none; }

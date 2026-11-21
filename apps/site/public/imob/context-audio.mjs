@@ -12,18 +12,17 @@ export function stopContextAudio() {
   playback.end('Áudio interrompido.');
 }
 
-function playbackButton(wrap, label, status, play, stop, onUnavailable) {
+function playbackButton(wrap, label, status, play, stop, { onUnavailable, headphones = false } = {}) {
   const button = document.createElement('button');
   button.type = 'button';
-  const questionAudio = label === questionAudioLabel;
   const setLabel = playing => {
     const action = playing ? 'Parar áudio' : label;
-    const showIcon = questionAudio && !playing;
+    const showIcon = headphones && !playing;
     button.textContent = showIcon ? '🎧' : action;
-    if (questionAudio) {
+    if (headphones) {
       button.setAttribute('aria-label', action);
       button.title = action;
-      button.classList.toggle('question-audio-icon', showIcon);
+      button.classList.toggle('audio-headphones', showIcon);
     }
   };
   setLabel(false);
@@ -74,7 +73,9 @@ function speakText(text, preferredVoice, status, done) {
 
 const voiceKey = role => 'eiah-imob-visual:voice:' + document.body.dataset.product + ':' + role;
 
-export function createPromptAudio(text, role, beforePlay, label = questionAudioLabel, { fallbackSource } = {}) {
+export function createPromptAudio(text, role, beforePlay, label = questionAudioLabel, {
+  fallbackSource, headphones = label === questionAudioLabel
+} = {}) {
   const element = document.createElement('div');
   element.className = 'context-audio request-prompt-audio';
   const status = document.createElement('span');
@@ -92,7 +93,10 @@ export function createPromptAudio(text, role, beforePlay, label = questionAudioL
       let preferredVoice;
       try { preferredVoice = localStorage.getItem(voiceKey(role)); } catch {}
       speakText(text, preferredVoice, status, done);
-    }, () => speech.cancel(), () => { if (fallback) fallback.hidden = false; });
+    }, () => speech.cancel(), {
+      headphones,
+      onUnavailable: () => { if (fallback) fallback.hidden = false; }
+    });
     element.append(status);
   } else if (fallback) {
     status.textContent = 'Leitura por voz indisponível neste navegador.';

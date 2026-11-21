@@ -35,3 +35,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Nas duas prévias em Chromium, o botão de leitura exibe 🎧 em uma área de 44 × 44 px e mantém o nome acessível “Ouvir pergunta”. A conferência incluiu a pergunta ativa e o histórico do anúncio de temporada na Prévia 01, além da abertura da Recepção na Prévia 02.
 - Com a síntese simulada em Node, o ícone retornou após parar, concluir ou falhar. Os botões “Ouvir resposta” e “Ouvir passo a passo” mantiveram seus rótulos. A sintaxe e o dry-run do Wrangler passaram.
+
+## Ícone de leitura no guia
+
+- Os botões de **Ouvir passo a passo** exibiram 🎧 com nome acessível e área de 44 × 44 px no catálogo, em **Como funciona?**, e nos guias da Operação EIAH e do Site com IA do Cliente em Chromium.
+- Com a síntese indisponível no Chromium local, o botão voltou ao ícone e ofereceu a gravação alternativa. O teste em Node também conferiu os estados de leitura, interrupção e conclusão. A sintaxe e o dry-run do Wrangler passaram.

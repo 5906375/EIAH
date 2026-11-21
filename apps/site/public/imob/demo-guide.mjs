@@ -116,7 +116,10 @@ function renderTopic(topic, dialog, standalone = false) {
   steps.append(...topic.steps.map(step => element('li', step)));
   const role = document.body.dataset.guideRole ?? 'welcome';
   const fallbackSource = new URL('assets/guia-demo/' + topic.id + '.mp3', base);
-  const audio = createPromptAudio(demoGuideNarration(topic), role, () => {}, 'Ouvir passo a passo', { fallbackSource });
+  const audio = createPromptAudio(demoGuideNarration(topic), role, () => {}, 'Ouvir passo a passo', {
+    fallbackSource,
+    headphones: true
+  });
   for (const control of audio.querySelectorAll('button')) control.classList.add('btn', 'btn-ghost');
   details.append(description, steps, audio);
   const [label, destination] = topic.link;

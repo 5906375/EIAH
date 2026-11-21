@@ -4,11 +4,3 @@
 
 .context-audio{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}.context-audio button{display:inline-flex;align-items:center;padding:8px 13px;border:1px solid var(--step-accent,#08739a);border-radius:20px;background:white;color:var(--step-accent,#08739a);font:650 12px/1.4 'Segoe UI',Arial,sans-serif;cursor:pointer}.context-audio button[aria-pressed=true]{background:var(--step-accent,#08739a);color:white}.context-audio button:disabled{color:#526879;border-color:#bacbd3;cursor:default}.audio-status{font-size:11px;line-height:1.4;color:#526879}.audio-note{display:block;margin-top:7px;font-size:10px;line-height:1.4;color:#526879}.msg .context-audio{white-space:normal}.context-audio button:focus-visible{outline:3px solid #38bdf8;outline-offset:3px}@media print{.context-audio,.audio-note{display:none!important}}
 .intake-context{border:1px solid #bfded5;border-radius:16px;background:#f0faf6;padding:22px;margin:22px 0}.intake-context h2{font-size:22px;margin:0 0 12px}.intake-context p{font-size:14px}.intake-context button{padding:12px 18px;border:1px solid #087b64;border-radius:10px;background:#087b64;color:#fff;font:650 14px 'Segoe UI',Arial,sans-serif}.intake-context pre{white-space:pre-wrap;font:14px/1.6 'Segoe UI',Arial,sans-serif}[aria-disabled=true]{cursor:default;opacity:.8}@media print{.intake-context{display:none!important}}
-
-.context-audio .question-audio-icon {
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  font-size: 20px;
-}
