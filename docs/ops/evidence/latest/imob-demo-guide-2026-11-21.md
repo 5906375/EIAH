@@ -73,3 +73,8 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 
 - Em Chromium, nas duas vitrines a 320, 390, 768, 1024 e 1440 px, as setas ficaram dentro da área do carrossel, uma em cada lateral na altura das fotos. Avançar e voltar movimentou os cartões e preservou a posição das setas. Ao filtrar até não haver resultados, as setas ficaram ocultas. Limpar os filtros restaurou a navegação sem rolagem horizontal da página.
 - `git diff --check` e o dry-run do Wrangler passaram.
+
+## Ficha do imóvel em colunas
+
+- Em Chromium, o apartamento V-03 nas duas vitrines apresentou duas colunas a 320 e 390 px, quatro a 768 px e cinco a 1440 px. Os pares de rótulo e valor mantiveram a ordem, a descrição apareceu acima dos dados e a página ficou sem rolagem horizontal.
+- A ficha abriu e fechou nas duas prévias. As fichas de aluguel L-01 e temporada T-01 também foram conferidas em tela estreita. A checagem de sintaxe, `git diff --check` e o dry-run do Wrangler passaram.
