@@ -2,6 +2,7 @@ import { applyBrand } from './client-brand.mjs';
 import { appendPropertyGallery } from './property-gallery.mjs';
 import { money } from './stay-visual.mjs';
 import { readSetup } from './site-setup-store.mjs';
+import { seasonalRequestUrl } from './seasonal-cases.mjs';
 
 function renderProperty(property) {
   const card = document.createElement('article');
@@ -17,6 +18,13 @@ function renderProperty(property) {
   description.textContent = property.descricao;
   card.append(title, location, value, description);
   appendPropertyGallery(card, property, new URL('./', import.meta.url), 0);
+  if (property.finalidade === 'temporada' && property.stay) {
+    const request = document.createElement('a');
+    request.className = 'btn btn-ghost';
+    request.href = seasonalRequestUrl(property, null, true);
+    request.textContent = 'Pedir datas';
+    card.append(request);
+  }
   return card;
 }
 

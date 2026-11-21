@@ -14,9 +14,17 @@
 <main class="team wrap">
   <p class="eyebrow">Operação EIAH</p>
   <h1>Visão da equipe</h1>
-  <p class="lead">Pedidos salvos explicitamente nesta aba.</p>
-  <p class="demo-notice">Fila de demonstração. Na operação real, os pedidos ficam no workspace da imobiliária na EIAH.</p>
+  <section id="temporada" aria-labelledby="seasonal-queue-title">
+    <h2 id="seasonal-queue-title">Pedidos de temporada</h2>
+    <p class="demo-notice">Fila de demonstração compartilhada com o site da imobiliária neste navegador.</p>
+    <div class="next-actions"><a class="quiet-link" href="../../ia-cliente/?finalidade=temporada#imoveis">Voltar à vitrine de temporada</a></div>
+    <div id="seasonal-queue"></div>
+    <p class="field-help" id="seasonal-queue-message" role="status"></p>
+  </section>
+  <h2>Outros pedidos de atendimento</h2>
+  <p class="field-help">Atendimentos salvos nesta aba.</p>
   <div id="savedQueue" aria-live="polite"></div>
 </main>
 <script type="module" src="../../team-visual.mjs"></script>
+<script type="module" src="../../seasonal-team.mjs"></script>
 </body></html>

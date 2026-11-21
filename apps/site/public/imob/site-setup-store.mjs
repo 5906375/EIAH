@@ -1,6 +1,5 @@
 const database = 'eiah-imob-site-setup-demo';
 const storeName = 'workspaces';
-const workspaceKey = 'demo';
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -11,19 +10,19 @@ function openDatabase() {
   });
 }
 
-async function access(update) {
+async function access(key, initial, update) {
   const db = await openDatabase();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeName, update ? 'readwrite' : 'readonly');
     const store = transaction.objectStore(storeName);
-    const request = store.get(workspaceKey);
+    const request = store.get(key);
     let result;
     let problem;
     request.onsuccess = () => {
       try {
-        const current = request.result ?? { experts: {} };
+        const current = request.result ?? initial;
         result = update ? update(current) : current;
-        if (update) store.put(result, workspaceKey);
+        if (update) store.put(result, key);
       } catch (error) {
         problem = error;
         transaction.abort();
@@ -40,5 +39,7 @@ async function access(update) {
   });
 }
 
-export const readSetup = () => access();
-export const updateSetup = update => access(update);
+export const readSetup = () => access('demo', { experts: {} });
+export const updateSetup = update => access('demo', { experts: {} }, update);
+export const readSeasonalCases = () => access('seasonal-cases', {});
+export const updateSeasonalCases = update => access('seasonal-cases', {}, update);

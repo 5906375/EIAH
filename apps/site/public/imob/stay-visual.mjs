@@ -1,8 +1,8 @@
 const day = 86400000;
-const start = new Date();
-const today = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
 
 export function stayDate(offset = 0) {
+  const start = new Date();
+  const today = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
   return new Date(today + offset * day).toISOString().slice(0, 10);
 }
 
@@ -11,6 +11,11 @@ export function stayNights(arrival, departure) {
 }
 
 export function validStay({ arrival, departure, guests }) {
+  if (![arrival, departure].every(date => {
+    if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+    const time = Date.parse(date);
+    return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === date;
+  })) return false;
   const nights = stayNights(arrival, departure);
   return arrival >= stayDate() && Number.isInteger(nights) && nights > 0 && nights <= 30 &&
     Number.isInteger(Number(guests)) && guests >= 1 && guests <= 12;

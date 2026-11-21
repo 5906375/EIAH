@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Site IMOB — piloto de temporada e check-in (2026-11-21)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Pedido de datas, confirmação e check-in | `docs/ops/evidence/latest/imob-seasonal-checkin-demo-2026-11-21.md` | Execução em navegador na demonstração, com o mesmo protocolo entre a vitrine e a fila da equipe, check-in simulado e bloqueio de confirmações sobrepostas. |
+
 ## Site IMOB — gravação dos contatos do rodapé (2026-11-21)
 
 | Assunto | Arquivo | O que prova |
