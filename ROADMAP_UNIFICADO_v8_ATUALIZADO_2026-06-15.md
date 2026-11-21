@@ -5,7 +5,7 @@ Escopo: plataforma agentic governada (core + governança + interop + economy + T
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
 >
-> **Status da revisão v8.2: RASCUNHO, pendente de registro pelo administrador (ADR-008).** As seções 1.3, 10.10, 11.2 (acréscimo), 11.4 (acréscimo), 14.1, 15.1 e 16 foram adicionadas a partir da leitura de `git log` (títulos de commit e PRs) até o commit `d5ad280` de 2026-11-21. O código de cada PR não foi revisado; as colunas "a indicar" exigem confirmação humana. Nenhum item novo é declarado `DONE`.
+> **Status da revisão v8.2: mesclada na `main` pelo PR #548 em 2026-11-21 (commit `9894097`).** As seções 1.3, 10.10, 11.2 (acréscimo), 11.4 (acréscimo), 14.1, 15.1 e 16 foram adicionadas a partir da leitura de `git log` (títulos de commit e PRs) até o commit `d5ad280` de 2026-11-21. O código de cada PR não foi revisado; as colunas "a indicar" e os itens "evidência a indexar" seguem pendentes de confirmação humana e de indexação no Evidence Index. Nenhum item novo é declarado `DONE`.
 >
 > Revisão v8.1 (preservada): atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
 
@@ -63,7 +63,7 @@ Leitura normativa correta após F0.45:
 - a camada Conversação está consolidada documentalmente no plano interativo, porém continua `especificada/parcial`, não `DONE`;
 - F0/P0 transversal permanecem parciais e não devem ser declarados fechados sem decisão/evidência adicionais.
 
-## 1.3) Atualização executiva v8.2 — 2026-11-21 (rascunho)
+## 1.3) Atualização executiva v8.2 — 2026-11-21
 
 Esta revisão não reabre o roadmap v8; ela sincroniza o documento com o que o repositório contém em 2026-11-21 (`main`, commit `d5ad280`).
 
@@ -421,7 +421,7 @@ Itens já implementados que não eram requisito explícito do backlog P0-P4, mas
 - Itens “implementado extra” não substituem DoD de P0-P4.
 - Promoção para “operacionalmente fechado” continua condicionada às métricas e evidências normativas do v8.
 
-### 10.10) Implementado extra desde o v8.1 (v8.2, rascunho)
+### 10.10) Implementado extra desde o v8.1 (v8.2)
 
 Classificação: **Além do programado**. Convenção da coluna Evidência: "existe" = arquivo confirmado no repositório; "a indicar" = caminho não confirmado nesta leitura. Os números de PR agrupam intervalos e devem ser confirmados um a um.
 
@@ -474,7 +474,7 @@ Esta seção registra o alinhamento entre o roadmap v8, o estado do código e os
 | #145 — IMOB Funnel/Team consolidation | Implementado | Consolida equipe dentro do funil e reduz duplicação de UX. |
 | #146 — IMOB Trilha B runtime mínimo | Implementado | `assignResponsibleActor()` passa a validar contrato canônico antes da persistência compat IMOB. |
 
-Acréscimo v8.2 (rascunho): os avanços posteriores a #146 estão na tabela do §10.10 (PRs #481 a #486, #501 a #505, #509, #510, #512, #514 a #545 e commits de autorização, billing, Oráculo e MCP), com a mesma leitura de governança: implementados além do backlog normativo, sem substituir DoD P0–P4.
+Acréscimo v8.2: os avanços posteriores a #146 estão na tabela do §10.10 (PRs #481 a #486, #501 a #505, #509, #510, #512, #514 a #545 e commits de autorização, billing, Oráculo e MCP), com a mesma leitura de governança: implementados além do backlog normativo, sem substituir DoD P0–P4.
 
 ### 11.3) Trilha B runtime mínimo — estado normativo
 
@@ -508,7 +508,7 @@ Ações remanescentes:
 
 Enquanto isso não ocorrer, não declarar o v8 como “operacionalmente fechado” em termos de SLO.
 
-Acréscimo v8.2 (rascunho) — pendências adicionais a tratar:
+Acréscimo v8.2 — pendências adicionais a tratar:
 - Confirmar o status de implementação da **ADR-011** e registrar a evidência.
 - Indexar no Evidence Index as evidências dos itens 1 a 5, 7 a 9 e 12 a 14 do §10.10.
 - Revisar a data de referência do cabeçalho a cada ciclo documental (a de 2026-07-01 contradizia as edições posteriores).
@@ -561,7 +561,7 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 
 **Status normativo desta revisão:** parcial avançado, não operacionalmente fechado.
 
-### 14.1) Status v8.2 (rascunho)
+### 14.1) Status v8.2
 
 - Front Door: **superfície única implementada** (código), evidência a indexar.
 - Liberação de verticais (ADR-011): **implementada em código**, status a confirmar.
@@ -569,7 +569,7 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 - MKT: **continua sem vertical**; a ponte P11 é somente leitura.
 - Risco residual: regressão documental se as evidências não forem indexadas.
 
-**Status normativo da revisão v8.2:** rascunho pendente de registro; parcial avançado, não operacionalmente fechado.
+**Status normativo da revisão v8.2:** mesclada pelo PR #548, com evidências ainda a indexar; parcial avançado, não operacionalmente fechado.
 
 ## 15) PRE_DUIMP — Gate de preparação técnica (vertical Logística)
 
@@ -647,7 +647,7 @@ Critérios verificáveis, ainda não satisfeitos nesta revisão:
 
 Nenhum DoD versionado explícito foi localizado para `CORE-01A0b` ou `CORE-01A0` nas fontes normativas vigentes na data desta revisão. `CORE-01A0b-R` está evidenciado (`ops/evidence/latest/core-01a0b-r-run-governance-validation-2026-08-26.md`), mas essa evidência não promove `CORE-01A0b` nem `CORE-01A0` a fechados — ambos permanecem `parcial` por ausência de DoD adicional localizado. A abertura documental de `PRE_DUIMP` nesta seção não depende do fechamento de `CORE-01A0b`/`CORE-01A0` e não os declara fechados.
 
-## 15.1) Logística — Oráculo e decisão humana J17 (v8.2, rascunho)
+## 15.1) Logística — Oráculo e decisão humana J17 (v8.2)
 
 Complementa o §15 (`PRE_DUIMP`), sem alterar a ordem oficial de rollout (`LEGAL -> MKT -> Financeiro -> URBAN -> Logística`) nem os critérios do §15, que continuam não satisfeitos. `Comex/DUIMP` segue como recorte interno da Logística, não como vertical pública adicional.
 
@@ -662,7 +662,7 @@ Complementa o §15 (`PRE_DUIMP`), sem alterar a ordem oficial de rollout (`LEGAL
 
 Estado público: a promoção de `PRE_DUIMP` além de shadow continua dependendo dos critérios do §15 e de decisão própria. Nenhum item acima autoriza transmissão externa.
 
-## 16) Índice das ADRs vigentes (v8.2, rascunho)
+## 16) Índice das ADRs vigentes (v8.2)
 
 Até a v8.1 este roadmap não citava ADRs. O índice abaixo usa o nome dos arquivos em `docs/adr/`; **datas de decisão só onde o próprio arquivo as declara**.
 
