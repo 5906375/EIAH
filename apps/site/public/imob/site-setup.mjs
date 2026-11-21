@@ -18,6 +18,14 @@ const experts = new Map([
     purpose: 'Organiza valores, prazos e condições de pagamento e aponta dados financeiros que precisam ser conferidos.',
     example: 'Quando um interessado envia uma proposta pelo site, ajuda a equipe a comparar entrada, parcelas e custos para preparar uma resposta.',
     scope: 'Dados financeiros autorizados da proposta selecionada.'
+  }],
+  ['radar', {
+    name: 'Radar Social',
+    origin: 'Especialista em escuta de mercado da EIAH',
+    image: 'especialista-radar.webp',
+    purpose: 'Reúne sinais públicos sobre temas, bairros e tipos de imóvel em fontes autorizadas, com referências para a equipe conferir.',
+    example: 'Se surgirem buscas e conversas públicas sobre aluguel de temporada na região, ajuda a equipe a decidir quais imóveis destacar na vitrine.',
+    scope: 'Fontes públicas autorizadas e temas de interesse definidos pela imobiliária.'
   }]
 ]);
 const get = id => document.getElementById(id);
