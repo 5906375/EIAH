@@ -45,6 +45,55 @@ export const questions = {
   notes: { text: 'Quer acrescentar alguma preferência ou dúvida?', label: 'Preferências ou dúvidas', optional: true }
 };
 
+export const listingModes = {
+  venda: {
+    first: 'budget',
+    confirmation: 'Vamos preparar o anúncio de venda.',
+    questions: {
+      budget: { text: 'Qual preço você pretende anunciar para a venda do imóvel?', label: 'Preço de venda' },
+      listingAvailability: { text: 'A partir de quando o imóvel estará disponível para visitas? Se escrever, use DD/MM/AAAA.', label: 'Visitas a partir de' }
+    }
+  },
+  locacao: {
+    first: 'budget',
+    confirmation: 'Vamos preparar o anúncio de locação residencial.',
+    questions: {
+      budget: { text: 'Qual valor mensal você pretende cobrar de aluguel?', label: 'Aluguel mensal' },
+      listingAvailability: { text: 'A partir de quando o imóvel estará disponível para o inquilino se mudar? Se escrever, use DD/MM/AAAA.', label: 'Disponível para mudança a partir de' }
+    }
+  },
+  temporada: {
+    first: 'listingAvailability',
+    confirmation: 'Vamos preparar o anúncio de temporada.',
+    questions: {
+      budget: { text: 'Qual valor você pretende cobrar por diária?', label: 'Valor da diária' },
+      listingAvailability: { text: 'A partir de que data o imóvel pode receber hóspedes? Se escrever, use DD/MM/AAAA.', label: 'Recebe hóspedes a partir de' }
+    }
+  }
+};
+
+export function detailKeys(inputs) {
+  const details = detailsByGoal[inputs.goal];
+  const first = listingMode(inputs)?.first;
+  return first ? ['purpose', first, ...details.filter(key => key !== 'purpose' && key !== first)] : details;
+}
+
+export function detailQuestion(key, inputs) {
+  const question = questions[key];
+  const override = listingMode(inputs)?.questions[key];
+  return override ? { ...question, ...override } : question;
+}
+
+function listingMode({ goal, purpose }) {
+  return goal === 'cadastrar' && Object.hasOwn(listingModes, purpose) ? listingModes[purpose] : undefined;
+}
+
+const purposePatterns = {
+  venda: /\b(venda|vender)\b/,
+  locacao: /\b(locacao|locar|aluguel|alugar|residencial|anual|mensal)\b/,
+  temporada: /\b(temporada|diaria|diarias)\b/
+};
+
 const aliases = {
   comprar: 'comprar', compra: 'comprar',
   alugar: 'alugar', aluguel: 'alugar', locar: 'alugar',
@@ -77,6 +126,12 @@ export function matchOption(key, options, message) {
       ((key === 'goal' || key === 'clarify') && text === String(index + 1))
   );
   if (option) return option;
+  if (key === 'purpose') {
+    if (/\b(nao|talvez)\b/.test(text)) return;
+    const purposeText = text.replace(/\b(aluguel|locacao|alugar|locar)\s+(?:(?:por|de|para)\s+)?temporada\b/g, 'temporada');
+    const matches = options.filter(([value]) => purposePatterns[value].test(purposeText));
+    if (matches.length === 1) return matches[0];
+  }
   if (key === 'goal' || key === 'clarify') {
     const guess = Object.hasOwn(aliases, text) ? aliases[text] : inferGoal(message);
     return options.find(([value]) => value === guess);
@@ -84,7 +139,7 @@ export function matchOption(key, options, message) {
 }
 
 export function normalizedDetail(key, value, inputs) {
-  const question = questions[key];
+  const question = detailQuestion(key, inputs);
   if (question.count) {
     const match = /^(\d{1,3})(?:\s+h[oó]spedes?)?$/i.exec(value);
     if (!match || Number(match[1]) < 1 || Number(match[1]) > 100) return null;

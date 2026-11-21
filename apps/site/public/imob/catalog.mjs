@@ -16,8 +16,9 @@ const PHOTO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" st
 const photoSlot = (label = "Foto do imóvel") => `<div class="photo-slot"><div>${PHOTO_SVG}${label}</div></div>`;
 const priceLabel = (p) => p.finalidade === "venda" ? brl(p.preco) : `${brl(p.preco)} <small>/${p.unidadePreco || "mês"}</small>`;
 /* ===== estado e filtros ===== */
-const initialMode = document.body.dataset.product === 'ia-cliente' &&
-  new URLSearchParams(location.search).get('finalidade') === 'temporada' ? 'temporada' : 'venda';
+const listTitles = { venda: "Imóveis à venda", locacao: "Imóveis para alugar", temporada: "Imóveis para temporada" };
+const requestedMode = new URLSearchParams(location.search).get("finalidade");
+const initialMode = Object.hasOwn(listTitles, requestedMode) ? requestedMode : "venda";
 const state = { mode: initialMode, type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] };
 let favorites = new Set(store.get("im_favs", []));
 let compare = new Set();
@@ -64,7 +65,9 @@ function syncInputs() {
   $("#fMode").value = state.mode; $("#fType").value = state.type; $("#fCity").value = state.place;
   $("#fBeds").value = String(state.beds); $("#fMax").value = state.max ? state.max.toLocaleString("pt-BR") : ""; $("#fSort").value = state.sort;
   $$(".mode-tabs button").forEach((b) => { const on = b.dataset.mode === state.mode; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on); });
-  $("#listTitle").textContent = { venda: "Imóveis à venda", locacao: "Imóveis para alugar", temporada: "Imóveis para temporada" }[state.mode];
+  const listTitle = $("#listTitle");
+  listTitle.textContent = listTitles[state.mode];
+  listTitle.dataset.demoGuideTopic = state.mode === "temporada" ? "temporada-vitrine" : state.mode;
   $("#onlyFav").setAttribute("aria-pressed", state.onlyFav); $("#onlyFav").textContent = state.onlyFav ? "♥ Favoritos" : "♡ Favoritos";
 }
 
