@@ -24,3 +24,9 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 - Um teste em Node com a síntese do navegador simulada confirmou a mesma voz escolhida nas perguntas e no guia para Recepção, Imóvel e Revisão. Também conferiu a leitura padrão em pt-BR, a interrupção e a oferta manual da gravação quando a síntese falha ou está indisponível.
 - Na etapa Imóvel da prévia local em Chromium, a síntese nativa ficou indisponível. O guia exibiu o texto e ofereceu a gravação alternativa. A reprodução começou após clicar na alternativa. Parar áudio interrompeu a reprodução e Escape devolveu o foco a **Como funciona?**.
 - A checagem de sintaxe, a conferência das 28 narrações alternativas e o dry-run do Wrangler passaram.
+
+## Conversa de anúncio por finalidade
+
+- Na Prévia 01 em Chromium, as opções Venda, Locação residencial e Temporada geraram confirmações próprias e abriram as perguntas sobre preço de venda, aluguel mensal e data para receber hóspedes. Editar a última resposta permitiu trocar de finalidade e receber a pergunta correspondente.
+- O anúncio de temporada chegou à Revisão com data de disponibilidade de 15/12/2026 e diária de R$ 350. Na Prévia 02, “venda ou temporada” manteve a escolha aberta e “quero anunciar para aluguel de temporada” abriu a pergunta de disponibilidade.
+- O teste em Node conferiu as modalidades, a equivalência das respostas por texto, a ausência de seleção para respostas ambíguas, a validação de datas e as perguntas dos demais objetivos. A sintaxe e o dry-run do Wrangler passaram.
