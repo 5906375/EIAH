@@ -286,12 +286,12 @@ export const demoGuideTopics = [
   },
   {
     id: 'especialistas',
-    title: 'Conhecer e ativar especialistas',
-    description: 'Na demo, J_360 apresenta o apoio jurídico, FinNexus o apoio financeiro e Radar Social a escuta de mercado.',
+    title: 'Solicitar demo de um especialista',
+    description: 'Recepção, Imóvel e Revisão acompanham a jornada. J_360, FinNexus e Radar Social são especialistas contratáveis.',
     steps: [
-      'Em Especialistas EIAH, leia os cartões para conhecer o papel de cada agente.',
-      'Depois de publicar a vitrine na demo, revise o escopo de um especialista. Confirme a contratação simulada e clique em Ativar.',
-      'Confira o estado Ativo na demonstração. Esse teste serve para praticar o fluxo de contratação.'
+      'Em Agentes EIAH, navegue pelos cartões e abra os exemplos de uso para conhecer os especialistas.',
+      'Clique em Solicitar Demo no cartão do especialista que você quer conhecer.',
+      'Conte o que gostaria de testar e escolha como enviar sua solicitação.'
     ],
     link: ['Ir aos especialistas da demo', './ia-cliente/criar-site/#especialistas']
   }

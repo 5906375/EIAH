@@ -20,13 +20,13 @@
 <main class="wrap setup" id="main">
   <p class="eyebrow">Demonstração</p>
   <h1 data-demo-guide-topic="publicar">Criar meu site</h1>
-  <p class="lead">Use dados fictícios para testar o cadastro da imobiliária, a publicação da vitrine e a contratação de especialistas.</p>
+  <p class="lead">Use dados fictícios para testar o cadastro da imobiliária e a publicação da vitrine. Você também pode solicitar uma demo com os especialistas EIAH.</p>
   <div class="setup-layout">
     <nav class="setup-steps" aria-label="Etapas do site">
       <ol>
         <li><a href="#perfil" aria-current="step">Perfil e personalização</a></li>
         <li><a href="#publicacao">Plano e publicação</a></li>
-        <li><a href="#especialistas">Especialistas EIAH</a></li>
+        <li><a href="#especialistas">Agentes EIAH</a></li>
       </ol>
     </nav>
     <div class="setup-panels">
@@ -73,11 +73,15 @@
         </div>
       </section>
       <section class="setup-panel" id="especialistas" aria-labelledby="experts-heading">
-        <h2 data-demo-guide-topic="especialistas" id="experts-heading">Especialistas EIAH</h2>
-        <p>Conheça os especialistas da EIAH que podem apoiar a imobiliária na revisão de contratos, na análise financeira e no acompanhamento do mercado. Nesta demo, você pode simular a contratação e a ativação.</p>
-        <p id="experts-locked" class="setup-note">Publique a vitrine na demonstração para liberar a contratação simulada.</p>
-        <div class="setup-experts" id="expert-options"></div>
-        <div class="setup-divider" id="expert-review" hidden></div>
+        <h2 data-demo-guide-topic="especialistas" id="experts-heading">Agentes EIAH</h2>
+        <p>Recepção, Imóvel e Revisão acompanham a jornada. Especialistas podem ser contratados conforme as necessidades da imobiliária.</p>
+        <div class="setup-agent-carousel">
+          <div class="property-carousel-buttons" id="agent-navigation" role="group" aria-label="Navegação dos agentes" hidden>
+            <button class="btn btn-ghost property-carousel-arrow" id="agent-previous" type="button" aria-label="Agentes anteriores" aria-controls="expert-options">‹</button>
+            <button class="btn btn-ghost property-carousel-arrow" id="agent-next" type="button" aria-label="Próximos agentes" aria-controls="expert-options">›</button>
+          </div>
+          <div class="setup-experts" id="expert-options" role="region" aria-label="Carrossel de agentes"></div>
+        </div>
       </section>
       <p id="setup-feedback" class="setup-feedback" role="status" aria-live="polite" aria-atomic="true"></p>
     </div>

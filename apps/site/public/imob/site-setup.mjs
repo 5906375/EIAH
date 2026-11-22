@@ -1,39 +1,23 @@
 import { readSavedBrand } from './client-brand.mjs';
 import { readClientProperties } from './client-properties.mjs';
 import { readSetup, updateSetup } from './site-setup-store.mjs';
+import { bindCarouselNavigation } from './carousel-navigation.mjs';
+import { imobSpecialists } from './imob-specialists.mjs';
 
-const experts = new Map([
-  ['j360', {
-    name: 'J_360',
-    origin: 'Especialista jurídico da EIAH',
-    image: 'especialista-j360.webp',
-    purpose: 'Revisa contratos e cláusulas, indica lacunas na documentação e destaca pontos que merecem análise jurídica.',
-    example: 'Se um pedido recebido pelo site avançar para locação, ajuda a equipe a conferir cláusulas como prazo, multa e garantias antes da revisão profissional.',
-    scope: 'Documentos autorizados no caso IMOB selecionado.'
-  }],
-  ['fin-nexus', {
-    name: 'FinNexus',
-    origin: 'Especialista financeiro da EIAH',
-    image: 'especialista-finnexus.webp',
-    purpose: 'Organiza valores, prazos e condições de pagamento e aponta dados financeiros que precisam ser conferidos.',
-    example: 'Quando um interessado envia uma proposta pelo site, ajuda a equipe a comparar entrada, parcelas e custos para preparar uma resposta.',
-    scope: 'Dados financeiros autorizados da proposta selecionada.'
-  }],
-  ['radar', {
-    name: 'Radar Social',
-    origin: 'Especialista em escuta de mercado da EIAH',
-    image: 'especialista-radar.webp',
-    purpose: 'Reúne sinais públicos sobre temas, bairros e tipos de imóvel em fontes autorizadas, com referências para a equipe conferir.',
-    example: 'Se surgirem buscas e conversas públicas sobre aluguel de temporada na região, ajuda a equipe a decidir quais imóveis destacar na vitrine.',
-    scope: 'Fontes públicas autorizadas e temas de interesse definidos pela imobiliária.'
-  }]
-]);
+const journeyAgents = [
+  { name: 'Recepção', position: '0%', purpose: 'Entende o objetivo do visitante e encaminha o pedido.' },
+  { name: 'Imóvel', position: '50%', purpose: 'Organiza os dados do imóvel ou da busca.' },
+  { name: 'Revisão', position: '100%', purpose: 'Reúne os dados para conferência antes do envio.' }
+];
 const get = id => document.getElementById(id);
 const profileForm = get('profile-form');
 const feedback = get('setup-feedback');
 const steps = [...document.querySelectorAll('.setup-steps a')];
-let state = { experts: {} };
-let selectedExpert = null;
+const agentTrack = get('expert-options');
+const updateAgentNavigation = bindCarouselNavigation(
+  agentTrack, get('agent-navigation'), get('agent-previous'), get('agent-next')
+);
+let state;
 let busy = false;
 
 function showMessage(message, isError = false) {
@@ -51,72 +35,53 @@ function textElement(tag, value) {
   return element;
 }
 
-function action(label, onClick, primary = false) {
-  const button = textElement('button', label);
-  button.type = 'button';
-  button.className = 'btn ' + (primary ? 'btn-primary' : 'btn-ghost');
-  button.addEventListener('click', onClick);
-  return button;
+function agentCard(agent) {
+  const card = document.createElement('article');
+  card.className = 'setup-option setup-expert';
+  const heading = document.createElement('header');
+  const label = textElement('p', agent.image ? 'Contratável' : 'Na jornada');
+  label.className = 'setup-agent-label';
+  if (agent.image) {
+    const portrait = document.createElement('img');
+    portrait.src = new URL('./assets/' + agent.image, import.meta.url).href;
+    portrait.alt = '';
+    portrait.width = portrait.height = 42;
+    portrait.loading = 'lazy';
+    heading.append(portrait);
+  } else {
+    const portrait = document.createElement('span');
+    portrait.className = 'setup-agent-portrait';
+    portrait.style.setProperty('--agent-position', agent.position);
+    portrait.setAttribute('aria-hidden', 'true');
+    heading.append(portrait);
+    label.toggleAttribute('data-included', true);
+  }
+  heading.append(textElement('h3', agent.name));
+  card.append(heading, label, textElement('p', agent.purpose));
+  return card;
 }
 
-function renderExperts() {
-  const options = get('expert-options');
-  const review = get('expert-review');
-  const cards = [];
-  for (const [id, expert] of experts) {
-    const card = document.createElement('article');
-    card.className = 'setup-option setup-expert';
-    const heading = document.createElement('header');
-    const portrait = document.createElement('img');
-    portrait.src = new URL('./assets/' + expert.image, import.meta.url).href;
-    portrait.alt = '';
-    portrait.width = portrait.height = 384;
-    portrait.loading = 'lazy';
-    const identity = document.createElement('div');
-    identity.append(textElement('h3', expert.name), textElement('p', expert.origin));
-    heading.append(portrait, identity);
-    const details = document.createElement('dl');
-    details.className = 'setup-details';
-    details.append(
-      textElement('dt', 'O que faz'), textElement('dd', expert.purpose),
-      textElement('dt', 'Como ajuda na imobiliária'), textElement('dd', expert.example)
-    );
-    card.append(heading, details);
-    if (state.experts[id] === 'active') {
-      card.append(textElement('p', 'Ativo na demonstração'));
-    } else if (state.experts[id] === 'contracted') {
-      card.append(textElement('p', 'Contratação simulada registrada'));
-      card.append(action('Ativar ' + expert.name, () => activateExpert(id)));
-    } else if (state.published) {
-      card.append(action('Revisar ' + expert.name, () => {
-        selectedExpert = id;
-        renderExpertReview();
-        review.querySelector('h3')?.focus();
-      }));
-    }
+function renderAgents() {
+  const cards = journeyAgents.map(agentCard);
+  for (const [id, expert] of imobSpecialists) {
+    const card = agentCard(expert);
+    const details = document.createElement('details');
+    details.append(textElement('summary', 'Exemplo de uso'), textElement('p', expert.example));
+    const request = textElement('a', 'Solicitar Demo');
+    request.className = 'btn btn-ghost';
+    request.href = '../?especialista=' + encodeURIComponent(id) + '#jornada';
+    request.setAttribute('aria-label', 'Solicitar Demo de ' + expert.name);
+    card.append(details, request);
     cards.push(card);
   }
-  options.replaceChildren(...cards);
-  renderExpertReview();
-}
-
-function renderExpertReview() {
-  const review = get('expert-review');
-  const expert = experts.get(selectedExpert);
-  review.hidden = !state.published || !expert || Boolean(state.experts[selectedExpert]);
-  if (review.hidden) {
-    review.replaceChildren();
-    return;
-  }
-  const id = selectedExpert;
-  const title = textElement('h3', 'Contratação de ' + expert.name);
-  title.tabIndex = -1;
-  review.replaceChildren(
-    title,
-    textElement('p', 'Acesso previsto: ' + expert.scope),
-    textElement('p', 'O valor e a unidade de cobrança serão apresentados na contratação real. Esta simulação não gera cobrança.'),
-    action('Confirmar contratação simulada', () => contractExpert(id), true)
+  const expansion = document.createElement('article');
+  expansion.className = 'setup-option setup-expert setup-agent-expansion';
+  expansion.append(
+    textElement('h3', 'Mais agentes'),
+    textElement('p', 'Espaço para novos agentes conforme a demanda e o porte da imobiliária.')
   );
+  agentTrack.replaceChildren(...cards, expansion);
+  updateAgentNavigation();
 }
 
 function render() {
@@ -137,8 +102,6 @@ function render() {
     : state.plan
       ? 'Pagamento simulado confirmado. Revise o rascunho e publique quando estiver pronto.'
       : 'A simulação dispensa dados de pagamento.';
-  get('experts-locked').hidden = Boolean(state.published);
-  renderExperts();
 }
 
 async function save(change, success, focusId) {
@@ -214,24 +177,8 @@ get('publish-site').addEventListener('click', () => {
   void save(current => {
     requireCondition(current.draft && current.plan, 'Confirme o pagamento simulado antes de publicar.');
     return { ...current, published: current.draft };
-  }, 'Vitrine publicada na demonstração. A área de especialistas está disponível.', 'published-link');
+  }, 'Vitrine publicada na demonstração.', 'published-link');
 });
-
-function contractExpert(id) {
-  void save(current => {
-    requireCondition(current.published && experts.has(id), 'Publique a vitrine para contratar um especialista.');
-    if (current.experts[id]) return current;
-    return { ...current, experts: { ...current.experts, [id]: 'contracted' } };
-  }, 'Contratação simulada. Ative o especialista quando estiver pronto.');
-}
-
-function activateExpert(id) {
-  void save(current => {
-    requireCondition(current.published && current.experts[id] === 'contracted',
-      'A contratação simulada precisa estar confirmada.');
-    return { ...current, experts: { ...current.experts, [id]: 'active' } };
-  }, experts.get(id).name + ' está ativo na demonstração.');
-}
 
 function highlightStep() {
   for (const link of steps) {
@@ -241,6 +188,7 @@ function highlightStep() {
 }
 
 highlightStep();
+renderAgents();
 addEventListener('hashchange', highlightStep);
 addEventListener('pageshow', event => { if (event.persisted) void start(); });
 void start();

@@ -2,6 +2,7 @@ import { clientPropertyStorageKey, readClientProperties, storefrontProperties as
 import { money as brl, quoteStay, stayDate, validStay } from './stay-visual.mjs';
 import { findProperty, monthlyTotal } from './property-context.mjs';
 import { seasonalRequestUrl } from './seasonal-cases.mjs';
+import { bindCarouselNavigation } from './carousel-navigation.mjs';
 
 /* ===== util ===== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -25,9 +26,9 @@ let compare = new Set();
 let staySelection = null;
 let lastResultIds = "";
 const cards = $("#cards");
-const cardsNavigation = $("#cardsNavigation");
-const cardsPrevious = $("#cardsPrevious");
-const cardsNext = $("#cardsNext");
+const updateCardsNavigation = bindCarouselNavigation(
+  cards, $("#cardsNavigation"), $("#cardsPrevious"), $("#cardsNext")
+);
 const stayForm = $("#stayForm");
 stayForm.elements.arrival.min = stayDate();
 stayForm.elements.departure.min = stayDate(1);
@@ -145,28 +146,6 @@ function propertyInterestLink(property) {
   const href = url.pathname + url.search + url.hash;
   return `<a class="btn btn-ghost property-chat-link" href="${esc(href)}" data-property-interest="${esc(property.id)}" aria-label="Solicitar demonstração com este imóvel: ${esc(property.titulo)}">Solicitar demonstração com este imóvel</a>`;
 }
-
-function updateCardsNavigation() {
-  const maxScroll = cards.scrollWidth - cards.clientWidth;
-  const canScroll = maxScroll > 2;
-  cardsNavigation.hidden = !canScroll;
-  if (canScroll) cards.tabIndex = 0;
-  else cards.removeAttribute("tabindex");
-  cardsPrevious.setAttribute("aria-disabled", String(cards.scrollLeft <= 2));
-  cardsNext.setAttribute("aria-disabled", String(cards.scrollLeft >= maxScroll - 2));
-}
-
-for (const [button, direction] of [[cardsPrevious, -1], [cardsNext, 1]]) {
-  button.addEventListener("click", () => {
-    const [first, second] = cards.children;
-    if (!second || button.getAttribute("aria-disabled") === "true") return;
-    const stride = second.getBoundingClientRect().left - first.getBoundingClientRect().left;
-    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    cards.scrollBy({ left: direction * stride, behavior: reducedMotion ? "instant" : "smooth" });
-  });
-}
-cards.addEventListener("scroll", updateCardsNavigation, { passive: true });
-new ResizeObserver(updateCardsNavigation).observe(cards);
 
 function render() {
   syncInputs();
