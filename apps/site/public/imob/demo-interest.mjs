@@ -1,16 +1,18 @@
 import { findProperty, renderPropertyContext } from './property-context.mjs';
+import { imobSpecialists } from './imob-specialists.mjs';
 
 const section = document.getElementById('jornada');
 const product = document.body.dataset.product === 'ia-cliente' ? 'Site com IA do Cliente' : 'Operação EIAH';
 const subject = 'Interesse em demonstração com IA · EIAH IMOB';
 const whatsapp = 'https://wa.me/5547999674434';
 const email = 'mailto:contato@eiah.ia.br';
+const introduction = 'Esta prévia usa imóveis fictícios e funciona sem IA. Conte o que você gostaria de testar e solicite uma demonstração com a IA da EIAH, com a sua própria IA ou com as duas.';
 
 section.innerHTML = `
   <div class="wrap">
     <a class="quiet-link" href="#vitrine" id="interest-back">Voltar à vitrine</a>
     <h2 id="interest-title" data-demo-guide-topic="conversa" tabindex="-1">Quer conhecer o IMOB com IA?</h2>
-    <p class="interest-intro">Esta prévia usa imóveis fictícios e funciona sem IA. Conte o que você gostaria de testar e solicite uma demonstração com a IA da EIAH, com a sua própria IA ou com as duas.</p>
+    <p class="interest-intro" id="interest-intro">${introduction}</p>
     <aside id="interest-property" aria-label="Imóvel de exemplo" hidden></aside>
     <div class="interest-layout">
       <form class="interest-fields" id="interest-form" aria-label="Interesse em demonstração">
@@ -62,6 +64,7 @@ const fields = [
 let property;
 let listing = false;
 let trigger;
+let specialist;
 
 function renderSummary() {
   const values = new FormData(form);
@@ -73,7 +76,9 @@ function renderSummary() {
     else missing.push(label);
   }
   const message = [
-    'Olá! Quero conhecer o IMOB em uma demonstração com IA.',
+    specialist
+      ? 'Olá! Quero solicitar uma demonstração de ' + specialist.name + ' no EIAH IMOB.'
+      : 'Olá! Quero conhecer o IMOB em uma demonstração com IA.',
     'Prévia de origem: ' + product,
     ...(listing ? ['Contexto: Quero conhecer o fluxo para anunciar um imóvel.'] : []),
     ...(property ? ['Imóvel de exemplo: ' + property.titulo + ' (' + property.id.toUpperCase() + ')'] : []),
@@ -93,20 +98,28 @@ function renderSummary() {
 
 function openInterest(detail = {}) {
   property = findProperty(detail.propertyId);
-  listing = !property && Boolean(detail.listing);
+  specialist = property ? undefined : imobSpecialists.get(detail.specialistId);
+  listing = !property && !specialist && Boolean(detail.listing);
   trigger = detail.trigger;
   const url = new URL(location.href);
   url.searchParams.delete('imovel');
   url.searchParams.delete('objetivo');
+  url.searchParams.delete('especialista');
   if (property) url.searchParams.set('imovel', property.id);
+  else if (specialist) url.searchParams.set('especialista', detail.specialistId);
   else url.searchParams.set('objetivo', listing ? 'cadastrar' : 'novo');
   url.hash = 'jornada';
   if (url.href !== location.href) history.replaceState(null, '', url);
   renderPropertyContext(get('interest-property'), property, detail.stay);
+  const title = get('interest-title');
+  title.textContent = specialist ? 'Solicitar demo de ' + specialist.name : 'Quer conhecer o IMOB com IA?';
+  get('interest-intro').textContent = specialist
+    ? 'Conte o que gostaria de testar com este especialista e escolha como enviar sua solicitação.'
+    : introduction;
   renderSummary();
   section.hidden = false;
   section.scrollIntoView();
-  get('interest-title').focus({ preventScroll: true });
+  title.focus({ preventScroll: true });
 }
 
 form.addEventListener('input', renderSummary);
@@ -129,6 +142,7 @@ get('interest-back').addEventListener('click', () => {
   const url = new URL(location.href);
   url.searchParams.delete('imovel');
   url.searchParams.delete('objetivo');
+  url.searchParams.delete('especialista');
   history.replaceState(null, '', url);
   if (trigger?.isConnected) trigger.focus({ preventScroll: true });
 });
@@ -144,7 +158,11 @@ document.addEventListener('imob:start', event => openInterest(event.detail));
 
 const params = new URLSearchParams(location.search);
 if (/^#jornada(?:-recepcao|-imovel|-revisao)?$/.test(location.hash) || params.has('imovel')) {
-  openInterest({ propertyId: params.get('imovel'), listing: params.get('objetivo') === 'cadastrar' });
+  openInterest({
+    propertyId: params.get('imovel'),
+    listing: params.get('objetivo') === 'cadastrar',
+    specialistId: params.get('especialista')
+  });
 } else {
   renderSummary();
 }

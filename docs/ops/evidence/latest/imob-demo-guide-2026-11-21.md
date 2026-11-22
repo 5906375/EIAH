@@ -84,3 +84,9 @@ O catálogo em `apps/site/public/imob/demo-guide-content.mjs` fornece o texto da
 - Em Chromium a 320, 390, 768 e 1440 px, os três assistentes da jornada, os três especialistas e o espaço de expansão ficaram na mesma faixa, com avanço e retorno pelas setas e sem rolagem horizontal da página.
 - Em uma sessão de demonstração isolada a 390 px, o fluxo partiu do perfil de exemplo e passou pela publicação simulada, revisão de escopo, contratação e ativação do J_360. O foco voltou ao cartão após a contratação e a ativação, com a posição do carrossel e o exemplo aberto preservados.
 - As setas das duas vitrines de imóveis foram conferidas após a extração do código compartilhado. As 28 narrações foram conferidas, incluindo a gravação atualizada de agentes. A sintaxe, `git diff --check` e o dry-run do Wrangler passaram.
+
+## Etapas responsivas e solicitação de demo dos especialistas
+
+- Em Chromium, as etapas de criação ficaram em duas colunas a 320 e 390 px e na mesma linha a 768 e 1440 px, sem rolagem horizontal da página.
+- Os cartões de J_360, FinNexus e Radar Social exibiram Solicitar Demo em um navegador com dados da simulação anterior. Cada destino abriu o formulário com o especialista correto na mensagem e nos links de WhatsApp e e-mail. Os canais de envio não foram acionados.
+- A sintaxe dos módulos, a conferência das 28 narrações e o dry-run do Wrangler passaram.
