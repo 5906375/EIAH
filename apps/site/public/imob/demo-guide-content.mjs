@@ -156,7 +156,7 @@ export const demoGuideTopics = [
     steps: [
       'Explore a vitrine e solicite uma demonstração para conhecer o atendimento com a sua própria IA.',
       'Em Personalizar meu site, altere a marca, os anúncios e os contatos para conferir como apareceriam na demo.',
-      'Use Criar meu site para guardar uma versão publicada neste navegador.'
+      'Use Criar meu site para revisar sua vitrine e se cadastrar no piloto de publicação gratuita.'
     ],
     link: ['Abrir a Prévia 02', './ia-cliente/']
   },
@@ -224,12 +224,12 @@ export const demoGuideTopics = [
   },
   {
     id: 'publicar',
-    title: 'Montar e publicar a vitrine na demo',
-    description: 'A publicação simulada guarda uma versão dos imóveis editados, da marca e do rodapé no navegador.',
+    title: 'Preparar a publicação gratuita da vitrine',
+    description: 'O piloto oferece publicação e hospedagem gratuitas para até dez vitrines, após confirmação da equipe EIAH.',
     steps: [
-      'Em Criar meu site, use dados de exemplo e salve o perfil de demonstração.',
-      'Clique em Importar personalização da demo. Depois use Simular pagamento e Publicar na demonstração.',
-      'Abra Ver vitrine publicada na demo para conferir. Para aplicar edições novas, importe e publique novamente.'
+      'Salve seu perfil e envie o cadastro para o piloto usando seu contato profissional.',
+      'Importe a personalização e atualize a prévia local para revisar a marca, os anúncios e os contatos.',
+      'Depois da confirmação da vaga, baixe o rascunho e envie à equipe EIAH para publicar.'
     ],
     link: ['Abrir Criar meu site', './ia-cliente/criar-site/']
   },
@@ -238,8 +238,8 @@ export const demoGuideTopics = [
     title: 'Salvar o perfil da demonstração',
     description: 'O perfil identifica a imobiliária para preparar o rascunho da vitrine.',
     steps: [
-      'Clique em Usar dados de exemplo ou preencha o nome, a imobiliária e o e-mail profissional com dados fictícios.',
-      'Clique em Salvar perfil de demonstração para liberar a importação da personalização.'
+      'Preencha o nome, a imobiliária e o e-mail profissional. Use dados de exemplo para testar a prévia local.',
+      'Clique em Salvar perfil para importar a personalização. Use Enviar cadastro para o piloto para compartilhar seu contato com a EIAH.'
     ],
     link: ['Abrir o perfil na demo', './ia-cliente/criar-site/#perfil']
   },

@@ -28,3 +28,16 @@
 
 ## Publicação
 Faça backup da raiz atual e envie esta árvore preservando os diretórios.
+
+## Piloto IMOB de vitrines gratuitas
+
+O cadastro é enviado pelo interessado à caixa `contato@eiah.ia.br`. A equipe da EIAH confirma as vagas e recebe dos selecionados o arquivo exportado em **Baixar rascunho para publicação**. Revise os anúncios e os contatos públicos com a imobiliária antes de publicar.
+
+Na raiz do repositório, gere a vitrine com o endereço aprovado.
+
+```bash
+node apps/site/scripts/publish-imob-pilot.mjs horizonte /caminho/vitrine-imob.json
+pnpm dlx wrangler@4.165.0 deploy --dry-run --config apps/site/wrangler.jsonc
+```
+
+O comando escreve a página em `apps/site/public/imob/horizonte/index.html`. Revise e inclua a página na versão do site a publicar. Depois do deploy do Worker `eiah-site`, a vitrine fica disponível em `https://eiah.ia.br/imob/horizonte/`. Use o mesmo endereço ao atualizar a página da imobiliária. O Wrangler confere o teto de dez vitrines no conjunto de arquivos do deploy.
