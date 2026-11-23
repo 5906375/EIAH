@@ -1,15 +1,8 @@
-.demo-guide-launcher { flex: none; padding: 8px 12px; white-space: nowrap; }
 .demo-guide-section {
   min-height: 40px;
   margin-block: 4px 10px;
   padding: 6px 12px;
   color: var(--brand);
-}
-.topbar .wrap:has(> .demo-guide-launcher) > .brand { min-width: 0; }
-.topbar .wrap:has(> .demo-guide-launcher) > .brand > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .demo-guide {
   position: fixed;
@@ -28,21 +21,11 @@
 .demo-guide::backdrop { background: rgb(8 25 39 / 58%); }
 .demo-guide-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .demo-guide-header h2 { font-size: clamp(1.25rem, 4vw, 1.65rem); }
-.demo-guide > p { margin-top: 8px; }
-.demo-guide-filter { margin-block: 16px; }
-.demo-guide-filter[hidden] { display: none; }
-.demo-guide-filter [aria-pressed="true"] { color: var(--brand); background: var(--brand-soft); border-color: var(--brand); }
-.demo-guide-list { display: grid; gap: 8px; }
-.demo-guide-header + p[hidden] ~ .demo-guide-list { margin-top: 12px; }
-.demo-guide-topic { border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; }
-.demo-guide-topic summary { cursor: pointer; color: var(--navy); font-weight: 700; }
+.demo-guide-header .btn { flex: none; white-space: nowrap; }
+.demo-guide-list { margin-top: 12px; }
 .demo-guide-topic > p, .demo-guide-topic > ol { margin-block: 10px; }
 .demo-guide-topic ol { padding-inline-start: 22px; }
 .demo-guide-topic li + li { margin-top: 7px; }
 .demo-guide-topic .context-audio { margin-block: 12px 9px; }
 .demo-guide-topic .context-audio button { min-height: 40px; cursor: pointer; }
 .demo-guide-topic > a { display: inline-block; margin-bottom: 4px; }
-@media (max-width: 540px) {
-  .topbar .wrap:has(> .demo-guide-launcher) { gap: 8px; }
-  .demo-guide-launcher { padding-inline: 8px; }
-}

@@ -1,13 +1,13 @@
 import { createPromptAudio, stopContextAudio } from './context-audio.mjs';
 import { demoGuideNarration, demoGuidePages, demoGuideTopics } from './demo-guide-content.mjs';
 
+// Cada seção da página com data-demo-guide-topic ganha um botão "Como funciona?" que abre o passo a passo
+// daquele assunto, em texto e em áudio. Não há mais um guia geral no cabeçalho.
 const base = new URL('./', import.meta.url);
 const page = location.pathname.slice(base.pathname.length).replace(/\/?index\.html$/, '').replace(/\/$/, '');
-const pageTopics = demoGuidePages[page];
-const brand = document.querySelector('.topbar .brand');
 const topicsById = new Map(demoGuideTopics.map(topic => [topic.id, topic]));
 
-if (pageTopics && brand) mountGuide();
+if (demoGuidePages[page]) mountGuide();
 
 function element(tag, text, className) {
   const item = document.createElement(tag);
@@ -28,54 +28,20 @@ function mountGuide() {
   style.href = new URL('demo-guide.css', base);
   document.head.append(style);
 
-  const launch = button('Guia da demo', 'btn btn-ghost demo-guide-launcher');
-  launch.setAttribute('aria-haspopup', 'dialog');
-  launch.setAttribute('aria-controls', 'imob-demo-guide');
-  brand.after(launch);
-
   const dialog = element('dialog', '', 'demo-guide');
   dialog.id = 'imob-demo-guide';
   dialog.setAttribute('aria-labelledby', 'imob-demo-guide-title');
-  const title = element('h2', 'Guia da demo IMOB');
+  const title = element('h2');
   title.id = 'imob-demo-guide-title';
   const close = button('Fechar', 'btn btn-ghost');
   const header = element('div', '', 'demo-guide-header');
   header.append(title, close);
-
-  const intro = element('p', 'Escolha um recurso para ver os passos e ouvir a explicação.');
-  const filter = element('div', '', 'demo-guide-filter next-actions');
-  filter.setAttribute('role', 'group');
-  filter.setAttribute('aria-label', 'Assuntos do guia');
-  const current = button('Nesta tela', 'btn btn-ghost');
-  const all = button('Todos os recursos', 'btn btn-ghost');
-  filter.append(current, all);
-  const list = element('div', '', 'demo-guide-list');
-  dialog.append(header, intro, filter, list);
+  const content = element('div', '', 'demo-guide-list');
+  dialog.append(header, content);
   document.body.append(dialog);
 
-  function render(showAll) {
-    stopContextAudio();
-    current.setAttribute('aria-pressed', String(!showAll));
-    all.setAttribute('aria-pressed', String(showAll));
-    title.textContent = 'Guia da demo IMOB';
-    intro.hidden = false;
-    filter.hidden = false;
-    const topics = showAll ? demoGuideTopics : pageTopics.map(id => topicsById.get(id));
-    list.replaceChildren(...topics.map(topic => renderTopic(topic, dialog)));
-    const anchor = location.hash ? document.getElementById(location.hash.slice(1)) : null;
-    const preferred = anchor?.dataset.demoGuideTopic ?? anchor?.querySelector('[data-demo-guide-topic]')?.dataset.demoGuideTopic;
-    const hashTopic = topics.findIndex(topic => topic.id === preferred);
-    list.children[Math.max(0, hashTopic)].open = true;
-  }
-
-  launch.addEventListener('click', () => {
-    render(false);
-    dialog.showModal();
-  });
   close.addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', stopContextAudio);
-  current.addEventListener('click', () => render(false));
-  all.addEventListener('click', () => render(true));
 
   document.querySelectorAll('[data-demo-guide-topic]').forEach((section, index) => {
     const help = button('Como funciona?', 'btn btn-ghost demo-guide-section');
@@ -94,23 +60,14 @@ function mountGuide() {
       if (!topic) return;
       stopContextAudio();
       title.textContent = topic.title;
-      intro.hidden = true;
-      filter.hidden = true;
-      list.replaceChildren(renderTopic(topic, dialog, true));
+      content.replaceChildren(renderTopic(topic, dialog));
       dialog.showModal();
     });
   });
 }
 
-function renderTopic(topic, dialog, standalone = false) {
-  const details = element(standalone ? 'div' : 'details', '', 'demo-guide-topic');
-  if (!standalone) {
-    details.name = 'imob-demo-topics';
-    details.append(element('summary', topic.title));
-    details.addEventListener('toggle', () => {
-      if (!details.open) stopContextAudio();
-    });
-  }
+function renderTopic(topic, dialog) {
+  const details = element('div', '', 'demo-guide-topic');
   const description = element('p', topic.description);
   const steps = element('ol');
   steps.append(...topic.steps.map(step => element('li', step)));

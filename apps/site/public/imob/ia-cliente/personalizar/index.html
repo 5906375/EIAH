@@ -130,7 +130,7 @@
         <label class="field-label" for="propertyChoice">Escolher imóvel</label>
         <select id="propertyChoice"></select>
         <section id="guidedCapture" class="guided-capture" aria-labelledby="guidedTitle">
-          <h3 id="guidedTitle">Cadastro guiado</h3>
+          <h3 id="guidedTitle" data-demo-guide-topic="cadastro-guiado">Cadastro guiado</h3>
           <p class="field-help">Responda um campo por vez, sem preencher o formulário inteiro. Nada é salvo até você revisar e escolher “Aplicar imóvel à vitrine”.</p>
           <div id="guidedBody"></div>
           <button class="btn btn-ghost" type="button" id="guidedStart">Cadastrar passo a passo</button>
@@ -200,7 +200,7 @@
         <input id="propertyCover" type="file" accept="image/png,image/jpeg,image/webp" multiple aria-describedby="propertyCoverHelp">
         <p id="propertyCoverHelp" class="field-help">Selecione as fotos da galeria em PNG, JPG ou WebP, até 10 MB por arquivo. A primeira será a capa. Uma nova seleção substitui a anterior.</p>
         <p id="propertyPhotoCount" class="field-help" role="status"></p>
-        <label class="field-label" for="propertyVideos">Vídeos do imóvel (opcional)</label>
+        <label class="field-label" for="propertyVideos" data-demo-guide-topic="videos">Vídeos do imóvel (opcional)</label>
         <input id="propertyVideos" type="file" accept="video/mp4,video/webm" multiple aria-describedby="propertyVideosHelp">
         <p id="propertyVideosHelp" class="field-help">MP4 ou WebM, até 25 MB e 2 minutos por vídeo, com até 3 vídeos por imóvel. Na prévia, os vídeos ficam só neste navegador; a publicação do piloto ainda não os inclui.</p>
         <ul id="propertyVideoList" class="video-list" aria-label="Vídeos deste imóvel"></ul>

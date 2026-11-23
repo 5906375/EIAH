@@ -500,12 +500,11 @@ footer a { text-decoration: underline; }
 .video-list li span { min-width: 0; overflow-wrap: anywhere; }
 .video-list .btn { min-height: 36px; padding: 4px 12px; }
 
-/* celular: cabeçalho em duas linhas (marca + guia, depois o link) e abas em grade 2x2 */
+/* celular: cabeçalho com marca e link (o link desce para a segunda linha se não couber) e abas em grade 2x2 */
 @media (max-width: 540px) {
-  .topbar .wrap:has(> .demo-guide-launcher) { height: auto; min-height: 0; flex-wrap: wrap; padding-block: 8px 2px; row-gap: 0; }
-  .topbar .wrap:has(> .demo-guide-launcher) > .brand { flex: 1 1 0; }
-  .topbar .wrap:has(> .demo-guide-launcher) > .quiet-link { order: 3; flex: 1 0 100%; min-height: 40px; }
-  .topbar.topbar .wrap:has(> .demo-guide-launcher) > .brand > span:last-child { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; }
+  .topbar .wrap:has(> .quiet-link) { height: auto; min-height: 0; flex-wrap: wrap; padding-block: 8px 2px; row-gap: 0; }
+  .topbar .wrap:has(> .quiet-link) > .brand { flex: 1 1 auto; }
+  .topbar .wrap:has(> .quiet-link) > .quiet-link { min-height: 40px; }
   .editor-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
   .editor-sections .btn { width: 100%; justify-content: center; padding-inline: 8px; overflow-wrap: normal; word-break: normal; }
 }
