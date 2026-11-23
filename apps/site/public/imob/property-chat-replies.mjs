@@ -1,6 +1,7 @@
 import { monthlyTotal, propertyPriceText } from './property-context.mjs';
 import { money, quoteStay } from './stay-visual.mjs';
 import { normalizeReply } from './request-chat-questions.mjs';
+import { isKnownAmount } from './rental-costs.mjs';
 
 const facts = [
   [/\b(metragem|area|metros|m2|tamanho)\b|m²/, item => 'A área é de ' + item.area + ' m².'],
@@ -11,8 +12,9 @@ const facts = [
   [/\bsuites?\b/, item => item.suites ? 'O imóvel tem ' + item.suites + (item.suites === 1 ? ' suíte.' : ' suítes.') : 'A ficha indica que o imóvel não tem suíte.'],
   [/\bbanheiros?\b/, item => 'O imóvel tem ' + item.banheiros + (item.banheiros === 1 ? ' banheiro.' : ' banheiros.')],
   [/\b(vagas?|garagem|estacionamento)\b/, item => item.vagas ? 'O imóvel tem ' + item.vagas + (item.vagas === 1 ? ' vaga.' : ' vagas.') : 'A ficha indica que o imóvel não tem vaga.'],
-  [/\bcondominio\b/, item => 'O condomínio anunciado é de ' + money(item.condominio) + ' por mês.'],
-  [/\biptu\b/, item => 'O IPTU informado é de ' + money(item.iptu) + ' por mês.'],
+  // Valor não informado devolve null: a resposta vira "precisa ser confirmado pela equipe", nunca R$ 0.
+  [/\bcondominio\b/, item => isKnownAmount(item.condominio) ? 'O condomínio anunciado é de ' + money(item.condominio) + ' por mês.' : null],
+  [/\biptu\b/, item => isKnownAmount(item.iptu) ? 'O IPTU informado é de ' + money(item.iptu) + ' por mês.' : null],
   [/\b(cidade|bairro|localizacao|onde fica)\b/, item => 'O imóvel fica em ' + item.bairro + ', ' + item.cidade + '.'],
   [/\b(hospedes|capacidade|quantas pessoas)\b/, item => item.stay ? 'O anúncio indica capacidade para até ' + item.stay.maxGuests + ' hóspedes.' : null],
   [/\b(limpeza)\b/, item => item.stay ? 'A taxa de limpeza anunciada é de ' + money(item.stay.cleaning) + '.' : null],
@@ -56,7 +58,9 @@ export function propertyChatReply(property, message, selection) {
   }
   const asksTotal = /\b(total|encargos|inclui|inclus[oa]s?|com condominio)\b/.test(text);
   if (asksTotal && property.finalidade === 'locacao') {
-    answers.push('O total mensal estimado com condomínio e IPTU é de ' + money(monthlyTotal(property)) + '.');
+    const total = monthlyTotal(property);
+    if (total === null) pending = true;
+    else answers.push('O total mensal estimado com condomínio e IPTU é de ' + money(total) + '.');
   }
   if (/\b(total|quanto fica)\b.*\b(periodo|estadia|noites|dias)\b/.test(text) && property.stay) {
     const quote = quoteStay(property, selection);

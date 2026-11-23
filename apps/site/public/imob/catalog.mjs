@@ -4,6 +4,7 @@ import { findProperty, monthlyTotal } from './property-context.mjs';
 import { seasonalRequestUrl } from './seasonal-cases.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { bindFinancing, canSimulateFinancing, financingMarkup } from './financing-panel.mjs';
+import { rentalCosts, unknownChargesNotice } from './rental-costs.mjs';
 
 /* ===== util ===== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -164,6 +165,7 @@ function render() {
   } else {
     cards.innerHTML = list.map((p) => {
       const total = monthlyTotal(p);
+      const chargesNotice = p.finalidade === "locacao" && !total ? unknownChargesNotice(rentalCosts(p)) : "";
       const tag = { venda: '<span class="tag sale">Venda</span>', locacao: '<span class="tag rent">Locação</span>', temporada: '<span class="tag season">Temporada</span>' }[p.finalidade];
       return `<article class="card">
         <div class="media">${media(p)}
@@ -175,7 +177,7 @@ function render() {
           <h3 class="card-title">${esc(p.titulo)}</h3>
           <div class="specs">${specs(p)}</div>
           <div class="price">${priceLabel(p)}</div>
-          ${total ? `<div class="monthly">Total mensal estimado: <b>${brl(total)}</b> (com condomínio e IPTU)</div>` : p.finalidade === "venda" && p.condominio ? `<div class="monthly">Condomínio ${brl(p.condominio)}/mês</div>` : ""}
+          ${total ? `<div class="monthly">Total mensal estimado: <b>${brl(total)}</b> (com condomínio e IPTU)</div>` : chargesNotice ? `<div class="monthly">${esc(chargesNotice)}: total mensal indisponível</div>` : p.finalidade === "venda" && p.condominio ? `<div class="monthly">Condomínio ${brl(p.condominio)}/mês</div>` : ""}
           ${p.stay ? `<p class="field-help">Até ${p.stay.maxGuests} hóspedes</p>` : ""}
           ${staySelection ? stayBreakdown(quoteStay(p, staySelection)) : ""}
           ${matchNote(p)}
@@ -258,7 +260,7 @@ function openCompare() {
       ${row("Imóvel", (p) => `<b>${esc(p.titulo)}</b><br><span class="place">${esc(p.bairro)}, ${esc(p.cidade)}</span>`)}
       ${row("Finalidade", (p) => ({ venda: "Venda", locacao: "Locação", temporada: "Temporada" }[p.finalidade]))}
       ${row("Valor", (p) => priceLabel(p))}
-      ${row("Total mensal", (p) => monthlyTotal(p) ? brl(monthlyTotal(p)) : p.condominio ? `Cond. ${brl(p.condominio)}` : "—")}
+      ${row("Total mensal", (p) => monthlyTotal(p) ? brl(monthlyTotal(p)) : p.finalidade === "locacao" ? "Encargos não informados" : p.condominio ? `Cond. ${brl(p.condominio)}` : "—")}
       ${row("Área", (p) => p.area ? `${p.area} m²` : "—")}
       ${row("Valor por m²", (p) => p.area && p.finalidade === "venda" ? brl(Math.round(p.preco / p.area)) : "—")}
       ${row("Quartos / suítes", (p) => `${p.quartos} / ${p.suites}`)}
@@ -358,7 +360,7 @@ function openDetail(id) {
       <h2 id="modalTitle">${esc(property.titulo)}</h2>
       <div class="specs">${specs(property)}</div>
       <p class="price">${priceLabel(property)}</p>
-      ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : ""}
+      ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : property.finalidade === "locacao" ? `<p>${esc(unknownChargesNotice(rentalCosts(property)))}. Peça à imobiliária o total mensal.</p>` : ""}
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
       ${canSimulateFinancing(property) ? financingMarkup(property) : ""}

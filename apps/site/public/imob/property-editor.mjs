@@ -1,5 +1,6 @@
 import {
-  propertyNumberFields, propertyTextFields, readClientProperties, resetClientProperty, saveClientProperty
+  propertyNumberFields, propertyOptionalAmountFields, propertyTextFields, readClientProperties,
+  resetClientProperty, saveClientProperty
 } from './client-properties.mjs';
 import { money } from './stay-visual.mjs';
 
@@ -12,6 +13,11 @@ const save = document.getElementById('saveProperty');
 const reset = document.getElementById('resetProperty');
 const field = name => form.elements.namedItem(name);
 const textFields = Object.keys(propertyTextFields);
+// Em condomínio e IPTU, campo vazio significa "não informado" (null), e não zero.
+const readNumber = name => {
+  const raw = field(name).value.trim();
+  return raw === '' && propertyOptionalAmountFields.includes(name) ? null : Number(raw);
+};
 let selectedPhotos;
 let savedPhotos = [];
 let uploadVersion = 0;
@@ -126,7 +132,7 @@ form.addEventListener('submit', event => {
     finalidade: field('finalidade').value,
     ...(selectedPhotos ? { photos: selectedPhotos } : {}),
     ...Object.fromEntries(textFields.map(name => [name, field(name).value.trim()])),
-    ...Object.fromEntries(propertyNumberFields.map(name => [name, Number(field(name).value)]))
+    ...Object.fromEntries(propertyNumberFields.map(name => [name, readNumber(name)]))
   };
   if (['titulo', 'tipo', 'cidade', 'bairro'].some(name => !details[name])) {
     feedback.textContent = 'Preencha título, tipo, cidade e bairro.';
