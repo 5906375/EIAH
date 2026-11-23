@@ -8,9 +8,20 @@ import { demoGuideNarration, demoGuideTopics } from '../apps/site/public/imob/de
 // Pass the local espeak-ng.js from echogarden-project/espeak-ng-emscripten
 // at 7ab07eba2d966ce45040c88d9be953e1d68640e7, with espeak-ng.data beside it.
 // Use --check to verify that the audio reflects the current guide text.
-const mode = process.argv[2];
+// Opcional: --only=id1,id2 limita a poucos assuntos (não reescreve os demais MP3);
+//           --out=pasta grava em outra pasta (por exemplo, para comparar com os arquivos atuais).
+const args = process.argv.slice(2);
+const option = name => args.find(arg => arg.startsWith('--' + name + '='))?.slice(name.length + 3);
+const mode = args.find(arg => !arg.startsWith('--only=') && !arg.startsWith('--out='));
 if (!mode) throw new Error('Use --check ou informe o caminho local de espeak-ng.js.');
-const output = new URL('../apps/site/public/imob/assets/guia-demo/', import.meta.url);
+const only = option('only')?.split(',').filter(Boolean);
+const unknown = (only ?? []).filter(id => !demoGuideTopics.some(topic => topic.id === id));
+if (unknown.length) throw new Error('Assunto desconhecido em --only: ' + unknown.join(', ') + '.');
+const topics = only ? demoGuideTopics.filter(topic => only.includes(topic.id)) : demoGuideTopics;
+const outDirectory = option('out');
+const output = outDirectory
+  ? pathToFileURL(resolve(outDirectory) + '/')
+  : new URL('../apps/site/public/imob/assets/guia-demo/', import.meta.url);
 const verify = mode === '--check';
 let synthesizer;
 
@@ -23,7 +34,7 @@ if (!verify) {
   mkdirSync(output, { recursive: true });
 }
 
-for (const topic of demoGuideTopics) {
+for (const topic of topics) {
   const text = demoGuideNarration(topic);
   const fingerprint = createHash('sha256').update(text).digest('hex');
   const file = fileURLToPath(new URL(topic.id + '.mp3', output));
@@ -47,4 +58,4 @@ for (const topic of demoGuideTopics) {
   ], { input: Buffer.concat(chunks), stdio: ['pipe', 'inherit', 'inherit'] });
   if (result.status !== 0) throw new Error('Não foi possível gerar ' + file + '.');
 }
-console.log(demoGuideTopics.length + (verify ? ' narrações conferidas.' : ' narrações geradas.'));
+console.log(topics.length + (verify ? ' narrações conferidas.' : ' narrações geradas.'));

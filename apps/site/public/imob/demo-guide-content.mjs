@@ -17,7 +17,7 @@ export const demoGuideTopics = [
     steps: [
       'Escolha a finalidade. Digite o que procura na busca ou filtre por bairro, tipo, quartos e valor.',
       'Use o coração para favoritar ou marque Comparar nos imóveis que quer ver lado a lado.',
-      'Abra Ver detalhes para consultar a ficha e a galeria. Em Solicitar demonstração com este imóvel, a ficha já aparece ao lado do convite.'
+      'Abra Ver detalhes para consultar a ficha, a galeria e, quando o imóvel tem, o vídeo. Em Solicitar demonstração com este imóvel, a ficha já aparece ao lado do convite.'
     ],
     link: ['Ir à vitrine de imóveis', './ia-cliente/#vitrine']
   },
@@ -35,10 +35,11 @@ export const demoGuideTopics = [
   {
     id: 'venda',
     title: 'Imóveis à venda',
-    description: 'Nesta lista, o valor anunciado corresponde ao preço de compra do imóvel.',
+    description: 'Nesta lista, o valor anunciado corresponde ao preço de compra do imóvel. Na ficha, um simulador estima a parcela do financiamento.',
     steps: [
       'Filtre por cidade, bairro, quartos ou valor até encontrar as opções que interessam.',
-      'Em Ver detalhes, confira as fotos, o preço e, quando informado, o condomínio.',
+      'Em Ver detalhes, confira as fotos, o preço, o condomínio quando informado e o painel Simule o financiamento.',
+      'No simulador, ajuste a entrada, o prazo, os juros ao ano e o sistema: Price, com parcela fixa, ou SAC, com parcela decrescente. O resultado é só uma estimativa de exemplo, sem seguros, tarifas nem avaliação do banco.',
       'Marque Comparar para ver os imóveis lado a lado. Você também pode usar um imóvel de exemplo na demonstração que solicitar.'
     ],
     link: ['Abrir a lista de imóveis à venda', './ia-cliente/?finalidade=venda#imoveis']
@@ -46,10 +47,11 @@ export const demoGuideTopics = [
   {
     id: 'locacao',
     title: 'Imóveis para alugar',
-    description: 'A categoria Aluguel anual mostra opções de locação mensal. Quando há valores informados, a ficha estima o total com condomínio e IPTU.',
+    description: 'A categoria Aluguel anual mostra opções de locação mensal. O total mensal só aparece quando o aluguel, o condomínio e o IPTU foram informados.',
     steps: [
-      'Filtre por bairro, número de quartos e valor. Compare o aluguel anunciado com a estimativa mensal de encargos.',
-      'Abra os detalhes e veja as fotos. Para conhecer o atendimento com IA, solicite uma demonstração usando o imóvel de exemplo.'
+      'Filtre por bairro, número de quartos e valor. Compare o aluguel anunciado com o total mensal, quando ele existe.',
+      'Se o condomínio ou o IPTU não foram informados, a vitrine avisa e não soma esses valores: peça o total à imobiliária. Quando informados, a ficha mostra se o valor é de exemplo ou foi informado pela imobiliária.',
+      'Abra os detalhes e veja as fotos e os vídeos. Para conhecer o atendimento com IA, solicite uma demonstração usando o imóvel de exemplo.'
     ],
     link: ['Abrir a lista de imóveis para alugar', './ia-cliente/?finalidade=locacao#imoveis']
   },
@@ -104,7 +106,8 @@ export const demoGuideTopics = [
     steps: [
       'Na vitrine do Site com IA do Cliente, escolha Temporada e preencha entrada, saída e número de hóspedes. Para praticar, use Usar datas de exemplo.',
       'Clique em Pedir datas na ficha de um imóvel. Confira os dados e envie o pedido à equipe.',
-      'Guarde o link do protocolo e reabra-o neste navegador para acompanhar o status.'
+      'Guarde o link do protocolo e reabra-o neste navegador para acompanhar o status.',
+      'Na tela do pedido, use Falar com a EIAH sobre o IMOB para abrir uma mensagem de e-mail e conhecer o produto. O site não envia nada: você escreve e envia pelo seu aplicativo de e-mail.'
     ],
     link: ['Consultar imóveis de temporada', './ia-cliente/?finalidade=temporada#imoveis']
   },
@@ -182,12 +185,35 @@ export const demoGuideTopics = [
   },
   {
     id: 'imoveis',
-    title: 'Editar imóveis e fotos',
-    description: 'Você pode testar uma ficha com valores, características e fotos próprias ou de exemplo.',
+    title: 'Editar imóveis, fotos e vídeos',
+    description: 'Você pode cadastrar uma ficha passo a passo ou pelo formulário, com valores, características, fotos e vídeos próprios ou de exemplo.',
     steps: [
-      'Em Imóveis, escolha um anúncio de exemplo ou comece um novo. Preencha finalidade, localização, valor e descrição.',
-      'Inclua fotos para a galeria. Se for temporada, indique a capacidade e a taxa de limpeza.',
-      'Salve a ficha e confira o anúncio na vitrine da demo.'
+      'Em Imóveis, escolha um anúncio de exemplo ou comece um novo. Use o Cadastro guiado para responder um campo por vez, ou preencha o formulário completo.',
+      'No condomínio e no IPTU, deixe em branco o que você não souber: a vitrine mostrará não informado e não somará o total mensal. Digite zero apenas quando o imóvel realmente não tiver o encargo.',
+      'Inclua fotos para a galeria e, se quiser, até três vídeos. Se for temporada, indique a capacidade e a taxa de limpeza.',
+      'Clique em Aplicar imóvel à vitrine e confira o anúncio na vitrine da demo.'
+    ],
+    link: ['Abrir o editor de imóveis', './ia-cliente/personalizar/']
+  },
+  {
+    id: 'cadastro-guiado',
+    title: 'Cadastrar um imóvel passo a passo',
+    description: 'O cadastro guiado faz uma pergunta por vez e deixa a revisão para o fim. Nada é salvo até você aplicar.',
+    steps: [
+      'Clique em Cadastrar passo a passo e responda a pergunta de cada etapa. Os campos obrigatórios não podem ser pulados; os opcionais podem.',
+      'Use Voltar para corrigir uma resposta, ou Revisar agora para ir direto ao resumo.',
+      'Na revisão, use Corrigir em qualquer campo. Depois clique em Aplicar imóvel à vitrine. Cancelar descarta o cadastro guiado sem salvar nada.'
+    ],
+    link: ['Abrir o editor de imóveis', './ia-cliente/personalizar/']
+  },
+  {
+    id: 'videos',
+    title: 'Enviar vídeos do imóvel',
+    description: 'Cada imóvel aceita até três vídeos em MP4 ou WebM. O site confere o tipo do arquivo, o tamanho e a duração antes de aceitar.',
+    steps: [
+      'Em Vídeos do imóvel, escolha os arquivos. Cada vídeo pode ter até 25 megabytes e 2 minutos.',
+      'Os vídeos escolhidos aparecem em uma lista como pendentes. Use Remover para retirar um da seleção.',
+      'Clique em Aplicar imóvel à vitrine para guardar. O player aparece no detalhe do imóvel. Na prévia, os vídeos ficam só neste navegador e ainda não entram na publicação do piloto.'
     ],
     link: ['Abrir o editor de imóveis', './ia-cliente/personalizar/']
   },
@@ -280,7 +306,8 @@ export const demoGuideTopics = [
     description: 'O protocolo identifica o mesmo pedido na vitrine e na fila da equipe.',
     steps: [
       'No mesmo navegador, reabra o link do pedido para consultar as datas e o status.',
-      'Depois da resposta da equipe, o protocolo mostra Disponibilidade confirmada ou Período indisponível. Após o teste de chegada, mostra Check-in registrado.'
+      'Depois da resposta da equipe, o protocolo mostra Disponibilidade confirmada ou Período indisponível. Após o teste de chegada, mostra Check-in registrado.',
+      'Para usar o IMOB na sua imobiliária, clique em Falar com a EIAH sobre o IMOB. A mensagem abre no seu aplicativo de e-mail, sem dados deste pedido.'
     ],
     link: ['Abrir a fila de temporada', './operacao-eiah/equipe/#temporada']
   },
@@ -302,7 +329,7 @@ export const demoGuidePages = {
   'operacao-eiah': ['inicio-vitrine', 'conversa', 'anuncio', 'vitrine', 'venda', 'locacao', 'temporada-vitrine', 'revisar', 'equipe', 'contato'],
   'operacao-eiah/equipe': ['checkin', 'fila', 'equipe', 'temporada'],
   'ia-cliente': ['vitrine', 'inicio-vitrine', 'venda', 'locacao', 'temporada-vitrine', 'temporada', 'conversa', 'revisar', 'anuncio', 'marca', 'contato'],
-  'ia-cliente/personalizar': ['marca', 'logo', 'apresentacao', 'imoveis', 'rodape', 'voz', 'publicar', 'site-cliente'],
+  'ia-cliente/personalizar': ['marca', 'logo', 'apresentacao', 'imoveis', 'cadastro-guiado', 'videos', 'rodape', 'voz', 'publicar', 'site-cliente'],
   'ia-cliente/criar-site': ['publicar', 'perfil', 'rascunho', 'rodape', 'especialistas'],
   'ia-cliente/criar-site/vitrine': ['publicada', 'contato', 'rodape', 'temporada'],
   'ia-cliente/temporada': ['temporada', 'pedido-datas', 'acompanhar', 'checkin']
