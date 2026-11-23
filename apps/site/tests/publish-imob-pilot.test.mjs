@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { publish, renderSite, run } from '../scripts/publish-imob-pilot.mjs';
+import { publish, renderSite, reservedSlugs, run, validateDraft } from '../scripts/publish-imob-pilot.mjs';
 
 const brand = { name: 'Horizonte Imóveis', introduction: 'Imóveis na praia.', accent: '#087566' };
 const webp = Buffer.concat([Buffer.from('RIFF'), Buffer.from([0x10, 0, 0, 0]), Buffer.from('WEBPVP8 '), Buffer.alloc(32, 7)]);
@@ -88,9 +88,11 @@ test('publicar grava página e fotos e a atualização troca tudo sem deixar sob
 test('rascunho inválido não cria nem altera pasta', () => {
   const { dir, root, done } = sandbox();
   try {
-    assert.throws(() => publish('horizonte', { brand, properties: [house({ preco: -1 })] }, { root }), /Confira o título/);
-    assert.throws(() => publish('horizonte', { brand, properties: [house({ titulo: '  ' })] }, { root }), /Confira o título/);
-    assert.throws(() => publish('horizonte', { brand: {}, properties: [] }, { root }), /rascunho válido/);
+    assert.throws(() => publish('horizonte', { brand, properties: [house({ preco: -1 })] }, { root }), /Imóvel 1: o preço é inválido/);
+    assert.throws(() => publish('horizonte', { brand, properties: [house({ titulo: '  ' })] }, { root }), /Imóvel 1: informe o título/);
+    assert.throws(() => publish('horizonte', { brand: {}, properties: [] }, { root }), /Informe o nome da imobiliária/);
+    assert.throws(() => publish('horizonte', { properties: [] }, { root }), /rascunho válido/);
+    assert.throws(() => publish('horizonte', [], { root }), /rascunho válido/);
     assert.deepEqual(readdirSync(dir), []);
   } finally { done(); }
 });
@@ -116,7 +118,7 @@ test('--check conta as vitrines e recusa mais de dez pastas', () => {
     const lines = [];
     console.log = line => lines.push(line);
     run(['--check'], { root });
-    publish('a', { brand, properties: [] }, { root });
+    publish('loja', { brand, properties: [] }, { root });
     run(['--check'], { root });
     console.log = log;
     assert.deepEqual(lines, ['Piloto IMOB: 0/10 vitrines.', 'Piloto IMOB: 1/10 vitrines.']);
@@ -137,4 +139,62 @@ test('uso incorreto e rascunho ilegível dão mensagem clara em português', () 
     assert.throws(() => run(['horizonte', join(dir, 'ruim.json')], { root }), /vitrine-imob\.json/);
     assert.ok(!existsSync(join(dir, 'horizonte')));
   } finally { done(); }
+});
+
+test('nomes reservados e muito curtos são recusados sem criar pasta', () => {
+  const { dir, root, done } = sandbox();
+  try {
+    for (const slug of ['api', 'admin', 'www', 'legal', 'imob', 'ia-cliente', 'operacao-eiah', 'index']) {
+      assert.ok(reservedSlugs.includes(slug), slug + ' deveria estar reservado');
+      assert.throws(() => publish(slug, { brand, properties: [] }, { root }), /reservado no IMOB/);
+    }
+    assert.throws(() => publish('ab', { brand, properties: [] }, { root }), /3 a 65 caracteres/);
+    assert.throws(() => publish('a'.repeat(66), { brand, properties: [] }, { root }), /3 a 65 caracteres/);
+    assert.throws(() => publish('-ruim-', { brand, properties: [] }, { root }), /3 a 65 caracteres/);
+    assert.deepEqual(readdirSync(dir), []);
+    publish('cafe-central', { brand, properties: [] }, { root });
+    assert.ok(existsSync(join(dir, 'cafe-central/index.html')));
+  } finally { done(); }
+});
+
+test('o rascunho inválido lista todos os problemas de uma vez, em português', () => {
+  const bad = {
+    brand: { name: ' ', introduction: 42 },
+    properties: [house({ titulo: '', preco: 'caro', finalidade: 'troca', area: -3, caracteristicas: 'piscina', fotos: 'x' }), 'texto', house({ stay: { maxGuests: 'muitos' } })]
+  };
+  let message = '';
+  try { validateDraft(bad); } catch (error) { message = error.message; }
+  for (const part of ['Informe o nome da imobiliária', 'A apresentação deve ser um texto', 'Imóvel 1: informe o título', 'Imóvel 1: a finalidade deve ser venda, locação ou temporada',
+    'Imóvel 1: o preço é inválido', 'Imóvel 1: o campo area deve ser um número', 'Imóvel 1: as características devem ser uma lista', 'Imóvel 1: as fotos devem ser uma lista',
+    'Imóvel 2: dados inválidos', 'Imóvel 3: os dados de temporada são inválidos']) {
+    assert.ok(message.includes(part), 'faltou: ' + part + '\n' + message);
+  }
+  assert.ok(!/undefined|TypeError|Cannot read/.test(message));
+});
+
+test('limites de tamanho do rascunho são aplicados', () => {
+  assert.throws(() => validateDraft({ brand: { name: 'x'.repeat(81) }, properties: [] }), /passa de 80 caracteres/);
+  assert.throws(() => validateDraft({ brand, properties: [house({ titulo: 'ok', descricao: 'd'.repeat(801) })] }), /descricao deve ser um texto de até 800/);
+  assert.throws(() => validateDraft({ brand, properties: Array.from({ length: 51 }, () => house()) }), /o limite é 50/);
+  assert.doesNotThrow(() => validateDraft({ brand, properties: [house()] }));
+  assert.doesNotThrow(() => validateDraft({ brand: { name: 'Só nome' }, properties: [] }));
+});
+
+test('a página gerada traz metadados para buscadores e compartilhamento', () => {
+  const { html } = renderSite({ brand: { ...brand, introduction: 'Casas  e\napartamentos "na praia" <b>.' }, properties: [house({ fotos: [photo] })] }, 'horizonte');
+  assert.match(html, /<meta name="description" content="Casas e apartamentos &quot;na praia&quot; &lt;b&gt;\.">/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/eiah\.ia\.br\/imob\/horizonte\/">/);
+  assert.match(html, /<meta property="og:title" content="Horizonte Imóveis">/);
+  assert.match(html, /<meta property="og:url" content="https:\/\/eiah\.ia\.br\/imob\/horizonte\/">/);
+  assert.match(html, /<meta property="og:image" content="https:\/\/eiah\.ia\.br\/imob\/horizonte\/fotos\/imovel-1-1\.webp">/);
+  assert.ok(!html.includes('<b>'));
+  assert.ok(!/noindex/.test(html), 'a vitrine pública deve poder ser indexada');
+});
+
+test('sem apresentação nem foto, os metadados usam o nome e não inventam imagem', () => {
+  const { html } = renderSite({ brand: { name: 'Praia Mar' }, properties: [] }, 'praia-mar');
+  assert.match(html, /<meta name="description" content="Imóveis de Praia Mar\.">/);
+  assert.ok(!html.includes('og:image'));
+  const long = renderSite({ brand: { name: 'Praia Mar', introduction: 'palavra '.repeat(60) }, properties: [] }, 'praia-mar').html;
+  assert.ok(long.match(/name="description" content="([^"]*)"/)[1].length <= 155);
 });

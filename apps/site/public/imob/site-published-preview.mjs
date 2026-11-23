@@ -35,13 +35,13 @@ try {
     document.getElementById('published-site').hidden = false;
     document.getElementById('published-footer').hidden = false;
     applyBrand(document.body, published.brand, { preview: true });
-    document.title = published.brand.name + ' · Publicação simulada';
+    document.title = published.brand.name + ' · Prévia local';
     document.getElementById('published-homes').replaceChildren(...published.properties.map(renderProperty));
     document.getElementById('no-properties').hidden = published.properties.length > 0;
     status.textContent = 'Versão ' + published.revision + ' da vitrine · disponível neste navegador.';
   } else {
-    status.textContent = 'Publique uma versão na demonstração para ver a sua vitrine aqui.';
+    status.textContent = 'Atualize a prévia local em Criar meu site para ver a sua vitrine aqui.';
   }
 } catch {
-  status.textContent = 'O navegador não conseguiu abrir a versão publicada na demonstração.';
+  status.textContent = 'O navegador não conseguiu abrir a prévia local da vitrine.';
 }

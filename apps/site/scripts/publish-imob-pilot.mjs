@@ -13,6 +13,16 @@ const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, character => entities[character]);
 const maxImageBytes = 5 * 1024 * 1024;
 const maxFeatures = 20;
+const maxProperties = 50;
+const maxPhotos = 20;
+const textLimits = { titulo: 100, tipo: 40, cidade: 60, bairro: 60, descricao: 800 };
+
+// Endereços que o piloto nunca entrega a uma imobiliária: páginas e rotas do próprio IMOB e nomes de serviço.
+export const reservedSlugs = Object.freeze([
+  'admin', 'api', 'app', 'assets', 'catalog', 'criar-site', 'eiah', 'equipe', 'ia-cliente', 'imob', 'index',
+  'legal', 'login', 'operacao-eiah', 'personalizar', 'privacidade', 'status', 'suporte', 'temporada', 'termos',
+  'visual', 'www'
+]);
 
 // Confere o conteúdo real do arquivo, não só o prefixo data: informado no rascunho.
 const imageTypes = {
@@ -112,10 +122,51 @@ function renderProperty(property, index, context) {
   </article>`;
 }
 
-export function renderSite({ brand, properties }, slug) {
-  if (!brand || typeof brand.name !== 'string' || !brand.name.trim() || !Array.isArray(properties)) {
+const isAmount = value => value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0);
+const isOptionalText = (value, max) => value === undefined || value === null || (typeof value === 'string' && value.length <= max);
+
+// Confere o rascunho inteiro e lista todos os problemas de uma vez, em português, antes de gravar qualquer arquivo.
+export function validateDraft(draft) {
+  const { brand, properties } = draft ?? {};
+  if (!brand || typeof brand !== 'object' || Array.isArray(brand) || !Array.isArray(properties)) {
     throw new Error('Exporte um rascunho válido pelo editor IMOB.');
   }
+  const problems = [];
+  if (typeof brand.name !== 'string' || !brand.name.trim()) problems.push('Informe o nome da imobiliária.');
+  else if (brand.name.length > 80) problems.push('O nome da imobiliária passa de 80 caracteres.');
+  if (!isOptionalText(brand.introduction, 500)) problems.push('A apresentação deve ser um texto de até 500 caracteres.');
+  if (properties.length > maxProperties) problems.push('O rascunho tem ' + properties.length + ' imóveis; o limite é ' + maxProperties + '.');
+  properties.slice(0, maxProperties).forEach((property, index) => {
+    const label = 'Imóvel ' + (index + 1) + ': ';
+    if (!property || typeof property !== 'object' || Array.isArray(property)) {
+      problems.push(label + 'dados inválidos.');
+      return;
+    }
+    if (typeof property.titulo !== 'string' || !property.titulo.trim()) problems.push(label + 'informe o título.');
+    if (!Object.hasOwn(units, property.finalidade)) problems.push(label + 'a finalidade deve ser venda, locação ou temporada.');
+    if (typeof property.preco !== 'number' || !Number.isFinite(property.preco) || property.preco < 0) problems.push(label + 'o preço é inválido.');
+    for (const [field, max] of Object.entries(textLimits)) {
+      if (!isOptionalText(property[field], max)) problems.push(label + 'o campo ' + field + ' deve ser um texto de até ' + max + ' caracteres.');
+    }
+    for (const field of ['area', 'quartos', 'suites', 'banheiros', 'vagas', 'condominio', 'iptu']) {
+      if (!isAmount(property[field])) problems.push(label + 'o campo ' + field + ' deve ser um número maior ou igual a zero.');
+    }
+    if (property.caracteristicas !== undefined && !(Array.isArray(property.caracteristicas) && property.caracteristicas.every(item => typeof item === 'string'))) {
+      problems.push(label + 'as características devem ser uma lista de textos.');
+    }
+    if (property.fotos !== undefined && !(Array.isArray(property.fotos) && property.fotos.length <= maxPhotos)) {
+      problems.push(label + 'as fotos devem ser uma lista de até ' + maxPhotos + '.');
+    }
+    if (property.stay !== undefined && (!property.stay || !isAmount(property.stay.maxGuests) || !isAmount(property.stay.cleaning))) {
+      problems.push(label + 'os dados de temporada são inválidos.');
+    }
+  });
+  if (problems.length) throw new Error('Corrija o rascunho antes de publicar:\n- ' + problems.join('\n- '));
+}
+
+export function renderSite(draft, slug) {
+  validateDraft(draft);
+  const { brand, properties } = draft;
   const context = { slug, files: new Map() };
   const accent = /^#[0-9a-f]{6}$/i.test(brand.accent) ? brand.accent : '#087566';
   const whatsapp = contactNumber(String(brand.footerWhatsapp ?? ''));
@@ -129,12 +180,24 @@ export function renderSite({ brand, properties }, slug) {
   ].join('');
   const logo = imageSource(brand.logo, context, 'logo');
   const homes = properties.map((property, index) => renderProperty(property, index, context)).join('');
+  // Metadados para buscadores e para a prévia ao compartilhar o link (WhatsApp, redes sociais).
+  const address = 'https://eiah.ia.br/imob/' + slug + '/';
+  const summary = String(brand.introduction ?? '').replace(/\s+/g, ' ').trim().slice(0, 155) || 'Imóveis de ' + brand.name.trim() + '.';
+  const firstImage = homes.match(/<img src="([^"]+)"/)?.[1] ?? '';
   const html = `${marker}
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${escape(brand.name)}</title>
+  <meta name="description" content="${escape(summary)}">
+  <link rel="canonical" href="${address}">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:title" content="${escape(brand.name)}">
+  <meta property="og:description" content="${escape(summary)}">
+  <meta property="og:url" content="${address}">
+  ${firstImage ? '<meta property="og:image" content="' + (firstImage.startsWith('/') ? 'https://eiah.ia.br' : '') + firstImage + '">' : ''}
   <link rel="stylesheet" href="/imob/catalog.css">
   <link rel="stylesheet" href="/imob/visual.css">
   <link rel="stylesheet" href="/imob/site-setup.css">
@@ -169,7 +232,10 @@ function checkLimit(root) {
 
 export function publish(slug, draft, { root = defaultRoot } = {}) {
   const sites = checkLimit(root);
-  if (!slugFormat.test(slug ?? '') || slug.length > 65) throw new Error('Use um nome de site com letras minúsculas, números e hífens.');
+  if (!slugFormat.test(slug ?? '') || slug.length < 3 || slug.length > 65) {
+    throw new Error('Use um nome de site de 3 a 65 caracteres, com letras minúsculas, números e hífens.');
+  }
+  if (reservedSlugs.includes(slug)) throw new Error('O endereço "' + slug + '" é reservado no IMOB. Escolha outro nome.');
   const existing = readdirSync(root).includes(slug);
   if (existing && !readPage(root, slug).startsWith(marker)) {
     throw new Error('Endereço reservado no IMOB.');
