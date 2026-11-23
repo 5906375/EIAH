@@ -92,16 +92,20 @@ function render() {
     : 'Recupere as edições feitas na Prévia 02 neste navegador.';
   get('plan-locked').hidden = Boolean(state.draft);
   get('plan-controls').hidden = !state.draft;
-  get('simulate-payment').hidden = Boolean(state.plan);
-  get('publish-site').hidden = !state.plan || state.published?.revision === state.draft?.revision;
+  get('publish-site').hidden = state.published?.revision === state.draft?.revision;
+  const application = get('pilot-application');
+  application.hidden = !state.profile;
+  if (state.profile) {
+    const { name, business, email } = state.profile;
+    const message = ['Quero participar do piloto de vitrines gratuitas IMOB.', '', 'Nome: ' + name, 'Imobiliária: ' + business, 'E-mail: ' + email].join('\n');
+    application.href = 'mailto:contato@eiah.ia.br?subject=' + encodeURIComponent('Piloto de vitrines gratuitas IMOB') + '&body=' + encodeURIComponent(message);
+  }
   get('published-link').hidden = !state.published;
   get('plan-status').textContent = state.published
     ? state.published.revision === state.draft.revision
-      ? 'Versão ' + state.published.revision + ' publicada na demonstração.'
-      : 'Há uma edição em rascunho. A vitrine demonstra a última versão publicada.'
-    : state.plan
-      ? 'Pagamento simulado confirmado. Revise o rascunho e publique quando estiver pronto.'
-      : 'A simulação dispensa dados de pagamento.';
+      ? 'Prévia da versão ' + state.published.revision + ' disponível neste navegador.'
+      : 'Atualize a prévia local para conferir seu rascunho mais recente.'
+    : 'Abra a prévia neste navegador para revisar a vitrine antes de enviar o rascunho.';
 }
 
 async function save(change, success, focusId) {
@@ -147,7 +151,7 @@ profileForm.addEventListener('submit', event => {
     showMessage('Informe seu nome e o nome da imobiliária ou do negócio.', true);
     return;
   }
-  void save(current => ({ ...current, profile }), 'Perfil de demonstração salvo.', 'import-draft');
+  void save(current => ({ ...current, profile }), 'Perfil salvo. Você já pode enviar o cadastro e importar a personalização.', 'import-draft');
 });
 
 get('import-draft').addEventListener('click', () => {
@@ -163,21 +167,27 @@ get('import-draft').addEventListener('click', () => {
     const revision = (current.draft?.revision ?? 0) + 1;
     return { ...current, draft: { brand, properties, revision } };
   }, 'Rascunho atualizado com a personalização disponível neste navegador.',
-  state.plan ? 'publish-site' : 'simulate-payment');
+  'publish-site');
 });
 
-get('simulate-payment').addEventListener('click', () => {
-  void save(current => {
-    requireCondition(current.draft, 'Importe a personalização antes de continuar.');
-    return current.plan ? current : { ...current, plan: 'site-imob-personalizado' };
-  }, 'Pagamento simulado. O botão Publicar na demonstração está disponível.', 'publish-site');
+get('download-draft').addEventListener('click', () => {
+  if (!state?.draft) return;
+  const { brand, properties } = state.draft;
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ brand, properties })], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'vitrine-imob.json';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 get('publish-site').addEventListener('click', () => {
   void save(current => {
-    requireCondition(current.draft && current.plan, 'Confirme o pagamento simulado antes de publicar.');
+    requireCondition(current.draft, 'Importe a personalização antes de abrir a prévia.');
     return { ...current, published: current.draft };
-  }, 'Vitrine publicada na demonstração.', 'published-link');
+  }, 'Prévia atualizada neste navegador.', 'published-link');
 });
 
 function highlightStep() {

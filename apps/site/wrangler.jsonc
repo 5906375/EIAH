@@ -8,6 +8,10 @@
   // Hoje ele atende apenas /api/votacao/ (votação ao vivo de /ia-na-pratica-juridica/).
   "main": "./src/worker.js",
 
+  "build": {
+    "command": "node -e \"import(require('node:fs').existsSync('scripts/publish-imob-pilot.mjs') ? './scripts/publish-imob-pilot.mjs' : './apps/site/scripts/publish-imob-pilot.mjs')\""
+  },
+
   "workers_dev": true,
   "preview_urls": true,
 
