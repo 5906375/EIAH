@@ -267,7 +267,7 @@ export const demoGuideTopics = [
       'Preencha o nome, a imobiliária e o e-mail profissional. Use dados de exemplo para testar a prévia local.',
       'Clique em Salvar perfil para importar a personalização. Use Enviar cadastro para o piloto para compartilhar seu contato com a EIAH.'
     ],
-    link: ['Abrir o perfil na demo', './ia-cliente/criar-site/#perfil']
+    link: ['Abrir o perfil', './ia-cliente/criar-site/#perfil']
   },
   {
     id: 'rascunho',
@@ -288,7 +288,7 @@ export const demoGuideTopics = [
       'Em um imóvel de temporada, use Pedir datas para testar o envio à visão da equipe.',
       'Depois de editar a vitrine, volte a Criar meu site, importe a personalização e publique outra versão.'
     ],
-    link: ['Abrir a vitrine da demo', './ia-cliente/criar-site/vitrine/']
+    link: ['Abrir a prévia local da vitrine', './ia-cliente/criar-site/vitrine/']
   },
   {
     id: 'pedido-datas',
@@ -320,7 +320,7 @@ export const demoGuideTopics = [
       'Clique em Solicitar Demo no cartão do especialista que você quer conhecer.',
       'Conte o que gostaria de testar e escolha como enviar sua solicitação.'
     ],
-    link: ['Ir aos especialistas da demo', './ia-cliente/criar-site/#especialistas']
+    link: ['Ir aos agentes EIAH', './ia-cliente/criar-site/#especialistas']
   }
 ];
 

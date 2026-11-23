@@ -259,7 +259,7 @@ form.addEventListener('submit', event => {
   }
   loadSaved.hidden = false;
   feedback.textContent = contactsOnly
-    ? 'Rodapé salvo neste navegador. Para atualizar a vitrine publicada na demo, importe a personalização e publique novamente.'
+    ? 'Rodapé salvo neste navegador. Para atualizar a prévia local da vitrine, importe a personalização em Criar meu site.'
     : 'Personalização aplicada à prévia 02 neste navegador.';
 });
 
