@@ -3,7 +3,10 @@ export const properties = [
     id: 'v-01', finalidade: 'venda', tipo: 'Apartamento', bairro: 'Centro', cidade: 'Balneário Camboriú',
     titulo: 'Apartamento com varanda no Centro', preco: 940000, condominio: 680, iptu: 140,
     area: 82, quartos: 2, suites: 1, banheiros: 2, vagas: 1,
-    fotos: [new URL('./assets/vitrine-apartamento.webp', import.meta.url).href], destaque: true,
+    fotos: [
+      new URL('./assets/vitrine-apartamento.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-cozinha.webp', import.meta.url).href
+    ], destaque: true,
     descricao: 'Sala iluminada, cozinha integrada e varanda. Exemplo de imóvel próximo a serviços do bairro.',
     caracteristicas: ['Varanda', 'Cozinha integrada', 'Vaga coberta']
   },
@@ -11,7 +14,11 @@ export const properties = [
     id: 'v-02', finalidade: 'venda', tipo: 'Casa', bairro: 'Morretes', cidade: 'Itapema',
     titulo: 'Casa com jardim em Morretes', preco: 860000, condominio: 0, iptu: 120,
     area: 115, quartos: 3, suites: 1, banheiros: 2, vagas: 2,
-    fotos: [new URL('./assets/vitrine-casa.webp', import.meta.url).href],
+    fotos: [
+      new URL('./assets/vitrine-casa.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-sala.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-gourmet.webp', import.meta.url).href
+    ],
     descricao: 'Casa térrea com espaço externo, garagem e sala aberta para o jardim.',
     caracteristicas: ['Jardim', 'Garagem', 'Churrasqueira']
   },
@@ -19,7 +26,10 @@ export const properties = [
     id: 'v-03', finalidade: 'venda', tipo: 'Apartamento', bairro: 'Praia Brava', cidade: 'Itajaí',
     titulo: 'Apartamento com vista na Praia Brava', preco: 1380000, condominio: 820, iptu: 180,
     area: 96, quartos: 3, suites: 1, banheiros: 2, vagas: 2,
-    fotos: [new URL('./assets/vitrine-varanda.webp', import.meta.url).href],
+    fotos: [
+      new URL('./assets/vitrine-varanda.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-quarto.webp', import.meta.url).href
+    ],
     descricao: 'Varanda ampla voltada ao litoral e sala para dois ambientes.',
     caracteristicas: ['Vista para o mar', 'Varanda', 'Elevador']
   },
@@ -42,6 +52,19 @@ export const properties = [
     fotos: [new URL('./assets/vitrine-studio.webp', import.meta.url).href],
     descricao: 'Studio mobiliado e funcional com cozinha integrada.',
     caracteristicas: ['Mobiliado', 'Cozinha integrada']
+  },
+  {
+    id: 'l-03', finalidade: 'locacao', tipo: 'Casa', bairro: 'Pioneiros', cidade: 'Balneário Camboriú',
+    titulo: 'Casa de alto padrão para locação nos Pioneiros', preco: 14500, condominio: 1200, iptu: 650,
+    area: 280, quartos: 4, suites: 3, banheiros: 5, vagas: 4,
+    fotos: [
+      new URL('./assets/vitrine-alto-padrao-sala.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-quarto.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-cozinha.webp', import.meta.url).href,
+      new URL('./assets/vitrine-alto-padrao-gourmet.webp', import.meta.url).href
+    ],
+    descricao: 'Sala com pé-direito alto e lareira, cozinha com ilha e espaço gourmet com piscina. Imóvel de exemplo, com imagens ilustrativas.',
+    caracteristicas: ['Piscina', 'Espaço gourmet', 'Churrasqueira', 'Lareira']
   },
   {
     id: 't-01', finalidade: 'temporada', tipo: 'Apartamento', bairro: 'Meia Praia', cidade: 'Itapema',
