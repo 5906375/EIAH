@@ -3,6 +3,9 @@ import { readClientProperties } from './client-properties.mjs';
 import { readSetup, updateSetup } from './site-setup-store.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { imobSpecialists } from './imob-specialists.mjs';
+import {
+  pilotApplicationHref, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, slugProblem, suggestSlug
+} from './pilot-site.mjs';
 
 const journeyAgents = [
   { name: 'Recepção', position: '0%', purpose: 'Entende o objetivo do visitante e encaminha o pedido.' },
@@ -19,6 +22,7 @@ const updateAgentNavigation = bindCarouselNavigation(
 );
 let state;
 let busy = false;
+let slots = pilotSlots(null);
 
 function showMessage(message, isError = false) {
   feedback.textContent = message;
@@ -93,19 +97,46 @@ function render() {
   get('plan-locked').hidden = Boolean(state.draft);
   get('plan-controls').hidden = !state.draft;
   get('publish-site').hidden = state.published?.revision === state.draft?.revision;
-  const application = get('pilot-application');
-  application.hidden = !state.profile;
-  if (state.profile) {
-    const { name, business, email } = state.profile;
-    const message = ['Quero participar do piloto de vitrines gratuitas IMOB.', '', 'Nome: ' + name, 'Imobiliária: ' + business, 'E-mail: ' + email].join('\n');
-    application.href = 'mailto:contato@eiah.ia.br?subject=' + encodeURIComponent('Piloto de vitrines gratuitas IMOB') + '&body=' + encodeURIComponent(message);
-  }
+  renderApplication();
   get('published-link').hidden = !state.published;
   get('plan-status').textContent = state.published
     ? state.published.revision === state.draft.revision
       ? 'Prévia da versão ' + state.published.revision + ' disponível neste navegador.'
       : 'Atualize a prévia local para conferir seu rascunho mais recente.'
     : 'Abra a prévia neste navegador para revisar a vitrine antes de enviar o rascunho.';
+}
+
+// O cadastro só aparece com perfil salvo, endereço válido e autorização marcada; o hint diz o que falta.
+function applicationHint(profile, consent) {
+  if (!profile) return '';
+  const problem = profile.slug ? slugProblem(profile.slug) : 'Informe o endereço desejado e salve o perfil para enviar o cadastro.';
+  if (problem) return problem;
+  const missing = consent ? '' : 'Marque a autorização acima para liberar o envio do cadastro.';
+  return [missing, slots.full ? slots.text + ' Você ainda pode escrever para a EIAH para saber de novas vagas.' : ''].filter(Boolean).join(' ');
+}
+
+function renderApplication() {
+  const application = get('pilot-application');
+  const consent = get('pilot-consent').checked;
+  const href = state?.profile ? pilotApplicationHref(state.profile, consent) : '';
+  application.hidden = !href;
+  if (href) application.setAttribute('href', href);
+  else application.removeAttribute('href');
+  get('pilot-hint').textContent = applicationHint(state?.profile, consent);
+  const slotsLine = get('pilot-slots');
+  slotsLine.hidden = !slots.known;
+  slotsLine.textContent = slots.text;
+}
+
+async function loadSlots() {
+  try {
+    const response = await fetch(new URL('./piloto-vagas.json', import.meta.url), { cache: 'no-store' });
+    if (!response.ok) throw new Error('indisponível');
+    slots = pilotSlots(await response.json());
+  } catch {
+    slots = pilotSlots(null);
+  }
+  renderApplication();
 }
 
 async function save(change, success, focusId) {
@@ -118,7 +149,7 @@ async function save(change, success, focusId) {
     showMessage(success);
     if (focusId) get(focusId).focus();
   } catch (error) {
-    showMessage(error.message || 'O navegador não conseguiu salvar a demonstração.', true);
+    showMessage(error.message || 'O navegador não conseguiu salvar os dados neste navegador.', true);
   } finally {
     busy = false;
     document.querySelector('.setup-panels').removeAttribute('aria-busy');
@@ -129,8 +160,10 @@ async function start() {
   try {
     state = await readSetup();
     for (const [field, value] of Object.entries(state.profile ?? {})) {
-      profileForm.elements.namedItem(field).value = value;
+      const input = profileForm.elements.namedItem(field);
+      if (input) input.value = value;
     }
+    if (state.profile?.slug) profileForm.elements.slug.dataset.touched = '1';
     render();
   } catch {
     for (const field of profileForm.elements) field.disabled = true;
@@ -138,10 +171,22 @@ async function start() {
   }
 }
 
+get('pilot-privacy').textContent = pilotPrivacyNotice;
+get('pilot-consent-label').textContent = pilotConsentLabel;
+get('pilot-consent').addEventListener('change', renderApplication);
+
+// Sugere o endereço a partir do nome da imobiliária, enquanto a pessoa não escolher o dela.
+profileForm.elements.slug.addEventListener('input', () => { profileForm.elements.slug.dataset.touched = '1'; });
+profileForm.elements.business.addEventListener('input', () => {
+  const slug = profileForm.elements.slug;
+  if (slug.dataset.touched !== '1') slug.value = suggestSlug(profileForm.elements.business.value);
+});
+
 get('profile-example').addEventListener('click', () => {
   profileForm.elements.name.value = 'Pessoa Exemplo';
   profileForm.elements.business.value = 'Imobiliária Exemplo';
   profileForm.elements.email.value = 'pessoa@example.com';
+  profileForm.elements.slug.value = 'imobiliaria-exemplo';
 });
 
 profileForm.addEventListener('submit', event => {
@@ -149,6 +194,12 @@ profileForm.addEventListener('submit', event => {
   const profile = Object.fromEntries([...new FormData(profileForm)].map(([key, value]) => [key, value.trim()]));
   if (!profile.name || !profile.business) {
     showMessage('Informe seu nome e o nome da imobiliária ou do negócio.', true);
+    return;
+  }
+  profile.slug = (profile.slug ?? '').toLowerCase();
+  if (profile.slug && slugProblem(profile.slug)) {
+    showMessage(slugProblem(profile.slug), true);
+    profileForm.elements.slug.focus();
     return;
   }
   void save(current => ({ ...current, profile }), 'Perfil salvo. Você já pode enviar o cadastro e importar a personalização.', 'import-draft');
@@ -202,3 +253,4 @@ renderAgents();
 addEventListener('hashchange', highlightStep);
 addEventListener('pageshow', event => { if (event.persisted) void start(); });
 void start();
+void loadSlots();

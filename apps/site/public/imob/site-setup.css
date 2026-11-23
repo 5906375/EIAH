@@ -82,3 +82,10 @@
 .setup-agent-expansion { border-style: dashed; background: #f7fafb; color: var(--muted); }
 .setup-agent-expansion h3 { margin: 0; font-size: 1.05rem; }
 .setup #published-site .setup-panel { margin-top: 28px; }
+.setup-fields small { font-weight: 400; color: var(--muted); }
+.setup-address { display: flex; align-items: center; gap: 8px; }
+.setup-address > span { flex: none; color: var(--muted); font-weight: 400; white-space: nowrap; }
+.setup-address input { flex: 1; }
+.setup-consent { border-top: 1px solid var(--line); margin-top: 20px; padding-top: 16px; }
+.setup-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; cursor: pointer; }
+.setup-check input { flex: none; width: 22px; height: 22px; margin-top: 2px; }

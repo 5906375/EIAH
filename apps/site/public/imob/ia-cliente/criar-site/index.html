@@ -21,6 +21,7 @@
   <p class="eyebrow">Piloto IMOB</p>
   <h1 data-demo-guide-topic="publicar">Criar meu site</h1>
   <p class="lead">Prepare a vitrine da sua imobiliária e solicite uma das 10 publicações gratuitas do piloto.</p>
+  <p class="setup-note" id="pilot-slots" role="status" hidden></p>
   <div class="setup-layout">
     <nav class="setup-steps" aria-label="Etapas do site">
       <ol>
@@ -37,6 +38,10 @@
             <label>Seu nome <input name="name" required maxlength="70" placeholder="Pessoa Exemplo"></label>
             <label>Imobiliária ou nome profissional <input name="business" required maxlength="70" placeholder="Imobiliária Exemplo"></label>
             <label>E-mail profissional <input name="email" type="email" required maxlength="160" placeholder="pessoa@example.com" autocomplete="off"></label>
+            <label>Endereço desejado para a vitrine
+              <span class="setup-address"><span aria-hidden="true">eiah.ia.br/imob/</span><input name="slug" maxlength="65" placeholder="minha-imobiliaria" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="slug-help"></span>
+              <small id="slug-help">Letras minúsculas, números e hífens. A equipe confirma se o endereço está livre.</small>
+            </label>
           </div>
           <div class="next-actions">
             <button class="btn btn-primary" type="submit">Salvar perfil</button>
@@ -45,6 +50,12 @@
           </div>
           <p class="setup-note">Use um e-mail profissional real ao enviar o cadastro. A equipe EIAH confirma as vagas por e-mail.</p>
         </form>
+        <div class="setup-consent">
+          <h3>Privacidade do cadastro</h3>
+          <p class="setup-note" id="pilot-privacy"></p>
+          <label class="setup-check"><input type="checkbox" id="pilot-consent"><span id="pilot-consent-label"></span></label>
+          <p class="setup-note" id="pilot-hint" role="status"></p>
+        </div>
         <div class="setup-divider" id="draft-controls" hidden>
           <h3 data-demo-guide-topic="rascunho">Rascunho da vitrine</h3>
           <p id="draft-status">Recupere as edições feitas na Prévia 02 neste navegador.</p>

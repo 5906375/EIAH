@@ -1,12 +1,15 @@
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { contactNumber } from '../public/imob/client-footer.mjs';
+import { PILOT_LIMIT, PILOT_ORIGIN, reservedSlugs, slugProblem } from '../public/imob/pilot-site.mjs';
 import { rentalCosts, unknownChargesNotice } from '../public/imob/rental-costs.mjs';
 
+export { reservedSlugs };
+
 const defaultRoot = new URL('../public/imob/', import.meta.url);
-const limit = 10;
+const limit = PILOT_LIMIT;
+const slotsFile = 'piloto-vagas.json';
 const marker = '<!doctype html>\n<!-- Vitrine do piloto IMOB -->';
-const slugFormat = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const units = { venda: '', locacao: ' por mês', temporada: ' por diária' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -17,12 +20,6 @@ const maxProperties = 50;
 const maxPhotos = 20;
 const textLimits = { titulo: 100, tipo: 40, cidade: 60, bairro: 60, descricao: 800 };
 
-// Endereços que o piloto nunca entrega a uma imobiliária: páginas e rotas do próprio IMOB e nomes de serviço.
-export const reservedSlugs = Object.freeze([
-  'admin', 'api', 'app', 'assets', 'catalog', 'criar-site', 'eiah', 'equipe', 'ia-cliente', 'imob', 'index',
-  'legal', 'login', 'operacao-eiah', 'personalizar', 'privacidade', 'status', 'suporte', 'temporada', 'termos',
-  'visual', 'www'
-]);
 
 // Confere o conteúdo real do arquivo, não só o prefixo data: informado no rascunho.
 const imageTypes = {
@@ -181,7 +178,7 @@ export function renderSite(draft, slug) {
   const logo = imageSource(brand.logo, context, 'logo');
   const homes = properties.map((property, index) => renderProperty(property, index, context)).join('');
   // Metadados para buscadores e para a prévia ao compartilhar o link (WhatsApp, redes sociais).
-  const address = 'https://eiah.ia.br/imob/' + slug + '/';
+  const address = PILOT_ORIGIN + slug + '/';
   const summary = String(brand.introduction ?? '').replace(/\s+/g, ' ').trim().slice(0, 155) || 'Imóveis de ' + brand.name.trim() + '.';
   const firstImage = homes.match(/<img src="([^"]+)"/)?.[1] ?? '';
   const html = `${marker}
@@ -224,6 +221,21 @@ export function renderSite(draft, slug) {
   return { html, files: context.files };
 }
 
+// A tela "Criar meu site" mostra quantas vagas restam lendo este arquivo. Ele só é regravado quando muda.
+export function syncSlots(root = defaultRoot) {
+  const content = JSON.stringify({ limit, used: countSites(root) }) + '\n';
+  const file = new URL(slotsFile, root);
+  let current = '';
+  try {
+    current = readFileSync(file, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (current === content) return false;
+  writeFileSync(file, content);
+  return true;
+}
+
 function checkLimit(root) {
   const sites = countSites(root);
   if (sites > limit) throw new Error('O piloto IMOB ultrapassou o limite de 10 vitrines. Corrija antes de publicar.');
@@ -232,10 +244,8 @@ function checkLimit(root) {
 
 export function publish(slug, draft, { root = defaultRoot } = {}) {
   const sites = checkLimit(root);
-  if (!slugFormat.test(slug ?? '') || slug.length < 3 || slug.length > 65) {
-    throw new Error('Use um nome de site de 3 a 65 caracteres, com letras minúsculas, números e hífens.');
-  }
-  if (reservedSlugs.includes(slug)) throw new Error('O endereço "' + slug + '" é reservado no IMOB. Escolha outro nome.');
+  const problem = slugProblem(slug);
+  if (problem) throw new Error(problem);
   const existing = readdirSync(root).includes(slug);
   if (existing && !readPage(root, slug).startsWith(marker)) {
     throw new Error('Endereço reservado no IMOB.');
@@ -265,13 +275,15 @@ export function publish(slug, draft, { root = defaultRoot } = {}) {
   } finally {
     rmSync(stage, { recursive: true, force: true });
   }
-  return { url: 'https://eiah.ia.br/imob/' + slug + '/', photos: files.size };
+  syncSlots(root);
+  return { url: PILOT_ORIGIN + slug + '/', photos: files.size };
 }
 
 export function run([slug, file, ...extra], { root = defaultRoot } = {}) {
   if (slug === '--check' && !file && !extra.length) {
     const sites = checkLimit(root);
-    console.log('Piloto IMOB: ' + sites + '/' + limit + ' vitrines.');
+    const changed = syncSlots(root);
+    console.log('Piloto IMOB: ' + sites + '/' + limit + ' vitrines.' + (changed ? ' Arquivo ' + slotsFile + ' atualizado.' : ''));
     return;
   }
   if (!file || extra.length) {

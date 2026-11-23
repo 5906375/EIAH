@@ -81,7 +81,7 @@ test('publicar grava página e fotos e a atualização troca tudo sem deixar sob
     publish('horizonte', { brand, properties: [house({ titulo: 'Casa nova' })] }, { root });
     assert.ok(readFileSync(join(dir, 'horizonte/index.html'), 'utf8').includes('Casa nova'));
     assert.ok(!existsSync(join(dir, 'horizonte/fotos')), 'foto antiga removida');
-    assert.deepEqual(readdirSync(dir), ['horizonte'], 'nenhuma pasta temporária sobra');
+    assert.deepEqual(readdirSync(dir).sort(), ['horizonte', 'piloto-vagas.json'], 'nenhuma pasta temporária sobra');
   } finally { done(); }
 });
 
@@ -121,7 +121,7 @@ test('--check conta as vitrines e recusa mais de dez pastas', () => {
     publish('loja', { brand, properties: [] }, { root });
     run(['--check'], { root });
     console.log = log;
-    assert.deepEqual(lines, ['Piloto IMOB: 0/10 vitrines.', 'Piloto IMOB: 1/10 vitrines.']);
+    assert.deepEqual(lines, ['Piloto IMOB: 0/10 vitrines. Arquivo piloto-vagas.json atualizado.', 'Piloto IMOB: 1/10 vitrines.']);
     for (let i = 0; i < 10; i += 1) {
       mkdirSync(join(dir, 'extra-' + i));
       writeFileSync(join(dir, 'extra-' + i, 'index.html'), '<!doctype html>\n<!-- Vitrine do piloto IMOB -->');
