@@ -146,6 +146,7 @@ form.addEventListener('submit', event => {
   listOptions(id);
   loadSelection();
   feedback.textContent = 'Imóvel aplicado à vitrine neste navegador.';
+  form.dispatchEvent(new CustomEvent('imob:property-saved', { detail: { id } }));
 });
 
 reset.addEventListener('click', () => {

@@ -129,6 +129,12 @@
         <p class="field-help">Edite um imóvel de demonstração ou adicione um novo. Use dados e fotos fictícios.</p>
         <label class="field-label" for="propertyChoice">Escolher imóvel</label>
         <select id="propertyChoice"></select>
+        <section id="guidedCapture" class="guided-capture" aria-labelledby="guidedTitle">
+          <h3 id="guidedTitle">Cadastro guiado</h3>
+          <p class="field-help">Responda um campo por vez, sem preencher o formulário inteiro. Nada é salvo até você revisar e escolher “Aplicar imóvel à vitrine”.</p>
+          <div id="guidedBody"></div>
+          <button class="btn btn-ghost" type="button" id="guidedStart">Cadastrar passo a passo</button>
+        </section>
         <div class="editor-fields">
           <label class="field-label editor-full">Título do anúncio
             <input name="titulo" required maxlength="100" placeholder="Ex.: Apartamento com varanda">
@@ -154,19 +160,19 @@
             <input type="number" name="preco" min="0.01" step="0.01" required placeholder="Ex.: 650000">
           </label>
           <label class="field-label">Área (m²)
-            <input type="number" name="area" min="0" step="0.01" placeholder="Ex.: 82">
+            <input type="number" name="area" min="0" max="100000" step="0.01" placeholder="Ex.: 82">
           </label>
           <label class="field-label">Quartos
-            <input type="number" name="quartos" min="0" step="1" placeholder="Ex.: 2">
+            <input type="number" name="quartos" min="0" max="50" step="1" placeholder="Ex.: 2">
           </label>
           <label class="field-label">Suítes
-            <input type="number" name="suites" min="0" step="1" placeholder="Ex.: 1">
+            <input type="number" name="suites" min="0" max="50" step="1" placeholder="Ex.: 1">
           </label>
           <label class="field-label">Banheiros
-            <input type="number" name="banheiros" min="0" step="1" placeholder="Ex.: 2">
+            <input type="number" name="banheiros" min="0" max="50" step="1" placeholder="Ex.: 2">
           </label>
           <label class="field-label">Vagas
-            <input type="number" name="vagas" min="0" step="1" placeholder="Ex.: 1">
+            <input type="number" name="vagas" min="0" max="100" step="1" placeholder="Ex.: 1">
           </label>
           <label class="field-label">Condomínio mensal (R$)
             <input type="number" name="condominio" min="0" step="0.01" placeholder="Ex.: 680" aria-describedby="chargesHelp">
@@ -255,6 +261,7 @@
 </main>
 <script type="module" src="../../brand-editor.mjs"></script>
 <script type="module" src="../../property-editor.mjs"></script>
+<script type="module" src="../../guided-capture-panel.mjs"></script>
 <script type="module" src="../../guide-voice-editor.mjs"></script>
 <script type="module" src="../../demo-guide.mjs"></script>
 </body>

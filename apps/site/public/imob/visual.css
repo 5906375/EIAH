@@ -470,3 +470,19 @@ footer a { text-decoration: underline; }
 .interest-summary summary { cursor: pointer; font-weight: 650; }
 .interest-summary pre { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 8px; font: inherit; }
 #interest-property:not([hidden]) { margin-bottom: 22px; }
+
+/* cadastro guiado de imóvel (editor de imóveis) */
+.guided-capture { margin: 14px 0 18px; padding: clamp(12px, 3vw, 18px); border: 1px solid var(--line); border-radius: 14px; background: #f8fafb; }
+.guided-capture h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.guided-capture :is(input, select, textarea) { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #9cafba; border-radius: 9px; color: var(--ink); background: #fff; font: inherit; }
+.guided-capture [aria-invalid="true"] { border-color: #b42318; }
+.guided-capture progress { width: 100%; accent-color: var(--brand); }
+.guided-progress { margin: 10px 0 4px; color: var(--muted); font-size: .875rem; }
+.guided-error, .guided-missing { color: #b42318; font-weight: 650; }
+.guided-actions { margin-top: 12px; }
+.guided-review { margin: 12px 0; }
+.guided-review > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.guided-review dt { font-weight: 650; }
+.guided-review dd { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.guided-review button { min-height: 36px; padding: 4px 12px; }
+#guidedReviewTitle:focus { outline: 2px solid var(--brand); outline-offset: 3px; }
