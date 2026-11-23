@@ -1,4 +1,5 @@
 import { applyBrand, readSavedBrand } from './client-brand.mjs';
+import { imobInterestHref } from './contact-eiah.mjs';
 import { storefrontProperties } from './client-properties.mjs';
 import { formatProposal } from './requests-local.mjs';
 import { createSeasonalCase, readSeasonalCase, seasonalStatus, seasonalSummary } from './seasonal-cases.mjs';
@@ -34,6 +35,7 @@ async function showTracking() {
 }
 
 async function initialize() {
+  get('contact-eiah').href = imobInterestHref('temporada');
   const snapshot = published ? (await readSetup()).published : null;
   get('back-to-store').href = published ? '../criar-site/vitrine/' : '../';
   applyBrand(document.body, published ? snapshot?.brand ?? {} : readSavedBrand(), { preview: true });

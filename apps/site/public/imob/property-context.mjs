@@ -1,13 +1,18 @@
 import { appendPropertyGallery, releasePropertyGallery } from './property-gallery.mjs';
 import { storefrontProperties } from './client-properties.mjs';
 import { money, quoteStay } from './stay-visual.mjs';
+import { missingChargeNames, originLabels, rentalCosts } from './rental-costs.mjs';
 
 export const propertyGoals = { venda: 'comprar', locacao: 'alugar', temporada: 'temporada' };
 const purposes = { venda: 'Venda', locacao: 'Locação residencial', temporada: 'Temporada' };
 
 export const findProperty = id => storefrontProperties.find(property => property.id === id);
-export const monthlyTotal = property => property.finalidade === 'locacao'
-  ? property.preco + property.condominio + Math.round(property.iptu) : null;
+// Só há total mensal quando aluguel, condomínio e IPTU são conhecidos; "não informado" nunca vira zero.
+export const monthlyTotal = property => property.finalidade === 'locacao' ? rentalCosts(property).total : null;
+const chargeFact = charge => [
+  charge.label,
+  charge.known ? money(charge.amount) + ' / mês (' + originLabels[charge.origin] + ')' : 'Não informado'
+];
 export const propertyPriceText = property => money(property.preco) +
   (property.finalidade === 'venda' ? '' : ' por ' + (property.unidadePreco || 'mês'));
 
@@ -47,12 +52,14 @@ export function renderPropertyContext(container, property, selection) {
     ['Suítes', property.suites],
     ['Banheiros', property.banheiros],
     ['Vagas', property.vagas],
-    ['Condomínio', property.condominio ? money(property.condominio) + ' / mês' : 'R$ 0'],
-    ['IPTU', property.iptu ? money(property.iptu) + ' / mês' : 'R$ 0'],
+    ...(property.finalidade === 'temporada' ? [] : rentalCosts(property).charges.map(chargeFact)),
     ['Características', property.caracteristicas?.join(' · ')]
   ];
   const monthly = monthlyTotal(property);
   if (monthly !== null) facts.push(['Total mensal estimado', money(monthly)]);
+  else if (property.finalidade === 'locacao') {
+    facts.push(['Total mensal', 'Indisponível: falta informar ' + missingChargeNames(rentalCosts(property))]);
+  }
   if (property.stay) {
     facts.push(['Capacidade', property.stay.maxGuests + ' hóspedes'], ['Limpeza', money(property.stay.cleaning)]);
     const quote = selection && quoteStay(property, selection);

@@ -13,6 +13,8 @@ export const propertyNumberFields = [
   'preco', 'condominio', 'iptu', 'area', 'quartos', 'suites', 'banheiros', 'vagas',
   'maxGuests', 'cleaning'
 ];
+// Encargos podem ser desconhecidos: vazio é null ("não informado"), e 0 só vale quando informado.
+export const propertyOptionalAmountFields = ['condominio', 'iptu'];
 
 function readEdits() {
   try {
@@ -30,7 +32,8 @@ function normalizeEdit(id, edit) {
   ]));
   if (!text.titulo || !text.tipo || !text.cidade || !text.bairro) return null;
   const numbers = Object.fromEntries(propertyNumberFields.map(key => [
-    key, Number.isFinite(edit[key]) && edit[key] >= 0 ? edit[key] : 0
+    key, Number.isFinite(edit[key]) && edit[key] >= 0 ? edit[key]
+      : propertyOptionalAmountFields.includes(key) ? null : 0
   ]));
   if (!numbers.preco) return null;
   const photos = Array.isArray(edit.photos) ? edit.photos.filter(isPhoto) : [];
@@ -53,6 +56,7 @@ export function readClientProperties({ onlyEdited = false } = {}) {
       ...fields,
       id,
       finalidade,
+      origem: 'informed_by_manager',
       fotos: photos.length ? photos : cover ? [cover, ...fotos.slice(1)] : fotos,
       caracteristicas: caracteristicas.split(',').map(feature => feature.trim()).filter(Boolean),
       unidadePreco: finalidade === 'temporada' ? 'diária' : 'mês',

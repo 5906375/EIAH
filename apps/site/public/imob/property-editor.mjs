@@ -1,6 +1,8 @@
 import {
-  propertyNumberFields, propertyTextFields, readClientProperties, resetClientProperty, saveClientProperty
+  propertyNumberFields, propertyOptionalAmountFields, propertyTextFields, readClientProperties,
+  resetClientProperty, saveClientProperty
 } from './client-properties.mjs';
+import { createVideoEditor } from './property-video-editor.mjs';
 import { money } from './stay-visual.mjs';
 
 const form = document.getElementById('propertyEditor');
@@ -12,9 +14,24 @@ const save = document.getElementById('saveProperty');
 const reset = document.getElementById('resetProperty');
 const field = name => form.elements.namedItem(name);
 const textFields = Object.keys(propertyTextFields);
+// Em condomínio e IPTU, campo vazio significa "não informado" (null), e não zero.
+const readNumber = name => {
+  const raw = field(name).value.trim();
+  return raw === '' && propertyOptionalAmountFields.includes(name) ? null : Number(raw);
+};
 let selectedPhotos;
 let savedPhotos = [];
 let uploadVersion = 0;
+// O botão de aplicar fica bloqueado enquanto fotos ou vídeos estão sendo lidos.
+let photosBusy = false;
+let videosBusy = false;
+const syncSave = () => { save.disabled = photosBusy || videosBusy; };
+const videos = createVideoEditor({
+  input: document.getElementById('propertyVideos'),
+  list: document.getElementById('propertyVideoList'),
+  status: document.getElementById('propertyVideoStatus'),
+  onBusy: busy => { videosBusy = busy; syncSave(); }
+});
 
 function listOptions(selected = 'novo') {
   selection.replaceChildren(
@@ -50,7 +67,8 @@ function renderCard() {
 
 function loadSelection() {
   uploadVersion += 1;
-  save.disabled = false;
+  photosBusy = false;
+  syncSave();
   photosInput.value = '';
   photosInput.setCustomValidity('');
   feedback.textContent = '';
@@ -65,6 +83,7 @@ function loadSelection() {
   for (const name of propertyNumberFields) field(name).value = property?.[name] ?? '';
   field('maxGuests').value = property?.stay?.maxGuests ?? '';
   field('cleaning').value = property?.stay?.cleaning ?? '';
+  videos.load(property?.id ?? null);
   renderCard();
 }
 
@@ -99,7 +118,8 @@ photosInput.addEventListener('change', async () => {
   const version = ++uploadVersion;
   const files = [...photosInput.files];
   photosInput.setCustomValidity('');
-  save.disabled = Boolean(files.length);
+  photosBusy = Boolean(files.length);
+  syncSave();
   if (!files.length) return;
   try {
     const photos = [];
@@ -116,17 +136,20 @@ photosInput.addEventListener('change', async () => {
     feedback.textContent = error.message || 'Não foi possível abrir a imagem.';
     photosInput.value = '';
   } finally {
-    if (version === uploadVersion) save.disabled = false;
+    if (version === uploadVersion) {
+      photosBusy = false;
+      syncSave();
+    }
   }
 });
 
-form.addEventListener('submit', event => {
+form.addEventListener('submit', async event => {
   event.preventDefault();
   const details = {
     finalidade: field('finalidade').value,
     ...(selectedPhotos ? { photos: selectedPhotos } : {}),
     ...Object.fromEntries(textFields.map(name => [name, field(name).value.trim()])),
-    ...Object.fromEntries(propertyNumberFields.map(name => [name, Number(field(name).value)]))
+    ...Object.fromEntries(propertyNumberFields.map(name => [name, readNumber(name)]))
   };
   if (['titulo', 'tipo', 'cidade', 'bairro'].some(name => !details[name])) {
     feedback.textContent = 'Preencha título, tipo, cidade e bairro.';
@@ -137,12 +160,17 @@ form.addEventListener('submit', event => {
     feedback.textContent = 'Não foi possível salvar o imóvel neste navegador. Tente usar menos fotos ou imagens menores.';
     return;
   }
+  save.disabled = true; // evita aplicar duas vezes enquanto os vídeos são gravados
+  const outcome = await videos.commit(id);
   listOptions(id);
   loadSelection();
-  feedback.textContent = 'Imóvel aplicado à vitrine neste navegador.';
+  feedback.textContent = 'Imóvel aplicado à vitrine neste navegador.'
+    + (outcome.saved ? (outcome.saved === 1 ? ' 1 vídeo guardado.' : ` ${outcome.saved} vídeos guardados.`) : '')
+    + (outcome.failed.length ? ' Atenção: ' + outcome.failed.join(' ') : '');
+  form.dispatchEvent(new CustomEvent('imob:property-saved', { detail: { id } }));
 });
 
-reset.addEventListener('click', () => {
+reset.addEventListener('click', async () => {
   const id = selection.value;
   const added = id.startsWith('p-');
   const prompt = added
@@ -153,6 +181,7 @@ reset.addEventListener('click', () => {
     feedback.textContent = 'Não foi possível atualizar o anúncio neste navegador.';
     return;
   }
+  await videos.discardAll(id);
   listOptions(added ? 'novo' : id);
   loadSelection();
   selection.focus();
