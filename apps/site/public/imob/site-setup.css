@@ -28,6 +28,7 @@
 .setup-option { border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 .setup-option .btn { white-space: normal; }
 .setup-option p { margin-bottom: 10px; }
+.setup-option .specs { margin: 0 0 8px; }
 .setup-option img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 8px; margin-bottom: 12px; }
 .setup-agent-carousel { min-width: 0; }
 .setup-agent-carousel .property-carousel-buttons { justify-content: flex-end; margin-bottom: 8px; }
