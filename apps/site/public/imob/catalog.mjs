@@ -3,6 +3,7 @@ import { money as brl, quoteStay, stayDate, validStay } from './stay-visual.mjs'
 import { findProperty, monthlyTotal } from './property-context.mjs';
 import { seasonalRequestUrl } from './seasonal-cases.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
+import { bindFinancing, canSimulateFinancing, financingMarkup } from './financing-panel.mjs';
 
 /* ===== util ===== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -360,10 +361,12 @@ function openDetail(id) {
       ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : ""}
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
+      ${canSimulateFinancing(property) ? financingMarkup(property) : ""}
       ${propertyInterestLink(property)}
       ${seasonalRequestLink(property)}
     </div>`;
   showModal();
+  bindFinancing($("#modalBox"), property);
 }
 
 $("#nav").addEventListener("click", (event) => {
