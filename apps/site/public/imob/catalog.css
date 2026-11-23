@@ -201,3 +201,9 @@ footer a:hover{color:#fff}
 .financing-result{margin-top:10px;color:var(--ink)}
 .financing-result p{margin:4px 0}
 .financing-result strong{color:var(--navy)}
+
+/* vídeos do imóvel (detalhe) */
+.property-videos{display:grid;gap:12px;margin:14px 0}
+.property-videos figure{margin:0}
+.property-videos video{display:block;width:100%;max-height:60vh;border-radius:12px;background:#000}
+.property-videos figcaption{margin-top:4px;font-size:13px;color:var(--muted);overflow-wrap:anywhere}

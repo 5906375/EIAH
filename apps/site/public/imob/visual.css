@@ -493,6 +493,13 @@ footer a { text-decoration: underline; }
 .editor-sections { margin-bottom: 18px; }
 .editor-panel :is(#propertyChoice, select[name="finalidade"]) { display: block; width: 100%; max-width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid #9cafba; border-radius: 9px; color: var(--ink); background: #fff; }
 
+/* lista de vídeos do editor */
+.video-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.video-list:empty, #propertyVideoStatus:empty { display: none; }
+.video-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafb; }
+.video-list li span { min-width: 0; overflow-wrap: anywhere; }
+.video-list .btn { min-height: 36px; padding: 4px 12px; }
+
 /* celular: cabeçalho em duas linhas (marca + guia, depois o link) e abas em grade 2x2 */
 @media (max-width: 540px) {
   .topbar .wrap:has(> .demo-guide-launcher) { height: auto; min-height: 0; flex-wrap: wrap; padding-block: 8px 2px; row-gap: 0; }

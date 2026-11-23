@@ -5,6 +5,7 @@ import { seasonalRequestUrl } from './seasonal-cases.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { bindFinancing, canSimulateFinancing, financingMarkup } from './financing-panel.mjs';
 import { rentalCosts, unknownChargesNotice } from './rental-costs.mjs';
+import { mountPropertyVideos } from './property-videos-view.mjs';
 
 /* ===== util ===== */
 const $ = (s, el = document) => el.querySelector(s);
@@ -328,6 +329,7 @@ $("#fMax").addEventListener("change", (e) => { const v = Number(e.target.value.r
 $("#aiForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#aiInput").value.trim(); if (v) { applyQuery(v); location.hash = "#imoveis"; } });
 const dialog = $("#modal");
 let modalTrigger;
+let releaseVideos = () => {};
 
 function showModal() {
   if (!dialog.open) {
@@ -343,6 +345,8 @@ function closeModal() {
 }
 
 dialog.addEventListener("close", () => {
+  releaseVideos();
+  releaseVideos = () => {};
   document.body.style.overflow = "";
   modalTrigger?.focus();
 });
@@ -350,6 +354,8 @@ dialog.addEventListener("close", () => {
 function openDetail(id) {
   const property = findProperty(id);
   if (!property) return;
+  releaseVideos();
+  releaseVideos = () => {};
   const total = monthlyTotal(property);
   const quote = staySelection && quoteStay(property, staySelection);
   $("#modalBox").innerHTML = `
@@ -363,12 +369,21 @@ function openDetail(id) {
       ${total ? `<p>Total mensal estimado com condomínio e IPTU: <strong>${brl(total)}</strong></p>` : property.finalidade === "locacao" ? `<p>${esc(unknownChargesNotice(rentalCosts(property)))}. Peça à imobiliária o total mensal.</p>` : ""}
       ${stayBreakdown(quote)}
       <p>${esc(property.descricao)}</p>
+      <div id="propertyVideosSlot"></div>
       ${canSimulateFinancing(property) ? financingMarkup(property) : ""}
       ${propertyInterestLink(property)}
       ${seasonalRequestLink(property)}
     </div>`;
   showModal();
   bindFinancing($("#modalBox"), property);
+  // Vídeos só existem nas edições do cliente (ia-cliente), guardados neste navegador.
+  if (document.body.dataset.product === "ia-cliente") {
+    const slot = $("#propertyVideosSlot");
+    mountPropertyVideos(slot, property.id).then((release) => {
+      if (dialog.open && slot.isConnected) releaseVideos = release;
+      else release();
+    });
+  }
 }
 
 $("#nav").addEventListener("click", (event) => {
