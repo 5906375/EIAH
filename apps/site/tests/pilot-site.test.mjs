@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import {
-  PILOT_LIMIT, pilotApplicationHref, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, reservedSlugs, slugAddress, slugProblem, suggestSlug
+  PILOT_LIMIT, pilotApplicationHref, pilotApplyAction, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, pilotWaitlistAction, pilotWaitlistDraftNote, pilotWaitlistFileNote, pilotWaitlistLead, reservedSlugs, slugAddress, slugProblem, suggestSlug
 } from '../public/imob/pilot-site.mjs';
 import { publish, run, syncSlots } from '../scripts/publish-imob-pilot.mjs';
 
@@ -67,7 +67,7 @@ test('o aviso de privacidade diz o que é enviado e que o site não envia nada s
 test('pilotSlots mostra vagas livres, vagas esgotadas e ignora dado inválido', () => {
   assert.deepEqual(pilotSlots({ limit: 10, used: 3 }), { known: true, limit: 10, used: 3, free: 7, full: false, text: '7 vagas disponíveis de 10 no piloto.' });
   assert.equal(pilotSlots({ limit: 10, used: 9 }).text, '1 vaga disponível de 10 no piloto.');
-  assert.equal(pilotSlots({ limit: 10, used: 10 }).text, 'As 10 vagas do piloto já foram preenchidas.');
+  assert.equal(pilotSlots({ limit: 10, used: 10 }).text, 'As vagas do piloto estão fechadas por enquanto.');
   assert.equal(pilotSlots({ limit: 10, used: 10 }).full, true);
   assert.equal(pilotSlots({ limit: 10, used: 12 }).free, 0);
   for (const bad of [null, undefined, {}, { limit: 'dez', used: 1 }, { limit: 10, used: -1 }, { limit: 0, used: 0 }, { limit: 10.5, used: 1 }, 'texto']) {
@@ -130,4 +130,32 @@ test('com 11 pastas o --check recusa e não grava um número impossível', () =>
     assert.throws(() => run(['--check'], { root }), /ultrapassou o limite/);
     assert.throws(() => readFileSync(join(dir, 'piloto-vagas.json')), /ENOENT/);
   } finally { done(); }
+});
+
+test('a lista de espera usa o mesmo cadastro, com assunto e autorização próprios', () => {
+  assert.equal(pilotApplicationHref(profile, false, { waitlist: true }), '', 'sem consentimento não há link');
+  const href = pilotApplicationHref(profile, true, { waitlist: true });
+  assert.equal(new URL(href).searchParams.get('subject'), 'Lista de espera do piloto de vitrines gratuitas IMOB');
+  const body = decodeURIComponent(href.split('&body=')[1]);
+  assert.match(body, /Quero entrar na lista de espera/);
+  assert.match(body, /Autorizo a EIAH a usar estes dados para me avisar quando o piloto abrir novas vagas/);
+  assert.match(body, /Vou enviar o rascunho da minha vitrine \(arquivo vitrine-imob\.json\) quando abrirem vagas\./);
+  assert.ok(!/Vou enviar o rascunho/.test(decodeURIComponent(pilotApplicationHref(profile, true).split('&body=')[1])), 'o cadastro comum não leva essa linha');
+  assert.match(body, /Endereço desejado: https:\/\/eiah\.ia\.br\/imob\/horizonte-imoveis\//);
+  assert.equal(new URL(pilotApplicationHref(profile, true)).searchParams.get('subject'), 'Piloto de vitrines gratuitas IMOB');
+});
+
+test('os textos da lista de espera não prometem o que o produto ainda não entrega', () => {
+  assert.match(pilotWaitlistLead, /fechadas por enquanto/);
+  assert.match(pilotWaitlistLead, /lista de espera/);
+  assert.ok(!/garant|imediat|já pode publicar/i.test(pilotWaitlistLead));
+  assert.equal(pilotWaitlistAction, 'Entrar na lista de espera');
+  for (const note of [pilotWaitlistDraftNote, pilotWaitlistFileNote]) {
+    assert.match(note, /baixe o rascunho/i);
+    assert.match(note, /guarde o arquivo/);
+    assert.match(note, /quando abrirem vagas/);
+    assert.match(note, /e-mail/);
+  }
+  assert.match(pilotWaitlistDraftNote, /importar a personalização/, 'o botão de baixar só aparece depois de importar');
+  assert.equal(pilotApplyAction, 'Enviar cadastro para o piloto');
 });

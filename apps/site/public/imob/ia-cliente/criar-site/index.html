@@ -20,7 +20,7 @@
 <main class="wrap setup" id="main">
   <p class="eyebrow">Piloto IMOB</p>
   <h1 data-demo-guide-topic="publicar">Criar meu site</h1>
-  <p class="lead">Prepare a vitrine da sua imobiliária e solicite uma das 10 publicações gratuitas do piloto.</p>
+  <p class="lead" id="pilot-lead">Prepare a vitrine da sua imobiliária e solicite uma das 10 publicações gratuitas do piloto.</p>
   <p class="setup-note" id="pilot-slots" role="status" hidden></p>
   <div class="setup-layout">
     <nav class="setup-steps" aria-label="Etapas do site">
@@ -55,6 +55,7 @@
           <p class="setup-note" id="pilot-privacy"></p>
           <label class="setup-check"><input type="checkbox" id="pilot-consent"><span id="pilot-consent-label"></span></label>
           <p class="setup-note" id="pilot-hint" role="status"></p>
+          <p class="setup-note" id="pilot-waitlist-note" hidden></p>
         </div>
         <div class="setup-divider" id="draft-controls" hidden>
           <h3 data-demo-guide-topic="rascunho">Rascunho da vitrine</h3>
@@ -78,7 +79,7 @@
             <button class="btn btn-ghost" type="button" id="download-draft">Baixar rascunho para publicação</button>
           </div>
           <p class="setup-note" id="plan-status" role="status"></p>
-          <p class="setup-note">Após receber a confirmação da vaga, envie o rascunho à equipe. Confira antes os imóveis e contatos que serão públicos.</p>
+          <p class="setup-note" id="publish-note">Após receber a confirmação da vaga, envie o rascunho à equipe. Confira antes os imóveis e contatos que serão públicos.</p>
         </div>
       </section>
       <section class="setup-panel" id="especialistas" aria-labelledby="experts-heading">

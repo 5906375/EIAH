@@ -4,7 +4,8 @@ import { readSetup, updateSetup } from './site-setup-store.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { imobSpecialists } from './imob-specialists.mjs';
 import {
-  pilotApplicationHref, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, slugProblem, suggestSlug
+  pilotApplicationHref, pilotApplyAction, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, pilotWaitlistAction, pilotWaitlistDraftNote, pilotWaitlistFileNote, pilotWaitlistLead,
+  slugProblem, suggestSlug
 } from './pilot-site.mjs';
 
 const journeyAgents = [
@@ -23,6 +24,8 @@ const updateAgentNavigation = bindCarouselNavigation(
 let state;
 let busy = false;
 let slots = pilotSlots(null);
+const applyLead = document.getElementById('pilot-lead').textContent;
+const applyPublishNote = document.getElementById('publish-note').textContent;
 
 function showMessage(message, isError = false) {
   feedback.textContent = message;
@@ -111,20 +114,30 @@ function applicationHint(profile, consent) {
   if (!profile) return '';
   const problem = profile.slug ? slugProblem(profile.slug) : 'Informe o endereço desejado e salve o perfil para enviar o cadastro.';
   if (problem) return problem;
-  const missing = consent ? '' : 'Marque a autorização acima para liberar o envio do cadastro.';
-  return [missing, slots.full ? slots.text + ' Você ainda pode escrever para a EIAH para saber de novas vagas.' : ''].filter(Boolean).join(' ');
+  if (consent) return '';
+  return slots.full ? 'Marque a autorização acima para entrar na lista de espera.' : 'Marque a autorização acima para liberar o envio do cadastro.';
 }
 
 function renderApplication() {
   const application = get('pilot-application');
   const consent = get('pilot-consent').checked;
-  const href = state?.profile ? pilotApplicationHref(state.profile, consent) : '';
+  // Com as vagas fechadas, o mesmo botão passa a levar à lista de espera.
+  const waitlist = slots.full;
+  const href = state?.profile ? pilotApplicationHref(state.profile, consent, { waitlist }) : '';
+  application.textContent = waitlist ? pilotWaitlistAction : pilotApplyAction;
+  get('pilot-lead').textContent = waitlist ? pilotWaitlistLead : applyLead;
+  // Na lista de espera o e-mail não leva o site: avisa onde baixar o rascunho e que ele será enviado depois.
+  const draftNote = get('pilot-waitlist-note');
+  draftNote.hidden = !waitlist;
+  draftNote.textContent = waitlist ? pilotWaitlistDraftNote : '';
+  get('publish-note').textContent = waitlist ? pilotWaitlistFileNote : applyPublishNote;
   application.hidden = !href;
   if (href) application.setAttribute('href', href);
   else application.removeAttribute('href');
   get('pilot-hint').textContent = applicationHint(state?.profile, consent);
   const slotsLine = get('pilot-slots');
-  slotsLine.hidden = !slots.known;
+  // Com as vagas fechadas, o convite no topo já diz isso; a linha do contador só aparece enquanto há vagas.
+  slotsLine.hidden = !slots.known || slots.full;
   slotsLine.textContent = slots.text;
 }
 
