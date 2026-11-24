@@ -45,6 +45,37 @@ separadamente do motivo bloqueante observado nesta avaliação.
 Os links ao intake são referências documentais de trabalho,
 não comprovação automática das evidências mínimas exigidas.
 
+
+### Designacao humana preliminar
+
+Ratificacao expressa na conversa de governanca
+de 2026-11-24, conforme Candidate Intake Meta.
+
+| Funcao canonica | Responsavel humano |
+| --- | --- |
+| Product/Platform | Carlos Alberto Merlo |
+| Backend/API | Carlos Alberto Merlo |
+| Security | Carlos Alberto Merlo |
+| Platform governance | Carlos Alberto Merlo |
+| DocOps | Carlos Alberto Merlo |
+
+Founder / Executive Sponsor e Intake Owner:
+Carlos Alberto Merlo.
+
+A tabela resolve a identificacao nominal preliminar
+das cinco funcoes designadas, sem alterar as atribuicoes
+canonicas de cada mapping.
+
+Funcoes adicionais eventualmente exigidas, segregacao,
+independencia de revisao, escalations e janela de suporte
+permanecem pendentes.
+
+Nenhum reviewer e considerado tecnicamente aprovado.
+Nenhum mapping recebe aceite formal por esta designacao.
+
+Os reasonCodes canonicos e blocking gaps permanecem
+ativos ate revisao e decisao formal especifica.
+
 ## 4. Evidence Mapping — 25 campos
 
 ### `F4.2-MAP-001` — `candidateId`
@@ -198,11 +229,11 @@ não comprovação automática das evidências mínimas exigidas.
 - reviewer: Platform governance
 - acceptanceCriteria: Canal security documentado e revisavel.
 - status: `blocked`
-- blockingGap: Reviewer humano e decisão específica não ratificados. Canal específico de segurança a validar.
-- evidenceRefs: Referência preliminar ao [Candidate Intake Meta](whatsapp-provider-meta-candidate-intake-assessment.md); evidência mínima ainda não formalmente aceita.
-- decisionRefs: pending-formal-validation-decision
+- blockingGap: Canal publico de seguranca identificado; aceite formal, segregacao de funcoes, escopo do programa e escalation da conta EIAH permanecem pendentes.
+- evidenceRefs: Referencia preliminar ao [Candidate Intake Meta](whatsapp-provider-meta-candidate-intake-assessment.md); Meta Bug Bounty: https://bugbounty.meta.com/; WhatsApp Security Advisories: https://www.whatsapp.com/security/advisories. Fontes publicas reportadas, sem aceite formal.
+- decisionRefs: Designacao humana preliminar ratificada em 2026-11-24, conforme Candidate Intake Meta; pending-formal-validation-decision.
 - reasonCode: `INTAKE_VALIDATION_OWNER_MISSING`
-- informationalCoverage: pending
+- informationalCoverage: documented
 - canonicalDefaultStatus: `not-mapped`
 - canonicalBlockingGap: Security contact ausente.
 - canonicalReasonCode: `INTAKE_VALIDATION_OWNER_MISSING`
@@ -565,6 +596,24 @@ não comprovação automática das evidências mínimas exigidas.
 | commercial/cost | blocked | Quotas, custos e condições AI Providers. |
 
 ## 6. Cobertura informacional
+
+
+Atualizacao documental de governanca — 2026-11-24:
+
+| Cobertura | Baseline 4090e466 | Atual |
+| --- | ---: | ---: |
+| Documented | 8 | 9 |
+| Partial | 16 | 16 |
+| Pending | 1 | 0 |
+| Total | 25 | 25 |
+
+A cobertura atual possui informacao preliminar em
+25/25 campos. Isso nao representa prontidao operacional,
+fechamento de gaps ou aceite formal.
+
+Os indicadores anteriores abaixo descrevem a baseline
+historica e nao a cobertura atual.
+
 
 - documented: 8/25
 - partial: 16/25

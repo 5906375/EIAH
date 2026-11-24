@@ -75,8 +75,30 @@ suporte e escalation path pendentes.
 
 ### 08. securityContact
 
-Pendente de validação do canal oficial específico
-para segurança e comunicação de vulnerabilidades.
+- informationalCoverage: documented-preliminary
+- Programa: Meta Bug Bounty.
+- Contato publico reportado: bugbounty@meta.com.
+- Canal de divulgacao responsavel:
+  https://bugbounty.meta.com/
+- Security advisories:
+  https://www.whatsapp.com/security/advisories
+- Developer Support:
+  https://developers.facebook.com/support/
+- Status operacional:
+  https://metastatus.com/whatsapp-business-api
+
+Informacoes provenientes da pesquisa documental preliminar
+realizada em 2026-11-24.
+
+O Bug Bounty nao substitui suporte contratual,
+incident response ou SLA especifico da conta EIAH.
+
+Elegibilidade para suporte empresarial, abrangencia do
+programa e escalation especifica permanecem pendentes
+de validacao.
+
+Nenhum chamado foi aberto e nenhum teste foi executado.
+O aceite formal do mapping permanece bloqueado.
 
 ### 09. supportedAPIs
 
@@ -261,19 +283,42 @@ Não atribuir aceite formal a referências não verificadas.
 
 ### 24. intakeOwner
 
-Founder EIAH.
+- Intake Owner: Carlos Alberto Merlo.
+- Founder / Executive Sponsor: Carlos Alberto Merlo.
+- Ratificacao humana preliminar: 2026-11-24.
 
-Designação ratificada pelo Founder na sessão de
-governança de 2026-11-24, conforme autorização
-expressa registrada na conversa de trabalho.
+Designacao nominal ratificada na mesma data:
 
-O Founder também ratificou sua função de Executive Sponsor.
+| Funcao | Responsavel humano |
+| --- | --- |
+| Product/Platform owner | Carlos Alberto Merlo |
+| Backend/API owner | Carlos Alberto Merlo |
+| Security owner | Carlos Alberto Merlo |
+| Platform governance owner | Carlos Alberto Merlo |
+| DocOps owner | Carlos Alberto Merlo |
 
-A materialização deste registro não constitui assinatura
-digital nem substitui revisões independentes aplicáveis.
+assignmentStatus: preliminary-ratified
 
-Demais responsáveis humanos e reviewers permanecem
-pendentes de designação formal.
+A designacao foi expressamente ratificada pela autoridade
+humana na conversa de governanca de 2026-11-24.
+Este registro documental nao constitui assinatura digital
+nem substitui aprovacoes formais ou revisoes independentes
+quando exigidas.
+
+A designacao cumulativa nao comprova independencia
+entre revisores, segregacao de funcoes ou aprovacao
+tecnica dos controles.
+
+Escalations, janela de suporte, responsabilidade
+especifica de privacidade e eventual designacao de
+encarregado de dados permanecem pendentes.
+
+Agentes de IA possuem funcao auxiliar e nao substituem
+a autoridade humana.
+
+A ratificacao nao encerra automaticamente
+WA-PROV-GAP-009 e nao remove os bloqueios
+F2.16, F2.19 e F5.0.
 
 ### 25. reviewStatus
 
@@ -335,7 +380,7 @@ Não autorizados:
 - CANDIDATE_EVIDENCE_MISSING
 - CANDIDATE_ROLLBACK_GAP
 
-A existência de owner para o intake não elimina
+A designação preliminar dos owners não elimina
 a necessidade de designação dos responsáveis e
 reviewers exigidos pelas revisões específicas.
 
