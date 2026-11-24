@@ -5,7 +5,7 @@ import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { imobSpecialists } from './imob-specialists.mjs';
 import {
   pilotApplicationHref, pilotApplyAction, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, pilotWaitlistAction, pilotWaitlistDraftNote, pilotWaitlistFileNote, pilotWaitlistLead,
-  slugProblem, suggestSlug
+  exampleCards, slugProblem, suggestSlug
 } from './pilot-site.mjs';
 
 const journeyAgents = [
@@ -141,6 +141,42 @@ function renderApplication() {
   slotsLine.textContent = slots.text;
 }
 
+function exampleCard(card) {
+  const article = document.createElement('article');
+  article.className = 'example-card';
+  if (card.photo) {
+    const image = document.createElement('img');
+    image.src = new URL('./assets/' + card.photo, import.meta.url).href;
+    image.alt = '';
+    image.loading = 'lazy';
+    article.append(image);
+  }
+  const body = document.createElement('div');
+  const link = textElement('a', 'Ver vitrine');
+  link.className = 'btn btn-ghost';
+  link.href = new URL('./' + card.slug + '/', import.meta.url).href;
+  link.setAttribute('aria-label', 'Ver vitrine de exemplo: ' + card.name);
+  body.append(textElement('h3', card.name), textElement('p', card.city), textElement('p', card.summary), link);
+  article.append(body);
+  return article;
+}
+
+function renderExamples(cards) {
+  get('exemplos').hidden = cards.length === 0;
+  get('examples-nav').hidden = cards.length === 0;
+  get('example-sites').replaceChildren(...cards.map(exampleCard));
+}
+
+async function loadExamples() {
+  try {
+    const response = await fetch(new URL('./piloto-exemplos.json', import.meta.url), { cache: 'no-store' });
+    if (!response.ok) throw new Error('indisponível');
+    renderExamples(exampleCards(await response.json()));
+  } catch {
+    renderExamples([]);
+  }
+}
+
 async function loadSlots() {
   try {
     const response = await fetch(new URL('./piloto-vagas.json', import.meta.url), { cache: 'no-store' });
@@ -267,3 +303,4 @@ addEventListener('hashchange', highlightStep);
 addEventListener('pageshow', event => { if (event.persisted) void start(); });
 void start();
 void loadSlots();
+void loadExamples();

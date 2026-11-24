@@ -90,3 +90,11 @@
 .setup-check { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; cursor: pointer; }
 .setup-check input { flex: none; width: 22px; height: 22px; margin-top: 2px; }
 .example-banner { margin: 0 0 18px; padding: 12px 16px; border: 1px solid #e0b252; border-radius: 10px; background: #fff7e0; color: #5a3d00; }
+.example-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin-top: 14px; }
+.example-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.example-card img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-bottom: 1px solid var(--line); }
+.example-card > div { display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding: 14px 16px 16px; }
+.example-card h3 { font-size: 1.05rem; line-height: 1.25; }
+.example-card p { margin: 4px 0 0; color: var(--muted); font-size: 0.92rem; }
+.example-card p:last-of-type { margin-bottom: 12px; }
+.example-card .btn { margin-top: auto; }

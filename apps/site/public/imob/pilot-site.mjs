@@ -46,6 +46,31 @@ export function pilotSlots(data) {
   };
 }
 
+const exampleSlug = /^exemplo-\d\d$/;
+const exampleCover = /^[a-z0-9-]+\.webp$/;
+const exampleCount = value => (Number.isInteger(value) && value >= 0 && value <= 99 ? value : 0);
+
+/** Cartões das vitrines de exemplo a partir de piloto-exemplos.json. Entrada fora do esperado é ignorada. */
+export function exampleCards(data) {
+  const list = Array.isArray(data?.vitrines) ? data.vitrines : [];
+  return list
+    .filter(item => item && exampleSlug.test(item.slug) && typeof item.nome === 'string' && item.nome.trim() && item.nome.length <= 120)
+    .slice(0, PILOT_LIMIT)
+    .map(item => {
+      const [sale, rent, stay] = [exampleCount(item.venda), exampleCount(item.locacao), exampleCount(item.temporada)];
+      const total = sale + rent + stay;
+      const parts = [sale ? sale + ' à venda' : '', rent ? rent + ' para alugar' : '', stay ? stay + ' de temporada' : ''].filter(Boolean);
+      return {
+        slug: item.slug,
+        name: item.nome.trim(),
+        city: typeof item.cidade === 'string' ? item.cidade.trim().slice(0, 60) : '',
+        photo: exampleCover.test(item.foto) ? item.foto : '',
+        total,
+        summary: total ? total + (total === 1 ? ' imóvel' : ' imóveis') + ': ' + parts.join(', ') : 'Sem imóveis'
+      };
+    });
+}
+
 /** Texto do aviso de privacidade mostrado antes de enviar o cadastro. */
 export const pilotPrivacyNotice = 'Ao enviar o cadastro, seu programa de e-mail abre uma mensagem para ' +
   'contato@eiah.ia.br com seu nome, a imobiliária, o e-mail e o endereço desejado. O site não envia nada sozinho: ' +
