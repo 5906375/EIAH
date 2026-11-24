@@ -41,7 +41,7 @@ export function pilotSlots(data) {
   return {
     known: true, limit, used, free, full: free === 0,
     text: free === 0
-      ? 'As ' + limit + ' vagas do piloto já foram preenchidas.'
+      ? 'As vagas do piloto estão fechadas por enquanto.'
       : free + (free === 1 ? ' vaga disponível' : ' vagas disponíveis') + ' de ' + limit + ' no piloto.'
   };
 }
@@ -49,25 +49,41 @@ export function pilotSlots(data) {
 /** Texto do aviso de privacidade mostrado antes de enviar o cadastro. */
 export const pilotPrivacyNotice = 'Ao enviar o cadastro, seu programa de e-mail abre uma mensagem para ' +
   'contato@eiah.ia.br com seu nome, a imobiliária, o e-mail e o endereço desejado. O site não envia nada sozinho: ' +
-  'você revisa a mensagem e decide enviar. A EIAH usa esses dados para responder ao seu pedido do piloto. ' +
+  'você revisa a mensagem e decide enviar. A EIAH usa esses dados para responder ao seu pedido do piloto ou avisar quando abrirem vagas. ' +
   'Para corrigir ou apagar os dados, escreva para o mesmo endereço.';
 
-export const pilotConsentLabel = 'Li o aviso e autorizo a EIAH a usar estes dados para responder ao meu pedido do piloto.';
+export const pilotConsentLabel = 'Li o aviso e autorizo a EIAH a usar estes dados para responder ao meu pedido do piloto ou me avisar quando abrirem vagas.';
 
-/** Link mailto do cadastro no piloto. Devolve '' enquanto faltar dado, endereço válido ou consentimento. */
-export function pilotApplicationHref({ name, business, email, slug } = {}, consent = false) {
+export const pilotApplyAction = 'Enviar cadastro para o piloto';
+export const pilotWaitlistAction = 'Entrar na lista de espera';
+// O cadastro por e-mail não leva o site: a pessoa guarda o arquivo e o envia quando abrirem vagas.
+export const pilotWaitlistDraftNote = 'Depois de importar a personalização, baixe o rascunho em "Publicação gratuita" e guarde o arquivo: ' +
+  'quando abrirem vagas, a equipe da EIAH avisa e você o envia por e-mail.';
+export const pilotWaitlistFileNote = 'As vagas estão fechadas por enquanto. Baixe o rascunho e guarde o arquivo: ' +
+  'quando abrirem vagas, a equipe da EIAH avisa e você o envia por e-mail.';
+export const pilotWaitlistLead = 'As vagas gratuitas do piloto estão fechadas por enquanto, até o produto ficar pronto. ' +
+  'Prepare a sua vitrine e entre na lista de espera: a equipe da EIAH avisa quando abrirem novas vagas.';
+
+/**
+ * Link mailto do cadastro no piloto (ou da lista de espera, com { waitlist: true }).
+ * Devolve '' enquanto faltar dado, endereço válido ou consentimento.
+ */
+export function pilotApplicationHref({ name, business, email, slug } = {}, consent = false, { waitlist = false } = {}) {
   if (!consent || !name || !business || !email || slugProblem(slug)) return '';
   return eiahContactHref({
-    subject: 'Piloto de vitrines gratuitas IMOB',
+    subject: waitlist ? 'Lista de espera do piloto de vitrines gratuitas IMOB' : 'Piloto de vitrines gratuitas IMOB',
     lines: [
-      'Quero participar do piloto de vitrines gratuitas IMOB.',
+      waitlist ? 'Quero entrar na lista de espera do piloto de vitrines gratuitas IMOB.' : 'Quero participar do piloto de vitrines gratuitas IMOB.',
       '',
       'Nome: ' + name,
       'Imobiliária: ' + business,
       'E-mail: ' + email,
       'Endereço desejado: ' + slugAddress(slug),
+      ...(waitlist ? ['Vou enviar o rascunho da minha vitrine (arquivo vitrine-imob.json) quando abrirem vagas.'] : []),
       '',
-      'Autorizo a EIAH a usar estes dados para responder a este pedido do piloto.'
+      waitlist
+        ? 'Autorizo a EIAH a usar estes dados para me avisar quando o piloto abrir novas vagas.'
+        : 'Autorizo a EIAH a usar estes dados para responder a este pedido do piloto.'
     ]
   });
 }

@@ -9,6 +9,9 @@ export { reservedSlugs };
 const defaultRoot = new URL('../public/imob/', import.meta.url);
 const limit = PILOT_LIMIT;
 const slotsFile = 'piloto-vagas.json';
+const exampleMark = '<!-- Vitrine de exemplo';
+const examplePrefix = 'exemplo-';
+const exampleNotice = 'Vitrine de exemplo. Nomes, imóveis, valores e fotos são ilustrativos e não representam anúncios reais.';
 const marker = '<!doctype html>\n<!-- Vitrine do piloto IMOB -->';
 const units = { venda: '', locacao: ' por mês', temporada: ' por diária' };
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -161,7 +164,7 @@ export function validateDraft(draft) {
   if (problems.length) throw new Error('Corrija o rascunho antes de publicar:\n- ' + problems.join('\n- '));
 }
 
-export function renderSite(draft, slug) {
+export function renderSite(draft, slug, { example = false } = {}) {
   validateDraft(draft);
   const { brand, properties } = draft;
   const context = { slug, files: new Map() };
@@ -170,7 +173,8 @@ export function renderSite(draft, slug) {
   const phone = contactNumber(String(brand.footerPhone ?? ''));
   const email = String(brand.footerEmail ?? '').trim();
   const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const contacts = [
+  // Vitrine de exemplo nunca traz contatos: os dados são fictícios e ninguém deve ligar ou escrever para eles.
+  const contacts = example ? '' : [
     whatsapp ? '<a class="btn btn-ghost" href="https://wa.me/' + whatsapp + '">Falar pelo WhatsApp</a>' : '',
     phone ? '<a class="btn btn-ghost" href="tel:+' + phone + '">Ligar</a>' : '',
     hasEmail ? '<a class="btn btn-ghost" href="mailto:' + encodeURIComponent(email).replace('%40', '@') + '">Enviar e-mail</a>' : ''
@@ -182,11 +186,12 @@ export function renderSite(draft, slug) {
   const summary = String(brand.introduction ?? '').replace(/\s+/g, ' ').trim().slice(0, 155) || 'Imóveis de ' + brand.name.trim() + '.';
   const firstImage = homes.match(/<img src="([^"]+)"/)?.[1] ?? '';
   const html = `${marker}
-<html lang="pt-BR">
+${example ? exampleMark + ': imobiliária fictícia criada pela EIAH -->\n' : ''}<html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${escape(brand.name)}</title>
+  <title>${escape(brand.name)}${example ? ' · Vitrine de exemplo' : ''}</title>
+  ${example ? '<meta name="robots" content="noindex,nofollow">' : ''}
   <meta name="description" content="${escape(summary)}">
   <link rel="canonical" href="${address}">
   <meta property="og:type" content="website">
@@ -201,6 +206,7 @@ export function renderSite(draft, slug) {
 </head>
 <body style="--brand:${accent}">
   <main class="wrap setup">
+    ${example ? '<p class="example-banner" role="note"><strong>Vitrine de exemplo.</strong> ' + escape(exampleNotice.replace('Vitrine de exemplo. ', '')) + '</p>' : ''}
     ${logo ? '<img src="' + escape(logo) + '" width="144" alt="">' : ''}
     <h1>${escape(brand.name)}</h1>
     <p class="lead">${escape(brand.introduction)}</p>
@@ -219,6 +225,21 @@ export function renderSite(draft, slug) {
 </body>
 </html>`;
   return { html, files: context.files };
+}
+
+/** Remove as vitrines de exemplo (pastas exemplo-*) e atualiza o contador de vagas. Devolve quantas saíram. */
+export function removeExamples(root = defaultRoot) {
+  let removed = 0;
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const page = readPage(root, entry.name);
+    if (page.startsWith(marker) && page.includes(exampleMark)) {
+      rmSync(new URL(entry.name + '/', root), { recursive: true, force: true });
+      removed += 1;
+    }
+  }
+  syncSlots(root);
+  return removed;
 }
 
 // A tela "Criar meu site" mostra quantas vagas restam lendo este arquivo. Ele só é regravado quando muda.
@@ -242,17 +263,20 @@ function checkLimit(root) {
   return sites;
 }
 
-export function publish(slug, draft, { root = defaultRoot } = {}) {
+export function publish(slug, draft, { root = defaultRoot, example = false } = {}) {
   const sites = checkLimit(root);
   const problem = slugProblem(slug);
   if (problem) throw new Error(problem);
+  // O prefixo "exemplo-" separa as vitrines de demonstração das de clientes: uma não pode se passar pela outra.
+  if (example && !slug.startsWith(examplePrefix)) throw new Error('O endereço de uma vitrine de exemplo deve começar com "' + examplePrefix + '".');
+  if (!example && slug.startsWith(examplePrefix)) throw new Error('O prefixo "' + examplePrefix + '" é reservado às vitrines de exemplo.');
   const existing = readdirSync(root).includes(slug);
   if (existing && !readPage(root, slug).startsWith(marker)) {
     throw new Error('Endereço reservado no IMOB.');
   }
   if (!existing && sites >= limit) throw new Error('As 10 vagas do piloto já foram preenchidas.');
   // Monta tudo numa pasta temporária e só então troca; falha no meio não deixa a vitrine pela metade.
-  const { html, files } = renderSite(draft, slug);
+  const { html, files } = renderSite(draft, slug, { example });
   const stage = new URL('.piloto-' + process.pid + '/', root);
   const backup = new URL('.piloto-antigo-' + process.pid + '/', root);
   const target = new URL(slug + '/', root);
@@ -279,15 +303,21 @@ export function publish(slug, draft, { root = defaultRoot } = {}) {
   return { url: PILOT_ORIGIN + slug + '/', photos: files.size };
 }
 
-export function run([slug, file, ...extra], { root = defaultRoot } = {}) {
-  if (slug === '--check' && !file && !extra.length) {
+export function run(argv, { root = defaultRoot } = {}) {
+  const example = argv[0] === '--exemplo';
+  const [slug, file, ...extra] = example ? argv.slice(1) : argv;
+  if (!example && slug === '--remover-exemplos' && !file && !extra.length) {
+    console.log('Vitrines de exemplo removidas: ' + removeExamples(root) + '. Vagas do piloto: ' + (limit - checkLimit(root)) + '/' + limit + ' livres.');
+    return;
+  }
+  if (!example && slug === '--check' && !file && !extra.length) {
     const sites = checkLimit(root);
     const changed = syncSlots(root);
     console.log('Piloto IMOB: ' + sites + '/' + limit + ' vitrines.' + (changed ? ' Arquivo ' + slotsFile + ' atualizado.' : ''));
     return;
   }
   if (!file || extra.length) {
-    throw new Error('Uso: node apps/site/scripts/publish-imob-pilot.mjs nome-do-site rascunho.json');
+    throw new Error('Uso: node apps/site/scripts/publish-imob-pilot.mjs [--exemplo] nome-do-site rascunho.json');
   }
   let draft;
   try {
@@ -295,8 +325,8 @@ export function run([slug, file, ...extra], { root = defaultRoot } = {}) {
   } catch {
     throw new Error('Não foi possível ler o rascunho. Baixe de novo o arquivo vitrine-imob.json no editor IMOB.');
   }
-  const result = publish(slug, draft, { root });
-  console.log('Vitrine pronta para deploy em ' + result.url + (result.photos ? ' (' + result.photos + ' arquivo(s) de imagem)' : ''));
+  const result = publish(slug, draft, { root, example });
+  console.log((example ? 'Vitrine de exemplo pronta' : 'Vitrine pronta') + ' para deploy em ' + result.url + (result.photos ? ' (' + result.photos + ' arquivo(s) de imagem)' : ''));
 }
 
 export function main(argv, options) {
