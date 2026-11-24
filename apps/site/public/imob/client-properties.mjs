@@ -1,4 +1,5 @@
 import { properties as examples } from './properties.mjs';
+import { iaClienteProperties } from './properties-ia-cliente.mjs';
 
 export const clientPropertyStorageKey = 'eiah-imob-visual:client-properties:v1';
 const validId = /^(?:[vlt]-\d{2}|p-[a-f0-9-]{36})$/;
@@ -43,7 +44,8 @@ function normalizeEdit(id, edit) {
 
 export function readClientProperties({ onlyEdited = false } = {}) {
   const edits = readEdits();
-  const originals = new Map(examples.map(property => [property.id, property]));
+  // Prévia 02, editor e rascunho partem das fotos próprias da Prévia 02; a Prévia 01 usa "examples" direto.
+  const originals = new Map(iaClienteProperties.map(property => [property.id, property]));
   const properties = onlyEdited ? new Map() : new Map(originals);
   for (const [id, record] of Object.entries(edits)) {
     const edit = normalizeEdit(id, record);

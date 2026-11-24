@@ -70,3 +70,35 @@ test('registro antigo salvo com zero continua zero (não dá para distinguir de 
   assert.equal(stored(id).condominio, 0);
   assert.equal(stored(id).iptu, 0);
 });
+
+test('a Prévia 02 parte de fotos próprias, diferentes das da Prévia 01', async () => {
+  const { properties: previa01 } = await import('../public/imob/properties.mjs');
+  const { iaClienteProperties, previa02Photos } = await import('../public/imob/properties-ia-cliente.mjs');
+  const previa02 = readClientProperties();
+  for (const [id, names] of Object.entries(previa02Photos)) {
+    const own = previa02.find(property => property.id === id).fotos;
+    const original = previa01.find(property => property.id === id).fotos;
+    assert.equal(own.length, names.length, id);
+    assert.ok(own.every(src => /\/assets\/previa02-[a-z0-9-]+\.webp$/.test(src)), id + ': só arquivos previa02-*');
+    assert.ok(own.every(src => !original.includes(src)), id + ': nenhuma foto em comum com a Prévia 01');
+  }
+  assert.equal(iaClienteProperties.length, previa01.length, 'mesmos imóveis nas duas prévias');
+  assert.deepEqual(previa02.map(property => property.id), previa01.map(property => property.id));
+});
+
+test('a Prévia 01 não muda e os imóveis sem foto própria mantêm as fotos atuais', async () => {
+  const { properties: previa01 } = await import('../public/imob/properties.mjs');
+  assert.ok(previa01.every(property => property.fotos.every(src => !/previa02-/.test(src))), 'properties.mjs não usa fotos da Prévia 02');
+  const { previa02Photos } = await import('../public/imob/properties-ia-cliente.mjs');
+  for (const property of previa01.filter(item => !previa02Photos[item.id])) {
+    assert.deepEqual(readClientProperties().find(item => item.id === property.id).fotos, property.fotos, property.id);
+  }
+});
+
+test('editar um imóvel na Prévia 02 mantém as fotos próprias quando o cliente não envia fotos', () => {
+  const edit = { finalidade: 'venda', titulo: 'Apartamento editado', tipo: 'Apartamento', cidade: 'Balneário Camboriú', bairro: 'Centro', preco: 950000 };
+  assert.equal(saveClientProperty('v-01', edit), true);
+  const property = stored('v-01');
+  assert.equal(property.titulo, 'Apartamento editado');
+  assert.ok(property.fotos.length === 2 && property.fotos.every(src => /previa02-v01-/.test(src)), JSON.stringify(property.fotos));
+});
