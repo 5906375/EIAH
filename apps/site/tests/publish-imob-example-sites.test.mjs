@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
-import { publish, removeExamples, renderSite, run, validateDraft } from '../scripts/publish-imob-pilot.mjs';
+import { assignCovers, publish, removeExamples, renderSite, run, syncExamplesFile, validateDraft } from '../scripts/publish-imob-pilot.mjs';
 import { exampleSites, publishExampleSites } from '../scripts/publish-imob-example-sites.mjs';
 
 function sandbox() {
@@ -103,4 +103,81 @@ test('--remover-exemplos pela linha de comando e --exemplo publicam e removem', 
     assert.match(lines[1], /Vitrines de exemplo removidas: 1\. Vagas do piloto: 10\/10 livres\./);
     assert.ok(!existsSync(join(dir, 'exemplo-praia-mar')));
   } finally { console.log = log; done(); }
+});
+
+const examplesOf = dir => JSON.parse(readFileSync(join(dir, 'piloto-exemplos.json'), 'utf8')).vitrines;
+
+test('publicar os exemplos grava a lista piloto-exemplos.json com um cartão por vitrine', () => {
+  const { dir, root, done } = sandbox();
+  try {
+    publishExampleSites({ root });
+    const list = examplesOf(dir);
+    assert.equal(list.length, 10);
+    assert.deepEqual(list.map(item => item.slug), exampleSites.map(site => site.slug).sort());
+    for (const item of list) {
+      assert.match(item.slug, /^exemplo-\d\d$/);
+      assert.match(item.nome, /\[x{4,8}\]/);
+      assert.ok(item.cidade.length > 0);
+      assert.ok(item.venda + item.locacao + item.temporada >= 3);
+      assert.match(item.foto, /^[a-z0-9-]+\.webp$/, 'foto do cartão é um arquivo das imagens do site');
+      assert.ok(existsSync(join(dir, item.slug, 'resumo.json')));
+    }
+    const first = exampleSites[0];
+    assert.equal(list[0].nome, first.draft.brand.name);
+    assert.equal(list[0].venda, first.draft.properties.filter(p => p.finalidade === 'venda').length);
+  } finally { done(); }
+});
+
+test('a lista de exemplos não inclui vitrines de clientes e se esvazia ao remover os exemplos', () => {
+  const { dir, root, done } = sandbox();
+  try {
+    publish('loja-real', draft, { root });
+    publish('exemplo-01', draft, { root, example: true });
+    assert.deepEqual(examplesOf(dir).map(item => item.slug), ['exemplo-01']);
+    assert.ok(!existsSync(join(dir, 'loja-real/resumo.json')), 'vitrine de cliente não tem resumo de exemplo');
+    removeExamples(root);
+    assert.deepEqual(examplesOf(dir), []);
+    assert.ok(existsSync(join(dir, 'loja-real/index.html')));
+  } finally { done(); }
+});
+
+test('--check recria a lista de exemplos se ela sumir e não a regrava sem mudança', () => {
+  const { dir, root, done } = sandbox();
+  const log = console.log;
+  try {
+    publish('exemplo-02', draft, { root, example: true });
+    rmSync(join(dir, 'piloto-exemplos.json'));
+    console.log = () => {};
+    run(['--check'], { root });
+    console.log = log;
+    assert.deepEqual(examplesOf(dir).map(item => item.slug), ['exemplo-02']);
+    assert.equal(syncExamplesFile(root), false, 'nada mudou, nada regravado');
+  } finally { console.log = log; done(); }
+});
+
+test('cada um dos 10 cartões recebe uma capa diferente, tirada do conjunto da própria vitrine', () => {
+  const { dir, root, done } = sandbox();
+  try {
+    publishExampleSites({ root });
+    const list = examplesOf(dir);
+    assert.equal(new Set(list.map(item => item.foto)).size, 10, 'nenhuma capa repetida');
+    for (const item of list) {
+      const { fotos } = JSON.parse(readFileSync(join(dir, item.slug, 'resumo.json'), 'utf8'));
+      assert.ok(fotos.includes(item.foto), item.slug + ': a capa é uma das fotos da vitrine');
+      assert.ok(!('fotos' in item), 'a lista pública não carrega o conjunto inteiro');
+    }
+  } finally { done(); }
+});
+
+test('assignCovers evita repetição quando existe um jeito e repete só quando não há saída', () => {
+  // o primeiro item só aceita "a"; o segundo prefere "a" mas pode usar "b": a escolha ingênua repetiria "a"
+  assert.deepEqual(assignCovers([{ fotos: ['a'] }, { fotos: ['a', 'b'] }]), ['a', 'b']);
+  assert.deepEqual(assignCovers([{ fotos: ['a', 'b'] }, { fotos: ['a'] }]), ['b', 'a']);
+  assert.deepEqual(assignCovers([{ fotos: ['a', 'b', 'c'] }, { fotos: ['a', 'b'] }, { fotos: ['a'] }]), ['c', 'b', 'a']);
+  assert.deepEqual(assignCovers([{ fotos: ['a'] }, { fotos: ['a'] }]), ['a', 'a'], 'sem alternativa, repete');
+  assert.deepEqual(assignCovers([{ fotos: [] }, { fotos: ['x'] }, {}]), ['', 'x', ''], 'sem fotos, capa vazia');
+  assert.deepEqual(assignCovers([]), []);
+  const items = [{ fotos: ['a', 'b'] }, { fotos: ['b', 'c'] }, { fotos: ['a', 'c'] }];
+  assert.deepEqual(assignCovers(items), assignCovers(items), 'resultado estável');
+  assert.equal(new Set(assignCovers(items)).size, 3);
 });

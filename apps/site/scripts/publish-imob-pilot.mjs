@@ -9,6 +9,7 @@ export { reservedSlugs };
 const defaultRoot = new URL('../public/imob/', import.meta.url);
 const limit = PILOT_LIMIT;
 const slotsFile = 'piloto-vagas.json';
+const examplesFile = 'piloto-exemplos.json';
 const exampleMark = '<!-- Vitrine de exemplo';
 const examplePrefix = 'exemplo-';
 const exampleNotice = 'Vitrine de exemplo. Nomes, imóveis, valores e fotos são ilustrativos e não representam anúncios reais.';
@@ -227,6 +228,69 @@ ${example ? exampleMark + ': imobiliária fictícia criada pela EIAH -->\n' : ''
   return { html, files: context.files };
 }
 
+// Dados do cartão de cada exemplo (a tela "Criar meu site" e a página inicial leem piloto-exemplos.json).
+function exampleSummary({ brand, properties }, slug) {
+  const count = purpose => properties.filter(property => property.finalidade === purpose).length;
+  // Fotos do site usadas pela vitrine; a capa do cartão sai desse conjunto (ver assignCovers).
+  const pool = [...new Set(properties.flatMap(property => property.fotos ?? []).map(photo => String(photo).match(/^\/imob\/assets\/([a-z0-9-]+\.webp)$/)?.[1]).filter(Boolean))];
+  return {
+    nome: brand.name.trim(), cidade: String(properties[0]?.cidade ?? ''), venda: count('venda'), locacao: count('locacao'),
+    temporada: count('temporada'), fotos: pool
+  };
+}
+
+/**
+ * Escolhe a capa de cada cartão para que nenhuma se repita sempre que possível. Cada vitrine só pode usar uma foto do seu
+ * próprio conjunto; o emparelhamento máximo (caminhos de aumento) garante o maior número de capas diferentes, em ordem estável.
+ */
+export function assignCovers(items) {
+  const owner = new Map();
+  const assigned = items.map(() => undefined);
+  const claim = (index, seen) => {
+    for (const photo of items[index].fotos ?? []) {
+      if (seen.has(photo)) continue;
+      seen.add(photo);
+      if (!owner.has(photo) || claim(owner.get(photo), seen)) {
+        owner.set(photo, index);
+        return true;
+      }
+    }
+    return false;
+  };
+  items.forEach((_, index) => claim(index, new Set()));
+  for (const [photo, index] of owner) assigned[index] = photo;
+  return items.map((item, index) => assigned[index] ?? item.fotos?.[0] ?? '');
+}
+
+/** Lista pública das vitrines de exemplo existentes, regravada só quando muda. */
+export function syncExamplesFile(root = defaultRoot) {
+  const vitrines = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    const page = readPage(root, entry.name);
+    if (!page.startsWith(marker) || !page.includes(exampleMark)) continue;
+    try {
+      vitrines.push({ slug: entry.name, ...JSON.parse(readFileSync(new URL(entry.name + '/resumo.json', root), 'utf8')) });
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  vitrines.sort((a, b) => a.slug.localeCompare(b.slug));
+  const covers = assignCovers(vitrines);
+  const list = vitrines.map(({ fotos, ...item }, index) => ({ ...item, foto: covers[index] }));
+  const content = JSON.stringify({ vitrines: list }) + '\n';
+  const file = new URL(examplesFile, root);
+  let current = '';
+  try {
+    current = readFileSync(file, 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  if (current === content) return false;
+  writeFileSync(file, content);
+  return true;
+}
+
 /** Remove as vitrines de exemplo (pastas exemplo-*) e atualiza o contador de vagas. Devolve quantas saíram. */
 export function removeExamples(root = defaultRoot) {
   let removed = 0;
@@ -239,6 +303,7 @@ export function removeExamples(root = defaultRoot) {
     }
   }
   syncSlots(root);
+  syncExamplesFile(root);
   return removed;
 }
 
@@ -284,6 +349,7 @@ export function publish(slug, draft, { root = defaultRoot, example = false } = {
   try {
     mkdirSync(stage);
     writeFileSync(new URL('index.html', stage), html, { flag: 'wx' });
+    if (example) writeFileSync(new URL('resumo.json', stage), JSON.stringify(exampleSummary(draft, slug)) + '\n', { flag: 'wx' });
     for (const [path, bytes] of files) {
       mkdirSync(new URL('fotos/', stage), { recursive: true });
       writeFileSync(new URL(path, stage), bytes, { flag: 'wx' });
@@ -300,6 +366,7 @@ export function publish(slug, draft, { root = defaultRoot, example = false } = {
     rmSync(stage, { recursive: true, force: true });
   }
   syncSlots(root);
+  if (example) syncExamplesFile(root);
   return { url: PILOT_ORIGIN + slug + '/', photos: files.size };
 }
 
@@ -313,6 +380,7 @@ export function run(argv, { root = defaultRoot } = {}) {
   if (!example && slug === '--check' && !file && !extra.length) {
     const sites = checkLimit(root);
     const changed = syncSlots(root);
+    syncExamplesFile(root);
     console.log('Piloto IMOB: ' + sites + '/' + limit + ' vitrines.' + (changed ? ' Arquivo ' + slotsFile + ' atualizado.' : ''));
     return;
   }

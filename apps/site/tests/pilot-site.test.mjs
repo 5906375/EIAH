@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import test from 'node:test';
 import {
-  PILOT_LIMIT, pilotApplicationHref, pilotApplyAction, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, pilotWaitlistAction, pilotWaitlistDraftNote, pilotWaitlistFileNote, pilotWaitlistLead, reservedSlugs, slugAddress, slugProblem, suggestSlug
+  PILOT_LIMIT, exampleCards, pilotApplicationHref, pilotApplyAction, pilotConsentLabel, pilotPrivacyNotice, pilotSlots, pilotWaitlistAction, pilotWaitlistDraftNote, pilotWaitlistFileNote, pilotWaitlistLead, reservedSlugs, slugAddress, slugProblem, suggestSlug
 } from '../public/imob/pilot-site.mjs';
 import { publish, run, syncSlots } from '../scripts/publish-imob-pilot.mjs';
 
@@ -158,4 +158,24 @@ test('os textos da lista de espera não prometem o que o produto ainda não entr
   }
   assert.match(pilotWaitlistDraftNote, /importar a personalização/, 'o botão de baixar só aparece depois de importar');
   assert.equal(pilotApplyAction, 'Enviar cadastro para o piloto');
+});
+
+test('exampleCards monta os cartões a partir da lista e descarta entradas inseguras ou quebradas', () => {
+  const good = { slug: 'exemplo-01', nome: 'Recanto das [xxxxxxx] Imóveis', cidade: 'Itapema', venda: 2, locacao: 1, temporada: 0, foto: 'vitrine-casa.webp' };
+  const [card] = exampleCards({ vitrines: [good] });
+  assert.deepEqual(card, { slug: 'exemplo-01', name: 'Recanto das [xxxxxxx] Imóveis', city: 'Itapema', photo: 'vitrine-casa.webp', total: 3, summary: '3 imóveis: 2 à venda, 1 para alugar' });
+  assert.equal(exampleCards({ vitrines: [{ ...good, venda: 1, locacao: 0 }] })[0].summary, '1 imóvel: 1 à venda');
+  assert.equal(exampleCards({ vitrines: [{ ...good, venda: 0, locacao: 0, temporada: 2 }] })[0].summary, '2 imóveis: 2 de temporada');
+  assert.equal(exampleCards({ vitrines: [{ ...good, venda: 0, locacao: 0 }] })[0].summary, 'Sem imóveis');
+  const hostile = [
+    { ...good, slug: '../admin' }, { ...good, slug: 'exemplo-1' }, { ...good, slug: 'exemplo-01/../x' }, { ...good, slug: 'javascript:alert(1)' },
+    { ...good, nome: '' }, { ...good, nome: 42 }, { ...good, nome: 'x'.repeat(121) }, null, 'texto', 7
+  ];
+  assert.deepEqual(exampleCards({ vitrines: hostile }), []);
+  assert.equal(exampleCards({ vitrines: [{ ...good, foto: '../../segredo.webp' }] })[0].photo, '', 'foto fora do padrão é descartada');
+  assert.equal(exampleCards({ vitrines: [{ ...good, foto: 'http://x/y.webp' }] })[0].photo, '');
+  const odd = exampleCards({ vitrines: [{ ...good, venda: -1, locacao: 'dois', temporada: 1000 }] })[0];
+  assert.equal(odd.total, 0, 'contagem inválida vira zero');
+  for (const bad of [null, undefined, {}, { vitrines: 'x' }, [], 'texto']) assert.deepEqual(exampleCards(bad), []);
+  assert.equal(exampleCards({ vitrines: Array.from({ length: 30 }, (_, i) => ({ ...good, slug: 'exemplo-' + String(i).padStart(2, '0') })) }).length, 10, 'no máximo 10 cartões');
 });
