@@ -1368,3 +1368,83 @@ Freeze F2.23, No-Go Ledger, security-review-blocked e todos os bloqueios de
 integracao, execucao operacional e producao permanecem. Adaptador nao montado
 na aplicacao; sem selecao definitiva Meta, ratificacao do Bloco D ou promocao
 de controles F2.19. Nenhuma investigacao ou rodada adicional iniciada.
+
+## Etapa 8.8.4 — Correcao pontual OrphanTestsRegression
+
+Data: 2026-11-25. Executor: Codex, sem subagentes. Branch
+docs/whatsapp-meta-candidate-assessment; HEAD preservado
+37605583afb0af1652b2467f7cf9f5ada3f6e571; preflight com worktree limpa e
+stage vazio. Draft PR existente: https://github.com/5906375/EIAH/pull/560.
+
+### Causa comprovada no job especifico
+
+Job OrphanTestsRegression:
+https://github.com/5906375/EIAH/actions/runs/45628997764/job/139256805746
+
+Somente o log desse job foi consultado para diagnostico, com limite remoto
+de 30 segundos. Em 2026-11-25T14:00:24Z, o gate reportou previousOrphanCount
+92, currentOrphanCount 93 e blockingOrphanCount 1; newOrphans e
+blockingOrphans continham exclusivamente
+apps/api/src/tests/whatsapp.meta-adapter.test.ts. A comparacao foi com
+2b9225da68e4dd83fecec9cc5ff322b932a9e0ee. O arquivo nao estava no manifesto
+nem no script bloqueante test:ci-unit-suite; execucao laboratorial manual
+e mencao na documentacao nao satisfazem o gate execution-aware.
+
+### Correcao minima
+
+Adicionado somente o caminho da suite Meta a scripts/unit-tests-manifest.txt,
+fonte canonica do Grupo B, apos whatsapp.webhook-read-only.test.ts.
+Regenerado o valor correspondente de test:ci-unit-suite no package.json
+segundo o comando documentado no manifesto, preservando os demais caminhos,
+ordem, opcoes e scripts. Manifesto passa a conter 253 arquivos.
+A suite ja importa seu proprio harness; nao foi acrescentado preload global.
+
+Nenhuma alteracao estrutural do CI: workflows, gate, baseline de orfaos,
+allowlists e codigo/testes do adaptador permanecem intactos.
+
+### Unica validacao focal — PASS, exit code 0
+
+Executado o proprio verificador canonico, com a mesma base do job:
+
+```bash
+ORPHAN_TESTS_COMPARE_REF=2b9225da68e4dd83fecec9cc5ff322b932a9e0ee timeout 60s node --import tsx scripts/checkOrphanTests.ts
+```
+
+Execucao autorizada fora do sandbox para permitir consultas Git por
+subprocesso, sem alterar o verificador ou repetir uma tentativa reprovada.
+Nao executou o job inteiro, pre-testes web do wrapper, suite Meta, outros
+32 checks, builds, Docker ou workflows remotos.
+
+Resultado efetivo:
+
+```json
+{
+  "ok": true,
+  "check": "check:orphan-tests",
+  "totalTestFiles": 524,
+  "executedBlocking": 432,
+  "comparison": {
+    "ref": "2b9225da68e4dd83fecec9cc5ff322b932a9e0ee",
+    "previousOrphanCount": 92,
+    "decreasingCeiling": 92,
+    "currentOrphanCount": 92,
+    "newOrphans": [],
+    "removedOrphans": []
+  },
+  "blockingOrphanCount": 0,
+  "blockingOrphans": [],
+  "metaSuiteClassifiedAsBlocking": true,
+  "exitCode": 0
+}
+```
+
+executedBlocking e classificacao de alcance do CI, nao declaracao de que
+432 arquivos de teste foram executados nesta etapa. O resultado local nao
+antecipa novo PASS remoto: a correcao continua sem stage/commit/push.
+
+P1ReconciliationRecurring nao foi investigado, corrigido ou reclassificado;
+sua ratificacao anterior permanece conforme deliberacao humana. Nenhuma
+alteracao financeira, de billing ou reconciliacao foi realizada.
+Typecheck global de 178 diagnosticos permanece pendencia separada, sem
+investigacao, reexecucao ou dispensa. Freeze F2.23, No-Go Ledger,
+security-review-blocked e todos os bloqueios operacionais continuam ativos.

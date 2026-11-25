@@ -157,6 +157,7 @@ apps/api/src/tests/vertical-entitlement-gate.contract.test.ts
 apps/api/src/tests/vertical-entity-type-registry.contract.test.ts
 apps/api/src/tests/vertical-responsible-actor.contract.test.ts
 apps/api/src/tests/whatsapp.webhook-read-only.test.ts
+apps/api/src/tests/whatsapp.meta-adapter.test.ts
 apps/api/src/tests/channel-binding.test.ts
 apps/api/src/tests/replay-guard.test.ts
 apps/web/src/components/agents/helpDictionaryResolver.test.ts
