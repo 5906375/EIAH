@@ -1,0 +1,385 @@
+{
+  "date": "2026-11-25",
+  "executedAt": "2026-11-25T20:28:27.730Z",
+  "command": "node --input-type=module -e 'globalThis.resolveFromApi = specifier => import.meta.resolve(specifier); await import(\"../../../EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs\")'",
+  "workingDirectory": "apps/api",
+  "scope": "Existing formal API executor excerpt and actual imported core dist modules; no app boot or real provider",
+  "localHead": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+  "inspectedMerge": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+  "hypothesis": "HISTORICAL_DIAGNOSIS_REUSED_CURRENT_BASELINE_VALIDATED",
+  "invariant": "APROVADO",
+  "exitCode": 0,
+  "checks": {
+    "executed": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "probes": [
+    {
+      "name": "Emitted executor registration visible in directly imported registry",
+      "result": "APROVADO"
+    },
+    {
+      "name": "Same registered provider visible through formal LLMRouter entry",
+      "result": "APROVADO",
+      "sameProviderObject": true
+    },
+    {
+      "name": "Emitted executor dispatch through formal completionEngine entry",
+      "result": "APROVADO",
+      "sameProviderObjectInvoked": true,
+      "calls": 1
+    },
+    {
+      "name": "All relevant entry graphs share one emitted registry allocation",
+      "result": "APROVADO"
+    },
+    {
+      "name": "Transitive chunk files exist and delivery recipe includes whole packages tree",
+      "result": "APROVADO"
+    }
+  ],
+  "resolvedPaths": {
+    "registry": "packages/core/dist/llm/LLMRegistry.js",
+    "completion": "packages/core/dist/llm/completionEngine.js",
+    "router": "packages/core/dist/llm/LLMRouter.js",
+    "diagnostic": "packages/core/dist/llm/LLMProviderError.js"
+  },
+  "registryAllocations": {
+    "packages/core/dist/llm/LLMRegistry.js": 0,
+    "packages/core/dist/chunk-ZNSZSEHU.js": 1,
+    "packages/core/dist/chunk-424PT5DM.js": 0,
+    "packages/core/dist/llm/completionEngine.js": 0,
+    "packages/core/dist/chunk-AI4CU5W4.js": 0,
+    "packages/core/dist/chunk-NCGZ5VGM.js": 0,
+    "packages/core/dist/chunk-VW2UVK5X.js": 0,
+    "packages/core/dist/chunk-IP426BZD.js": 0,
+    "packages/core/dist/chunk-BKZX3YK6.js": 0,
+    "packages/core/dist/chunk-YXZ5NBFR.js": 0,
+    "packages/core/dist/chunk-JGJMPNX7.js": 0,
+    "packages/core/dist/chunk-57HTLRKE.js": 0,
+    "packages/core/dist/llm/LLMRouter.js": 0,
+    "packages/core/dist/llm/LLMProviderError.js": 0
+  },
+  "embeddedSources": [
+    {
+      "output": "apps/api/dist/index.js",
+      "source": "apps/api/src/orchestrator/llmExecutor.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-ZNSZSEHU.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-ZNSZSEHU.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-YXZ5NBFR.js",
+      "source": "packages/core/src/llm/LLMRouter.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-ZNSZSEHU.js",
+      "source": "packages/core/src/llm/LLMRegistry.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-YXZ5NBFR.js",
+      "source": "packages/core/src/llm/LLMRouter.ts",
+      "matchesWorkingTree": true
+    },
+    {
+      "output": "packages/core/dist/chunk-AI4CU5W4.js",
+      "source": "packages/core/src/llm/completionEngine.ts",
+      "matchesWorkingTree": true
+    }
+  ],
+  "sharedRegistryChunk": "packages/core/dist/chunk-ZNSZSEHU.js",
+  "graphs": {
+    "registry": [
+      "packages/core/dist/llm/LLMRegistry.js",
+      "packages/core/dist/chunk-ZNSZSEHU.js",
+      "packages/core/dist/chunk-424PT5DM.js"
+    ],
+    "completion": [
+      "packages/core/dist/llm/completionEngine.js",
+      "packages/core/dist/chunk-AI4CU5W4.js",
+      "packages/core/dist/chunk-NCGZ5VGM.js",
+      "packages/core/dist/chunk-VW2UVK5X.js",
+      "packages/core/dist/chunk-IP426BZD.js",
+      "packages/core/dist/chunk-BKZX3YK6.js",
+      "packages/core/dist/chunk-YXZ5NBFR.js",
+      "packages/core/dist/chunk-ZNSZSEHU.js",
+      "packages/core/dist/chunk-JGJMPNX7.js",
+      "packages/core/dist/chunk-57HTLRKE.js",
+      "packages/core/dist/chunk-424PT5DM.js"
+    ],
+    "router": [
+      "packages/core/dist/llm/LLMRouter.js",
+      "packages/core/dist/chunk-YXZ5NBFR.js",
+      "packages/core/dist/chunk-ZNSZSEHU.js",
+      "packages/core/dist/chunk-424PT5DM.js"
+    ],
+    "diagnostic": [
+      "packages/core/dist/llm/LLMProviderError.js",
+      "packages/core/dist/chunk-BKZX3YK6.js",
+      "packages/core/dist/chunk-424PT5DM.js"
+    ]
+  },
+  "edges": [
+    {
+      "from": "packages/core/dist/llm/LLMRegistry.js",
+      "specifier": "../chunk-ZNSZSEHU.js",
+      "to": "packages/core/dist/chunk-ZNSZSEHU.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMRegistry.js",
+      "specifier": "../chunk-424PT5DM.js",
+      "to": "packages/core/dist/chunk-424PT5DM.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-AI4CU5W4.js",
+      "to": "packages/core/dist/chunk-AI4CU5W4.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-NCGZ5VGM.js",
+      "to": "packages/core/dist/chunk-NCGZ5VGM.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-VW2UVK5X.js",
+      "to": "packages/core/dist/chunk-VW2UVK5X.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-IP426BZD.js",
+      "to": "packages/core/dist/chunk-IP426BZD.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-BKZX3YK6.js",
+      "to": "packages/core/dist/chunk-BKZX3YK6.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-YXZ5NBFR.js",
+      "to": "packages/core/dist/chunk-YXZ5NBFR.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-YXZ5NBFR.js",
+      "specifier": "./chunk-ZNSZSEHU.js",
+      "to": "packages/core/dist/chunk-ZNSZSEHU.js"
+    },
+    {
+      "from": "packages/core/dist/chunk-AI4CU5W4.js",
+      "specifier": "./chunk-JGJMPNX7.js",
+      "to": "packages/core/dist/chunk-JGJMPNX7.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-NCGZ5VGM.js",
+      "to": "packages/core/dist/chunk-NCGZ5VGM.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-VW2UVK5X.js",
+      "to": "packages/core/dist/chunk-VW2UVK5X.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-IP426BZD.js",
+      "to": "packages/core/dist/chunk-IP426BZD.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-BKZX3YK6.js",
+      "to": "packages/core/dist/chunk-BKZX3YK6.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-YXZ5NBFR.js",
+      "to": "packages/core/dist/chunk-YXZ5NBFR.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-ZNSZSEHU.js",
+      "to": "packages/core/dist/chunk-ZNSZSEHU.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-57HTLRKE.js",
+      "to": "packages/core/dist/chunk-57HTLRKE.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-JGJMPNX7.js",
+      "to": "packages/core/dist/chunk-JGJMPNX7.js"
+    },
+    {
+      "from": "packages/core/dist/llm/completionEngine.js",
+      "specifier": "../chunk-424PT5DM.js",
+      "to": "packages/core/dist/chunk-424PT5DM.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMRouter.js",
+      "specifier": "../chunk-YXZ5NBFR.js",
+      "to": "packages/core/dist/chunk-YXZ5NBFR.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMRouter.js",
+      "specifier": "../chunk-ZNSZSEHU.js",
+      "to": "packages/core/dist/chunk-ZNSZSEHU.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMRouter.js",
+      "specifier": "../chunk-424PT5DM.js",
+      "to": "packages/core/dist/chunk-424PT5DM.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMProviderError.js",
+      "specifier": "../chunk-BKZX3YK6.js",
+      "to": "packages/core/dist/chunk-BKZX3YK6.js"
+    },
+    {
+      "from": "packages/core/dist/llm/LLMProviderError.js",
+      "specifier": "../chunk-424PT5DM.js",
+      "to": "packages/core/dist/chunk-424PT5DM.js"
+    }
+  ],
+  "delivery": {
+    "dockerfile": "apps/api/Dockerfile.prod",
+    "dockerignore": ".dockerignore",
+    "build": "pnpm --filter @eiah/api... run build",
+    "runtimeCopy": "COPY --from=builder /app/packages ./packages",
+    "chunksIncludedByRecipe": true,
+    "localGraphFilesPresent": true,
+    "contextDistIgnored": true,
+    "distRebuiltInBuilder": true,
+    "imageBuilt": false,
+    "deployedArtifactInspected": false
+  },
+  "executorExcerpt": {
+    "origin": "apps/api/dist/index.js",
+    "startLine": 36538,
+    "sha256": "c367eecc8de93210c8557e24ae5c07d0e8c6bbb7967c615cf90217a99690d163",
+    "mutationsToExcerpt": 0,
+    "doubles": [
+      "provider constructors",
+      "executor logger",
+      "isolated synthetic environment"
+    ],
+    "masking": "not exercised",
+    "completionAndRegistry": "actual dist imports, not doubles"
+  },
+  "events": [
+    {
+      "component": "llm-executor",
+      "msg": "llm.executor.enter",
+      "stage": "policy_check",
+      "modelRequested": "gpt-4.1"
+    },
+    {
+      "component": "llm-executor",
+      "msg": "llm.executor.stage",
+      "stage": "provider_registration"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.resolve",
+      "stage": "provider_resolution",
+      "traceId": "synthetic-registry-identity"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.start",
+      "traceId": "synthetic-registry-identity"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.retry_config",
+      "traceId": "synthetic-registry-identity"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.attempt",
+      "stage": "adapter_dispatch",
+      "attempt": 1,
+      "traceId": "synthetic-registry-identity"
+    },
+    {
+      "component": "llm",
+      "msg": "llm.completion.success",
+      "stage": "completion",
+      "attempt": 1,
+      "traceId": "synthetic-registry-identity"
+    }
+  ],
+  "syntheticAdapterCalls": 1,
+  "blockedNetworkAttempts": 0,
+  "realProviderCalls": 0,
+  "protectedFiles": {
+    "CLAUDE.md": "c4cb86f74b0d23f731319a58fd2c9b8791954a24ba8ceca0c12ba9d0e08dc17b",
+    "CODEX.md": "f2b4dc039593be43cad72b7923d7256649802534a5df987865102a83ab5eb6d1",
+    "packages/core/tsup.config.ts": "2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b"
+  },
+  "artifactsSha256": {
+    "apps/api/dist/index.js": "afef1ce4a55b750e9a32091b805f5da74cac6cf909d2d9530b2f7e989930812f",
+    "apps/api/dist/index.js.map": "6d13a6ec682f09932d443b1f15d2d85e1251d0df0865f1456be8c4177c255a65",
+    "packages/core/dist/llm/LLMRegistry.js": "5873adaf78c0746404a29fc82713572a9ae974a983abf5ce04a366a1d64531d5",
+    "packages/core/dist/llm/LLMRegistry.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "packages/core/dist/chunk-ZNSZSEHU.js": "9f8271d8bc747cb5e08f753c29f136f3b5e0528729b611c27b09329b6014020a",
+    "packages/core/dist/chunk-ZNSZSEHU.js.map": "bfb5864a001ffb8191118ed6fcbcc7f9569b13ae7d6ec82f44152b2ba37e51ea",
+    "packages/core/dist/chunk-424PT5DM.js": "fd960785f5073b0427f00945822fd17fe729f44b1a67f6254352f8f04a0c5c33",
+    "packages/core/dist/chunk-424PT5DM.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "packages/core/dist/llm/completionEngine.js": "7c34b73c3cd0e8e01dc790787e95e0d50cb41dc803972b9ff65698507e732518",
+    "packages/core/dist/llm/completionEngine.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "packages/core/dist/chunk-AI4CU5W4.js": "eaa52be46e676489f87ffb68d814d4d898a86c012bde75e500edd17e7fb90150",
+    "packages/core/dist/chunk-AI4CU5W4.js.map": "7879a572c3553990fc43adb6b75e4498577979bf4eaf7c66dc9b33d2bca25d01",
+    "packages/core/dist/chunk-NCGZ5VGM.js": "703a22747a8e48accef51ee7f09cd3b63b30e536c8c40befb9afecf7d45fd31c",
+    "packages/core/dist/chunk-NCGZ5VGM.js.map": "8969311fbf5863385c8ef6e4ddd9c91b853f5fd9fe56c3826c010aba682457c9",
+    "packages/core/dist/chunk-VW2UVK5X.js": "5d3884e4ddb9456a8558e501bf74d45e7fe28b9eac0af852f0715b0823f085d9",
+    "packages/core/dist/chunk-VW2UVK5X.js.map": "fee2b8ce580b71186ff381ad9115006c7a886a5148a32e6e2ec865d5a351c9cb",
+    "packages/core/dist/chunk-IP426BZD.js": "c6ff0b8aa3daef6ed19c7e40fc442e5a04114c41d2afb8baf3648c0eb1978b81",
+    "packages/core/dist/chunk-IP426BZD.js.map": "bc843b4e4fff2022a17d037d20430c227af34d148dc265cccd8193bdb684279a",
+    "packages/core/dist/chunk-BKZX3YK6.js": "1a67163bb983b516920b1a38740e0fbbce694daa431ab8129b9a82cdced11069",
+    "packages/core/dist/chunk-BKZX3YK6.js.map": "50db33ccef744ed2302110fcfe20424cdc46cf837dc15e19cdda85e62b372ac1",
+    "packages/core/dist/chunk-YXZ5NBFR.js": "b8b86549a120cc67ff7d8e0cff06e7d1e6aac4315d89fd29e17ede50d6fc7913",
+    "packages/core/dist/chunk-YXZ5NBFR.js.map": "c29fe2ab3941dfdbca35e42ccd25e6a71ea955c73d78d3c9aa8f54b48bb74696",
+    "packages/core/dist/chunk-JGJMPNX7.js": "d081301ddd87b42d3b2ab7e1c25470b5e0d720b4089f5a0d97c35bfb7ae78927",
+    "packages/core/dist/chunk-JGJMPNX7.js.map": "9e288d24b7e5d1a0888df5fe03efeea440e1a3d1a9a745531ea272d01a9bf4d6",
+    "packages/core/dist/chunk-57HTLRKE.js": "85311ad0db3022c94d99034098902460cf62aa6256c702a21b41442c5e5bed95",
+    "packages/core/dist/chunk-57HTLRKE.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "packages/core/dist/llm/LLMRouter.js": "ba3748b9fe1e8f7a39e8ccc0e30b7b7e08119d2d99abc539629a547803e197a8",
+    "packages/core/dist/llm/LLMRouter.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "packages/core/dist/llm/LLMProviderError.js": "7d308d74b6ce6c9d032950cc52b1f922b47d581b344c844f11a846186e8c583d",
+    "packages/core/dist/llm/LLMProviderError.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
+    "apps/api/src/orchestrator/llmExecutor.ts": "5e6e9fed1a84d087de53cef928a41fd3cb8092a7918a52d3d6c6384a687911ec",
+    "apps/api/tsup.config.ts": "f218e8ced2ac6e3a7d8d786e77231705d8aee10da6a10a90cc75b6cd3b5d0837",
+    "packages/core/src/llm/LLMRegistry.ts": "9e7097f525574bf091444bcb8815a543f8f6e9743321a7ed55c1dd39444b8310",
+    "packages/core/src/llm/LLMRouter.ts": "52f0fd7df54f75f1059d06d90f65c8f0851221a41a839f0fd1dbe094e52820aa",
+    "packages/core/src/llm/completionEngine.ts": "ef1dd963390d88400037c2a9e6659a6425c40978d72c8809ce93ef345daac7de",
+    "packages/core/tsup.config.ts": "2e7a9d9a80222a4b38330afc30f86eebc6e8e2ca01d7ade6410980c58cd0196b",
+    "packages/core/package.json": "9d7bad94f056848d489f7c9629169c1a170651d2f8001e7dff5aff0e118fda15",
+    "apps/api/Dockerfile.prod": "ac9cc4e1fa2cbbc6fbf8a47270a350f25a458bde62ae9ddd376e420c2f1515b6",
+    ".dockerignore": "28c303bad27e3afbb975949964adb83def283d0cc20ac2a9731f907167f4a892",
+    ".github/workflows/release.yml": "556598f1b3ab69e1a7c35331b7bbcca9626ca8999d12b39f85fb1d6eec021899",
+    ".github/workflows/deploy.yml": "55f6f87dfdeddb69941a0b3bae89e526b6cb2c90b4c07c984e1737fa89af61f9",
+    "../EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+    "../EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json": "01ff5bb6d525fd2265f693d659226dac1b3a18465efe628e22de3cdced1e0d73"
+  },
+  "buildsExecuted": 2,
+  "sourceOrConfigEdits": 1,
+  "limits": [
+    "No new staging capture or deployed artifact inspection",
+    "No real provider, HTTP/DB/browser, intake proposal or persistence validation",
+    "Historical pre-instrumentation cause remains unknown",
+    "Local reproduction does not independently prove the deployed artifact identity"
+  ]
+}
