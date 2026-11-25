@@ -1747,7 +1747,9 @@ O database operacional eiah_builder/porta 5433 nao foi destino de conexao.
 
 ### Implementacao real e comando unico
 
-Teste existente: apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts.
+Teste atual: [apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts](../../../../apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts).
+Renomeado na etapa 8.9.6 sem alterar conteudo. O comando abaixo e historico:
+foi executado com o nome anterior, preservado para rastreabilidade.
 Usa createMetaPostgresStore e purgeExpiredMetaReceipts da implementacao real,
 PrismaClient e PrismaPg existentes, conexoes PostgreSQL independentes; sem
 mocks, dubles SQL, global DB client, dotenv, bootstrap ou listener do webhook.
@@ -1823,3 +1825,66 @@ not authorized preservados; ativacao operacional desabilitada. Sem selecao
 final Meta, Bloco D, Meta/Render/Cloudflare, dados reais, deployment ou Git
 write. Validacao PostgreSQL real evidenciada no escopo dos doze criterios;
 prontidao operacional permanece parcial e sujeita aos approvals anteriores.
+
+## Etapa 8.9.6 — Identidade canonica da suite PostgreSQL condicional
+
+Executor: Codex, sem subagentes. Autorizacao humana limitada a correcao minima
+de classificacao e controles focais. Baseline HEAD
+66765d6d38be59e2844c3049ac3df007271e2ca0, branch
+docs/whatsapp-meta-candidate-assessment, stage/worktree
+inicialmente limpos; origin/main local b1ca462ea88b7f4c4c205103791c91d1d14554b7.
+Diagnostico remoto fornecido pelo responsavel humano reutilizado, sem consulta
+remota: workflow 45661757887, job OrphanTestsRegression 139373163921;
+inventario esperava a convencao realPostgres.integration.test.ts.
+
+Renomeacao exclusivamente de identidade:
+apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts ->
+apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts.
+SHA-256 antes/depois identico:
+75dd83196e54a38a88ee7b791fd747a019040749719dff9b3e9997b15f4d8e6f.
+Nenhuma assertion, fixture, skip, timeout, criterio, credencial ou contrato
+de producao foi alterado. Os 12 criterios/13 testes da integracao real e suas
+expectativas de execucao permanecem os mesmos, sem nova execucao.
+
+Atualizados somente o caminho no manifesto e no comando test:ci-unit-suite,
+e a lista explicita de condicionais esperados em
+scripts/tests/unitSuiteInventory.test.ts. Os dois condicionais anteriores
+foram preservados; o terceiro caminho foi acrescentado na ordem deterministica.
+CONDITIONAL_COVERAGE_FILE_PATTERN e scripts/ci/unitSuiteDecision.ts intocados.
+Nenhuma exclusao, allowlist, baseline, workflow ou gate foi alterado.
+
+A busca pontual de referencias nao encontrou contrato de contagem/cobertura
+associado ao nome antigo alem da lista explicita ajustada. O apontador atual
+neste README foi atualizado; o comando executado historicamente e os logs
+mantem o nome original. Nao ha referencia ativa antiga no manifesto/script.
+
+### Resultados reais da rodada focal
+
+Seis casos selecionados de unitSuiteInventory, unitSuiteDecision e
+unitSuiteGate: PASS, exit 0, zero falhas/cancelamentos/ignorados,
+840.22308 ms. Cobrem manifesto valido, igualdade manifesto/script,
+reproducibilidade byte a byte, tres condicionais esperados, classificacao
+skip/todo e cobertura NOT_DEMONSTRATED sem banco. A fixture do controle
+condicional e sintetica; nao executa a suite Meta ou PostgreSQL real.
+
+O primeiro comando do gate informou orphan_tests_comparison_ref_invalid
+(exit 1) por receber origin/main: esse parametro exige SHA de 40 caracteres.
+A comparacao nao foi concluida nessa invocacao. O diagnostico foi preservado;
+somente o argumento de execucao foi resolvido para o SHA local da referencia,
+sem corrigir o gate nem repetir os seis testes focais.
+
+```bash
+ORPHAN_TESTS_COMPARE_REF=b1ca462ea88b7f4c4c205103791c91d1d14554b7 timeout 60s node --import tsx scripts/checkOrphanTests.ts
+```
+
+Comparacao efetiva contra origin/main: PASS, exit 0; 92 -> 92 orfaos,
+zero novos, zero bloqueantes, nenhuma allowlist acrescentada. Nao equivale a
+executar todas as suites classificadas pelo gate. Comandos e saidas integrais:
+[conditional-postgres-classification.log](conditional-postgres-classification.log).
+
+Logs historicos preservados byte a byte, sem trocar caminhos em evidencias
+anteriores. Reutilizados sem reexecucao: 43 testes, 12 criterios PostgreSQL,
+typecheck/build API e Prisma validate. P1 fora de escopo. Sem Docker ou
+recursos de infraestrutura; sem stage, commit, push ou merge.
+Freeze F2.23, No-Go Ledger, security-review-blocked e bloqueios operacionais
+preservados; webhook continua desabilitado, sem selecao final Meta ou Bloco D.

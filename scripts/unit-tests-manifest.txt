@@ -160,7 +160,7 @@ apps/api/src/tests/whatsapp.webhook-read-only.test.ts
 apps/api/src/tests/whatsapp.meta-adapter.test.ts
 apps/api/src/tests/whatsapp.meta-operational.test.ts
 # Conditional real PostgreSQL: skipped without EIAH_META_DISPOSABLE_POSTGRES_URL; skip is not a PASS.
-apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts
+apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts
 apps/api/src/tests/channel-binding.test.ts
 apps/api/src/tests/replay-guard.test.ts
 apps/web/src/components/agents/helpDictionaryResolver.test.ts
