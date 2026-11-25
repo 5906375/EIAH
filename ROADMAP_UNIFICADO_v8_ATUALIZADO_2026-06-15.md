@@ -1,6 +1,7 @@
 # ROADMAP ATUALIZADO v8.2
 
 Data de referência desta revisão: **2026-11-21**
+Adendo normativo: **2026-11-25 — TWDG (§9.6)**; preservada a referência histórica da revisão v8.2.
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
@@ -360,8 +361,17 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
 - Manter a cadeia documental F0.34–F0.45 sincronizada entre roadmap, plano consolidado e Evidence Index, sem promover `release.yml` produtivo, Camada B real ou Conversação para status acima do que estiver evidenciado.
 
+**Governança transversal de worktrees e deployment (TWDG) — decisão humana aprovada em 25/11/2026**
+
+A governança de worktrees e deployment é requisito permanente para integração e autorização de implantação de todas as verticais e serviços compartilhados, independentemente da quantidade de worktrees existentes.
+
+Preservar integralmente o trabalho das frentes e exigir reconciliação rastreável entre worktrees locais, branches remotas, `main` e versões implantadas, com identificação de commits exclusivos, equivalências demonstradas e deltas residuais. Diferenças críticas não resolvidas bloqueiam a intervenção afetada em modo fail-closed.
+
+Executar o protocolo operacional comum de `IA_EIAH.md`, §8.1, reutilizando instrumentos e evidências existentes. Esta política não concede autorização de intervenção Git ou deployment, não substitui gates e aprovações específicos e não levanta bloqueios operacionais de qualquer frente.
+
 **DoD P0 transversal**
 - Fonte única estável e auditável durante todo o ciclo de execução.
+- Integração e deployment com reconciliação, preflight, autorização humana específica e evidências verificáveis no escopo afetado, conforme TWDG; sem declaração de conformidade global baseada apenas na publicação desta norma.
 
 ## 10) Implementado extra (além do escopo normativo v8)
 
