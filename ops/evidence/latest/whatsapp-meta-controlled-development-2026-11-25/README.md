@@ -1448,3 +1448,378 @@ alteracao financeira, de billing ou reconciliacao foi realizada.
 Typecheck global de 178 diagnosticos permanece pendencia separada, sem
 investigacao, reexecucao ou dispensa. Freeze F2.23, No-Go Ledger,
 security-review-blocked e todos os bloqueios operacionais continuam ativos.
+
+## Etapa 8.9.2 — Delta inbound read-only, ativacao desabilitada
+
+Fonte: autorizacao humana expressa desta etapa; decisao especifica F5.0/F2.25
+acrescentada ao registro de decisao existente antes do primeiro codigo.
+Nao altera os registros F2.24, a selecao do provider ou o hold operacional.
+Executor: Codex, sem subagentes. P1ReconciliationRecurring nao investigado.
+
+### Baseline e ambiente efetivamente utilizados
+
+Main consolidada informada e confirmada pela referencia local: b1ca462ea88b7f4c4c205103791c91d1d14554b7.
+Worktree existente reutilizada: /home/jusall/projects/EIAH_BUILDER, branch
+docs/whatsapp-meta-candidate-assessment, HEAD cecc2d8ca63fddb667f86e39eaa8066e0135ede5.
+Preflight limpo e stage vazio. HEAD e origin/main possuem exatamente a mesma
+arvore af577acc41c53bf8b7a37e527c841ce514344c22. Nao houve merge, checkout,
+criacao de branch/worktree ou alteracao direta da main. Os resultados abaixo
+se referem a esse conteudo mais o delta local nao commitado, sem novo SHA.
+CI pos-merge anterior e reutilizado conforme evidencia humana; sem consulta
+remota ou repeticao dos jobs. Nao e certificado novo CI para o delta local.
+
+### Delta efetivamente implementado
+
+- apps/api/src/index.ts: monta somente a nova namespace antes de requestLogger
+  e express.json; demais rotas e parser permanecem. A URL do GET com token nao
+  chega ao logger generico. Nao inicia conexao PostgreSQL por essa rota desativada.
+- apps/api/src/routes/whatsappMeta.ts: GET autenticado e POST com bytes brutos,
+  HMAC, limite explicito, sem descompressao; resposta minima, sem dados internos.
+  Namespace terminal tambem em erros/subpaths; sem propagacao de erro bruto.
+- apps/api/src/services/whatsappMetaAdapter.ts: factories explicitas synthetic-lab
+  e operational reutilizam o mesmo processamento puro e o ingress read-only.
+  Laboratorio mantem IDs/credenciais sinteticos e limites anteriores. Operacional
+  aceita IDs/envelopes nativos representativos, descarta contacts, display phone
+  e context; text/button_reply/list_reply suportados. Media, status-only e formas
+  desconhecidas sao rejeitados, sem ACK silencioso ou download de midia.
+- apps/api/src/services/whatsappMetaOperationalConfig.ts: sem defaults de secrets,
+  politica ou autoridade. Sem fallback do transporte legado. Credenciais
+  laboratoriais reconhecidas sao rejeitadas; tres secrets distintos obrigatorios.
+- apps/api/src/services/whatsappMetaPostgresStore.ts: somente tabela tecnica;
+  INSERT ON CONFLICT, SELECT FOR UPDATE, ordem de locks estavel e transacao
+  READ COMMITTED. Digest semantico e chave HMAC escopada por WABA, phone, tenant,
+  workspace e scope; mudanca do tipo para o mesmo ID gera colisao. Callback
+  read-only ocorre dentro da transacao; ACK somente depois de COMMIT resolvido.
+  Falha de armazenamento/commit nao gera ACK positivo. Sem outbox de dominio.
+- packages/db/prisma/schema.prisma e migration
+  packages/db/prisma/migrations/20261125180000_whatsapp_meta_ingress_receipt/migration.sql:
+  WhatsappMetaIngressReceipt com PK tenantId/workspaceId/eventKey, digest,
+  scope, receivedAt e expiresAt; checks de scope, hashes e expiracao; indice
+  expiresAt. Sem FK ou mutacao de modelos de dominio. Migration NAO aplicada.
+- apps/api/src/tests/whatsapp.meta-operational.test.ts: fixtures inteiramente
+  ficticias; teste HTTP apenas em loopback, bloqueio de sockets externos,
+  DNS/TLS/fetch. Port SQL testado com dublê transacional explicitamente identificado.
+- scripts/unit-tests-manifest.txt e package.json: uma suite adicionada ao Grupo B
+  e ao comando canonico correspondente, preservando ordem e demais scripts.
+
+### Configuracao preparada, sem valores operacionais provisionados
+
+Ativacao exige META_WHATSAPP_ENABLED exatamente true e META_WHATSAPP_MODE
+exatamente operational. Ausencia/false/outros valores da flag retornam 404,
+sem criar store ou tocar banco; configuracao incompleta retorna 503.
+Nao foi alterado .env, Render, Cloudflare, callback, WABA ou segredo algum.
+
+Inputs obrigatorios (nomes apenas): META_WHATSAPP_APP_SECRET,
+META_WHATSAPP_VERIFY_TOKEN, META_WHATSAPP_IDENTITY_KEY,
+META_WHATSAPP_BINDINGS_JSON (WABA/phone e hashes de remetentes com autoridade
+explicita, sessao, tenant/workspace, scope e entitlement read-only),
+META_WHATSAPP_POLICY_APPROVAL, META_WHATSAPP_EXECUTION_APPROVAL,
+META_WHATSAPP_MAX_PAYLOAD_BYTES, META_WHATSAPP_MAX_EVENTS,
+META_WHATSAPP_RETENTION_MS, META_WHATSAPP_REPLAY_WINDOW_MS e
+META_WHATSAPP_FUTURE_SKEW_MS. Referencias de approval sao inputs obrigatorios,
+nao verificacao nem concessao automatica de aprovacao humana. Nenhum access
+ou sending token e usado para ingresso. Nao existe cliente de envio/Graph API.
+
+16 KiB, 20 eventos e 14 dias aparecem somente nas fixtures como parametros de
+teste, sem default operacional e sem ratificacao produtiva. Retencao precisa
+cobrir replay mais clock skew. Purge tecnico explicito preparado, sem scheduler
+ou execucao operacional; exclusao tempestiva em ambiente ocioso ainda precisa
+mecanismo operacional autorizado. Rotacao da chave HMAC exige plano proprio
+para preservar dedupe/binding durante a retencao, antes de qualquer rotacao real.
+
+### Unica rodada executada — resultados reais
+
+Preparacao estritamente necessaria das dependencias existentes: contracts,
+db (tsup, build:dts, copia do client existente), core, providers e mcp-runner:
+cinco etapas com exit 0, limite de 60 segundos cada. Sem install, generate,
+rebuild de dependencias novas, conexao ou migration. O port usa SQL parametrizado,
+portanto nao necessita gerar um client ORM com o novo modelo nesta etapa.
+Artefatos dist sao locais/ignorados, nao mudancas de fontes ou deploy.
+Comandos e saidas: [operational-dependencies.log](operational-dependencies.log).
+
+Comando dos testes (uma unica execucao, limite 60 segundos):
+
+```bash
+timeout 60s node --import tsx --test --test-force-exit apps/api/src/tests/whatsapp.meta-operational.test.ts apps/api/src/tests/whatsapp.webhook-read-only.test.ts
+```
+
+PASS, exit 0: 43/43, zero falhas/cancelamentos/ignorados, 839.93462 ms.
+19 testes novos + 24 da regressao diretamente afetada do transporte existente.
+Provas: flag off/configuracao incompleta; secrets de laboratorio rejeitados;
+GET sem logger/token; assinatura sobre bytes reais e whitespace; payloads
+representativos e limites; binding, tenant, workspace, scope, entitlement,
+sessao e replay; dedupe e concorrencia no duble SQL, store recriado, colisao
+semantica/tipo, ACK bloqueado ate commit, falhas write/commit e rollback de
+lote; sanitizacao; purge tecnico; disable preservando ledger; bootstrap e
+migration; zero tentativas externas durante as execucoes HTTP locais.
+Saida integral: [operational-tests.log](operational-tests.log).
+
+A suite laboratorial Meta 24/24 e os probes DNS 12/12 anteriores nao foram
+reexecutados ou recertificados nesta etapa. Duas outras regressoes historicas
+nao foram repetidas. A regressao direta de 24 testes acima e uma nova execucao
+comprovada. A nova suite contem um teste especifico que preserva a separacao
+de credenciais/modos do laboratorio, sem repetir a frente encerrada.
+
+Typecheck focal noEmit, strict e resolucao/opcoes do tsconfig.build.json
+preservados, incluindo cinco raizes (rota, adapter, config, store e novo teste)
+e suas dependencias: PASS, exit 0, zero diagnosticos, TypeScript 5.9.3.
+Mecanismo e saida: [operational-focal-types.log](operational-focal-types.log).
+
+```bash
+timeout 60s pnpm --filter @eiah/api build
+```
+
+PASS, exit 0: typecheck completo da API (tsc -p tsconfig.build.json --noEmit)
+e build tsup concluidos; bundle local 3.66 MB, sourcemap 6.89 MB, 512 ms.
+Build nao inicia a aplicacao. Saida: [operational-api-build.log](operational-api-build.log).
+Esta evidencia positiva atual substitui a pendencia de validar a API neste
+ambiente preparado; nao apaga nem dispensa retroativamente o FAIL historico
+178, nao reclassifica seus diagnosticos individualmente e nao certifica todos
+os workspaces, testes excluidos pelo global ou CI futuro. Diferencia-se do
+build_validate historico, que isoladamente nao comprovava build da API.
+
+Prisma validate: PASS, exit 0; schema valido. Usadas somente URLs ficticias
+locais no processo de validacao, sem conexao ou aplicacao de migration.
+Comando e saida: [operational-schema.log](operational-schema.log).
+
+### Limites da prova e impedimentos para primeira conexao real
+
+Status: parcial quanto a prontidao operacional; codigo e validacoes locais
+acima evidenciados. Nao e declarada prova PostgreSQL real: o dublê serializa
+transacoes e valida SQL/parametros, rollback, ACK e classificacao, mas NAO
+prova locks, unicidade, isolamento, durabilidade ou restart do PostgreSQL.
+Providencia minima: autorizar banco PostgreSQL DESCARTAVEL e isolado de testes,
+aplicar somente nesse banco a migration proposta e executar o mesmo contrato
+com conexoes concorrentes/restart/falha de commit reais. Nenhum banco real
+existente foi inspecionado ou modificado; nao foi iniciado Docker/infraestrutura.
+
+Antes da primeira conexao: revisar/aprovar migration e persistencia real;
+ratificar limites/replay/retencao e comprovar purge; revisoes Security e
+Privacy/Compliance para dados pessoais reais, selecao e decisao especifica
+canonica para conexao, approvals e levantamento expresso do hold F2.22.
+Depois, somente com autorizacao operacional: provisionar secrets/binding,
+confirmar elegibilidade do app/WABA/numero existente e compatibilidade com
+nao publicar app/nao pagar/nao reclassificar; preparar URL HTTPS Cloudflare/Render,
+redacao de query strings nos logs de proxy e rollback; migration/deploy ainda
+com flag off, handshake/subscricao autorizados e ativacao limitada.
+Se alguma condicao exigir pagamento, publicacao ou reclassificacao, interromper
+para decisao humana; nenhuma dessas exigencias foi presumida resolvida.
+
+Freeze F2.23, No-Go Ledger, security-review-blocked, provider integration blocked,
+executionAuthorization: not authorized e productionAuthorization: not authorized
+preservados. Sem promocao F2.19, selecao definitiva Meta ou ratificacao Bloco D.
+Nenhum dado real, credencial real, chamada Meta, mensagem, agente/LLM, fila,
+Run ou mutacao de dominio; sem deploy, migration real, Docker ou operacao Git.
+
+### Checks documentais e isolamento desta etapa
+
+Checks documentais em rodada unica: Evidence Index PASS exit 0 (8/8 testes,
+indice ok); Docs Link Integrity PASS exit 0, restrito aos 29 alvos canonicos.
+Comandos/saidas: [operational-docs.log](operational-docs.log).
+Nao constitui verificacao de todos os links do repositorio.
+
+Prova de isolamento PASS: 13 caminhos no delta, oito rastreados modificados e
+cinco novos, nenhum em stage; branch/HEAD preservados. Diff vazio nas superficies
+proibidas (workflows, release, Render, web/workers e fontes de core/contracts/
+providers/mcp-runner/db). Schema e migration sao as unicas mudancas de dados.
+Registros F2.24 e tres logs historicos identicos aos blobs HEAD, com SHA-256
+registrados; seis logs desta rodada fisicamente preservados e ignorados.
+Script de CI alterado apenas pela inclusao da suite nova; manifesto e comando
+coincidem exatamente, sem exclusoes ou enfraquecimento de gates.
+Resultado detalhado: [operational-isolation.log](operational-isolation.log).
+A verificacao unica de whitespace do delta final, incluindo os novos arquivos,
+sera anexada ao mesmo log. Nenhuma validacao reprovada foi repetida.
+
+## Etapa 8.9.3 — Validacao PostgreSQL interrompida no preflight
+
+Executor: Codex, sem subagentes. Fonte: autorizacao humana expressa desta
+etapa para PostgreSQL descartavel sintetico, condicionada a isolamento
+comprovado antes de qualquer escrita. Nao autoriza iniciar Docker ou
+provisionar infraestrutura adicional automaticamente.
+
+Preflight confirmado: branch docs/whatsapp-meta-candidate-assessment,
+HEAD cecc2d8ca63fddb667f86e39eaa8066e0135ede5, stage vazio; delta anterior
+preservado com oito arquivos rastreados modificados e cinco novos. Main de
+referencia b1ca462ea88b7f4c4c205103791c91d1d14554b7. Resultados 8.9.2
+(43/43, typecheck/build API, schema, isolamento e checks documentais) sao
+historicos reutilizados, sem reexecucao ou nova certificacao nesta etapa.
+
+### Consulta pontual dos recursos locais existentes
+
+Reutilizados docker-compose.dev.yml (PostgreSQL local eiah-postgres,
+porta 5433) e o registro historico de infraestrutura descartavel em
+docs/ops/vertical-evaluation-grant.md. A existencia historica desse ambiente
+nao comprova sua disponibilidade atual. Nenhum novo inventario foi criado.
+
+A consulta inicial de sockets foi impedida pelo sandbox (Cannot open netlink
+socket: Operation not permitted). A disponibilidade dos recursos conhecidos
+foi entao consultada somente em leitura fora do sandbox, sem iniciar servicos:
+
+```bash
+pg_isready -h 127.0.0.1 -p 5433 -t 3
+docker ps --filter name=eiah-postgres --format '{{.Names}} {{.Status}} {{.Ports}}'
+ps -C postgres -o pid=,comm=
+ls -d /tmp/*postgres* /tmp/*pg16* /tmp/*evaluation* /tmp/eiah* /var/run/postgresql/.s.PGSQL.*
+```
+
+Saida objetiva da consulta composta (exit 2; codigos individuais nao capturados):
+
+```text
+127.0.0.1:5433 - no response
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+```
+
+A consulta nao listou processos postgres nem recursos descartaveis nos caminhos
+indicados. psql e pg_isready existem localmente; binarios disponiveis nao sao
+prova de instancia em execucao. Nao foi iniciado ou inicializado cluster novo.
+A conclusao e limitada aos recursos locais conhecidos e caminhos consultados;
+nao afirma inexistencia de qualquer PostgreSQL fora desse escopo.
+
+### Resultado: parcial, PostgreSQL real NAO EXECUTADO
+
+Nenhum destino seguro disponivel foi identificado. Identidade de banco,
+isolamento descartavel e ausencia de dados reais NAO foram comprovados;
+portanto nenhuma conexao SQL, CREATE DATABASE/SCHEMA, escrita, migration ou
+consulta de dados foi realizada. Nenhuma conexao com Render ou banco
+operacional foi tentada. Nenhum recurso foi criado; remocao nao se aplica.
+
+Todos os doze criterios PostgreSQL solicitados permanecem NAO EXECUTADOS:
+aplicabilidade da migration; constraints/unicidade; aceite/persistencia;
+duplicidade; colisao; concorrencia independente; rollback; falha sem ACK;
+durabilidade apos reabertura; isolamento tenant/workspace; ausencia de
+payload/credenciais/dados pessoais persistidos; campos de expiracao.
+Nao ha resultado de concorrencia/durabilidade PostgreSQL real nesta etapa.
+Os testes anteriores usaram duble SQL, e nao sao promovidos a prova real.
+Nao foi criado teste focal ou registro de execucao CI sem ambiente para
+executa-lo. Nenhum contrato ou codigo de producao foi alterado nesta etapa.
+
+Providencia minima: disponibilizar a instancia local de testes ja existente
+e isolada, com endpoint e identidade comprovaveis, permitindo criar/remover
+somente banco ou schema dedicado; alternativamente, autorizar separadamente
+inicializacao de infraestrutura descartavel (Docker continua proibido nesta
+autorizacao). So depois comprovar isolamento e executar a rodada PostgreSQL.
+Nao foi iniciada outra investigacao ou ciclo automatico de testes/correcoes.
+
+Os sete logs 8.9.2 e os tres logs historicos foram preservados fisicamente,
+sem alteracao de conteudo. Somente este README e a entrada existente no
+Evidence Index recebem o resultado real do preflight, sem nova evidencia
+antecipada. Freeze F2.23, No-Go Ledger, security-review-blocked e bloqueios
+de integracao/execucao/producao preservados; ativacao continua desabilitada.
+Sem dados reais, credenciais Meta, chamadas externas, deployment, Docker,
+P1, stage, commit, push, PR, merge, selecao definitiva Meta ou Bloco D.
+
+## Etapa 8.9.3.2 — PostgreSQL real descartavel: 12 criterios aprovados
+
+Fonte: autorizacao humana expressa desta etapa, limitada a um unico container
+PostgreSQL sintetico; retomada apos recuperacao do WSL Ubuntu-EIAH-D.
+Executor: Codex, sem subagentes. A leitura do campo Docker opcional Tmpfs
+foi ajustada para index .HostConfig "Tmpfs", tolerando sua ausencia em
+containers antigos. Tambem foi ajustada a composicao do registro de metadados
+para o Python local. Ambos os diagnosticos anteriores ao primeiro container
+foram preservados; nenhum teste PostgreSQL havia sido executado nessas falhas.
+
+Na retomada, o log fisico comprovou que a unica rodada PostgreSQL JA havia
+concluido com exit 0 e limpeza antes da interrupcao por utilizacao. Os testes
+nao foram repetidos e nenhum segundo container foi criado. Consulta somente
+em leitura confirmou novamente ausencia do descartavel e eiah-postgres healthy.
+Nenhum SQL, credencial ou dado do eiah-postgres foi acessado.
+
+### Isolamento comprovado antes da migration
+
+Nome e porta livres antes da criacao. Imagem local pgvector/pgvector:pg16,
+ID sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7;
+--pull=never, sem download/rebuild. Um unico container criado:
+eiah-whatsapp-meta-validation, ID
+0d328e0f8bc08a5699eee09a66edb681c8e12ddfaf458f75a5ede77fa569d630.
+Label de propriedade exclusiva conferida antes da remocao.
+
+Publicacao somente em 127.0.0.1:55434 -> 5432; restart=no; networkMode=bridge,
+sem conexao a rede operacional eiah-dev. Mounts bind/volume: nenhum; PGDATA
+em tmpfs exclusivo de 256 MiB, sem volumes operacionais ou compartilhados.
+Limites do container: 512 MiB e uma CPU. Credencial temporaria aleatoria
+passada em memoria, sem valor em arquivo de evidencia, config ou comando.
+
+A primeira conexao confirmou current_database=eiah_whatsapp_meta_synthetic,
+current_user=meta_validation, PostgreSQL 16.15, server port=5432 e ZERO tabelas
+de usuario antes da migration. O teste recusa URL fora de 127.0.0.1:55434,
+outro banco/usuario, ausencia de marcadores descartaveis ou banco nao vazio.
+O database operacional eiah_builder/porta 5433 nao foi destino de conexao.
+
+### Implementacao real e comando unico
+
+Teste existente: apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts.
+Usa createMetaPostgresStore e purgeExpiredMetaReceipts da implementacao real,
+PrismaClient e PrismaPg existentes, conexoes PostgreSQL independentes; sem
+mocks, dubles SQL, global DB client, dotenv, bootstrap ou listener do webhook.
+Dependencia resolvida a partir do workspace db; nao houve instalacao/rebuild.
+
+```bash
+timeout 120s node --import tsx --test apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts
+```
+
+O runner forneceu somente nesse processo EIAH_META_DISPOSABLE=1,
+EIAH_META_DISPOSABLE_CONTAINER_ID e EIAH_META_DISPOSABLE_POSTGRES_URL
+(credencial temporaria omitida). Nao foi alterado DATABASE_URL operacional.
+PASS, exit 0: 12 subtestes de criterio + um teste-pai = 13/13 reportados pelo
+Node; zero falhas, cancelamentos ou ignorados, 933.961265 ms. Os 13 testes nao
+significam 13 criterios. Saida integral sanitizada e provas Docker no
+[postgres-validation.log](postgres-validation.log).
+
+| Criterio | Resultado real | Evidencia objetiva |
+| --- | --- | --- |
+| 1. Migration | PASS | Dois statements aplicados atomicamente ao banco vazio; tabela criada com zero linhas. SHA-256 7492c4bc400eb08298cbe7b08471d92ca220c24f444f81ee801b81c61ff67f76. |
+| 2. Constraints/unicidade | PASS | PostgreSQL rejeitou PK duplicada, scope invalido, hashes invalidos, expiracao nao posterior e tenant nulo; quatro constraints consultadas e somente a linha valida persistida. |
+| 3. Persistencia transacional | PASS | Adaptador real retornou ACK 200 depois de commit; outra conexao confirmou uma linha; um processamento, sideEffects=0. |
+| 4. Duplicidade | PASS | Mesmo evento retornou 200 com duplicates=1/accepted=0 na segunda chamada; uma linha e um processamento total. |
+| 5. Colisao | PASS | Mesmo identificador com digest diferente gerou META_EVENT_COLLISION e manteve o digest original, sem linha adicional. |
+| 6. Concorrencia independente | PASS | Backends 96 e 97 disputaram mesma chave: um fresh, um duplicate e um processamento. Em disputa com row lock, pg_stat_activity confirmou PID 97 em Lock bloqueado por 96; nenhum ACK antes da liberacao. |
+| 7. Rollback | PASS | Excecao no callback apos inserts de lote reverteu ambas as linhas; outra conexao confirmou count=0. |
+| 8. Falha sem ACK positivo | PASS | Sessao PostgreSQL real com default_transaction_read_only=on rejeitou persistencia; adaptador retornou 503, accepted=0, zero processamento e zero linhas. |
+| 9. Durabilidade apos reconexao | PASS | Writer PID 99 desconectado; novo client/backend PID 100 encontrou linha commitada e classificou duplicate sem reprocessar. |
+| 10. Tenant/workspace | PASS | Mesma eventKey em tres particoes tenant/workspace persistiu tres linhas independentes; retry na particao original foi duplicate. |
+| 11. Dados persistidos | PASS | Inspecao da unica tabela confirmou sete colunas tecnicas e ausencia de payload, telefone, conteudo e credenciais sinteticos nas linhas; nenhum modelo de dominio criado. |
+| 12. Expiracao | PASS | receivedAt preservou milissegundos; expiresAt-receivedAt igual ao parametro sintetico; purge real removeu somente uma linha expirada e preservou uma futura. |
+
+### Tipagem e registro canonico
+
+Tipagem focal do teste com strict, noEmit e tsconfig.build.json preservados:
+PASS exit 0, zero diagnosticos. Reutilizada sem reexecucao na retomada;
+comando e saida existentes em [postgres-focal-types.log](postgres-focal-types.log).
+Suite registrada no manifesto canonico scripts/unit-tests-manifest.txt e
+somente no trecho correspondente de test:ci-unit-suite em package.json.
+Sem URL explicita, a integracao e condicional/skip; skip NAO e prova de PASS.
+Imports Prisma de runtime ocorrem somente dentro do teste habilitado, sem
+introduzir dependencia de banco no caminho ignorado. Nao houve CI remoto.
+
+Reutilizados sem repeticao: 43 testes 8.9.2, typecheck/build API, Prisma
+validate e historicos laboratoriais. Nenhum contrato/codigo de producao,
+schema ou migration foi corrigido nesta etapa. Nao investigar P1 ou os 178
+historicos. As provas reais acima substituem somente a lacuna de persistencia
+PostgreSQL real, sem promover os dubles anteriores nem ratificar F2.19.
+
+### Limpeza e preservacao
+
+O runner confirmou nome/label/ID e removeu exclusivamente esse container
+com docker rm --force --volumes usando seu ID completo. Volumes anonimos:
+nenhum. PGDATA tmpfs destruido com o container. Ausencia confirmada apos a
+limpeza e novamente em leitura na retomada; nao houve necessidade de repetir
+remocao. Nenhuma rede, imagem ou outro recurso foi removido.
+
+Metadados selecionados de TODOS os containers preexistentes (ID/imagem,
+StartedAt, estado, restartCount/policy e redes) permaneceram iguais durante
+a rodada. eiah-postgres intocado, rede eiah-dev preservada; nenhuma migration
+ou SQL nele. Os sete logs 8.9.2 e tres historicos estao fisicamente preservados
+com os mesmos SHA-256; falhas de preflight e resultados anteriores nao apagados.
+
+Limites: durabilidade comprovada apos desconexao/reconexao, nao crash de
+servidor, reinicio do container ou perda de energia; tmpfs e deliberadamente
+descartavel. Falha de storage exercitada via sessao real read-only, sem
+injetar falha de disco/commit ou derrubar servico. Retencao de 14 dias foi
+parametro sintetico; scheduler/politica operacional e limites seguem pendentes.
+
+Freeze F2.23, No-Go Ledger, security-review-blocked, provider integration
+blocked, executionAuthorization: not authorized e productionAuthorization:
+not authorized preservados; ativacao operacional desabilitada. Sem selecao
+final Meta, Bloco D, Meta/Render/Cloudflare, dados reais, deployment ou Git
+write. Validacao PostgreSQL real evidenciada no escopo dos doze criterios;
+prontidao operacional permanece parcial e sujeita aos approvals anteriores.

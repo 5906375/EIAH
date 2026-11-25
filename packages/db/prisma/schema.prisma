@@ -9,6 +9,21 @@ datasource db {
   provider = "postgresql"
 }
 
+// Technical inbound receipt only: no payload, sender, content or domain relation.
+// Proposed in 8.9.2. Migration/retention policy require review before real activation.
+model WhatsappMetaIngressReceipt {
+  tenantId    String   @db.VarChar(160)
+  workspaceId String   @db.VarChar(160)
+  scope       String   @db.VarChar(64)
+  eventKey    String   @db.Char(64)
+  digest      String   @db.Char(64)
+  receivedAt  DateTime @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@id([tenantId, workspaceId, eventKey])
+  @@index([expiresAt])
+}
+
 // ========================================
 // 🧠 Enums — Execução e Pagamentos
 // (necessários para validação e índices)

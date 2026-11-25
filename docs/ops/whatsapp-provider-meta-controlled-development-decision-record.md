@@ -77,3 +77,50 @@ nega rede antes de importar os testes. Rollback: encerrar o harness e
 descartar apenas seu estado temporario; qualquer reversao tecnica fica
 limitada aos caminhos autorizados, preservando os registros F2.24.
 Nao usar stash, backup, checkpoint, branch, worktree ou limpeza geral.
+
+## Etapa 8.9.2 — Autorizacao especifica do delta inbound read-only desativado
+
+Fonte: deliberacao humana expressa "EXECUTAR — Etapa 8.9.2", em 2026-11-25.
+Registrada antes de iniciar codigo desta etapa, pelo mecanismo de decisao
+especifica F5.0 ja utilizado neste registro. Autoriza exclusivamente desenvolver
+e validar o delta operacional com ativacao desabilitada; nao autoriza execucao
+real. O boundary F2.25 e delimitado para esse desenvolvimento, sem levantamento
+do hold operacional F2.22 ou do Freeze F2.23. Nao altera a decisao F2.24.
+
+Baseline consolidada: merge b1ca462ea88b7f4c4c205103791c91d1d14554b7.
+Ambiente reutilizado: branch docs/whatsapp-meta-candidate-assessment, HEAD
+cecc2d8ca63fddb667f86e39eaa8066e0135ede5, worktree limpa e stage vazio.
+Ambos possuem a mesma arvore Git af577acc41c53bf8b7a37e527c841ce514344c22;
+nenhuma branch/worktree, merge ou checkpoint e necessario para trabalhar
+sobre o conteudo consolidado. Main nao sera editada diretamente.
+
+Escopo autorizado: GET/POST /api/webhooks/meta/whatsapp, raw body anterior
+ao parser JSON e ao logger generico, feature flag desativada por padrao,
+configuracao operacional fail-closed sem credenciais laboratoriais, separacao
+explicita dos modos, envelopes representativos exclusivamente sinteticos,
+binding/entitlement e processamento read-only existentes. Persistencia tecnica
+PostgreSQL transacional com unicidade/idempotencia e ACK apos commit; schema
+e migration preparados somente para revisao, sem aplicacao a banco real.
+Nao persistir payload, telefone, conteudo, assinatura ou tokens; nao encaminhar
+a agentes/LLM, filas, Runs ou mutacoes de dominio. Nao habilitar envio.
+
+16 KiB, 20 eventos e 14 dias continuam propostas, sem aprovacao operacional
+definitiva. A configuracao devera exigir parametros e referencias explicitas
+de revisao/execucao futura, sem defaults operacionais desses limites.
+
+Uma rodada dos testes necessarios ao novo delta e regressoes diretamente
+afetadas, preparacao estritamente necessaria das dependencias existentes e
+validacao typecheck/build API estao autorizadas. Testes com dubles nao provam
+transacoes PostgreSQL reais; eventual infraestrutura adicional sera indicada
+como pendencia, sem declaracao antecipada de eficacia. Registrar apenas
+resultados efetivos no registro de evidencias e indice existentes.
+
+Permanecem: executionAuthorization: not authorized; productionAuthorization:
+not authorized; provider integration blocked; security-review-blocked;
+No-Go Ledger ativo; Freeze F2.23 ativo. Sem selecao definitiva Meta, sem
+ratificacao do Bloco D e sem promocao automatica F2.19. A dispensa de approval
+Privacy/Compliance do laboratorio nao cobre tratamento real de dados.
+Nao autoriza deploy, Cloudflare, credenciais reais, migration real, callback,
+WABA, publicacao Meta, pagamento, reclassificacao do numero, mensagens reais,
+Docker, stage, commit, push, PR ou merge. Rollback imediato: flag desativada;
+nenhuma remocao de evidencias ou dos registros F2.24.
