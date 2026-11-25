@@ -9,7 +9,7 @@ import {
   WHATSAPP_READ_ONLY_SCOPE, WHATSAPP_READ_ONLY_ENTITLEMENT,
 } from "./whatsappReadOnlyIngress";
 
-// Lab-only module. No environment lookup, router, bootstrap, client or production store.
+// Pure ingress. Modes are explicit; no environment lookup, router or infrastructure client.
 export const META_LAB_LIMITS = Object.freeze({ payloadBytes: 16 * 1024, events: 20 });
 const syntheticId = z.string().min(11).max(160).regex(/^synthetic-[A-Za-z0-9_-]+$/);
 const interactiveReply = z.object({ id: syntheticId, title: z.string().min(1).max(1024) }).strict();
@@ -41,7 +41,10 @@ const payloadSchema = z.object({
   }).strict()).min(1).max(META_LAB_LIMITS.events),
 }).strict();
 
-export type MetaLabStoreItem = { key: string; digest: string; atMs: number };
+export type MetaLabStoreItem = {
+  key: string; digest: string; atMs: number;
+  tenantId?: string; workspaceId?: string; scope?: string;
+};
 export type MetaLabTransaction = { fresh: number[]; duplicates: number[] };
 export interface MetaLabStore {
   // Atomically classify the complete batch and commit only after processFresh succeeds.
@@ -65,6 +68,42 @@ export type MetaLabOptions = {
   store: MetaLabStore;
   observe: (metric: MetaLabMetric) => void;
 };
+export type MetaOperationalOptions = Omit<MetaLabOptions, "mode"> & {
+  mode: "operational";
+  limits: { payloadBytes: number; events: number; retentionMs: number };
+};
+
+const nativeId = z.string().regex(/^\d{1,32}$/);
+const nativeMessage = z.object({
+  id: z.string().min(1).max(256), from: nativeId,
+  timestamp: z.string().regex(/^\d{1,10}$/), type: z.enum(["text", "interactive"]),
+  text: z.object({ body: z.string().min(1).max(8192).refine(text => text.trim().length > 0) }).optional(),
+  interactive: z.object({
+    type: z.enum(["button_reply", "list_reply"]),
+    button_reply: z.object({ id: z.string().min(1).max(256), title: z.string().min(1).max(1024) }).optional(),
+    list_reply: z.object({ id: z.string().min(1).max(256), title: z.string().min(1).max(1024), description: z.string().max(1024).optional() }).optional(),
+  }).optional(),
+}).refine(m => m.type === "text" ? Boolean(m.text) && !m.interactive
+  : !m.text && Boolean(m.interactive && (m.interactive.type === "button_reply"
+    ? m.interactive.button_reply && !m.interactive.list_reply
+    : m.interactive.list_reply && !m.interactive.button_reply)));
+// Protocol metadata (contacts, display phone, context) is stripped, never exported or stored.
+// Unsupported/status-only notifications are rejected rather than silently acknowledged.
+const nativePayloadSchema = z.object({
+  object: z.literal("whatsapp_business_account"),
+  entry: z.array(z.object({ id: nativeId, changes: z.array(z.object({
+    field: z.literal("messages"), value: z.object({
+      messaging_product: z.literal("whatsapp"), metadata: z.object({ phone_number_id: nativeId }),
+      messages: z.array(nativeMessage).min(1),
+    }),
+  })).min(1) })).min(1),
+});
+
+export function isOperationalMetaSecret(value: string): boolean {
+  return value.length >= 32 && value.length <= 256 && !/\s/.test(value)
+    && !/synthetic|laborator|fixture|example|placeholder|changeme|stub|default|test|demo/i.test(value)
+    && new Set(value).size >= 8;
+}
 export type MetaLabResult = {
   status: number;
   reasonCode: string;
@@ -91,10 +130,30 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
     || !Number.isFinite(input.futureSkewMs) || input.futureSkewMs < 0) {
     throw new Error("Synthetic lab configuration required");
   }
+  return createMetaAdapter(input);
+}
+
+export function createMetaOperationalAdapter(input: MetaOperationalOptions) {
+  const secrets = [input.appSecret, input.verifyToken, input.identityKey];
+  const limits = input.limits;
+  if (input.mode !== "operational" || !secrets.every(isOperationalMetaSecret) || new Set(secrets).size !== 3
+    || !Number.isSafeInteger(limits.payloadBytes) || limits.payloadBytes < 1 || limits.payloadBytes > 10 * 1024 * 1024
+    || !Number.isSafeInteger(limits.events) || limits.events < 1 || limits.events > 1000
+    || !Number.isSafeInteger(limits.retentionMs) || limits.retentionMs < 1 || limits.retentionMs > 365 * 86400_000
+    || !Number.isSafeInteger(input.replayWindowMs) || input.replayWindowMs < 1
+    || !Number.isSafeInteger(input.futureSkewMs) || input.futureSkewMs < 0
+    || input.replayWindowMs + input.futureSkewMs > limits.retentionMs
+    || !input.bindings.length) throw new Error("META_CONFIGURATION_INVALID");
+  return createMetaAdapter({ ...input, limits: { ...limits } });
+}
+
+function createMetaAdapter(input: MetaLabOptions | MetaOperationalOptions) {
   // Copy fixed authorization inputs so caller mutation cannot change identity or scope mid-flight.
   const options = { ...input, bindings: input.bindings.map(b => ({ ...b })) };
-  if (options.bindings.some(b => !syntheticId.safeParse(b.wabaId).success
-    || !syntheticId.safeParse(b.phoneNumberId).success)
+  const identitySchema = options.mode === "synthetic-lab" ? syntheticId : nativeId;
+  const limits = options.mode === "synthetic-lab" ? META_LAB_LIMITS : options.limits;
+  if (options.bindings.some(b => !identitySchema.safeParse(b.wabaId).success
+    || !identitySchema.safeParse(b.phoneNumberId).success)
     || new Set(options.bindings.map(b => JSON.stringify([b.wabaId, b.phoneNumberId]))).size !== options.bindings.length) {
     throw new Error("Ambiguous or non-synthetic channel binding");
   }
@@ -103,7 +162,8 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
     const token = query["hub.verify_token"];
     const challenge = query["hub.challenge"];
     if (query["hub.mode"] !== "subscribe" || typeof token !== "string"
-      || typeof challenge !== "string" || !/^synthetic-[A-Za-z0-9_-]{1,128}$/.test(challenge)) {
+      || typeof challenge !== "string" || !(options.mode === "synthetic-lab"
+        ? /^synthetic-[A-Za-z0-9_-]{1,128}$/ : /^[A-Za-z0-9_-]{1,256}$/).test(challenge)) {
       return { status: 403, challenge: null };
     }
     const actual = Buffer.from(token);
@@ -120,7 +180,7 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
     try {
       options.observe({ metric: "requests", value: 1 });
       if (!Buffer.isBuffer(rawBody) || rawBody.length === 0) reject(400, "WHATSAPP_PAYLOAD_INVALID");
-      if (rawBody.length > META_LAB_LIMITS.payloadBytes) reject(413, "WHATSAPP_PAYLOAD_TOO_LARGE");
+      if (rawBody.length > limits.payloadBytes) reject(413, "WHATSAPP_PAYLOAD_TOO_LARGE");
       if (!signature) reject(401, "WHATSAPP_SIGNATURE_MISSING");
       if (!/^sha256=[a-f0-9]{64}$/.test(signature)) reject(401, "WHATSAPP_SIGNATURE_INVALID");
       const supplied = Buffer.from(signature.slice(7), "hex");
@@ -129,7 +189,7 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
       let decoded: unknown;
       try { decoded = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(rawBody)); }
       catch { reject(400, "WHATSAPP_PAYLOAD_INVALID"); }
-      const parsed = payloadSchema.safeParse(decoded);
+      const parsed = (options.mode === "synthetic-lab" ? payloadSchema : nativePayloadSchema).safeParse(decoded);
       if (!parsed.success) reject(400, "WHATSAPP_PAYLOAD_INVALID");
       const nowMs = options.now();
       if (!Number.isFinite(nowMs)) reject(503, "PRE_PROVIDER_GAP_OPEN");
@@ -140,7 +200,7 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
           const channel = options.bindings.find(b => b.wabaId === entry.id && b.phoneNumberId === phoneNumberId);
           if (!channel) reject(403, "WHATSAPP_PHONE_NOT_BOUND");
           for (const message of change.value.messages) {
-            if (prepared.length >= META_LAB_LIMITS.events) reject(413, "WHATSAPP_PAYLOAD_TOO_LARGE");
+            if (prepared.length >= limits.events) reject(413, "WHATSAPP_PAYLOAD_TOO_LARGE");
             const timestampMs = Number(message.timestamp) * 1000;
             if (!Number.isFinite(timestampMs) || nowMs - timestampMs > options.replayWindowMs
               || timestampMs - nowMs > options.futureSkewMs) reject(401, "WHATSAPP_TIMESTAMP_OUT_OF_WINDOW");
@@ -150,13 +210,14 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
               requiredScope: WHATSAPP_READ_ONLY_SCOPE, requiredEntitlement: WHATSAPP_READ_ONLY_ENTITLEMENT,
             });
             if (!authority.allowed) reject(403, authority.reasonCode!);
-            if (!syntheticId.safeParse(authority.tenantId).success || !syntheticId.safeParse(authority.workspaceId).success) {
+            if (options.mode === "synthetic-lab" && (!syntheticId.safeParse(authority.tenantId).success
+              || !syntheticId.safeParse(authority.workspaceId).success)) {
               reject(403, "WHATSAPP_PHONE_NOT_BOUND");
             }
             if (authority.scope !== WHATSAPP_READ_ONLY_SCOPE) reject(403, "ENTITLEMENT_REQUIRED");
             const key = metaLabPseudonym(options.identityKey, "event", [
               "meta", "whatsapp", entry.id, phoneNumberId, authority.tenantId!, authority.workspaceId!,
-              WHATSAPP_READ_ONLY_SCOPE, message.type, message.id,
+              WHATSAPP_READ_ONLY_SCOPE, ...(options.mode === "synthetic-lab" ? [message.type] : []), message.id,
             ]);
             // Stable semantic digest excludes receipt time, batch order and raw JSON formatting.
             const digest = metaLabPseudonym(options.identityKey, "digest", [
@@ -173,7 +234,10 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
             };
             const validation = validatePayload(body);
             if (!validation.ok) reject(400, validation.code);
-            prepared.push({ body, binding: channel, item: { key, digest, atMs: nowMs } });
+            prepared.push({ body, binding: channel, item: { key, digest, atMs: nowMs,
+              ...(options.mode === "operational" ? { tenantId: authority.tenantId!, workspaceId: authority.workspaceId!,
+                scope: WHATSAPP_READ_ONLY_SCOPE } : {}),
+            } });
           }
         }
       }
@@ -189,7 +253,7 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
           options.observe({ metric: "processing", value: 1 });
         }
       });
-      // Never accept an invalid store response. Production store intentionally not supplied.
+      // Never ACK an invalid store response.
       const classified = [...transaction.fresh, ...transaction.duplicates].sort((a, b) => a - b);
       if (classified.length !== prepared.length || classified.some((n, i) => n !== i)) reject(503, "PRE_PROVIDER_GAP_OPEN");
       const events = prepared.map(p => buildWhatsappBundleExport({
@@ -208,7 +272,7 @@ export function createMetaLabAdapter(input: MetaLabOptions) {
         events, transaction.fresh.length, transaction.duplicates.length);
     } catch (error) {
       const status = error instanceof LabRejection ? error.status
-        : error instanceof Error && error.message === "LAB_EVENT_COLLISION" ? 409 : 503;
+        : error instanceof Error && ["LAB_EVENT_COLLISION", "META_EVENT_COLLISION"].includes(error.message) ? 409 : 503;
       const reasonCode = error instanceof LabRejection ? error.reasonCode
         : status === 409 ? "WHATSAPP_PAYLOAD_INVALID" : "PRE_PROVIDER_GAP_OPEN";
       // Metrics must not expose raw errors (paths, credentials, payloads). Observer loss prevents ACK.

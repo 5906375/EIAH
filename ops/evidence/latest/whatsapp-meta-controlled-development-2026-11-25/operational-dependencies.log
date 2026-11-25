@@ -1,0 +1,413 @@
+Etapa 8.9.2 — existing dependency preparation, no install, generate or migration
+
+STEP contracts
+CWD /home/jusall/projects/EIAH_BUILDER
+COMMAND ['pnpm', '--filter', '@eiah/contracts', 'build']
+
+> @eiah/contracts@1.0.1 prebuild /home/jusall/projects/EIAH_BUILDER/packages/contracts
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/contracts@1.0.1 build /home/jusall/projects/EIAH_BUILDER/packages/contracts
+> tsc -p tsconfig.json
+
+
+EXIT 0
+
+STEP db-existing-client
+CWD /home/jusall/projects/EIAH_BUILDER/packages/db
+COMMAND ['bash', '-c', 'pnpm exec tsup --config tsup.config.ts && pnpm run build:dts && node scripts/copy-publish-artifacts.mjs']
+CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /home/jusall/projects/EIAH_BUILDER/packages/db/tsup.config.ts
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/client.js                 2.21 KB
+ESM dist/index.js                  407.00 B
+ESM dist/middleware/tenantGuard.js 3.74 KB
+ESM ⚡️ Build success in 11ms
+
+> @repo/db@1.0.0 build:dts /home/jusall/projects/EIAH_BUILDER/packages/db
+> tsc --build tsconfig.json --force
+
+
+EXIT 0
+
+STEP core
+CWD /home/jusall/projects/EIAH_BUILDER
+COMMAND ['pnpm', '--filter', '@eiah/core', 'build']
+
+> @eiah/core@0.1.0 prebuild /home/jusall/projects/EIAH_BUILDER/packages/core
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/core@0.1.0 build /home/jusall/projects/EIAH_BUILDER/packages/core
+> pnpm run clean && pnpm exec tsc -p tsconfig.json --emitDeclarationOnly && pnpm exec tsup --config tsup.config.ts
+
+
+> @eiah/core@0.1.0 clean /home/jusall/projects/EIAH_BUILDER/packages/core
+> node -e "require('fs').rmSync('dist', { recursive: true, force: true })"
+
+CLI Building entry: src/index.ts, src/actions/actionRegistry.d.ts, src/actions/actionRegistry.ts, src/actions/billing.d.ts, src/actions/billing.ts, src/actions/defi.d.ts, src/actions/defi.ts, src/actions/finance.d.ts, src/actions/finance.ts, src/actions/guardian.d.ts, src/actions/guardian.ts, src/actions/guardianChecklistTools.d.ts, src/actions/guardianChecklistTools.ts, src/actions/guardrails.d.ts, src/actions/guardrails.ts, src/actions/index.d.ts, src/actions/index.ts, src/actions/knowledge.d.ts, src/actions/knowledge.ts, src/actions/notifications.d.ts, src/actions/notifications.ts, src/actions/risk.d.ts, src/actions/risk.ts, src/billing/reconciliation.ts, src/catalog/apeWeeklyCycleV3.test.ts, src/catalog/apeWeeklyCycleV3.ts, src/catalog/apeWeeklyCycleV3Validator.test.ts, src/catalog/apeWeeklyCycleV3Validator.ts, src/catalog/governedOperationCatalog.test.ts, src/catalog/governedOperationCatalog.ts, src/catalog/versionedActionRegistry.ts, src/catalog/workspaceActionPolicyProvisioning.ts, src/catalog/workspaceAgentProvisioning.test.ts, src/catalog/workspaceAgentProvisioning.ts, src/events/redisPublisher.ts, src/llm/LLMProvider.d.ts, src/llm/LLMProvider.ts, src/llm/LLMProviderError.ts, src/llm/LLMRegistry.d.ts, src/llm/LLMRegistry.ts, src/llm/LLMRouter.d.ts, src/llm/LLMRouter.ts, src/llm/completionEngine.d.ts, src/llm/completionEngine.ts, src/llm/types.d.ts, src/llm/types.ts, src/logging/index.d.ts, src/logging/index.ts, src/logging/logger.d.ts, src/logging/logger.ts, src/policy/TenantPolicyStore.ts, src/reasons/index.ts, src/reasons/reasonCatalog.ts, src/queue/actionQueue.d.ts, src/queue/actionQueue.ts, src/queue/connection.d.ts, src/queue/connection.test.ts, src/queue/connection.ts, src/queue/maintenanceQueue.d.ts, src/queue/maintenanceQueue.ts, src/queue/redrive.ts, src/queue/runAtivoUniversalDLQ.d.ts, src/queue/runAtivoUniversalDLQ.ts, src/queue/runAtivoUniversalQueue.d.ts, src/queue/runAtivoUniversalQueue.ts, src/queue/runQueue.d.ts, src/queue/runQueue.ts, src/queue/snapshot.d.ts, src/queue/snapshot.ts, src/queue/workerOwnershipLease.test.ts, src/queue/workerOwnershipLease.ts, src/queue/workerTopology.test.ts, src/queue/workerTopology.ts, src/security/killSwitch.ts, src/taxonomy/publicProductTaxonomy.d.ts, src/taxonomy/publicProductTaxonomy.ts, src/services/guardrailLedgerStore.d.ts, src/services/guardrailLedgerStore.ts, src/services/ledgerService.d.ts, src/services/ledgerService.ts, src/services/mcpGovernanceEnv.test.ts, src/services/mcpGovernanceEnv.ts, src/services/planStepStore.d.ts, src/services/planStepStore.ts, src/services/reconcileLedgerService.d.ts, src/services/reconcileLedgerService.ts, src/services/sclLedger.d.ts, src/services/sclLedger.ts, src/services/tenantInvoiceService.d.ts, src/services/tenantInvoiceService.ts, src/services/workspaceProvenanceClassifier.test.ts, src/services/workspaceProvenanceClassifier.ts, src/services/workspaceProvenanceFacts.ts, src/utils/canonicalDigest.test.ts, src/utils/canonicalDigest.ts, src/utils/normalizeMessages.d.ts, src/utils/normalizeMessages.ts, src/utils/retry.d.ts, src/utils/retry.ts, src/utils/timeout.d.ts, src/utils/timeout.ts, src/actions/agents/aadvAction.d.ts, src/actions/agents/aadvAction.ts, src/actions/agents/defiOneAction.d.ts, src/actions/agents/defiOneAction.ts, src/actions/agents/diariasAction.d.ts, src/actions/agents/diariasAction.ts, src/actions/agents/eiahAction.d.ts, src/actions/agents/eiahAction.ts, src/actions/agents/finNexusAction.d.ts, src/actions/agents/finNexusAction.ts, src/actions/agents/flowOrchestratorAction.d.ts, src/actions/agents/flowOrchestratorAction.ts, src/actions/agents/guardianAction.d.ts, src/actions/agents/guardianAction.ts, src/actions/agents/iBCAction.d.ts, src/actions/agents/iBCAction.ts, src/actions/agents/imageNftDiariasAction.d.ts, src/actions/agents/imageNftDiariasAction.ts, src/actions/agents/index.d.ts, src/actions/agents/index.ts, src/actions/agents/j360Action.d.ts, src/actions/agents/j360Action.ts, src/actions/agents/mktAction.d.ts, src/actions/agents/mktAction.ts, src/actions/agents/nftPyAction.d.ts, src/actions/agents/nftPyAction.ts, src/actions/agents/onchainMonitorAction.d.ts, src/actions/agents/onchainMonitorAction.ts, src/actions/agents/pitchAction.d.ts, src/actions/agents/pitchAction.ts, src/actions/agents/registry.ts, src/actions/agents/resolveLegalSpecialtyContext.d.ts, src/actions/agents/resolveLegalSpecialtyContext.ts, src/actions/agents/riskAnalyzerAction.d.ts, src/actions/agents/riskAnalyzerAction.ts, src/actions/agents/types.d.ts, src/actions/agents/types.ts, src/actions/registry/TenantActionResolver.d.ts, src/actions/registry/TenantActionResolver.ts, src/actions/registry/VersionedActionRegistry.d.ts, src/actions/registry/VersionedActionRegistry.ts, src/actions/reporting/guardianReportRenderer.d.ts, src/actions/reporting/guardianReportRenderer.ts, src/actions/reporting/guardianReportSchema.d.ts, src/actions/reporting/guardianReportSchema.ts, src/actions/reporting/index.d.ts, src/actions/reporting/index.ts, src/actions/reporting/j360LegalReportRenderer.d.ts, src/actions/reporting/j360LegalReportRenderer.ts, src/actions/reporting/j360LegalReportSchema.d.ts, src/actions/reporting/j360LegalReportSchema.ts, src/actions/reporting/mktCampaignReportRenderer.d.ts, src/actions/reporting/mktCampaignReportRenderer.ts, src/actions/reporting/mktCampaignReportSchema.d.ts, src/actions/reporting/mktCampaignReportSchema.ts, src/actions/reporting/recipeOrchestrationRenderer.d.ts, src/actions/reporting/recipeOrchestrationRenderer.ts, src/actions/reporting/recipeOrchestrationSchema.d.ts, src/actions/reporting/recipeOrchestrationSchema.ts, src/actions/reporting/runAtivoSchema.d.ts, src/actions/reporting/runAtivoSchema.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /home/jusall/projects/EIAH_BUILDER/packages/core/tsup.config.ts
+CLI Target: node20
+ESM Build start
+ESM dist/actions/actionRegistry.d.js                            44.00 B
+ESM dist/actions/actionRegistry.js                              20.36 KB
+ESM dist/actions/billing.d.js                                   37.00 B
+ESM dist/actions/billing.js                                     10.74 KB
+ESM dist/actions/defi.js                                        6.62 KB
+ESM dist/actions/defi.d.js                                      34.00 B
+ESM dist/actions/finance.d.js                                   37.00 B
+ESM dist/actions/guardianChecklistTools.d.js                    52.00 B
+ESM dist/actions/finance.js                                     18.50 KB
+ESM dist/actions/guardian.d.js                                  38.00 B
+ESM dist/actions/guardian.js                                    17.08 KB
+ESM dist/actions/guardianChecklistTools.js                      2.54 KB
+ESM dist/actions/guardrails.d.js                                40.00 B
+ESM dist/actions/guardrails.js                                  4.06 KB
+ESM dist/actions/knowledge.d.js                                 39.00 B
+ESM dist/actions/knowledge.js                                   5.97 KB
+ESM dist/actions/notifications.js                               8.54 KB
+ESM dist/catalog/apeWeeklyCycleV3.test.js                       11.15 KB
+ESM dist/actions/risk.d.js                                      34.00 B
+ESM dist/billing/reconciliation.js                              6.57 KB
+ESM dist/catalog/apeWeeklyCycleV3Validator.test.js              24.56 KB
+ESM dist/actions/notifications.d.js                             43.00 B
+ESM dist/actions/risk.js                                        3.54 KB
+ESM dist/catalog/governedOperationCatalog.js                    4.12 KB
+ESM dist/catalog/governedOperationCatalog.test.js               9.22 KB
+ESM dist/actions/index.d.js                                     325.16 KB
+ESM dist/catalog/versionedActionRegistry.js                     549.00 B
+ESM dist/catalog/apeWeeklyCycleV3Validator.js                   12.26 KB
+ESM dist/events/redisPublisher.js                               2.41 KB
+ESM dist/catalog/workspaceActionPolicyProvisioning.js           1.21 KB
+ESM dist/catalog/workspaceAgentProvisioning.test.js             2.99 KB
+ESM dist/llm/LLMProvider.d.js                                   41.00 B
+ESM dist/catalog/workspaceAgentProvisioning.js                  1.28 KB
+ESM dist/llm/LLMProviderError.js                                2.35 KB
+ESM dist/llm/LLMRegistry.d.js                                   41.00 B
+ESM dist/llm/LLMRouter.d.js                                     39.00 B
+ESM dist/llm/LLMRouter.js                                       1.06 KB
+ESM dist/catalog/apeWeeklyCycleV3.js                            4.72 KB
+ESM dist/llm/completionEngine.d.js                              46.00 B
+ESM dist/llm/types.d.js                                         35.00 B
+ESM dist/logging/index.js                                       1.90 KB
+ESM dist/llm/completionEngine.js                                9.61 KB
+ESM dist/llm/types.js                                           33.00 B
+ESM dist/logging/index.d.js                                     1.90 KB
+ESM dist/logging/logger.d.js                                    36.00 B
+ESM dist/logging/logger.js                                      1.90 KB
+ESM dist/llm/LLMRegistry.js                                     525.00 B
+ESM dist/llm/LLMProvider.js                                     120.00 B
+ESM dist/queue/actionQueue.d.js                                 95.00 B
+ESM dist/policy/TenantPolicyStore.js                            6.68 KB
+ESM dist/reasons/reasonCatalog.js                               16.66 KB
+ESM dist/reasons/index.js                                       16.65 KB
+ESM dist/queue/actionQueue.js                                   9.33 KB
+ESM dist/queue/connection.js                                    2.79 KB
+ESM dist/queue/connection.d.js                                  40.00 B
+ESM dist/actions/index.js                                       325.98 KB
+ESM dist/queue/maintenanceQueue.d.js                            46.00 B
+ESM dist/queue/redrive.js                                       2.04 KB
+ESM dist/queue/maintenanceQueue.js                              7.99 KB
+ESM dist/queue/runAtivoUniversalDLQ.js                          3.79 KB
+ESM dist/queue/runAtivoUniversalDLQ.d.js                        50.00 B
+ESM dist/queue/runAtivoUniversalQueue.d.js                      52.00 B
+ESM dist/queue/runAtivoUniversalQueue.js                        4.05 KB
+ESM dist/queue/runQueue.d.js                                    38.00 B
+ESM dist/queue/snapshot.js                                      13.60 KB
+ESM dist/queue/runQueue.js                                      10.71 KB
+ESM dist/queue/workerOwnershipLease.test.js                     12.72 KB
+ESM dist/queue/workerTopology.test.js                           7.16 KB
+ESM dist/queue/workerOwnershipLease.js                          2.82 KB
+ESM dist/queue/workerTopology.js                                3.81 KB
+ESM dist/taxonomy/publicProductTaxonomy.d.js                    51.00 B
+ESM dist/security/killSwitch.js                                 5.18 KB
+ESM dist/services/guardrailLedgerStore.js                       1.84 KB
+ESM dist/services/guardrailLedgerStore.d.js                     50.00 B
+ESM dist/services/ledgerService.d.js                            43.00 B
+ESM dist/queue/snapshot.d.js                                    38.00 B
+ESM dist/taxonomy/publicProductTaxonomy.js                      23.90 KB
+ESM dist/services/mcpGovernanceEnv.test.js                      2.68 KB
+ESM dist/services/ledgerService.js                              6.92 KB
+ESM dist/queue/connection.test.js                               3.88 KB
+ESM dist/services/mcpGovernanceEnv.js                           757.00 B
+ESM dist/services/planStepStore.d.js                            43.00 B
+ESM dist/services/reconcileLedgerService.d.js                   52.00 B
+ESM dist/services/planStepStore.js                              612.00 B
+ESM dist/services/reconcileLedgerService.js                     4.16 KB
+ESM dist/services/tenantInvoiceService.d.js                     50.00 B
+ESM dist/services/sclLedger.d.js                                39.00 B
+ESM dist/services/sclLedger.js                                  14.73 KB
+ESM dist/utils/canonicalDigest.test.js                          2.45 KB
+ESM dist/services/tenantInvoiceService.js                       9.11 KB
+ESM dist/services/workspaceProvenanceClassifier.js              22.67 KB
+ESM dist/utils/canonicalDigest.js                               642.00 B
+ESM dist/utils/normalizeMessages.d.js                           47.00 B
+ESM dist/utils/normalizeMessages.js                             334.00 B
+ESM dist/utils/retry.d.js                                       35.00 B
+ESM dist/utils/retry.js                                         1.29 KB
+ESM dist/utils/timeout.d.js                                     37.00 B
+ESM dist/services/workspaceProvenanceFacts.js                   34.28 KB
+ESM dist/actions/agents/aadvAction.js                           9.67 KB
+ESM dist/actions/agents/aadvAction.d.js                         40.00 B
+ESM dist/actions/agents/defiOneAction.d.js                      43.00 B
+ESM dist/services/workspaceProvenanceClassifier.test.js         49.24 KB
+ESM dist/utils/timeout.js                                       390.00 B
+ESM dist/actions/agents/defiOneAction.js                        8.10 KB
+ESM dist/actions/agents/diariasAction.d.js                      43.00 B
+ESM dist/actions/agents/diariasAction.js                        2.24 KB
+ESM dist/actions/agents/finNexusAction.d.js                     44.00 B
+ESM dist/actions/agents/eiahAction.js                           17.88 KB
+ESM dist/actions/agents/flowOrchestratorAction.js               2.65 KB
+ESM dist/actions/agents/eiahAction.d.js                         40.00 B
+ESM dist/actions/agents/flowOrchestratorAction.d.js             52.00 B
+ESM dist/actions/agents/guardianAction.d.js                     44.00 B
+ESM dist/actions/agents/iBCAction.d.js                          39.00 B
+ESM dist/actions/agents/finNexusAction.js                       6.61 KB
+ESM dist/actions/agents/iBCAction.js                            2.28 KB
+ESM dist/actions/agents/guardianAction.js                       15.42 KB
+ESM dist/actions/agents/imageNftDiariasAction.js                2.34 KB
+ESM dist/actions/agents/imageNftDiariasAction.d.js              51.00 B
+ESM dist/actions/agents/j360Action.d.js                         40.00 B
+ESM dist/actions/agents/j360Action.js                           12.48 KB
+ESM dist/actions/agents/mktAction.d.js                          39.00 B
+ESM dist/actions/agents/mktAction.js                            2.51 KB
+ESM dist/actions/agents/nftPyAction.d.js                        41.00 B
+ESM dist/actions/agents/nftPyAction.js                          2.40 KB
+ESM dist/actions/agents/onchainMonitorAction.js                 8.60 KB
+ESM dist/actions/agents/index.js                                109.60 KB
+ESM dist/actions/agents/pitchAction.d.js                        41.00 B
+ESM dist/actions/agents/onchainMonitorAction.d.js               50.00 B
+ESM dist/actions/agents/resolveLegalSpecialtyContext.js         2.60 KB
+ESM dist/actions/agents/types.d.js                              35.00 B
+ESM dist/actions/agents/index.d.js                              106.83 KB
+ESM dist/actions/agents/pitchAction.js                          11.19 KB
+ESM dist/actions/agents/riskAnalyzerAction.d.js                 48.00 B
+ESM dist/actions/agents/riskAnalyzerAction.js                   2.57 KB
+ESM dist/actions/agents/types.js                                201.00 B
+ESM dist/actions/agents/resolveLegalSpecialtyContext.d.js       58.00 B
+ESM dist/actions/registry/TenantActionResolver.d.js             50.00 B
+ESM dist/actions/reporting/guardianReportRenderer.d.js          52.00 B
+ESM dist/actions/reporting/guardianReportSchema.js              3.44 KB
+ESM dist/actions/reporting/guardianReportSchema.d.js            50.00 B
+ESM dist/actions/registry/TenantActionResolver.js               665.00 B
+ESM dist/actions/agents/registry.js                             101.70 KB
+ESM dist/actions/registry/VersionedActionRegistry.d.js          53.00 B
+ESM dist/actions/reporting/guardianReportRenderer.js            35.53 KB
+ESM dist/actions/registry/VersionedActionRegistry.js            1.56 KB
+ESM dist/actions/reporting/j360LegalReportRenderer.d.js         53.00 B
+ESM dist/actions/reporting/index.d.js                           94.34 KB
+ESM dist/actions/reporting/j360LegalReportSchema.d.js           51.00 B
+ESM dist/actions/reporting/j360LegalReportSchema.js             5.48 KB
+ESM dist/actions/reporting/mktCampaignReportRenderer.d.js       55.00 B
+ESM dist/actions/reporting/j360LegalReportRenderer.js           49.12 KB
+ESM dist/actions/reporting/mktCampaignReportRenderer.js         38.84 KB
+ESM dist/actions/reporting/mktCampaignReportSchema.js           7.83 KB
+ESM dist/actions/reporting/mktCampaignReportSchema.d.js         53.00 B
+ESM dist/actions/reporting/recipeOrchestrationRenderer.d.js     57.00 B
+ESM dist/actions/reporting/recipeOrchestrationSchema.js         4.58 KB
+ESM dist/actions/reporting/recipeOrchestrationSchema.d.js       55.00 B
+ESM dist/actions/reporting/recipeOrchestrationRenderer.js       14.96 KB
+ESM dist/actions/reporting/runAtivoSchema.js                    22.36 KB
+ESM dist/index.js                                               506.95 KB
+ESM dist/actions/reporting/runAtivoSchema.d.js                  44.00 B
+ESM dist/actions/reporting/index.js                             135.90 KB
+ESM dist/actions/actionRegistry.d.js.map                        71.00 B
+ESM dist/actions/billing.d.js.map                               71.00 B
+ESM dist/actions/actionRegistry.js.map                          40.49 KB
+ESM dist/actions/billing.js.map                                 47.28 KB
+ESM dist/actions/defi.d.js.map                                  71.00 B
+ESM dist/actions/finance.d.js.map                               71.00 B
+ESM dist/actions/guardianChecklistTools.d.js.map                71.00 B
+ESM dist/actions/defi.js.map                                    38.15 KB
+ESM dist/actions/guardian.d.js.map                              71.00 B
+ESM dist/actions/finance.js.map                                 63.71 KB
+ESM dist/actions/guardian.js.map                                49.69 KB
+ESM dist/actions/knowledge.d.js.map                             71.00 B
+ESM dist/actions/notifications.js.map                           41.55 KB
+ESM dist/actions/knowledge.js.map                               37.12 KB
+ESM dist/actions/guardianChecklistTools.js.map                  3.75 KB
+ESM dist/catalog/apeWeeklyCycleV3.test.js.map                   27.71 KB
+ESM dist/actions/notifications.d.js.map                         71.00 B
+ESM dist/actions/risk.js.map                                    33.46 KB
+ESM dist/billing/reconciliation.js.map                          18.56 KB
+ESM dist/catalog/apeWeeklyCycleV3Validator.test.js.map          66.60 KB
+ESM dist/actions/guardrails.d.js.map                            71.00 B
+ESM dist/actions/risk.d.js.map                                  71.00 B
+ESM dist/actions/guardrails.js.map                              8.48 KB
+ESM dist/catalog/versionedActionRegistry.js.map                 992.00 B
+ESM dist/events/redisPublisher.js.map                           4.43 KB
+ESM dist/llm/LLMProvider.d.js.map                               71.00 B
+ESM dist/catalog/workspaceActionPolicyProvisioning.js.map       3.05 KB
+ESM dist/catalog/governedOperationCatalog.test.js.map           21.05 KB
+ESM dist/llm/LLMProviderError.js.map                            5.48 KB
+ESM dist/catalog/workspaceAgentProvisioning.test.js.map         6.49 KB
+ESM dist/llm/LLMRegistry.d.js.map                               71.00 B
+ESM dist/llm/LLMRouter.d.js.map                                 71.00 B
+ESM dist/llm/completionEngine.d.js.map                          71.00 B
+ESM dist/llm/LLMRouter.js.map                                   2.16 KB
+ESM dist/llm/types.d.js.map                                     71.00 B
+ESM dist/catalog/governedOperationCatalog.js.map                11.83 KB
+ESM dist/logging/index.js.map                                   3.93 KB
+ESM dist/logging/index.d.js.map                                 3.93 KB
+ESM dist/llm/completionEngine.js.map                            20.68 KB
+ESM dist/logging/logger.d.js.map                                71.00 B
+ESM dist/logging/logger.js.map                                  3.93 KB
+ESM dist/catalog/apeWeeklyCycleV3Validator.js.map               44.08 KB
+ESM dist/catalog/workspaceAgentProvisioning.js.map              3.30 KB
+ESM dist/llm/types.js.map                                       71.00 B
+ESM dist/catalog/apeWeeklyCycleV3.js.map                        16.42 KB
+ESM dist/queue/actionQueue.d.js.map                             8.94 KB
+ESM dist/policy/TenantPolicyStore.js.map                        12.53 KB
+ESM dist/queue/connection.js.map                                5.38 KB
+ESM dist/reasons/reasonCatalog.js.map                           27.00 KB
+ESM dist/queue/connection.d.js.map                              71.00 B
+ESM dist/queue/actionQueue.js.map                               18.80 KB
+ESM dist/llm/LLMRegistry.js.map                                 1012.00 B
+ESM dist/llm/LLMProvider.js.map                                 380.00 B
+ESM dist/queue/redrive.js.map                                   4.90 KB
+ESM dist/reasons/index.js.map                                   27.00 KB
+ESM dist/queue/maintenanceQueue.d.js.map                        71.00 B
+ESM dist/queue/maintenanceQueue.js.map                          16.46 KB
+ESM dist/queue/runAtivoUniversalDLQ.d.js.map                    71.00 B
+ESM dist/queue/runAtivoUniversalDLQ.js.map                      8.32 KB
+ESM dist/queue/runAtivoUniversalQueue.d.js.map                  71.00 B
+ESM dist/queue/runQueue.d.js.map                                71.00 B
+ESM dist/queue/runAtivoUniversalQueue.js.map                    7.90 KB
+ESM dist/queue/runQueue.js.map                                  21.39 KB
+ESM dist/queue/snapshot.js.map                                  41.88 KB
+ESM dist/taxonomy/publicProductTaxonomy.d.js.map                71.00 B
+ESM dist/security/killSwitch.js.map                             9.89 KB
+ESM dist/services/guardrailLedgerStore.d.js.map                 71.00 B
+ESM dist/queue/workerTopology.test.js.map                       13.52 KB
+ESM dist/services/guardrailLedgerStore.js.map                   3.87 KB
+ESM dist/queue/workerTopology.js.map                            7.54 KB
+ESM dist/services/ledgerService.d.js.map                        71.00 B
+ESM dist/queue/workerOwnershipLease.js.map                      5.83 KB
+ESM dist/services/ledgerService.js.map                          13.53 KB
+ESM dist/queue/snapshot.d.js.map                                71.00 B
+ESM dist/queue/workerOwnershipLease.test.js.map                 26.39 KB
+ESM dist/taxonomy/publicProductTaxonomy.js.map                  38.12 KB
+ESM dist/services/mcpGovernanceEnv.js.map                       1.71 KB
+ESM dist/services/mcpGovernanceEnv.test.js.map                  5.16 KB
+ESM dist/services/planStepStore.d.js.map                        71.00 B
+ESM dist/services/reconcileLedgerService.d.js.map               71.00 B
+ESM dist/queue/connection.test.js.map                           7.64 KB
+ESM dist/services/planStepStore.js.map                          1.26 KB
+ESM dist/services/reconcileLedgerService.js.map                 8.46 KB
+ESM dist/utils/canonicalDigest.test.js.map                      5.42 KB
+ESM dist/services/sclLedger.d.js.map                            71.00 B
+ESM dist/utils/canonicalDigest.js.map                           2.06 KB
+ESM dist/utils/normalizeMessages.js.map                         611.00 B
+ESM dist/utils/normalizeMessages.d.js.map                       71.00 B
+ESM dist/utils/retry.d.js.map                                   71.00 B
+ESM dist/services/tenantInvoiceService.d.js.map                 71.00 B
+ESM dist/services/sclLedger.js.map                              28.93 KB
+ESM dist/utils/timeout.d.js.map                                 71.00 B
+ESM dist/services/tenantInvoiceService.js.map                   17.14 KB
+ESM dist/services/workspaceProvenanceFacts.js.map               71.19 KB
+ESM dist/actions/agents/aadvAction.d.js.map                     71.00 B
+ESM dist/utils/retry.js.map                                     2.40 KB
+ESM dist/services/workspaceProvenanceClassifier.test.js.map     98.86 KB
+ESM dist/utils/timeout.js.map                                   770.00 B
+ESM dist/services/workspaceProvenanceClassifier.js.map          47.97 KB
+ESM dist/actions/agents/aadvAction.js.map                       21.12 KB
+ESM dist/actions/agents/defiOneAction.d.js.map                  71.00 B
+ESM dist/actions/agents/diariasAction.d.js.map                  71.00 B
+ESM dist/actions/agents/defiOneAction.js.map                    20.46 KB
+ESM dist/actions/agents/diariasAction.js.map                    10.15 KB
+ESM dist/actions/agents/finNexusAction.d.js.map                 71.00 B
+ESM dist/actions/agents/flowOrchestratorAction.js.map           10.61 KB
+ESM dist/actions/agents/flowOrchestratorAction.d.js.map         71.00 B
+ESM dist/actions/agents/eiahAction.d.js.map                     71.00 B
+ESM dist/actions/agents/eiahAction.js.map                       31.52 KB
+ESM dist/actions/agents/guardianAction.d.js.map                 71.00 B
+ESM dist/actions/agents/iBCAction.d.js.map                      71.00 B
+ESM dist/actions/agents/finNexusAction.js.map                   16.46 KB
+ESM dist/actions/agents/guardianAction.js.map                   26.99 KB
+ESM dist/actions/agents/imageNftDiariasAction.d.js.map          71.00 B
+ESM dist/actions/agents/iBCAction.js.map                        10.34 KB
+ESM dist/actions/agents/j360Action.d.js.map                     71.00 B
+ESM dist/actions/agents/mktAction.d.js.map                      71.00 B
+ESM dist/actions/agents/imageNftDiariasAction.js.map            10.23 KB
+ESM dist/actions/agents/mktAction.js.map                        10.58 KB
+ESM dist/actions/agents/onchainMonitorAction.js.map             21.32 KB
+ESM dist/actions/agents/j360Action.js.map                       22.63 KB
+ESM dist/actions/agents/nftPyAction.d.js.map                    71.00 B
+ESM dist/actions/agents/nftPyAction.js.map                      10.40 KB
+ESM dist/actions/agents/onchainMonitorAction.d.js.map           71.00 B
+ESM dist/actions/agents/pitchAction.d.js.map                    71.00 B
+ESM dist/actions/agents/resolveLegalSpecialtyContext.js.map     4.98 KB
+ESM dist/actions/agents/pitchAction.js.map                      19.66 KB
+ESM dist/actions/agents/types.d.js.map                          71.00 B
+ESM dist/actions/agents/riskAnalyzerAction.d.js.map             71.00 B
+ESM dist/actions/registry/TenantActionResolver.d.js.map         71.00 B
+ESM dist/actions/agents/riskAnalyzerAction.js.map               10.65 KB
+ESM dist/actions/reporting/guardianReportRenderer.d.js.map      71.00 B
+ESM dist/actions/agents/types.js.map                            7.30 KB
+ESM dist/actions/registry/TenantActionResolver.js.map           1.25 KB
+ESM dist/actions/reporting/guardianReportSchema.js.map          6.39 KB
+ESM dist/actions/agents/resolveLegalSpecialtyContext.d.js.map   71.00 B
+ESM dist/actions/registry/VersionedActionRegistry.d.js.map      71.00 B
+ESM dist/actions/reporting/guardianReportSchema.d.js.map        71.00 B
+ESM dist/actions/agents/index.d.js.map                          155.84 KB
+ESM dist/actions/reporting/guardianReportRenderer.js.map        56.02 KB
+ESM dist/actions/reporting/j360LegalReportRenderer.d.js.map     71.00 B
+ESM dist/actions/registry/VersionedActionRegistry.js.map        3.09 KB
+ESM dist/actions/agents/registry.js.map                         151.72 KB
+ESM dist/actions/reporting/j360LegalReportSchema.d.js.map       71.00 B
+ESM dist/actions/reporting/j360LegalReportSchema.js.map         9.94 KB
+ESM dist/actions/reporting/mktCampaignReportRenderer.d.js.map   71.00 B
+ESM dist/actions/reporting/j360LegalReportRenderer.js.map       75.81 KB
+ESM dist/actions/reporting/mktCampaignReportSchema.d.js.map     71.00 B
+ESM dist/actions/reporting/index.d.js.map                       151.09 KB
+ESM dist/actions/reporting/mktCampaignReportSchema.js.map       14.42 KB
+ESM dist/actions/reporting/recipeOrchestrationRenderer.d.js.map 71.00 B
+ESM dist/actions/reporting/recipeOrchestrationSchema.js.map     7.79 KB
+ESM dist/actions/reporting/mktCampaignReportRenderer.js.map     62.54 KB
+ESM dist/actions/reporting/recipeOrchestrationSchema.d.js.map   71.00 B
+ESM dist/actions/reporting/recipeOrchestrationRenderer.js.map   24.10 KB
+ESM dist/actions/reporting/runAtivoSchema.js.map                44.68 KB
+ESM dist/actions/reporting/runAtivoSchema.d.js.map              71.00 B
+ESM dist/actions/agents/index.js.map                            184.48 KB
+ESM dist/actions/index.js.map                                   539.58 KB
+ESM dist/actions/reporting/index.js.map                         244.79 KB
+ESM dist/actions/index.d.js.map                                 536.78 KB
+ESM dist/index.js.map                                           859.13 KB
+ESM ⚡️ Build success in 323ms
+
+EXIT 0
+
+STEP providers
+CWD /home/jusall/projects/EIAH_BUILDER
+COMMAND ['pnpm', '--filter', '@eiah/providers', 'build']
+
+> @eiah/providers@0.1.0 prebuild /home/jusall/projects/EIAH_BUILDER/packages/providers
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/providers@0.1.0 build /home/jusall/projects/EIAH_BUILDER/packages/providers
+> tsc -p tsconfig.json
+
+
+EXIT 0
+
+STEP mcp-runner
+CWD /home/jusall/projects/EIAH_BUILDER
+COMMAND ['pnpm', '--filter', '@repo/mcp-runner', 'build']
+
+> @repo/mcp-runner@0.1.0 prebuild /home/jusall/projects/EIAH_BUILDER/packages/mcp-runner
+> bash ../../scripts/prebuild-check.sh
+
+
+> @repo/mcp-runner@0.1.0 build /home/jusall/projects/EIAH_BUILDER/packages/mcp-runner
+> tsc -p tsconfig.json
+
+
+EXIT 0

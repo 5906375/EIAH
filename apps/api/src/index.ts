@@ -49,6 +49,8 @@ import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
 import { isPreDuimpRuntimeShadowRouteEnabled } from "./routes/preDuimpRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
 import { whatsappRouter } from "./routes/whatsapp";
+import { createMetaWhatsappRouter, META_WHATSAPP_WEBHOOK_PATH } from "./routes/whatsappMeta";
+import { createMetaPostgresStore } from "./services/whatsappMetaPostgresStore";
 import { startRunArchiveWorker, stopRunArchiveWorker } from "./workers/runArchiveWorker";
 import { startImobPostRunMutationWorker, stopImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
 import { startUploadRetentionWorker, stopUploadRetentionWorker } from "./workers/uploadRetentionWorker";
@@ -57,7 +59,7 @@ import { closeRunEventsTransport } from "./services/runEvents";
 import { closeRunEventStream } from "./services/runEventStream";
 import { closeMemoryResources } from "./services/memory";
 import { closeDraftStoreResources } from "./services/imob/intake/imobContractDraftService";
-import { closePrismaResources } from "@repo/db";
+import { closePrismaResources, prismaGlobal } from "@repo/db";
 import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
 import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
 import { closeCriticalKillSwitchRedis } from "@eiah/core/security/killSwitch";
@@ -92,6 +94,13 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Native Meta ingress precedes generic URL logging (GET token) and JSON parsing (signed bytes).
+// No enabled default, credential fallback, eager DB operation or outbound transport.
+app.use(META_WHATSAPP_WEBHOOK_PATH, createMetaWhatsappRouter({
+  environment: () => process.env,
+  store: config => createMetaPostgresStore(() => prismaGlobal, config.limits.retentionMs),
+  observe: metric => bootstrapLogger.info({ metric: metric.metric, value: metric.value, reasonCode: metric.reasonCode }, "whatsapp.meta.ingress"),
+}));
 app.use(requestLogger);
 app.use(
   cors({
