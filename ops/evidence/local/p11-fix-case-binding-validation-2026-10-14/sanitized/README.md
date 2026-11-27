@@ -73,3 +73,72 @@ Sem LLM (léxico fechado do P10). O 1º turno de uma conversa do Front Door nunc
 ## Proveniência e sanitização
 
 Os originais permanecem preservados localmente e fora do commit; a conferência de que nenhum foi modificado por este empacotamento (tamanho e data de modificação antes e depois) e a varredura de resíduos nas cópias estão registradas em `packaging-verification.json`. Capturas de tela, snapshots de banco, estado Git bruto, provas de infraestrutura e registros de cenários com identificadores foram omitidos; seus resultados úteis aparecem apenas nas cópias sanitizadas. O Evidence Index aponta somente para os arquivos desta pasta `sanitized/`.
+
+## Adendo de continuidade — 27/11/2026
+
+**Classificação do novo adendo: INTERNAL até autorização específica de divulgação.** Esta representação limitada é potencialmente publicável, mas sua inclusão local não autoriza divulgação. O conteúdo histórico anteriormente público permanece distinto deste adendo; a exposição anterior não autoriza a publicação desta versão.
+
+### Continuidade e configuração efetivamente validada
+
+O registro de 14/10/2026 acima permanece integralmente preservado, com seus resultados e limites históricos do ramo `claimOnly`. Não foi reexecutado nem recertificado nesta consolidação. O incremento de novembro abrange os caminhos operacionais exercitados da rota normal `resolve-turn`; seus resultados não devem ser atribuídos à configuração de outubro.
+
+O merge commit funcional local foi concluído, preservando os dois pais e o histórico. Perante a baseline reconciliada, o incremento funcional corresponde a oito arquivos, 474 inserções e 93 remoções. A validação abaixo foi executada sobre a árvore candidata antes do commit; a conferência posterior confirmou a correspondência dos conteúdos versionados. Não houve nova execução sobre o commit por ocasião deste adendo. A integração remota do PR #511 permanece pendente.
+
+A rodada utilizou dados sintéticos e ambiente descartável. Foram aprovados quatro builds focais e a aplicação de 37 migrations existentes no banco descartável, além do typecheck oficial da API. A preparação local ocorreu sem instalação adicional de dependências. Não houve correções nem reexecuções durante a rodada.
+
+### Oito suítes individualizadas
+
+| Suíte | Resultado |
+| --- | --- |
+| Binding explícito | 67/67 PASS |
+| Specialist Bridge | 29/29 PASS |
+| Membership/revogação | 8/8 PASS |
+| Autorização de escrita CRM | 6/6 PASS |
+| Continuidade Phase 1 | 5/5 PASS |
+| CRM Turn Engine | 115/115 PASS |
+| Property Capture Intake | 16/16 PASS |
+| Contrato HTTP Resolve-Turn | 29/29 PASS |
+
+**Total: 275/275 PASS**, com zero falhas, cancelamentos, skips ou casos sem resultado. Tempo somado das oito suítes: **30,763 segundos**. São resultados locais das suítes individualizadas, não aprovação do W4 global.
+
+### Comportamentos comprovados no escopo exercitado
+
+Nos caminhos operacionais abrangidos, os cenários comprovaram binding explícito, sem seleção silenciosa do caso mais recente e sem concessão de binding por `threadId`, identificador encontrado no texto ou estado conversacional isolado. O contexto operacional permanece subordinado à autoridade do IMOB_CRM; `threadId` não substitui `caseId`.
+
+Foram observadas resposta conversacional bloqueada nos casos aplicáveis, preservação da negativa por etapa e HTTP 403 para caso explicitamente vinculado em etapa negada. Permaneceram aprovados os casos positivos autorizados e as jornadas exercitadas de CRM, continuidade e intake.
+
+Nos casos instrumentados por dublês, foram observadas ausência de consultas indevidas de caso e ausência de efeitos downstream indevidos. Nos snapshots examinados, não foram observadas exposição nem alterações persistidas indevidas. Essas constatações se limitam aos pontos observados e não comprovam instrumentação integral das leituras SQL nem propriedades de caminhos não exercitados.
+
+### Ressalvas obrigatórias
+
+1. Foram executadas oito suítes individualizadas, não o W4 global.
+2. O typecheck oficial da API exclui arquivos de teste. Não houve typecheck independente desses arquivos.
+3. A configuração validada incluiu builds derivados e cliente Prisma regenerado localmente.
+4. Os artefatos Prisma regenerados não integram o merge commit local.
+5. O contrato HTTP real não instrumentou integralmente todas as leituras SQL.
+6. A action/reason exata do probe de continuidade não foi registrada separadamente.
+7. Uma conexão PostgreSQL foi observada após a suíte 7, com zero após a suíte 8.
+8. Não foi atribuída causa de vazamento à conexão observada.
+9. O uso de `--test-force-exit` limita a comprovação de encerramento natural dos recursos.
+10. Não foi demonstrada ausência geral de vazamentos.
+11. A experiência Governed Assisted Case Binding completa permanece parcialmente existente e não foi validada de ponta a ponta.
+12. Não houve autorização de piloto, deployment ou operação produtiva.
+13. Os resultados locais não equivalem à conclusão da integração remota.
+
+### Explicit Case Binding e direção assistida
+
+**Explicit Case Binding** é a fundação operacional do backend, validada no escopo das oito suítes. Preserva o vínculo explícito obrigatório e a autoridade do domínio IMOB sobre o contexto operacional.
+
+**Governed Assisted Case Binding** é a direção futura da experiência conversacional. Sua composição deverá reutilizar os mecanismos existentes de listagem, seleção, contexto, validação CRM e continuidade. Há capacidades parcialmente existentes; a experiência assistida completa não é declarada implementada nem validada de ponta a ponta.
+
+Este adendo não implementa componentes, interfaces ou endpoints, não amplia o PR #511, não implementa `approval_pending` e não reabre Asset Destination.
+
+### Preservação, divulgação e continuidade
+
+Os registros históricos e o acervo interno permanecem preservados. Este adendo não incorpora os 14 logs integrais, caminhos absolutos locais, identificadores de containers, credenciais, configurações operacionais, dados reais, detalhes internos desnecessários, digests protegidos ou evidências RESTRICTED/SECRET. Não foram criadas cópias dos logs.
+
+O merge commit funcional permanece distinto deste adendo documental unstaged e dos derivados Prisma locais fora do stage. Os derivados ignorados e os artefatos compilados permanecem preservados; a eventual defasagem Prisma versionada continua como pendência transversal independente.
+
+O Evidence Index conserva sua entrada existente, sem alteração nesta intervenção. Não há nova certificação remota ou operacional. Permanecem AUTHZ-ROOT-001 congelado, os freezes, holds, No-Go Ledgers e demais bloqueios operacionais; R0A permanece encerrado.
+
+A próxima intervenção exige autorização específica para um commit exclusivamente documental. Divulgação, push e atualização do PR dependem de autorização posterior própria, com os limites IPIG aplicáveis.
