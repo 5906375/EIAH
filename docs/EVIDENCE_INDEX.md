@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Site IMOB — retomada da restauração de rascunhos (2026-11-27)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Restauração de rascunhos — aceitação funcional local evidenciada | `docs/ops/evidence/latest/imob-free-site-pilot-2026-11-22.md`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/resultado.json`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/cancelamento.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/restauracao-status-sucesso.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/editor-marca-nao-restaurada.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/resultado-correcao-marca.json`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/marca-corrigida.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/imovel-restaurado-corrigido.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/arquivo-invalido-corrigido.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/falha-marca-recuperada.png`, `docs/ops/evidence/latest/imob-draft-restore-browser-2026-11-27/falha-indexeddb-recuperada.png` | Histórico unitário 12/12 e 15/15 preservado; falha original de C preservada. Correção focal da inicialização da marca: regressão R1 PASS e C–H PASS em Chromium real, com A/B reaproveitados. Inclui recarga, rejeição de arquivo, prévia anterior inalterada, evento de commit IndexedDB anterior à resolução e duas falhas injetadas/recuperadas. Artefatos antes/depois, isolamento e encerramento reais. Validação residual nativa de ações/cabeçalhos/destinos: 3/3 PASS, exit 0; composição de 29 arquivos conferida, cache Wrangler excluído. Sem garantia de atomicidade absoluta, homologação publicada ou autorização de integração/deployment. |
+
 ## Site IMOB — guia da demo com áudio (2026-11-21)
 
 | Assunto | Arquivo | O que prova |

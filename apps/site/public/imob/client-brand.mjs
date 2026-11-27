@@ -1,6 +1,7 @@
 import { renderClientFooter } from './client-footer.mjs';
 
-const key = 'eiah-imob-visual:client-brand:v1';
+export const clientBrandStorageKey = 'eiah-imob-visual:client-brand:v1';
+const key = clientBrandStorageKey;
 const defaults = Object.freeze({
   name: 'Imobiliária Horizonte',
   accent: '#087566',
@@ -69,7 +70,7 @@ export function applyBrand(scope, profile, { preview = false } = {}) {
   });
 }
 
-if (document.body.dataset.product === 'ia-cliente') {
+if (typeof document !== 'undefined' && document.body.dataset.product === 'ia-cliente') {
   const render = () => {
     const brand = readBrand();
     applyBrand(document.body, brand);
@@ -78,6 +79,6 @@ if (document.body.dataset.product === 'ia-cliente') {
   render();
   addEventListener('pageshow', render);
   addEventListener('storage', event => { if (event.key === key) render(); });
-} else if (document.body.dataset.product === 'operacao-eiah') {
+} else if (typeof document !== 'undefined' && document.body.dataset.product === 'operacao-eiah') {
   document.querySelectorAll('[data-client-footer]').forEach(el => renderClientFooter(el));
 }

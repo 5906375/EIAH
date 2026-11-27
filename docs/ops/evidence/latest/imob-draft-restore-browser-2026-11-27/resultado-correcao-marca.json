@@ -1,0 +1,1027 @@
+{
+  "startedAt": "2026-11-27T10:16:12.412Z",
+  "browser": "149.0.7827.55",
+  "playwright": "1.61.1",
+  "results": [
+    {
+      "id": "A",
+      "status": "REUSED_PASS",
+      "source": "resultado.json"
+    },
+    {
+      "id": "B",
+      "status": "REUSED_PASS",
+      "source": "resultado.json"
+    },
+    {
+      "id": "C",
+      "status": "PASS",
+      "checks": [
+        "marca",
+        "apresentação",
+        "cor",
+        "logo",
+        "prévia",
+        "imóvel no formulário"
+      ],
+      "observation": "marca completa e imóvel restaurados na interface real"
+    },
+    {
+      "id": "D",
+      "status": "PASS",
+      "observation": "recarregamento real preservou localStorage, IndexedDB, marca, logo e imóvel na interface"
+    },
+    {
+      "id": "E",
+      "status": "PASS",
+      "observation": "arquivo inválido recusado antes de confirmar e sem alterar os registros"
+    },
+    {
+      "id": "F",
+      "status": "PASS",
+      "observation": "prévia published anterior inalterada ao longo de C-H; botão de atualização continua disponível; somente GETs locais, nenhuma publicação automática"
+    },
+    {
+      "id": "G",
+      "status": "PASS",
+      "observation": "transação IndexedDB real concluiu antes da resolução de updateSetup; leitura em nova conexão confirmou o registro",
+      "proof": {
+        "events": [
+          "transaction-complete",
+          "updateSetup-resolved"
+        ],
+        "readbackMatches": true
+      }
+    },
+    {
+      "id": "H",
+      "status": "PASS",
+      "probes": [
+        "H1",
+        "H2"
+      ],
+      "observation": "falha da segunda gravação e abort real do IndexedDB recuperaram exatamente os registros anteriores, sem falso sucesso"
+    }
+  ],
+  "regression": [
+    {
+      "id": "R1",
+      "status": "PASS",
+      "checks": [
+        "nome",
+        "apresentação",
+        "cor",
+        "logo",
+        "prévia",
+        "contatos"
+      ],
+      "observation": "abertura inicial carrega a marca existente sem clicar em Carregar dados salvos"
+    }
+  ],
+  "errors": [],
+  "faults": [
+    {
+      "id": "H1",
+      "status": "PASS",
+      "kind": "segunda gravação localStorage",
+      "fired": true,
+      "firstWriteChanged": true,
+      "recoveredExactly": true,
+      "message": "Não foi possível restaurar o rascunho. Os dados anteriores da marca e dos imóveis foram recuperados."
+    },
+    {
+      "id": "H2",
+      "status": "PASS",
+      "kind": "abort de transação IndexedDB real",
+      "fired": true,
+      "abortEventObserved": true,
+      "bothLocalWritesChanged": true,
+      "recoveredExactly": true,
+      "message": "Não foi possível restaurar o rascunho. Os dados anteriores da marca e dos imóveis foram recuperados."
+    }
+  ],
+  "before": {
+    "local": {
+      "eiah-imob-visual:client-brand:v1": "{\"name\":\"Marca Sintética Anterior\",\"introduction\":\"Apresentação sintética anterior.\",\"accent\":\"#123456\",\"logo\":\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYJ1VIt9e8EHMDOJ78d9p5uTKgDCAAA//87Jl0rAAAABklEQVQDAGo0DOm0+CSVAAAAAElFTkSuQmCC\",\"contact\":\"Equipe Sintética Anterior\",\"footerEmail\":\"anterior@example.invalid\"}",
+      "eiah-imob-visual:client-properties:v1": "{\"l-01\":{\"titulo\":\"Imóvel Sintético Anterior\",\"tipo\":\"Casa\",\"cidade\":\"Cidade Sintética\",\"bairro\":\"Bairro Sintético\",\"descricao\":\"\",\"caracteristicas\":\"\",\"preco\":1200,\"condominio\":null,\"iptu\":null,\"area\":0,\"quartos\":0,\"suites\":0,\"banheiros\":0,\"vagas\":0,\"maxGuests\":0,\"cleaning\":0,\"finalidade\":\"locacao\",\"cover\":\"\",\"photos\":[]}}"
+    },
+    "setup": {
+      "experts": {},
+      "profile": {
+        "name": "Responsável Sintético",
+        "business": "Marca Sintética Anterior",
+        "email": "qa@example.invalid",
+        "slug": "aceitacao-sintetica"
+      },
+      "draft": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "introduction": "Apresentação sintética anterior.",
+          "accent": "#123456",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYJ1VIt9e8EHMDOJ78d9p5uTKgDCAAA//87Jl0rAAAABklEQVQDAGo0DOm0+CSVAAAAAElFTkSuQmCC",
+          "contact": "Equipe Sintética Anterior",
+          "footerEmail": "anterior@example.invalid"
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      },
+      "published": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "introduction": "Apresentação sintética anterior.",
+          "accent": "#123456",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYJ1VIt9e8EHMDOJ78d9p5uTKgDCAAA//87Jl0rAAAABklEQVQDAGo0DOm0+CSVAAAAAElFTkSuQmCC",
+          "contact": "Equipe Sintética Anterior",
+          "footerEmail": "anterior@example.invalid"
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      }
+    }
+  },
+  "afterRestoration": {
+    "local": {
+      "eiah-imob-visual:client-brand:v1": "{\"name\":\"Marca Sintética Restaurada\",\"introduction\":\"Apresentação sintética restaurada.\",\"contact\":\"Equipe Sintética Restaurada\",\"footerEmail\":\"restaurado@example.invalid\",\"accent\":\"#234567\",\"logo\":\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYr1VIt9a8AHMDOJ78d9p5uTKgDCAAA//9aa1RwAAAABklEQVQDAPWDDoHglbYaAAAAAElFTkSuQmCC\"}",
+      "eiah-imob-visual:client-properties:v1": "{\"v-01\":{\"titulo\":\"Casa Sintética Restaurada\",\"tipo\":\"Casa\",\"cidade\":\"Cidade Sintética\",\"bairro\":\"Bairro Sintético\",\"descricao\":\"Fixture de aceitação.\",\"caracteristicas\":\"\",\"preco\":765432,\"condominio\":null,\"iptu\":null,\"area\":0,\"quartos\":0,\"suites\":0,\"banheiros\":0,\"vagas\":0,\"maxGuests\":0,\"cleaning\":0,\"finalidade\":\"venda\",\"cover\":\"\",\"photos\":[]}}"
+    },
+    "setup": {
+      "experts": {},
+      "profile": {
+        "name": "Responsável Sintético",
+        "business": "Marca Sintética Anterior",
+        "email": "qa@example.invalid",
+        "slug": "aceitacao-sintetica"
+      },
+      "draft": {
+        "brand": {
+          "name": "Marca Sintética Restaurada",
+          "introduction": "Apresentação sintética restaurada.",
+          "contact": "Equipe Sintética Restaurada",
+          "footerEmail": "restaurado@example.invalid",
+          "accent": "#234567",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYr1VIt9a8AHMDOJ78d9p5uTKgDCAAA//9aa1RwAAAABklEQVQDAPWDDoHglbYaAAAAAElFTkSuQmCC"
+        },
+        "properties": [
+          {
+            "id": "v-01",
+            "finalidade": "venda",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Casa Sintética Restaurada",
+            "preco": 765432,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-fachada.webp",
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-cozinha.webp"
+            ],
+            "destaque": true,
+            "descricao": "Fixture de aceitação.",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 2
+      },
+      "published": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "introduction": "Apresentação sintética anterior.",
+          "accent": "#123456",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYJ1VIt9e8EHMDOJ78d9p5uTKgDCAAA//87Jl0rAAAABklEQVQDAGo0DOm0+CSVAAAAAElFTkSuQmCC",
+          "contact": "Equipe Sintética Anterior",
+          "footerEmail": "anterior@example.invalid"
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      }
+    }
+  },
+  "finalState": {
+    "local": {
+      "eiah-imob-visual:client-brand:v1": "{\"name\":\"Marca Sintética Restaurada\",\"introduction\":\"Apresentação sintética restaurada.\",\"contact\":\"Equipe Sintética Restaurada\",\"footerEmail\":\"restaurado@example.invalid\",\"accent\":\"#234567\",\"logo\":\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYr1VIt9a8AHMDOJ78d9p5uTKgDCAAA//9aa1RwAAAABklEQVQDAPWDDoHglbYaAAAAAElFTkSuQmCC\"}",
+      "eiah-imob-visual:client-properties:v1": "{\"v-01\":{\"titulo\":\"Casa Sintética Restaurada\",\"tipo\":\"Casa\",\"cidade\":\"Cidade Sintética\",\"bairro\":\"Bairro Sintético\",\"descricao\":\"Fixture de aceitação.\",\"caracteristicas\":\"\",\"preco\":765432,\"condominio\":null,\"iptu\":null,\"area\":0,\"quartos\":0,\"suites\":0,\"banheiros\":0,\"vagas\":0,\"maxGuests\":0,\"cleaning\":0,\"finalidade\":\"venda\",\"cover\":\"\",\"photos\":[]}}"
+    },
+    "setup": {
+      "experts": {},
+      "profile": {
+        "name": "Responsável Sintético",
+        "business": "Marca Sintética Anterior",
+        "email": "qa@example.invalid",
+        "slug": "aceitacao-sintetica"
+      },
+      "draft": {
+        "brand": {
+          "name": "Marca Sintética Restaurada",
+          "introduction": "Apresentação sintética restaurada.",
+          "contact": "Equipe Sintética Restaurada",
+          "footerEmail": "restaurado@example.invalid",
+          "accent": "#234567",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYr1VIt9a8AHMDOJ78d9p5uTKgDCAAA//9aa1RwAAAABklEQVQDAPWDDoHglbYaAAAAAElFTkSuQmCC"
+        },
+        "properties": [
+          {
+            "id": "v-01",
+            "finalidade": "venda",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Casa Sintética Restaurada",
+            "preco": 765432,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-fachada.webp",
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-cozinha.webp"
+            ],
+            "destaque": true,
+            "descricao": "Fixture de aceitação.",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 2
+      },
+      "published": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "introduction": "Apresentação sintética anterior.",
+          "accent": "#123456",
+          "logo": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4AdzKMQ0AAAwCwQYJ1VIt9e8EHMDOJ78d9p5uTKgDCAAA//87Jl0rAAAABklEQVQDAGo0DOm0+CSVAAAAAElFTkSuQmCC",
+          "contact": "Equipe Sintética Anterior",
+          "footerEmail": "anterior@example.invalid"
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      }
+    }
+  },
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/imob/ia-cliente/criar-site/"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/draft-restore.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/carousel-navigation.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/imob-specialists.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/pilot-site.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/draft-rules.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/contact-eiah.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/guias-eiah.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/piloto-vagas.json"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/piloto-exemplos.json"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-j360.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-finnexus.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-radar.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-casa.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-cozinha.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/site-ia-vista-mar-balneario.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-temporada.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-locacao.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-quarto.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-apartamento.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-gourmet.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-varanda.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-sala.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/ia-cliente/personalizar/"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/previa02-abertura.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/brand-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture-panel.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-video-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/stay-visual.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/microphone-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-videos.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/video-files.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/financing.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/ia-cliente/personalizar/"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/previa02-abertura.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/brand-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture-panel.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-video-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/stay-visual.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/microphone-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-videos.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/video-files.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/financing.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/previa02-v01-fachada.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/ia-cliente/criar-site/"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/draft-restore.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/site-setup-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/carousel-navigation.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/imob-specialists.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/pilot-site.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/draft-rules.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/contact-eiah.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/guias-eiah.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/piloto-vagas.json"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/piloto-exemplos.json"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-j360.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-finnexus.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/especialista-radar.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-casa.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-cozinha.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/site-ia-vista-mar-balneario.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-temporada.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-locacao.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-quarto.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-apartamento.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-gourmet.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-varanda.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/vitrine-alto-padrao-sala.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/ia-cliente/personalizar/"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/previa02-abertura.webp"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/brand-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture-panel.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-video-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/stay-visual.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guided-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/microphone-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/property-videos.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/video-files.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/financing.mjs"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "path": "/imob/assets/previa02-v01-fachada.webp"
+    }
+  ],
+  "blockedOrigins": [
+    "https://isolation-probe.invalid"
+  ],
+  "editorErrors": [],
+  "instrumentationRestored": true,
+  "finishedAt": "2026-11-27T10:33:27.697Z",
+  "cleanup": {
+    "contextClosed": true,
+    "browserConnected": false,
+    "temporaryFixturesRemoved": true,
+    "staticServerExitCode": 0,
+    "interactiveNodeExitCode": 0
+  }
+}

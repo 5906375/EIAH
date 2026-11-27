@@ -85,7 +85,7 @@ function renderTopic(topic, dialog) {
   const samePage = target.pathname === location.pathname && target.search === location.search;
   const anchor = samePage && target.hash ? document.getElementById(target.hash.slice(1)) : null;
   if (!samePage || (anchor && !anchor.hidden)) {
-    const link = element('a', label, 'quiet-link');
+    const link = element('a', label, 'btn btn-ghost');
     link.href = target;
     link.addEventListener('click', () => dialog.close());
     details.append(link);
