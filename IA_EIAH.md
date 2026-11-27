@@ -201,6 +201,42 @@ Este protocolo executa a obrigação do roadmap canônico, §9.6, para Claude Co
 
 A formalização documental não comprova conformidade das worktrees nem implementação de gate automatizado. Evolução de CI/CD exige autorização própria e deve estender mecanismos existentes após demonstrar a lacuna, sem substituir a decisão humana exigível.
 
+## 8.2. Governança da propriedade intelectual e da informação — IPIG
+
+Este protocolo executa a obrigação do roadmap canônico, §9.6, e complementa a TWDG (§8.1). Decisão humana aprovada em 27/11/2026; aplica-se a Claude Code, Codex e demais executores sujeitos às instruções comuns.
+
+1. **Objetivo e escopo.** Preservar transparência arquitetural e demonstração pública sem exposição desnecessária de informação interna, proprietária ou protegida. A direção híbrida compreende superfície pública selecionada, módulos e serviços proprietários quando viáveis, núcleo operacional restrito, acervo documental interno e gestão externa de segredos. Sua aprovação não autoriza migrações, separação de módulos, mudança de visibilidade, alteração de licença ou ativação operacional. Autorização para desenvolver, integrar ou implantar não implica autorização para divulgar.
+
+2. **Classificação da informação.** Utilizar as categorias abaixo para definir o tratamento, sem presumir que o rótulo implemente controle de acesso:
+
+   | Categoria | Critério e tratamento |
+   | --- | --- |
+   | `PUBLIC` | Conteúdo autorizado à divulgação na versão e no destino identificados, observados os direitos aplicáveis. |
+   | `INTERNAL` | Conteúdo interno de desenvolvimento e gestão, sem autorização de divulgação pública. |
+   | `PROPRIETARY` | Conhecimento, código ou inteligência de negócio cuja exploração se pretende proteger; acesso e distribuição dependem dos direitos e das autorizações aplicáveis. |
+   | `RESTRICTED` | Informações operacionais, dados protegidos e mecanismos sensíveis; acesso limitado à finalidade e aos responsáveis autorizados. |
+   | `SECRET` | Credenciais, chaves e outros segredos; não versionar em Git, inclusive privado, nem incluir em logs ou artefatos; utilizar gestão externa de segredos. |
+
+3. **Confidencialidade, titularidade e licenciamento.** São dimensões distintas. A classificação não concede, modifica ou revoga direitos de propriedade intelectual. Registrar proporcionalmente titularidade conhecida, licença aplicável, classificação e finalidade nos instrumentos existentes da frente; indicar desconhecimento sem completar por inferência. Autoria Git ou administração do repositório não comprovam, por si, todos os direitos sobre contribuições e componentes de terceiros. Não alterar o vocabulário específico de sensibilidade da RFC Pré-DUIMP nem outros contratos por esta classificação de governança.
+
+4. **Competência para divulgação.** A autorização cabe ao proprietário da EIAH ou ao responsável por ele expressamente designado, dentro dos direitos e competências de que disponham. Restrições de terceiros e autorizações de titulares de dados ou conteúdo, quando exigíveis, permanecem aplicáveis. A decisão deve ser humana e específica; aprovação de CI, existência de evidência, classificação técnica ou autorização de desenvolvimento não a substituem. Não inferir licença ou autorização de divulgação da mera posse de um arquivo.
+
+5. **Versão, destino e rastreabilidade.** Identificar o conteúdo autorizado por versão verificável e registrar destino, finalidade e autoridade responsável, reutilizando decisões e registros existentes, sem inventários paralelos. Uma autorização pode abranger etapas e superfícies expressamente delimitadas; não solicitar novamente o mesmo escopo enquanto permanecer aplicável. Mudança material de conteúdo ou destino exige decisão correspondente. Os próprios registros públicos não podem revelar informação interna apenas para comprovar sua existência ou preservação.
+
+6. **Conteúdo misto ou não classificado.** Conteúdo novo não classificado não deve ser presumido `PUBLIC`. Conteúdo misto recebe o tratamento mais restritivo aplicável ou é separado, considerando também direitos e licenças. Localização em diretório público, inclusão forçada no Git ou versão anterior publicada não autorizam novos detalhes internos. Classificar conteúdo já divulgado não elimina suas cópias nem recupera automaticamente sua confidencialidade.
+
+7. **Conferência antes da publicação.** Integrar ao preflight TWDG a conferência proporcional de conteúdo staged, commits exclusivos e objetos Git alcançáveis pela publicação, inclusive conteúdo histórico ainda não autorizado ao destino. Abranger, quando aplicável, código, documentação, PRs, comentários, logs, screenshots, evidências, demonstrações e serviços externos utilizados no desenvolvimento. Verificar compatibilidade entre conteúdo, direitos, versão e destino autorizados; não transmitir conteúdo protegido a serviço externo por mera conveniência de validação. Reutilizar resultados aplicáveis, sem repetir auditorias concluídas.
+
+8. **Representações públicas e originais internos.** Quando aprovadas, representações limitadas devem identificar sua natureza, decisão de origem e limites, preservando integralmente o original interno. Não apresentá-las como a íntegra, nova ratificação ou substituição histórica. Não atribuir à representação o digest do original como se fosse próprio; a divulgação de referências ou digests internos exige autorização específica. Reutilizar o precedente da representação pública da ADR-012 sem alterá-la, divulgar seu original, digest interno ou relatórios associados. AUTHZ-ROOT-001 permanece congelado. Não converter automaticamente outras ADRs para esse modelo.
+
+9. **Artefatos de distribuição.** Conferir o conteúdo efetivo de pacotes, imagens Docker, sourcemaps, artefatos CI e frontend distribuído, inclusive arquivos e dependências incorporados, logs e metadados. Não presumir proteção por compilação, minificação, repositório privado, `.gitignore` ou `.dockerignore`. Preservar evidências integrais em acervo autorizado e divulgar somente a parte aprovada, explicitando limites de verificação; referências públicas não substituem a prova interna. A segurança operacional não pode depender exclusivamente da confidencialidade da implementação.
+
+10. **Direitos anteriormente concedidos.** Não presumir revogação retroativa de licenças ou direitos validamente concedidos, nem possibilidade de impedir clones ou forks de conteúdo público. Distinguir código próprio, contribuições, componentes de terceiros e artefatos gerados. A ausência de comprovação de direitos não autoriza relicenciamento; dúvidas materiais exigem decisão competente antes da publicação afetada. Não declarar infração de licenciamento sem comprovação.
+
+11. **Exceções e bloqueios.** Pendências materiais bloqueiam a divulgação afetada em modo fail-closed, preservando o trabalho e apresentando a providência mínima. Não interromper automaticamente outras frentes sem dependência impeditiva demonstrada. Exceções exigem autorização humana específica e registro de escopo, finalidade, versão e destino; não concedem direitos inexistentes, não autorizam versionar segredos e não afastam restrições legais, contratuais ou bloqueios operacionais aplicáveis. Preservar freezes, holds e No-Go Ledgers; não usar a IPIG para descartar ou reescrever histórico.
+
+12. **Integração e pendências posteriores.** Executar com a TWDG e a [Release Governance Policy](docs/ops/release-governance-policy.md), reutilizando mecanismos existentes. O Evidence Index continua sujeito à §13 e não recebe conteúdo privado ou conformidade antecipada para satisfazer publicidade. Permanecem frentes posteriores, com autorização própria: alcance da declaração MIT do MCP Runner; modalidade de licenciamento do Intro.js; titularidade e direitos sobre contribuições; política geral de licenciamento; separação futura de módulos; conteúdo efetivo dos artefatos distribuídos; eventuais gates automatizados; recursos remotos de secret scanning e push protection. Esta formalização não comprova conformidade global nem declara esses controles implementados ou habilitados.
+
 ---
 
 ## 9. Trabalho em andamento — IMOB
