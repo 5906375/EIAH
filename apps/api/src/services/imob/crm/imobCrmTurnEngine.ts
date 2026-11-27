@@ -1,7 +1,11 @@
 import { interpretTransversalTurn } from "../imobTransversalTurn";
+import { interpretImobPropertyCapture, type ImobPropertyCaptureDeps } from "../intake/imobPropertyCaptureIntake";
+import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
 import { buildCaseBindingDenialText, buildInviteClarificationResolution, buildInviteGuidanceResolution, buildTransversalTurnText, type CaseBindingDenialCode } from "../imobTransversalTurnCopy";
 import { attachProposalReviewQuestion, resolveProposalReviewReply } from "./imobProposalReviewContinuity";
-import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
+import { resolveImobSemanticIntent, resolveImobPropertyUnitIntake, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
+import { IMOB_PROPERTY_UNIT_INTAKE_POLICY, looksLikeMultipleUnits } from "@eiah/contracts";
+import type { ImobResolveTurnResponse, ImobThreadConversationState } from "../imobConversationContract";
 import { matchImobConversationalIntents, parseImobIntent } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
 import { InternalCrmMarketScanProvider } from "../marketScan/InternalCrmMarketScanProvider";
@@ -25,6 +29,7 @@ import type {
   ImobCrmTurnEntitlements,
 } from "./imobCrmAgentContract";
 import { ImobCrmRepository } from "./imobCrmRepository";
+import { isArchivedPropertyConsultText } from "./imobCrmGovernedOperationalContext";
 import type { OperationalResolution, ResolverHelpers, ThreadStateLike } from "./imobCrmOperationalResolverShared";
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
@@ -761,6 +766,8 @@ function hasStrongBusinessReadIntent(message: string) {
     || intent.intentId === "next_best_action"
   )) return true;
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  // Consulta somente leitura de im\u00f3veis arquivados: leitura de neg\u00f3cio (n\u00e3o \u00e9 transi\u00e7\u00e3o do fluxo de cadastro em andamento).
+  if (isArchivedPropertyConsultText(normalized)) return true;
   if (
     normalized.includes("o que falta")
     || normalized.includes("pendencia")
@@ -1492,6 +1499,9 @@ function stripLegacyCardProof(card: Record<string, unknown> | null) {
 
 function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Record<string, unknown> {
   const isMarketScanSelection = isMarketScanSelectionResolution(data);
+  // Consulta de lista somente leitura (ex.: imóveis arquivados): o estado de cadastro carregado na conversa é só contexto, nunca
+  // um desfecho. Sem isso a lista seria apresentada como "cadastro processado com sucesso" (variante success_*) e perderia o card.
+  const isReadOnlyList = asString(data.mode) === "consult" && (asString(data.action) ?? "").endsWith(".list");
   const originalPresentation = asObject(data.presentation) ?? {};
   const presentation = isMarketScanSelection
     ? stripMarketScanSelectionLegacyPresentation(originalPresentation)
@@ -1503,8 +1513,8 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
   const inferredCopyState = inferImobCrmCopyStateFromResolution(normalizedData);
   const copyState = isMarketScanSelection ? null : inferredCopyState;
   const proof = isMarketScanSelection ? null : resolveImobProofSurfaceFromResolution(normalizedData);
-  const blocks = isMarketScanSelection ? [] : buildImobPresentationBlocks(normalizedData, copyState);
-  const outcome = inferOperationalOutcomeFromResolution(normalizedData, copyState);
+  const blocks = isMarketScanSelection || isReadOnlyList ? [] : buildImobPresentationBlocks(normalizedData, copyState);
+  const outcome = isReadOnlyList ? null : inferOperationalOutcomeFromResolution(normalizedData, copyState);
   const hasForm = Boolean(asObject(presentation.form));
   const snapshotVariant = inferCanonicalSnapshotVariant({
     mode: asString(normalizedData.mode) ?? "",
@@ -1768,6 +1778,30 @@ export async function resolveImobTransversalTurnStage(input: {
   };
 }
 
+/** Intake do formulário no mesmo engine e provider do chat. Não chama repositórios. */
+export async function resolveImobPropertyUnitIntakeTurn(message: string, previous?: unknown): Promise<ImobResolveTurnResponse> {
+  const propertyUnitIntake = await resolveImobPropertyUnitIntake(message);
+  const conversationState = (parseImobCrmThreadState({ threadState: previous }) ?? createEmptyImobCrmThreadState()) as ImobThreadConversationState;
+  return {
+    mode: "consult", action: "property.units.intake", threadLabel: "Captação", propertyUnitIntake,
+    conversationState: propertyUnitIntake.status === "resolved" && conversationState.operational?.flow === "property.create" && conversationState.operational.propertyDraft
+      ? { ...conversationState, operational: { ...conversationState.operational,
+          propertyDraft: { ...conversationState.operational.propertyDraft, unitLabels: propertyUnitIntake.unitLabels } } }
+      : conversationState,
+    presentation: { text: propertyUnitIntake.status === "resolved"
+      ? `Identifiquei: ${propertyUnitIntake.unitLabels.join(", ")}. Confira antes de cadastrar; nada foi gravado.`
+      : propertyUnitIntake.status === "needs_clarification" ? propertyUnitIntake.message : IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification },
+  };
+}
+
+/** Pending form intake returns before case resolution, operational dispatch or persistence. */
+export async function resolveImobPropertyCaptureTurn(input: unknown, deps: ImobPropertyCaptureDeps) {
+  const request = imobPropertyCaptureRequestSchema.parse(input);
+  const propertyCapture = await interpretImobPropertyCapture(request, deps);
+  return { mode: "consult" as const, action: "property.draft.intake", threadLabel: "Captação", propertyCapture,
+    conversationState: createEmptyImobCrmThreadState(), presentation: { text: propertyCapture.content } };
+}
+
 export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) {
   const { asString } = params.helpers;
   const message = asString(params.body.message);
@@ -1777,6 +1811,11 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   const recipeMissionContext = asObject(params.body.recipeMissionContext) as ImobMissionContext | null;
   const threadLabel = asString(params.body.threadLabel);
   const parsedThreadState = parseImobCrmThreadState(params.body);
+  if (params.body.intake === "property_units") {
+    if (!params.entitlements.REAL_ESTATE_CORE) return { mode: "blocked", action: "property.units.denied", threadLabel: "IMOB",
+      conversationState: parsedThreadState ?? createEmptyImobCrmThreadState(), presentation: { text: "O IMOB não está habilitado neste workspace." } };
+    return resolveImobPropertyUnitIntakeTurn(message ?? "", parsedThreadState);
+  }
   const hasContinuity = Object.hasOwn(asObject(asObject(params.body.threadState)?.operational) ?? {}, "continuity");
   const shortReply = isImobPendingActionConfirmationMessage(message ?? "")
     || /^(sim|não|nao|ok|confirmo|confirmar|pode executar|pode seguir|seguir)[.!?]*$/i.test(message ?? "");
@@ -1991,6 +2030,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         message: effectiveMessage,
         semanticIntent: semanticIntent.parsedIntent,
         semanticIntentSource: semanticIntent.source,
+        propertyUnitIntake: semanticIntent.propertyUnits,
         threadLabel,
         threadId: requestedThreadId,
         caseId: turn.caseId,
@@ -2100,6 +2140,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       message: effectiveMessage,
       semanticIntent: semanticIntent.parsedIntent,
       semanticIntentSource: semanticIntent.source,
+      propertyUnitIntake: semanticIntent.propertyUnits,
       threadLabel,
       threadId: requestedThreadId,
       caseId: turn.caseId,
@@ -2180,6 +2221,15 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   };
 
   const rootSemanticIntent = message ? await resolveImobSemanticIntent(message) : null;
+  const propertyCapture = rootSemanticIntent?.parsedIntent.entity === "imovel" && rootSemanticIntent.parsedIntent.action === "create"
+    || parsedThreadState?.operational?.flow === "property.create";
+  if (rootSemanticIntent?.propertyUnits?.status === "needs_clarification"
+    || propertyCapture && rootSemanticIntent?.propertyUnits?.status !== "resolved" && looksLikeMultipleUnits(message)) {
+    const propertyUnitIntake = rootSemanticIntent?.propertyUnits?.status === "needs_clarification" ? rootSemanticIntent.propertyUnits
+      : { status: "needs_clarification" as const, unitLabels: [] as [], message: IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification };
+    return { mode: "consult", action: "property.units.clarify", threadLabel: "Captação", propertyUnitIntake,
+      conversationState: parsedThreadState ?? createEmptyImobCrmThreadState(), presentation: { text: propertyUnitIntake.message } };
+  }
   const batches = extractImobOperationalBatches(
     message ?? "",
     params.helpers.normalizeImobRouteText,

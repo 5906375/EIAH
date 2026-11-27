@@ -183,3 +183,53 @@ test("8. listagem e recuperação aplicam as mesmas regras; token de serviço (s
   assert.equal((await get(tokens.owner, "/chat/telemetry/summary")).status, 200);
   assert.equal((await get(tokens.unlinked, "/chat/telemetry/summary")).status, 403);
 });
+
+test("titular busca/renomeia/exclui conversas sem apagar auditoria; pares e outros escopos falham fechados", async () => {
+  const made = await post(tokens.owner, "/chat/conversations", { title: "Conversa para gerenciar" });
+  assert.equal(made.status, 201);
+  const conversationId = made.body.conversation.conversationId;
+  const path = `/chat/conversations/${conversationId}`;
+  const patch = (token: string, title: string) => request.patch(`/api/imob${path}`).set("Authorization", auth(token)).send({ title });
+  const del = (token: string, body: unknown) => request.delete(`/api/imob${path}`).set("Authorization", auth(token)).send(body as object);
+  assert.equal((await post(tokens.owner, `${path}/messages`, { role: "user", content: "Conteúdo sintético preservado" })).status, 201);
+  const membersBefore = await membershipCount();
+  await prismaGlobal.$executeRaw`UPDATE eiah_workspace_memberships SET status='revoked' WHERE tenant_id=${tenantId} AND workspace_id=${wsA} AND user_id=${users.revoked}`;
+  for (const [token, status] of [[tokens.peer, 404], [tokens.ownerB, 404], [tokens.ownerX, 403], [tokens.revoked, 403], [tokens.unlinked, 403], [tokens.service, 403]] as const) {
+    assert.equal((await patch(token, "Não permitido")).status, status);
+    assert.equal((await del(token, { confirm: true })).status, status);
+  }
+  for (const title of ["", "  ", "x".repeat(121), "Título\ninválido"]) assert.equal((await patch(tokens.owner, title)).status, 400);
+  assert.equal((await patch(tokens.owner, "  Título atualizado  ")).status, 200);
+  const search = await get(tokens.owner, `/chat/conversations?q=${encodeURIComponent("titulo atualizado")}`);
+  assert.equal(search.status, 200);
+  assert.equal(search.body.items.find((item: { conversationId: string }) => item.conversationId === conversationId)?.title, "Título atualizado");
+  assert.equal((await del(tokens.owner, {})).status, 400);
+  assert.equal((await get(tokens.owner, `${path}/messages`)).status, 200);
+  assert.equal((await del(tokens.owner, { confirm: true })).status, 200);
+  const listed = await get(tokens.owner, "/chat/conversations");
+  assert.ok(!listed.body.items.some((item: { conversationId: string }) => item.conversationId === conversationId));
+  for (const suffix of ["messages", "threads", "interview-state", "snapshot", "export"]) assert.equal((await get(tokens.owner, `${path}/${suffix}`)).status, 404);
+  assert.equal((await post(tokens.owner, `${path}/messages`, { role: "user", content: "Não reabrir" })).status, 404);
+  assert.equal((await patch(tokens.owner, "Não ressuscitar")).status, 404);
+  const events = await prismaGlobal.memoryEvent.findMany({ where: { tenantId, workspaceId: wsA, agentId: "imob-chat", metadata: { path: ["conversationId"], equals: conversationId } } });
+  assert.equal(events.filter((event) => event.key === "conversation.renamed").length, 1);
+  assert.equal(events.filter((event) => event.key === "conversation.deleted").length, 1);
+  assert.ok(events.some((event) => event.key === "conversation.created"));
+  assert.ok(events.some((event) => event.key === "conversation.message" && event.content === "Conteúdo sintético preservado"));
+  assert.equal(await membershipCount(), membersBefore);
+});
+
+test("renomeação concorrente com exclusão nunca restaura a conversa excluída", async () => {
+  const made = await post(tokens.owner, "/chat/conversations", { title: "Concorrência sintética" });
+  assert.equal(made.status, 201);
+  const conversationId = made.body.conversation.conversationId;
+  const path = `/api/imob/chat/conversations/${conversationId}`;
+  const [renamed, deleted] = await Promise.all([
+    request.patch(path).set("Authorization", auth(tokens.owner)).send({ title: "Título concorrente" }),
+    request.delete(path).set("Authorization", auth(tokens.owner)).send({ confirm: true }),
+  ]);
+  assert.ok([200, 404].includes(renamed.status));
+  assert.equal(deleted.status, 200);
+  assert.equal((await get(tokens.owner, `/chat/conversations/${conversationId}/messages`)).status, 404);
+  assert.ok(!(await get(tokens.owner, "/chat/conversations")).body.items.some((item: { conversationId: string }) => item.conversationId === conversationId));
+});

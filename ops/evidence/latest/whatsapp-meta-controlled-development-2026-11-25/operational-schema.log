@@ -1,0 +1,8 @@
+COMMAND ['timeout', '60s', 'env', 'DATABASE_URL=postgresql://synthetic:synthetic@127.0.0.1:1/synthetic', 'SHADOW_DATABASE_URL=postgresql://synthetic:synthetic@127.0.0.1:1/synthetic_shadow', 'pnpm', '--filter', '@repo/db', 'exec', 'prisma', 'validate', '--schema', 'prisma/schema.prisma']
+Validation only: no connection or migration application requested.
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+The schema at prisma/schema.prisma is valid 🚀
+
+EXIT 0

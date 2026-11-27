@@ -1,0 +1,2 @@
+{"ok":true,"scope":"official dist outputs only; no HTTP/DB or full packaged application run","coreAndProviderImports":true,"declarationsPresent":true,"crossEntryFailureIdentity":true,"syntheticQuotaInvocations":1,"idsSeparated":true,"realProviderCalls":0}
+{"ok":true,"instrumentationExports":true,"declarations":true,"packagedTransportStages":["transport_attempt","response_received"],"realProviderCalls":0,"scope":"formal dist only; synthetic injected transport, not HTTP/DB/browser or deployment"}

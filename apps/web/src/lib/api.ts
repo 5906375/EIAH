@@ -1139,7 +1139,13 @@ export type VerticalAccessClientStatus =
   | "aguardando_humano"
   | "aprovado"
   | "recusado"
-  | "revogado";
+  | "revogado"
+  // Avaliação gratuita: `pre_ativacao` = decisão da EIAH e/ou aceite, SEM uso; `encerrado` = fim regular por validade.
+  | "pre_ativacao"
+  | "encerrado";
+
+/** Fase da avaliação gratuita (derivada no servidor). Pedido, aprovação, aceite e ativação são fases distintas. */
+export type EvaluationPhaseClient = "requested" | "terms_pending_acceptance" | "accepted_pending_activation" | "active" | "ended";
 
 /** ADR-011 §2.5: modos de revogação escolhidos pelo administrador EIAH. */
 export type VerticalRevocationMode = "somente_leitura" | "bloqueio_total" | "sem_nova_ativacao";
@@ -1152,13 +1158,18 @@ export type VerticalAccessClientView = {
   revocationMode: VerticalRevocationMode | null;
   requestedAt: string | null;
   decidedAt: string | null;
+  /** A oferta só aparece (`offerAvailable`) quando habilitada por configuração autorizada; nunca revela o motivo de estar desligada. */
+  evaluation?: { offerAvailable: boolean; phase: EvaluationPhaseClient | null };
 };
+
+/** Pedido de avaliação: qualificação já confirmada pela pessoa (o servidor revalida tudo). */
+export type EvaluationRequestBody = { problem: string; teamSize: number; expectedOutcome: string; additionalInfo?: string; confirmed: true };
 
 export async function apiGetVerticalAccess(vertical: "IMOB" | "LOGISTICA" = "IMOB") {
   return http<{ ok: true; data: VerticalAccessClientView }>(`/vertical-access?vertical=${vertical}`);
 }
 
-export async function apiRequestVerticalAccess(body: { vertical: "IMOB" | "LOGISTICA"; channel?: "marketplace" | "chat" }) {
+export async function apiRequestVerticalAccess(body: { vertical: "IMOB" | "LOGISTICA"; channel?: "marketplace" | "chat"; evaluation?: EvaluationRequestBody }) {
   return http<{ ok: true; data: VerticalAccessClientView & { outcome: "requested" | "already_requested" | "already_approved" } }>(
     `/vertical-access/request`,
     { method: "POST", body: JSON.stringify(body) },
@@ -1185,15 +1196,37 @@ export type VerticalApprovalAdminItem = {
   recommendation: "recomendado" | "revisar" | "nao_recomendado" | null;
   scoreReasons: VerticalApprovalScoreReason[] | null;
   scoreRuleVersion: string | null;
+  /** Avaliação gratuita: presentes só em pedidos de avaliação. */
+  grantKind?: "evaluation" | null;
+  evaluationPhase?: EvaluationPhaseClient | null;
+  requestContext?: { problem?: string; teamSize?: number; expectedOutcome?: string; additionalInfo?: string } | null;
+  grantTerms?: { durationDays?: number; allowedActions?: string[]; closureMode?: string } | null;
+  grantAcceptedAt?: string | null;
+  grantStartedAt?: string | null;
+  grantValidUntil?: string | null;
+  grantClosedReason?: string | null;
+};
+
+/** Estado da oferta de avaliação, visível só ao administrador (motivos de bloqueio incluídos). */
+export type EvaluationOfferAdminView = {
+  state: "disabled" | "blocked" | "enabled";
+  reasons: string[];
+  limits: { maxDurationDays: number; allowedActions: string[]; closureModes: Array<"somente_leitura" | "bloqueio_total">; conditionsVersion: string } | null;
 };
 
 export async function apiListVerticalApprovals() {
-  return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[] } }>(`/admin/vertical-approvals`);
+  return http<{ ok: true; data: { awaiting: number; items: VerticalApprovalAdminItem[]; evaluationOffer?: EvaluationOfferAdminView } }>(`/admin/vertical-approvals`);
 }
 
 export async function apiDecideVerticalApproval(
   approvalId: string,
-  body: { decision: "aprovar" | "recusar"; note?: string; channel?: "tela" | "chat" },
+  body: {
+    decision: "aprovar" | "recusar";
+    note?: string;
+    channel?: "tela" | "chat";
+    /** Só em pedido de avaliação: o que o administrador decide (limites vêm da configuração do servidor). */
+    evaluation?: { durationDays: number; allowedActions: string[]; closureMode: "somente_leitura" | "bloqueio_total" };
+  },
 ) {
   return http<{ ok: true; data: unknown }>(`/admin/vertical-approvals/${encodeURIComponent(approvalId)}/decision`, {
     method: "POST",
@@ -1209,6 +1242,44 @@ export async function apiChangeVerticalApprovalRevocation(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+/** Avaliação: condições propostas pela EIAH (texto composto no servidor). `available:false` = nada a mostrar ou versão não vigente. */
+export type EvaluationTermsView =
+  | { phase: EvaluationPhaseClient | null; available: false; stale?: boolean }
+  | { phase: EvaluationPhaseClient | null; available: true; termsHash: string; accepted: boolean; requesterIsViewer: boolean; text: string[] };
+
+export async function apiGetEvaluationTerms() {
+  return http<{ ok: true; data: EvaluationTermsView }>(`/vertical-access/evaluation/terms`);
+}
+
+/** O aceite NÃO ativa nem libera uso (`activated:false`): a ativação é um passo seguinte, com confirmação própria. */
+export async function apiAcceptEvaluationTerms(body: { termsHash: string }) {
+  return http<{ ok: true; data: { outcome: "accepted" | "already_accepted"; activated: false } }>(`/vertical-access/evaluation/accept`, {
+    method: "POST",
+    body: JSON.stringify({ vertical: "IMOB", termsHash: body.termsHash, confirmed: true }),
+  });
+}
+
+export async function apiDeclineEvaluationTerms() {
+  return http<{ ok: true; data: { outcome: "declined" | "already_declined" } }>(`/vertical-access/evaluation/decline`, {
+    method: "POST",
+    body: JSON.stringify({ vertical: "IMOB", confirmed: true }),
+  });
+}
+
+/** Qualificação do pedido de avaliação: o provider só interpreta; o servidor valida e compõe a resposta. Nunca envia o pedido. */
+export type EvaluationIntakeDraft = { problem?: string; teamSize?: number; expectedOutcome?: string; additionalInfo?: string };
+export type EvaluationIntakeResult = {
+  outcome: "need_more" | "confirm" | "answered" | "clarify" | "out_of_context" | "leave" | "not_permitted" | "offer_unavailable" | "unavailable" | "timeout" | "invalid";
+  content: string;
+  endsContext: boolean;
+  draft: EvaluationIntakeDraft;
+  missing: Array<"problem" | "teamSize" | "expectedOutcome">;
+};
+
+export async function apiEvaluationIntake(body: { message: string; stage: "qualifying" | "confirm"; draft?: EvaluationIntakeDraft }, signal?: AbortSignal) {
+  return http<{ ok: true; data: EvaluationIntakeResult }>(`/front-door/intake/evaluation`, { method: "POST", body: JSON.stringify(body), signal });
 }
 
 /** ADR-011 §2.4: avisos da liberação no app (sem score nem billing), lidos por pessoa. */
@@ -1976,6 +2047,8 @@ export type ImobLeadDraftState = {
 };
 
 export type ImobPropertyDraftState = {
+  /** Identificações estruturadas pelo intake IMOB; não autoriza cadastro. */
+  unitLabels?: string[] | null;
   propertyId: string | null;
   propertyType: ImobPropertyType | null;
   goal: ImobPropertyGoal | null;
@@ -2852,7 +2925,9 @@ export type ImobPresentationForm = {
     | "imob.owners.create"
     | "imob.owners.update"
     | "imob.properties.create"
+    | "imob.properties.batch"
     | "imob.properties.update"
+    | "imob.properties.archive_batch"
     | "imob.rentals.create"
     | "imob.tokenization.interest"
     | "imob.documents.link"
@@ -2860,7 +2935,8 @@ export type ImobPresentationForm = {
     | "imob.contracts.sale"
     | "imob.rentals.update"
     | "imob.rentals.close"
-    | "imob.rentals.history";
+    | "imob.rentals.history"
+    | "imob.deals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3221,6 +3297,8 @@ export type ImobOperationalPresentation = {
 };
 
 export type ImobResolveTurnResponse = {
+  propertyCapture?: import("@eiah/contracts").ImobPropertyCaptureResult;
+  propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
   action: string;
   threadLabel: string;
@@ -3328,11 +3406,24 @@ export type ImobKnowledgeSearchResponse = {
   };
 };
 
-export async function apiListImobChatConversations(params?: { limit?: number }) {
+export async function apiListImobChatConversations(params?: { limit?: number; q?: string }) {
   const query = new URLSearchParams();
   if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+  if (params?.q?.trim()) query.append("q", params.q.trim());
   const qs = query.toString() ? `?${query.toString()}` : "";
-  return http<{ ok: true; items: ImobChatConversation[] }>(`/imob/chat/conversations${qs}`, { method: "GET" });
+  return http<{ ok: true; items: ImobChatConversation[]; capabilities?: { search?: boolean; rename?: boolean; delete?: boolean } }>(`/imob/chat/conversations${qs}`, { method: "GET" });
+}
+
+export async function apiRenameImobChatConversation(conversationId: string, title: string) {
+  return http<{ ok: true; conversationId: string; title: string }>(`/imob/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "PATCH", body: JSON.stringify({ title }),
+  });
+}
+
+export async function apiDeleteImobChatConversation(conversationId: string) {
+  return http<{ ok: true; conversationId: string; deleted: true }>(`/imob/chat/conversations/${encodeURIComponent(conversationId)}`, {
+    method: "DELETE", body: JSON.stringify({ confirm: true }),
+  });
 }
 
 export async function apiCreateImobChatConversation(body?: {
@@ -3447,6 +3538,9 @@ export async function apiCreateImobChatTelemetry(
 }
 
 export async function apiResolveImobTurn(body: {
+  /** Intake consultivo do mesmo runtime IMOB, antes de enviar o cadastro estruturado. */
+  intake?: "property_units" | "property_draft";
+  propertyCapture?: import("@eiah/contracts").ImobPropertyCaptureRequest;
   message: string;
   threadLabel?: string | null;
   threadId?: string | null;
@@ -3457,10 +3551,11 @@ export async function apiResolveImobTurn(body: {
   continuityReplyRef?: string | null;
   /** Explicit support for conversational continuity v1, scoped to this live interaction. */
   continuityContextRef?: string | null;
-}) {
+}, signal?: AbortSignal) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
     method: "POST",
     body: JSON.stringify(body),
+    signal,
   });
 }
 
@@ -3545,7 +3640,8 @@ export async function apiArchiveImobOwner(ownerId: string) {
 export type ImobPropertyCreateRequest = {
   ownerId?: string;
   propertyType: string;
-  goal: string;
+  /** Destinação inicial do ativo; ausente = ainda não informada (≠ "sem_destinacao"). */
+  goal?: string;
   address: string;
   city: string;
   neighborhood: string | null;
@@ -3560,7 +3656,8 @@ export type ImobPropertyCreateRequest = {
 export type ImobPropertyUpdateRequest = {
   ownerId: string | null;
   propertyType: string;
-  goal: string;
+  /** Ausente = destinação inalterada. */
+  goal?: string;
   address: string;
   city: string;
   neighborhood: string | null;
@@ -3611,6 +3708,8 @@ export type ImobRentalLeaseCreateRequest = {
   iptu: ImobRentalChargePayer;
   condominio: ImobRentalChargePayer;
   condominioAmountCents: number | null;
+  /** Presente = locação histórica (já encerrada): nasce no histórico e não ocupa o imóvel. */
+  closure?: { endedOn: string; reason: ImobRentalCloseReason; notes?: string | null };
 };
 
 export type ImobRentalLeaseCreateResponse = {
@@ -3620,6 +3719,7 @@ export type ImobRentalLeaseCreateResponse = {
   tenantName: string;
   tenantDocumentMasked: string | null;
   pendingItems: string[];
+  historical?: boolean;
 };
 
 export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateRequest) {
@@ -3673,6 +3773,42 @@ export async function apiCloseImobRentalLease(body: { propertyId: string; endedO
 export async function apiGetImobRentalHistory(propertyId: string) {
   const qs = new URLSearchParams({ propertyId });
   return http<{ ok: true; data: { propertyId: string; items: ImobRentalHistoryItem[] } }>(`/imob/rentals/history?${qs.toString()}`, { method: "GET" });
+}
+
+export type ImobAssetDealCreateRequest = {
+  propertyId: string;
+  kind: "venda" | "permuta";
+  state: "em_andamento" | "concluida";
+  askingPriceCents?: number | null;
+  counterpartyName?: string | null;
+  receivedAssetDescription?: string | null;
+  receivedValueCents?: number | null;
+  tornaCents?: number | null;
+  notes?: string | null;
+};
+
+export type ImobAssetDealCreateResponse = {
+  caseId: string;
+  propertyId: string;
+  propertyLabel: string;
+  kind: "venda" | "permuta";
+  state: "em_andamento" | "concluida";
+  askingPriceCents: number | null;
+  propertyProjection: "applied" | "kept_in_deal_only" | "not_applicable";
+};
+
+export async function apiCreateImobAssetDeal(body: ImobAssetDealCreateRequest) {
+  return http<{ ok: true; data: ImobAssetDealCreateResponse }>(`/imob/deals`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiCompleteImobAssetDeal(body: { caseId: string; notes?: string | null }) {
+  return http<{ ok: true; data: { caseId: string; kind: "venda" | "permuta"; propertyId: string | null } }>(`/imob/deals/complete`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function apiListImobProperties() {
@@ -5422,6 +5558,22 @@ export async function apiPayFrontDoorFirstMonth(body: { confirmed: true }) {
   }>(`/front-door/billing/first-payment`, { method: "POST", body: JSON.stringify(body) });
 }
 
+/** Intake contextual do Front Door na escolha de plano: o provider só interpreta; a resposta vem do catálogo; a consulta nunca tem efeito. */
+export type FrontDoorIntakeOutcome = "answered" | "clarify" | "out_of_context" | "leave" | "not_permitted" | "context_mismatch" | "unavailable" | "timeout" | "invalid";
+export type FrontDoorIntakeResult = {
+  outcome: FrontDoorIntakeOutcome;
+  content: string;
+  endsContext: boolean;
+  interpretation?: { intent: string; topic: string | null; confidence: number };
+};
+
+export async function apiFrontDoorIntake(
+  body: { message: string; context: { verticalId: "imob" | "log"; step: "intro" | "offer" | "confirm_account" | "pay_offer" | "request_offer" | "activation_proposed"; planLabel?: string } },
+  signal?: AbortSignal,
+) {
+  return http<{ ok: true; data: FrontDoorIntakeResult }>(`/front-door/intake`, { method: "POST", body: JSON.stringify(body), signal });
+}
+
 export async function apiGetProfile(window: "7d" | "30d" = "7d") {
   const qs = new URLSearchParams({ window });
   return http<ProfileResponse>(`/profile/me?${qs.toString()}`, { method: "GET" });
@@ -5923,12 +6075,27 @@ export async function apiRequestChatVerticalHandoff(body: {
 export type ChatVerticalActivationPreview =
   | { status: "already_active"; verticalId: string; registryVersion: string }
   | { status: "not_permitted"; verticalId: string }
-  | { status: "approval_required"; verticalId: string; approval: VerticalApprovalBlock; canRequest?: boolean }
+  | {
+      status: "approval_required";
+      verticalId: string;
+      approval: VerticalApprovalBlock;
+      canRequest?: boolean;
+      /** A avaliação só é anunciada quando a oferta está habilitada e este workspace pode pedi-la. */
+      evaluationOffer?: boolean;
+      evaluationPhase?: EvaluationPhaseClient | null;
+    }
+  | { status: "evaluation_terms"; verticalId: string; terms: { termsHash: string; text: string[]; accepted: boolean; requesterIsViewer: boolean } }
   | { status: "available"; verticalId: string; product: string; registryVersion: string; effects: string[] };
 
 /** ADR-011: liberação da vertical pela EIAH antes de ativar. */
 export type VerticalApprovalBlock = {
-  code: "VERTICAL_NOT_APPROVED" | "VERTICAL_APPROVAL_PENDING" | "VERTICAL_APPROVAL_REFUSED" | "VERTICAL_APPROVAL_REVOKED";
+  code:
+    | "VERTICAL_NOT_APPROVED"
+    | "VERTICAL_APPROVAL_PENDING"
+    | "VERTICAL_APPROVAL_REFUSED"
+    | "VERTICAL_APPROVAL_REVOKED"
+    | "VERTICAL_EVALUATION_NOT_ACTIVATABLE"
+    | "VERTICAL_EVALUATION_ENDED";
   message: string;
   accessStatus: string | null;
 };

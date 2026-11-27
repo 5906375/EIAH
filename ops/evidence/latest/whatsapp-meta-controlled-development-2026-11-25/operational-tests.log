@@ -1,0 +1,271 @@
+COMMAND ['timeout', '60s', 'node', '--import', 'tsx', '--test', '--test-force-exit', 'apps/api/src/tests/whatsapp.meta-operational.test.ts', 'apps/api/src/tests/whatsapp.webhook-read-only.test.ts']
+TAP version 13
+# Subtest: flag defaults off, rejects noncanonical values, performs no persistence and bypasses URL logger
+ok 1 - flag defaults off, rejects noncanonical values, performs no persistence and bypasses URL logger
+  ---
+  duration_ms: 46.162467
+  type: 'test'
+  ...
+# Subtest: incomplete config, missing approvals, duplicate bindings and laboratory credentials fail closed
+ok 2 - incomplete config, missing approvals, duplicate bindings and laboratory credentials fail closed
+  ---
+  duration_ms: 39.17707
+  type: 'test'
+  ...
+# Subtest: operational limits are explicit and retention covers the full replay window
+ok 3 - operational limits are explicit and retention covers the full replay window
+  ---
+  duration_ms: 0.387227
+  type: 'test'
+  ...
+# Subtest: GET challenge is opaque, bounded, authenticated and never reaches the generic logger
+ok 4 - GET challenge is opaque, bounded, authenticated and never reaches the generic logger
+  ---
+  duration_ms: 9.340315
+  type: 'test'
+  ...
+# Subtest: raw bytes are signed before global JSON parsing; whitespace is significant
+ok 5 - raw bytes are signed before global JSON parsing; whitespace is significant
+  ---
+  duration_ms: 23.506388
+  type: 'test'
+  ...
+# Subtest: missing signature, malformed JSON, unsupported content/compression/methods and oversize fail closed
+ok 6 - missing signature, malformed JSON, unsupported content/compression/methods and oversize fail closed
+  ---
+  duration_ms: 18.027787
+  type: 'test'
+  ...
+# Subtest: native contacts/context metadata are discarded; interactive replies reuse the same ingress
+ok 7 - native contacts/context metadata are discarded; interactive replies reuse the same ingress
+  ---
+  duration_ms: 7.279049
+  type: 'test'
+  ...
+# Subtest: unsupported status-only/media envelopes, empty batches, excess events and malformed shapes are not ACKed
+ok 8 - unsupported status-only/media envelopes, empty batches, excess events and malformed shapes are not ACKed
+  ---
+  duration_ms: 11.761071
+  type: 'test'
+  ...
+# Subtest: binding enforces WABA, phone, sender, tenant, workspace, scope, entitlement and session expiry
+ok 9 - binding enforces WABA, phone, sender, tenant, workspace, scope, entitlement and session expiry
+  ---
+  duration_ms: 15.592814
+  type: 'test'
+  ...
+# Subtest: replay timestamps reject stale/future events before persistence
+ok 10 - replay timestamps reject stale/future events before persistence
+  ---
+  duration_ms: 6.40037
+  type: 'test'
+  ...
+# Subtest: duplicates within batch, reformatted retries, concurrency and new store instances are idempotent in SQL contract double
+ok 11 - duplicates within batch, reformatted retries, concurrency and new store instances are idempotent in SQL contract double
+  ---
+  duration_ms: 20.10857
+  type: 'test'
+  ...
+# Subtest: changed content or changed type for the same event ID rolls back without an ACK
+ok 12 - changed content or changed type for the same event ID rolls back without an ACK
+  ---
+  duration_ms: 8.423624
+  type: 'test'
+  ...
+# Subtest: successful ACK waits for commit; write and commit errors return sanitized retryable failure
+ok 13 - successful ACK waits for commit; write and commit errors return sanitized retryable failure
+  ---
+  duration_ms: 6.040461
+  type: 'test'
+  ...
+# Subtest: callback failure rolls back the entire technical batch and observer failure never leaks details
+ok 14 - callback failure rolls back the entire technical batch and observer failure never leaks details
+  ---
+  duration_ms: 0.946495
+  type: 'test'
+  ...
+# Subtest: scope/tenant/workspace are SQL-bound and malformed store inputs are rejected before DB access
+ok 15 - scope/tenant/workspace are SQL-bound and malformed store inputs are rejected before DB access
+  ---
+  duration_ms: 1.011642
+  type: 'test'
+  ...
+# Subtest: explicit expiry maintenance touches only the technical table; no automatic domain cleanup
+ok 16 - explicit expiry maintenance touches only the technical table; no automatic domain cleanup
+  ---
+  duration_ms: 0.171391
+  type: 'test'
+  ...
+# Subtest: disable/rollback closes GET and POST immediately and preserves the ledger
+ok 17 - disable/rollback closes GET and POST immediately and preserves the ledger
+  ---
+  duration_ms: 7.10291
+  type: 'test'
+  ...
+# Subtest: laboratory factory retains credential/binding restrictions; operational mode rejects synthetic envelope IDs
+ok 18 - laboratory factory retains credential/binding restrictions; operational mode rejects synthetic envelope IDs
+  ---
+  duration_ms: 4.484869
+  type: 'test'
+  ...
+# Subtest: bootstrap mounts native ingress before generic logging/JSON, keeps legacy ingress and changes no default env
+ok 19 - bootstrap mounts native ingress before generic logging/JSON, keeps legacy ingress and changes no default env
+  ---
+  duration_ms: 0.875524
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY
+ok 20 - WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY
+  ---
+  duration_ms: 3.323424
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: bundle export v1 permanece congelado e sem campos extras
+ok 21 - WhatsApp webhook read-only: bundle export v1 permanece congelado e sem campos extras
+  ---
+  duration_ms: 0.374004
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: assinatura ausente falha fechado
+ok 22 - WhatsApp webhook read-only: assinatura ausente falha fechado
+  ---
+  duration_ms: 0.446628
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: assinatura invalida falha fechado
+ok 23 - WhatsApp webhook read-only: assinatura invalida falha fechado
+  ---
+  duration_ms: 0.595847
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: versao de assinatura nao suportada falha fechado
+ok 24 - WhatsApp webhook read-only: versao de assinatura nao suportada falha fechado
+  ---
+  duration_ms: 0.513075
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: timestamp ausente falha fechado
+ok 25 - WhatsApp webhook read-only: timestamp ausente falha fechado
+  ---
+  duration_ms: 0.411695
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: timestamp fora da janela falha fechado sem consumir estado
+ok 26 - WhatsApp webhook read-only: timestamp fora da janela falha fechado sem consumir estado
+  ---
+  duration_ms: 1.019279
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: eventId ausente falha fechado
+ok 27 - WhatsApp webhook read-only: eventId ausente falha fechado
+  ---
+  duration_ms: 0.527978
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: provider nao suportado falha fechado
+ok 28 - WhatsApp webhook read-only: provider nao suportado falha fechado
+  ---
+  duration_ms: 0.54458
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: messageType nao suportado falha fechado
+ok 29 - WhatsApp webhook read-only: messageType nao suportado falha fechado
+  ---
+  duration_ms: 0.468001
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: payload invalido falha fechado
+ok 30 - WhatsApp webhook read-only: payload invalido falha fechado
+  ---
+  duration_ms: 0.447064
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: phone sem binding falha fechado
+ok 31 - WhatsApp webhook read-only: phone sem binding falha fechado
+  ---
+  duration_ms: 0.38019
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: tenant ausente falha fechado
+ok 32 - WhatsApp webhook read-only: tenant ausente falha fechado
+  ---
+  duration_ms: 0.481546
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: workspace ausente falha fechado
+ok 33 - WhatsApp webhook read-only: workspace ausente falha fechado
+  ---
+  duration_ms: 0.376028
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: entitlement ausente falha fechado
+ok 34 - WhatsApp webhook read-only: entitlement ausente falha fechado
+  ---
+  duration_ms: 0.311468
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: sessao expirada falha fechado
+ok 35 - WhatsApp webhook read-only: sessao expirada falha fechado
+  ---
+  duration_ms: 0.376163
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: tentativa de acao critica e bloqueada
+ok 36 - WhatsApp webhook read-only: tentativa de acao critica e bloqueada
+  ---
+  duration_ms: 0.273516
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: tentativa de mutacao implicita falha fechado
+ok 37 - WhatsApp webhook read-only: tentativa de mutacao implicita falha fechado
+  ---
+  duration_ms: 0.269572
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: readOnly falso bloqueia mutacao implicita
+ok 38 - WhatsApp webhook read-only: readOnly falso bloqueia mutacao implicita
+  ---
+  duration_ms: 0.247803
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: replay e duplicidade retornam 409 sem side effect
+ok 39 - WhatsApp webhook read-only: replay e duplicidade retornam 409 sem side effect
+  ---
+  duration_ms: 1.05024
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: payload acima do limite retorna 413
+ok 40 - WhatsApp webhook read-only: payload acima do limite retorna 413
+  ---
+  duration_ms: 0.474864
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: masking de PII preserva ausencia de telefone bruto
+ok 41 - WhatsApp webhook read-only: masking de PII preserva ausencia de telefone bruto
+  ---
+  duration_ms: 0.660912
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: gate de compatibilidade protege reasonCodes criticos do export
+ok 42 - WhatsApp webhook read-only: gate de compatibilidade protege reasonCodes criticos do export
+  ---
+  duration_ms: 1.079808
+  type: 'test'
+  ...
+# Subtest: WhatsApp webhook read-only: synthetic healthcheck contract gate
+ok 43 - WhatsApp webhook read-only: synthetic healthcheck contract gate
+  ---
+  duration_ms: 3.557198
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 839.93462
+
+EXIT 0

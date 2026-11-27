@@ -32,21 +32,28 @@ export type FrontDoorBillingPlanOption = Pick<FrontDoorBillingPlan, "code" | "la
  * `verticalId` identifica a vertical cujo pedido de liberação a sequência conduz. Só é gravado para as verticais que
  * não são o IMOB; a ausência significa IMOB (snapshots anteriores, guardados na sessão do navegador, continuam válidos).
  */
-type VerticalTag = { verticalId?: ActivatableVerticalId };
+type VerticalTag = {
+  verticalId?: ActivatableVerticalId;
+  /** A mensagem (resposta do intake contextual) oferece também o botão explícito de mudar de assunto; não passa para as etapas seguintes. */
+  offerLeave?: boolean;
+};
 
 export type FrontDoorBillingSnapshot =
   | ({ status: "intro"; plans: FrontDoorBillingPlanOption[] } & VerticalTag)
   | ({ status: "offer"; plans: FrontDoorBillingPlanOption[] } & VerticalTag)
   | ({ status: "confirm_account"; plan: FrontDoorBillingPlanOption; plans?: FrontDoorBillingPlanOption[] } & VerticalTag)
   | ({ status: "pay_offer"; planLabel: string; monthlyPriceCents: number } & VerticalTag)
-  | ({ status: "request_offer" } & VerticalTag);
+  | ({ status: "request_offer" } & VerticalTag)
+  /** Sequência encerrada pelo usuário (mudança de assunto explícita): nada foi criado, contratado ou pago. */
+  | ({ status: "closed" } & VerticalTag);
 
 export type FrontDoorBillingRequest =
   | ({ step: "show_plans"; plans: FrontDoorBillingPlanOption[] } & VerticalTag)
   | ({ step: "choose"; plan: FrontDoorBillingPlanOption; plans: FrontDoorBillingPlanOption[] } & VerticalTag)
   | ({ step: "create"; plan: FrontDoorBillingPlanOption } & VerticalTag)
   | ({ step: "pay"; planLabel: string; monthlyPriceCents: number } & VerticalTag)
-  | ({ step: "pay_later" } & VerticalTag);
+  | ({ step: "pay_later" } & VerticalTag)
+  | ({ step: "leave" } & VerticalTag);
 
 const tagOf = (verticalId: ActivatableVerticalId | undefined): VerticalTag => (verticalId && verticalId !== "imob" ? { verticalId } : {});
 const verticalOf = (tag: VerticalTag): ActivatableVerticalId => tag.verticalId ?? "imob";
@@ -57,6 +64,8 @@ export const formatBrl = (cents: number) =>
 export const START_ACCOUNT_REPLY = "Sim, quero criar a conta de billing";
 export const OTHER_PLANS_REPLY = "Ver outros planos";
 export const PAY_LATER_REPLY = "Pagar depois";
+/** Botão canônico (não é linguagem natural): encerra a escolha de plano e reconhece a mudança de assunto. */
+export const CHANGE_SUBJECT_REPLY = "Mudar de assunto";
 export const chooseReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Quero o plano ${plan.label}`;
 export const createReply = (plan: Pick<FrontDoorBillingPlanOption, "label">) => `Criar a conta no plano ${plan.label}`;
 export const payReply = (monthlyPriceCents: number) => `Pagar ${formatBrl(monthlyPriceCents)} (simulado)`;
@@ -69,6 +78,10 @@ export function resolveFrontDoorBillingStep(
   pending: FrontDoorBillingSnapshot | null | undefined,
 ): FrontDoorBillingRequest | null {
   const text = normalize(input);
+  if (pending && (pending.status === "intro" || pending.status === "offer" || pending.status === "confirm_account" || pending.status === "pay_offer" || pending.status === "request_offer")
+      && text === normalize(CHANGE_SUBJECT_REPLY)) {
+    return { step: "leave", ...tagOf(pending.verticalId) };
+  }
   if (pending?.status === "intro") {
     return text === normalize(START_ACCOUNT_REPLY) ? { step: "show_plans", plans: pending.plans, ...tagOf(pending.verticalId) } : null;
   }
@@ -102,7 +115,14 @@ const requestButtons = (verticalId: ActivatableVerticalId, requestLabel?: string
 
 /** Botões de cada etapa; cada um envia o texto que `resolveFrontDoorBillingStep` (ou o engine de ativação) entende. */
 export function billingCardRows(snapshot: FrontDoorBillingSnapshot | null | undefined): ApprovalCardRow[] | null {
-  if (!snapshot) return null;
+  if (!snapshot || snapshot.status === "closed") return null;
+  const rows = stepCardRows(snapshot);
+  return snapshot.offerLeave
+    ? [...rows, buttons({ label: CHANGE_SUBJECT_REPLY, reply: CHANGE_SUBJECT_REPLY, tone: "neutral" })]
+    : rows;
+}
+
+function stepCardRows(snapshot: Exclude<FrontDoorBillingSnapshot, { status: "closed" }>): ApprovalCardRow[] {
   const vertical = verticalOf(snapshot);
   if (snapshot.status === "intro") {
     return [
@@ -248,6 +268,12 @@ async function runStep(request: FrontDoorBillingRequest, api: BillingApi): Promi
       billing: { status: "confirm_account", plan, plans: request.plans, ...tag },
     };
   }
+  if (request.step === "leave") {
+    return {
+      content: "Certo, encerrei a escolha de plano. Nada foi criado, contratado ou pago. Sobre o que você quer falar?",
+      billing: { status: "closed", ...tag },
+    };
+  }
   if (request.step === "pay_later") {
     return {
       content: paragraphs("Sem problema, você pode pagar depois.", ASK_TO_SEND),
@@ -310,7 +336,8 @@ export async function enrichLauncherDecisionWithFrontDoorBilling<D extends Decis
       content: presentation.content,
       resolvedQuickReplies: [],
       frontDoorBilling: presentation.billing ?? undefined,
-      verticalActivation: accessProposed,
+      // Encerrar a escolha de plano não mantém uma proposta de liberação pendente.
+      verticalActivation: decision.frontDoorBillingRequest.step === "leave" ? undefined : accessProposed,
     };
   }
   if (decision.verticalActivationRequest?.step !== "preview" || decision.verticalActivation?.status !== "access_request_proposed") {
@@ -343,4 +370,84 @@ export function attachFrontDoorBillingToSnapshot<S extends { frontDoorBilling?: 
 ): S {
   if (!decision?.frontDoorBilling) return snapshot;
   return { ...snapshot, frontDoorBilling: decision.frontDoorBilling, quickReplies: [] };
+}
+
+/** Mesma busca, sobre as mensagens da conversa (só as do assistente carregam estado de billing). */
+export function findPendingFrontDoorBillingInMessages(messages: Array<{ role: string; presentationSnapshot?: SnapshotWithBilling }>): FrontDoorBillingSnapshot | null {
+  return findPendingFrontDoorBilling(messages.filter((message) => message.role === "assistant").map((message) => message.presentationSnapshot));
+}
+
+/**
+ * Etapas do billing em que uma pergunta livre é interpretada no contexto: intro, offer, confirm_account, pay_offer e request_offer ("posso enviar o pedido?").
+ * Os botões exatos de cada etapa (inclusive "Pedir liberação") continuam sendo resolvidos pelos engines de billing e de ativação ANTES do intake.
+ * NÃO integradas: etapas de ativação sem cartão de billing (`verticalActivation` em `proposed` ou `access_request_proposed` sozinho).
+ */
+export type InterpretableBillingSnapshot = Extract<FrontDoorBillingSnapshot, { status: "intro" | "offer" | "confirm_account" | "pay_offer" | "request_offer" }>;
+export const isInterpretableBilling = (snapshot: FrontDoorBillingSnapshot | null | undefined): snapshot is InterpretableBillingSnapshot =>
+  Boolean(snapshot) && ["intro", "offer", "confirm_account", "pay_offer", "request_offer"].includes((snapshot as FrontDoorBillingSnapshot).status);
+
+type SnapshotWithBilling = {
+  quickReplies?: string[];
+  frontDoorBilling?: FrontDoorBillingSnapshot | null;
+  verticalActivation?: VerticalActivationSnapshot | null;
+  verticalHandoff?: unknown;
+} | null | undefined;
+
+/**
+ * Etapa de billing pendente da conversa, do mais recente ao mais antigo, SEM depender só da última mensagem: respostas intermediárias
+ * (intake contextual, fallback, avisos) não a apagam. Ela termina quando: a sequência foi encerrada (`closed`), a conversa passou a outro
+ * fluxo reconhecido (pedido de liberação em outra etapa, handoff de vertical) ou ela mesma chegou ao pedido de liberação.
+ * Recebe os snapshots das mensagens do assistente em ordem cronológica.
+ */
+export function findPendingFrontDoorBilling(snapshots: SnapshotWithBilling[]): FrontDoorBillingSnapshot | null {
+  for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+    const snapshot = snapshots[index];
+    if (!snapshot) continue;
+    if (snapshot.frontDoorBilling) return snapshot.frontDoorBilling.status === "closed" ? null : snapshot.frontDoorBilling;
+    if (snapshot.verticalHandoff) return null;
+    if (snapshot.verticalActivation && snapshot.verticalActivation.status !== "access_request_proposed") return null;
+  }
+  return null;
+}
+
+/**
+ * Proposta de ativação ou pedido de liberação pendente SEM cartão de billing (`verticalActivation` em `proposed` ou `access_request_proposed`).
+ * Mesma regra de continuidade do billing: vale a mais recente da CONVERSA (respostas intermediárias não a apagam) e termina por saída, handoff ou outro
+ * desfecho da ativação. Se há estado de billing mais recente, o billing é o dono da etapa e isto devolve `null`. Guarda as ações (chips) da proposta.
+ */
+export type ActivationPending = {
+  status: "activation_proposed" | "activation_request_offer";
+  verticalId: ActivatableVerticalId;
+  activation: VerticalActivationSnapshot;
+  quickReplies: string[];
+};
+export function findPendingFrontDoorActivation(snapshots: SnapshotWithBilling[]): ActivationPending | null {
+  for (let index = snapshots.length - 1; index >= 0; index -= 1) {
+    const snapshot = snapshots[index];
+    if (!snapshot) continue;
+    if (snapshot.frontDoorBilling) return null;
+    if (snapshot.verticalHandoff) return null;
+    const activation = snapshot.verticalActivation;
+    if (!activation) continue;
+    if (activation.status === "proposed" || activation.status === "access_request_proposed") {
+      return {
+        status: activation.status === "proposed" ? "activation_proposed" : "activation_request_offer",
+        verticalId: activation.verticalId,
+        activation,
+        quickReplies: snapshot.quickReplies ?? [],
+      };
+    }
+    return null;
+  }
+  return null;
+}
+
+export function findPendingFrontDoorActivationInMessages(messages: Array<{ role: string; presentationSnapshot?: SnapshotWithBilling }>): ActivationPending | null {
+  return findPendingFrontDoorActivation(messages.filter((message) => message.role === "assistant").map((message) => message.presentationSnapshot));
+}
+
+/** Botão canônico "Mudar de assunto" numa etapa de ativação sem cartão de billing: mesma saída explícita do billing (nada é ativado nem pedido). */
+export function resolveActivationLeaveStep(input: string, pending: ActivationPending | null | undefined): FrontDoorBillingRequest | null {
+  if (!pending || normalize(input) !== normalize(CHANGE_SUBJECT_REPLY)) return null;
+  return { step: "leave", ...tagOf(pending.verticalId) };
 }

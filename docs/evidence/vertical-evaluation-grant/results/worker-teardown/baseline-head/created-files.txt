@@ -1,0 +1,4 @@
+criados (temporários, desta execução): apps/api/src/workers/zz-baseline-imobPostRunMutationWorker.ts apps/api/src/tests/zz-baseline-imob-worker-metrics.test.ts
+removed 'apps/api/src/workers/zz-baseline-imobPostRunMutationWorker.ts'
+removed 'apps/api/src/tests/zz-baseline-imob-worker-metrics.test.ts'
+LIMITE: worker e teste = HEAD; serviços/módulos compartilhados importados = árvore de trabalho atual (não HEAD).

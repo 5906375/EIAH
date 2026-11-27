@@ -7,6 +7,16 @@ import {
   type ChatVerticalActivationPreview,
 } from "@/lib/api";
 import { syncSessionContext } from "@/state/sessionContextSync";
+import {
+  describeEvaluationTermsPresentation,
+  enrichEvaluationRequest,
+  EVALUATION_REQUEST_REPLY,
+  isEvaluationRequest,
+  resolveEvaluationStep,
+  type EvaluationApi,
+  type EvaluationRequest,
+  type EvaluationSnapshot,
+} from "./verticalEvaluationEngine";
 
 /**
  * Engine do front door para ativar uma vertical pela conversa (ADR-010,
@@ -101,14 +111,17 @@ export type VerticalActivationSnapshot =
   | {
       status: "activated" | "already_active" | "cancelled" | "failed" | "access_request_proposed" | "access_requested";
       verticalId: "imob" | "log";
-    };
+    }
+  // Avaliação gratuita (pedido, aprovação, aceite e ativação são fases distintas): ver `verticalEvaluationEngine`.
+  | EvaluationSnapshot;
 
 export type VerticalActivationRequest =
   | { step: "preview"; verticalId: "imob" | "log" }
   | { step: "confirm"; verticalId: "imob" | "log"; registryVersion: string }
   | { step: "cancel"; verticalId: "imob" | "log" }
   | { step: "request_access"; verticalId: "imob" | "log" }
-  | { step: "cancel_access_request"; verticalId: "imob" | "log" };
+  | { step: "cancel_access_request"; verticalId: "imob" | "log" }
+  | EvaluationRequest;
 
 const normalize = (value: string) =>
   value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[.!]+$/g, "").replace(/\s+/g, " ").trim();
@@ -147,6 +160,9 @@ export function resolveVerticalActivationStep(
   input: string,
   pending: VerticalActivationSnapshot | null | undefined,
 ): VerticalActivationRequest | null {
+  // Avaliação: botões exatos e, durante a etapa pendente, a resposta livre (interpretada pelo intake central no servidor).
+  const evaluationStep = resolveEvaluationStep(input, pending);
+  if (evaluationStep) return evaluationStep;
   if (pending?.status === "proposed") {
     if (pending.verticalId === "log" ? normalize(input) === normalize(VERTICAL_COPY.log.confirmReply) : isActivationConfirmation(input)) return { step: "confirm", verticalId: pending.verticalId, registryVersion: pending.registryVersion };
     if (isActivationCancel(input)) return { step: "cancel", verticalId: pending.verticalId };
@@ -170,6 +186,8 @@ const APPROVAL_CODES = new Set([
   "VERTICAL_APPROVAL_PENDING",
   "VERTICAL_APPROVAL_REFUSED",
   "VERTICAL_APPROVAL_REVOKED",
+  "VERTICAL_EVALUATION_NOT_ACTIVATABLE",
+  "VERTICAL_EVALUATION_ENDED",
 ]);
 
 /**
@@ -181,17 +199,21 @@ function describeApprovalBlock(
   message: string | undefined,
   canRequest: boolean,
   verticalId: ActivatableVerticalId,
+  evaluationOffer = false,
 ): VerticalActivationPresentation {
   const copy = VERTICAL_COPY[verticalId];
   if (canRequest) {
+    // A avaliação só é oferecida quando o SERVIDOR diz que está habilitada e que este workspace pode pedi-la.
+    const offersEvaluation = verticalId === "imob" && evaluationOffer;
     return {
       content: [
         message ?? copy.approvalRequired,
         "",
         "Quer pedir a liberação à EIAH agora? Um administrador da EIAH analisa e decide; você recebe um aviso aqui quando houver decisão.",
         `Nada é enviado até você confirmar. Para seguir, responda "${copy.requestAccessReply}".`,
+        ...(offersEvaluation ? ["", `Se quiser conhecer o IMOB antes de contratar, você também pode pedir a avaliação gratuita: a EIAH analisa e decide, e nada é concedido até lá. Responda "${EVALUATION_REQUEST_REPLY}".`] : []),
       ].join("\n"),
-      quickReplies: [copy.requestAccessReply, ACCESS_REQUEST_CANCEL_REPLY],
+      quickReplies: [copy.requestAccessReply, ...(offersEvaluation ? [EVALUATION_REQUEST_REPLY] : []), ACCESS_REQUEST_CANCEL_REPLY],
       activation: { status: "access_request_proposed", verticalId },
     };
   }
@@ -213,8 +235,12 @@ function resolveVerticalOrThrow(requested: ActivatableVerticalId | undefined, se
 export function describeActivationPreview(preview: ChatVerticalActivationPreview, verticalId?: ActivatableVerticalId): VerticalActivationPresentation {
   const vertical = resolveVerticalOrThrow(verticalId, preview.verticalId);
   const copy = VERTICAL_COPY[vertical];
+  if (preview.status === "evaluation_terms") {
+    // Condições propostas pela EIAH: primeiro a proposta e o aceite; só com o aceite a conversa propõe a ativação.
+    return describeEvaluationTermsPresentation(preview.terms);
+  }
   if (preview.status === "approval_required") {
-    return describeApprovalBlock(preview.approval.code, preview.approval.message, preview.canRequest === true, vertical);
+    return describeApprovalBlock(preview.approval.code, preview.approval.message, preview.canRequest === true, vertical, preview.evaluationOffer === true);
   }
   if (preview.status === "not_permitted") {
     return { content: copy.notPermitted, quickReplies: [], activation: { status: "failed", verticalId: vertical } };
@@ -307,10 +333,15 @@ export async function enrichLauncherDecisionWithVerticalActivation<D extends Dec
     confirm: typeof apiConfirmChatVerticalActivation;
     requestAccess?: typeof apiRequestVerticalAccess;
     syncSession?: (domain: "imob" | "logistica" | "core") => Promise<unknown>;
+    evaluation?: EvaluationApi;
   } = { preview: apiPreviewChatVerticalActivation, confirm: apiConfirmChatVerticalActivation, requestAccess: apiRequestVerticalAccess },
 ): Promise<D | null> {
   const request = decision?.verticalActivationRequest;
   if (!decision || !request) return decision;
+  if (isEvaluationRequest(request)) {
+    const presentation = await enrichEvaluationRequest(request, api.evaluation);
+    return { ...decision, content: presentation.content, resolvedQuickReplies: presentation.quickReplies, verticalActivation: presentation.activation };
+  }
   const vertical = request.verticalId;
   const copy = VERTICAL_COPY[vertical];
   let presentation: VerticalActivationPresentation;

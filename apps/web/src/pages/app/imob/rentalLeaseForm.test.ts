@@ -137,3 +137,39 @@ test("condominium amount is optional and refused when condominium does not exist
   const invalid = buildRentalLeaseRequest({ propertyId: "p", tenantName: "A", condominioAmount: "trezentos" });
   assert.equal(invalid.ok, false);
 });
+
+// ---- locação encerrada (histórica)
+
+test("locação encerrada exige data de saída e motivo; vigente ignora esses campos", () => {
+  const base = { propertyId: "p1", tenantName: "Pessoa A", startDate: "01/03/2024" };
+  const missing = buildRentalLeaseRequest({ ...base, leaseState: "encerrada" }, "2026-01-01");
+  assert.equal(missing.ok, false);
+  if (!missing.ok) assert.deepEqual(Object.keys(missing.errors).sort(), ["closeReason", "endedOn"]);
+
+  const ok = buildRentalLeaseRequest({ ...base, leaseState: "encerrada", endedOn: "28/02/2025", closeReason: "fim_contrato" }, "2026-01-01");
+  assert.equal(ok.ok, true);
+  if (ok.ok) assert.deepEqual(ok.request.closure, { endedOn: "2025-02-28", reason: "fim_contrato" });
+
+  const vigente = buildRentalLeaseRequest({ ...base, leaseState: "vigente", endedOn: "lixo", closeReason: "x" }, "2026-01-01");
+  assert.equal(vigente.ok, true);
+  if (vigente.ok) assert.equal("closure" in vigente.request, false);
+  const semEstado = buildRentalLeaseRequest(base);
+  assert.equal(semEstado.ok && "closure" in semEstado.request, false);
+});
+
+test("locação encerrada: saída antes do início, futura ou em formato inválido é recusada", () => {
+  const base = { propertyId: "p1", tenantName: "Pessoa A", startDate: "01/03/2024", leaseState: "encerrada", closeReason: "outro" };
+  const before = buildRentalLeaseRequest({ ...base, endedOn: "28/02/2024" }, "2026-01-01");
+  assert.equal(before.ok === false && before.errors.endedOn, "A saída não pode ser antes do início da locação.");
+  const future = buildRentalLeaseRequest({ ...base, endedOn: "01/01/2030" }, "2026-01-01");
+  assert.equal(future.ok === false && future.errors.endedOn, "A data de saída não pode ser futura.");
+  const bad = buildRentalLeaseRequest({ ...base, endedOn: "2025-01-01" }, "2026-01-01");
+  assert.equal(bad.ok === false && bad.errors.endedOn, "Use o formato DD/MM/AAAA.");
+});
+
+test("confirmação de locação encerrada não promete ocupação nem pendências", () => {
+  assert.equal(
+    buildRentalLeaseConfirmationText({ propertyLabel: "Kitnet 101", tenantName: "Pessoa A", tenantDocumentMasked: null, pendingItems: ["aluguel"], historical: true }),
+    "Locação encerrada registrada no histórico: Kitnet 101 — inquilino Pessoa A. O imóvel não foi marcado como locado.",
+  );
+});

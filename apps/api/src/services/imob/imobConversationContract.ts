@@ -253,6 +253,8 @@ export type ImobPropertyDraft = {
   address: string | null;
   /** Nome do proprietário citado na frase ("… no proprietário Carlos"); o cliente escolhe o cadastro existente. */
   ownerNameHint?: string | null;
+  /** Identificações estruturadas pelo intake IMOB, singulares ou múltiplas, ainda sem autorização de cadastro. */
+  unitLabels?: string[] | null;
   origin?: {
     source: string;
     sourceId: string;
@@ -639,8 +641,10 @@ export type ImobAccessContext = {
 };
 
 import type { ParsedImobIntent } from "./imobIntentCatalog";
+import type { ImobPropertyUnitIntake } from "@eiah/contracts";
 
 export type ImobResolveTurnRequest = {
+  propertyUnitIntake?: ImobPropertyUnitIntake;
   message: string;
   semanticIntent?: ParsedImobIntent | null;
   semanticIntentSource?: "openai" | "parser_fallback" | null;
@@ -1557,6 +1561,7 @@ export const IMOB_IDENTITY_ATTACHMENT_VALIDATION_CONTRACT = {
 } as const;
 
 export type ImobResolveTurnResponse = {
+  propertyUnitIntake?: ImobPropertyUnitIntake;
   mode: ImobConversationMode;
   action: string;
   threadLabel: string;

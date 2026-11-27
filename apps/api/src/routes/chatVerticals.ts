@@ -18,6 +18,15 @@ import {
   verticalNotApprovedError,
 } from "../services/products/productActivation";
 import { readVerticalAccess } from "../services/products/verticalAccessApproval";
+import {
+  describeEvaluationTerms,
+  evaluationPhase,
+  grantTermsIntegrity,
+  isEvaluationOfferEnabled,
+  resolveEvaluationOfferState,
+  termsAreCurrent,
+} from "../services/products/verticalEvaluationContract";
+import { planVerticalAccessRequest } from "../services/products/verticalEvaluationPlans";
 import { OraculoPreparationRepository } from "../services/logistica/oraculo/preparationRepository";
 
 /**
@@ -175,9 +184,50 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
         userId: request.authContext.userId ?? null,
       })
     : false;
+  const offer = resolveEvaluationOfferState();
+  if (access?.grantKind === "evaluation" && access.status === "pre_ativacao" && parsed.data.verticalId === "imob") {
+    // Avaliação: a decisão da EIAH (termos propostos) e o aceite NÃO são ativação nem uso. Primeiro as condições e o aceite;
+    // só com o aceite do hash vigente a conversa propõe a ativação. O servidor revalida tudo na confirmação.
+    const integrity = grantTermsIntegrity(access);
+    if (!allowedToActivate) return res.json({ ok: true, data: { status: "not_permitted", verticalId: parsed.data.verticalId } });
+    if (!isEvaluationOfferEnabled(offer) || !integrity.ok || !termsAreCurrent(integrity.terms, offer.config).ok) {
+      return res.json({
+        ok: true,
+        data: { status: "approval_required", verticalId: parsed.data.verticalId, approval: verticalNotApprovedError("pre_ativacao"), canRequest: false },
+      });
+    }
+    const text = describeEvaluationTerms(integrity.terms, offer.config.conditions.text);
+    if (!access.grantAcceptedAt) {
+      return res.json({
+        ok: true,
+        data: {
+          status: "evaluation_terms",
+          verticalId: parsed.data.verticalId,
+          terms: { termsHash: access.grantTermsHash, text, accepted: false, requesterIsViewer: access.requestedByUserId === request.authContext?.userId },
+        },
+      });
+    }
+    return res.json({
+      ok: true,
+      data: {
+        status: "available",
+        verticalId: parsed.data.verticalId,
+        product: ACTIVATABLE_VERTICALS[parsed.data.verticalId],
+        registryVersion: composed.registry.registryVersion,
+        effects: [
+          `inicia a avaliação gratuita agora: ${integrity.terms.durationDays} dia(s) de validade contados desta ativação`,
+          `libera somente as funcionalidades aceitas: ${integrity.terms.allowedActions.join(", ")}`,
+          "prepara os agentes do IMOB (EIAH e auditoria do chat), sem conceder nada além do aceito",
+        ],
+      },
+    });
+  }
   if (access?.status !== "aprovado") {
     // Pode pedir a liberação pela conversa quem pode ativar, quando não há pedido em análise (ADR-011 §2.4).
-    const openRequest = access ? ["pendente", "em_analise", "aguardando_humano"].includes(access.status) : false;
+    const openRequest = access ? ["pendente", "em_analise", "aguardando_humano", "pre_ativacao"].includes(access.status) : false;
+    // A avaliação só é anunciada com a oferta HABILITADA e se este workspace pode pedi-la; nunca se revela o motivo do bloqueio.
+    const evaluationOffer =
+      parsed.data.verticalId === "imob" && allowedToActivate && planVerticalAccessRequest({ existing: access, evaluation: true, vertical: "IMOB", offer }).ok;
     return res.json({
       ok: true,
       data: {
@@ -185,6 +235,8 @@ chatVerticalsRouter.post("/chat/vertical-activation/preview", async (req, res) =
         verticalId: parsed.data.verticalId,
         approval: verticalNotApprovedError(access?.status),
         canRequest: allowedToActivate && !openRequest,
+        evaluationOffer,
+        evaluationPhase: evaluationPhase(access),
       },
     });
   }

@@ -1,0 +1,400 @@
+TAP version 13
+# Subtest: T1 subscribed catalog item keeps public metadata without systemPrompt
+ok 1 - T1 subscribed catalog item keeps public metadata without systemPrompt
+  ---
+  duration_ms: 797.156721
+  type: 'test'
+  ...
+# Subtest: T2/T3 profile of core agents without subscription exposes no internal instructions
+ok 2 - T2/T3 profile of core agents without subscription exposes no internal instructions
+  ---
+  duration_ms: 357.049338
+  type: 'test'
+  ...
+# Subtest: T4/T5 nested sentinels and tools from a database profile are never serialized
+ok 3 - T4/T5 nested sentinels and tools from a database profile are never serialized
+  ---
+  duration_ms: 232.516273
+  type: 'test'
+  ...
+# Subtest: T6 authentication and tenant/workspace isolation are unchanged
+ok 4 - T6 authentication and tenant/workspace isolation are unchanged
+  ---
+  duration_ms: 1052.591446
+  type: 'test'
+  ...
+# Subtest: T7 public view keeps the fields read by the web catalog consumers
+ok 5 - T7 public view keeps the fields read by the web catalog consumers
+  ---
+  duration_ms: 217.646943
+  type: 'test'
+  ...
+# Subtest: T8 internal service objects keep systemPrompt for the runtime
+ok 6 - T8 internal service objects keep systemPrompt for the runtime
+  ---
+  duration_ms: 212.797311
+  type: 'test'
+  ...
+# Subtest: T9 predicado canônico: visível, ativo, sugerível e apto a handoff; qualquer desvio é indisponível; dados inválidos são não verificados
+ok 7 - T9 predicado canônico: visível, ativo, sugerível e apto a handoff; qualquer desvio é indisponível; dados inválidos são não verificados
+  ---
+  duration_ms: 207.961008
+  type: 'test'
+  ...
+# Subtest: T10 todos os candidatos do bridge existem no registro canônico de agentes
+ok 8 - T10 todos os candidatos do bridge existem no registro canônico de agentes
+  ---
+  duration_ms: 200.949361
+  type: 'test'
+  ...
+# Subtest: T11 inscrito no workspace (política + delegação) fica disponível; os demais, indisponíveis
+ok 9 - T11 inscrito no workspace (política + delegação) fica disponível; os demais, indisponíveis
+  ---
+  duration_ms: 216.281501
+  type: 'test'
+  ...
+# Subtest: T12 isolamento: inscrição de outro workspace ou de outro tenant nunca torna o agente disponível
+ok 10 - T12 isolamento: inscrição de outro workspace ou de outro tenant nunca torna o agente disponível
+  ---
+  duration_ms: 1475.700014
+  type: 'test'
+  ...
+# Subtest: T13 estado operacional: perfil que não permite sugestão, handoff ou visibilidade torna o agente indisponível
+ok 11 - T13 estado operacional: perfil que não permite sugestão, handoff ou visibilidade torna o agente indisponível
+  ---
+  duration_ms: 1044.066085
+  type: 'test'
+  ...
+# Subtest: T14 falha de consulta, escopo inválido e lista vazia: não verificado, sem lançar, sem presumir disponibilidade
+ok 12 - T14 falha de consulta, escopo inválido e lista vazia: não verificado, sem lançar, sem presumir disponibilidade
+  ---
+  duration_ms: 197.063906
+  type: 'test'
+  ...
+# Subtest: T15 a disponibilidade é derivada do mesmo catálogo que o Front Door consome (listAgents), sem regra paralela
+ok 13 - T15 a disponibilidade é derivada do mesmo catálogo que o Front Door consome (listAgents), sem regra paralela
+  ---
+  duration_ms: 230.825505
+  type: 'test'
+  ...
+# Subtest: T16 descoberta estrutural: domínio + capacidade resolvem o provedor declarado, sem texto do usuário
+ok 14 - T16 descoberta estrutural: domínio + capacidade resolvem o provedor declarado, sem texto do usuário
+  ---
+  duration_ms: 1009.153573
+  type: 'test'
+  ...
+# Subtest: T17 estados: habilitado, habilitavel, indisponivel e participação fechada são distintos
+ok 15 - T17 estados: habilitado, habilitavel, indisponivel e participação fechada são distintos
+  ---
+  duration_ms: 1516.923191
+  type: 'test'
+  ...
+# Subtest: T18 modelos: somente homologados, do tenant, compatíveis com o workspace e com o agente; sem instruções ou conteúdo
+ok 16 - T18 modelos: somente homologados, do tenant, compatíveis com o workspace e com o agente; sem instruções ou conteúdo
+  ---
+  duration_ms: 963.67707
+  type: 'test'
+  ...
+# Subtest: T19 isolamento entre tenants e workspaces na descoberta
+ok 17 - T19 isolamento entre tenants e workspaces na descoberta
+  ---
+  duration_ms: 924.970404
+  type: 'test'
+  ...
+# Subtest: T20 falhas de consulta e escopo inválido: não verificado, sem ação, sem lançar
+ok 18 - T20 falhas de consulta e escopo inválido: não verificado, sem ação, sem lançar
+  ---
+  duration_ms: 2029.797256
+  type: 'test'
+  ...
+# Subtest: T21 somente leitura; habilitar agente é estruturalmente distinto de convidar uma pessoa
+ok 19 - T21 somente leitura; habilitar agente é estruturalmente distinto de convidar uma pessoa
+  ---
+  duration_ms: 541.344972
+  type: 'test'
+  ...
+# Subtest: T22 rota GET /api/agents/capabilities/discover: autenticada, validada, somente leitura e no escopo do token
+ok 20 - T22 rota GET /api/agents/capabilities/discover: autenticada, validada, somente leitura e no escopo do token
+  ---
+  duration_ms: 402.278207
+  type: 'test'
+  ...
+# Subtest: T23 o SQL de modelos reproduz o filtro de /tenant-recipes e não seleciona instruções nem conteúdo
+ok 21 - T23 o SQL de modelos reproduz o filtro de /tenant-recipes e não seleciona instruções nem conteúdo
+  ---
+  duration_ms: 0.47676
+  type: 'test'
+  ...
+# Subtest: T24 eixo de autoridade: habilitável nunca implica contratação autorizada; descoberta e modelos seguem visíveis
+ok 22 - T24 eixo de autoridade: habilitável nunca implica contratação autorizada; descoberta e modelos seguem visíveis
+  ---
+  duration_ms: 3407.313179
+  type: 'test'
+  ...
+# Subtest: T24b identidade, escopo e ausência de leitura da autoridade: sempre somente_consulta (fail-closed)
+ok 23 - T24b identidade, escopo e ausência de leitura da autoridade: sempre somente_consulta (fail-closed)
+  ---
+  duration_ms: 2320.906552
+  type: 'test'
+  ...
+# Subtest: T25 POST /marketplace/:id/subscribe: sem autoridade expressa nada é contratado, mesmo chamando a API diretamente
+ok 24 - T25 POST /marketplace/:id/subscribe: sem autoridade expressa nada é contratado, mesmo chamando a API diretamente
+  ---
+  duration_ms: 9315.275141
+  type: 'test'
+  ...
+# Subtest: T26 contratação autorizada: a decisão é registrada ANTES dos efeitos, com identidade, designação, tenant, workspace, agente e condições
+ok 25 - T26 contratação autorizada: a decisão é registrada ANTES dos efeitos, com identidade, designação, tenant, workspace, agente e condições
+  ---
+  duration_ms: 477.623564
+  type: 'test'
+  ...
+# Subtest: T26b limites da designação valem na contratação: escopo de delegação e prazo
+ok 26 - T26b limites da designação valem na contratação: escopo de delegação e prazo
+  ---
+  duration_ms: 1442.053355
+  type: 'test'
+  ...
+# Subtest: T27 falha no registro da decisão bloqueia a contratação; nomes reservados e agentes ambíguos são recusados sem efeito
+ok 27 - T27 falha no registro da decisão bloqueia a contratação; nomes reservados e agentes ambíguos são recusados sem efeito
+  ---
+  duration_ms: 3280.202586
+  type: 'test'
+  ...
+# Subtest: T28 publicar ou renomear item do Marketplace com nome de escopo canônico é recusado
+ok 28 - T28 publicar ou renomear item do Marketplace com nome de escopo canônico é recusado
+  ---
+  duration_ms: 1963.925324
+  type: 'test'
+  ...
+# Subtest: T29 /delegations não contorna a autoridade: auto-delegação de item do Marketplace e alteração de termos pela delegatária exigem a designação
+ok 29 - T29 /delegations não contorna a autoridade: auto-delegação de item do Marketplace e alteração de termos pela delegatária exigem a designação
+  ---
+  duration_ms: 2839.996687
+  type: 'test'
+  ...
+# Subtest: T30 deriva de código: nenhum gravador de assinatura/delegação/política escapa da autoridade; escalada por papéis, convites e override fechada
+ok 30 - T30 deriva de código: nenhum gravador de assinatura/delegação/política escapa da autoridade; escalada por papéis, convites e override fechada
+  ---
+  duration_ms: 6.414627
+  type: 'test'
+  ...
+# Subtest: T31 marketplace.subscribe não é concedido por padrão a nenhum papel, convite ou escopo administrativo
+ok 31 - T31 marketplace.subscribe não é concedido por padrão a nenhum papel, convite ou escopo administrativo
+  ---
+  duration_ms: 187.750265
+  type: 'test'
+  ...
+# Subtest: T32 rota de descoberta: a autoridade vem do servidor e não pode ser informada pelo cliente
+ok 32 - T32 rota de descoberta: a autoridade vem do servidor e não pode ser informada pelo cliente
+  ---
+  duration_ms: 558.690687
+  type: 'test'
+  ...
+# Subtest: T33 política com efeito comercial: /actions/override exige autoridade individual para agentes e nunca concede o escopo; negar continua permitido
+ok 33 - T33 política com efeito comercial: /actions/override exige autoridade individual para agentes e nunca concede o escopo; negar continua permitido
+  ---
+  duration_ms: 175.282465
+  type: 'test'
+  ...
+# Subtest: T34 papéis personalizados e convites não podem nomear a autoridade comercial
+ok 34 - T34 papéis personalizados e convites não podem nomear a autoridade comercial
+  ---
+  duration_ms: 187.615919
+  type: 'test'
+  ...
+# Subtest: T35 agente governado: política + delegação sozinhas (antiga, do publicador ou do onboarding) NÃO habilitam; com habilitação verificável habilita
+ok 35 - T35 agente governado: política + delegação sozinhas (antiga, do publicador ou do onboarding) NÃO habilitam; com habilitação verificável habilita
+  ---
+  duration_ms: 3335.836369
+  type: 'test'
+  ...
+# Subtest: T36 a habilitação comercial só nasce da contratação governada: nenhum outro gravador a cria
+ok 36 - T36 a habilitação comercial só nasce da contratação governada: nenhum outro gravador a cria
+  ---
+  duration_ms: 9.998067
+  type: 'test'
+  ...
+# Subtest: T37 delegação reaproveitada acima dos limites da autoridade não fundamenta a habilitação: cria-se delegação nos termos decididos
+ok 37 - T37 delegação reaproveitada acima dos limites da autoridade não fundamenta a habilitação: cria-se delegação nos termos decididos
+  ---
+  duration_ms: 1370.877352
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente EIAH
+ok 38 - título único segue imob, com agente EIAH
+  ---
+  duration_ms: 15.64925
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente Especialista
+ok 39 - título único segue imob, com agente Especialista
+  ---
+  duration_ms: 0.997827
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente ausente
+ok 40 - título único segue imob, com agente ausente
+  ---
+  duration_ms: 0.613556
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente EIAH
+ok 41 - título único segue logistica, com agente EIAH
+  ---
+  duration_ms: 0.60966
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente Especialista
+ok 42 - título único segue logistica, com agente Especialista
+  ---
+  duration_ms: 0.816102
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente ausente
+ok 43 - título único segue logistica, com agente ausente
+  ---
+  duration_ms: 0.489259
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente EIAH
+ok 44 - título único segue core, com agente EIAH
+  ---
+  duration_ms: 0.598824
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente Especialista
+ok 45 - título único segue core, com agente Especialista
+  ---
+  duration_ms: 4.959859
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente ausente
+ok 46 - título único segue core, com agente ausente
+  ---
+  duration_ms: 0.999399
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente EIAH
+ok 47 - título único segue domínio inicial, com agente EIAH
+  ---
+  duration_ms: 0.742161
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente Especialista
+ok 48 - título único segue domínio inicial, com agente Especialista
+  ---
+  duration_ms: 0.405642
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente ausente
+ok 49 - título único segue domínio inicial, com agente ausente
+  ---
+  duration_ms: 0.398271
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta imob e preserva o controle de agente
+ok 50 - cabeçalho projeta imob e preserva o controle de agente
+  ---
+  duration_ms: 0.451181
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core e preserva o controle de agente
+ok 51 - cabeçalho projeta core e preserva o controle de agente
+  ---
+  duration_ms: 0.124408
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core inicial e preserva o controle de agente
+ok 52 - cabeçalho projeta core inicial e preserva o controle de agente
+  ---
+  duration_ms: 0.109085
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: none
+ok 53 - entrada Marketplace renderiza somente resposta atual: none
+  ---
+  duration_ms: 13.780328
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: conversation
+ok 54 - entrada Marketplace renderiza somente resposta atual: conversation
+  ---
+  duration_ms: 6.416709
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: user
+ok 55 - entrada Marketplace renderiza somente resposta atual: user
+  ---
+  duration_ms: 11.306132
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: workspace
+ok 56 - entrada Marketplace renderiza somente resposta atual: workspace
+  ---
+  duration_ms: 4.719937
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: agent
+ok 57 - entrada Marketplace renderiza somente resposta atual: agent
+  ---
+  duration_ms: 7.387165
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: new_turn
+ok 58 - entrada Marketplace renderiza somente resposta atual: new_turn
+  ---
+  duration_ms: 5.77474
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+ok 59 - barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+  ---
+  duration_ms: 0.928342
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente EIAH
+ok 60 - barra real aparece em conversa vazia IMOB, independente do agente EIAH
+  ---
+  duration_ms: 0.360424
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente J_360
+ok 61 - barra real aparece em conversa vazia IMOB, independente do agente J_360
+  ---
+  duration_ms: 0.256828
+  type: 'test'
+  ...
+# Subtest: AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+ok 62 - AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+  ---
+  duration_ms: 1.884706
+  type: 'test'
+  ...
+# Subtest: snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+ok 63 - snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+  ---
+  duration_ms: 0.232101
+  type: 'test'
+  ...
+# Subtest: handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+ok 64 - handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+  ---
+  duration_ms: 4.063947
+  type: 'test'
+  ...
+# Subtest: resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima
+ok 65 - resposta digitada respeita a pausa de rolagem enquanto o usuário lê acima
+  ---
+  duration_ms: 9.1122
+  type: 'test'
+  ...
+1..65
+# tests 65
+# suites 0
+# pass 65
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 46512.73318

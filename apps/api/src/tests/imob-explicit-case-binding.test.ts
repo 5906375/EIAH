@@ -266,6 +266,22 @@ for (const message of ["olá", "listar casos", "listar proprietários", "listar 
     assert.deepEqual(result.writes, []);
   });
 }
+// W4 I: enforce absence of case reads and downstream effects, not merely HTTP status.
+for (const body of [
+  { message: "qual status desse caso?", threadId: "THREAD" },
+  { message: "consultar caso CASE_A" },
+  { message: "qual status desse caso?", threadState: { operational: { caseId: "CASE_A", caseStage: "secret" } } },
+]) {
+  test(`route: W4 I unbound input blocks before case access or effects (${JSON.stringify(body)})`, async () => {
+    const result = await callRoute(body, { permissions: ["imob.chat.use", "imob.stage.collecting"] });
+    assert.equal(result.res.statusCode, 200);
+    assertMissing(result.res.body.data);
+    for (const values of [result.queries, result.dispatches, result.engineInputs, result.writes, result.events]) {
+      assert.deepEqual(values, []);
+    }
+  });
+}
+
 test("route: directed action without case stops before lookup, dispatch, engine and telemetry", async () => {
   const result = await callRoute({ message: "confirmar", actionId: "case.advance", threadId: "THREAD" });
   assertMissing(result.res.body.data);

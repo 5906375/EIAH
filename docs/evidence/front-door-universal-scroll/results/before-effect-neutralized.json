@@ -1,0 +1,216 @@
+{
+  "mode": "before",
+  "fixture": "sessão e API sintéticas, tudo mockado, nenhuma escrita real",
+  "results": [
+    {
+      "width": 320,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 434,
+          "bottom": 746,
+          "height": 312,
+          "view": 424,
+          "scrollTop": 2962,
+          "scrollHeight": 3712
+        },
+        "B": {
+          "top": 434,
+          "bottom": 5673,
+          "height": 5239,
+          "view": 424,
+          "scrollTop": 2962,
+          "scrollHeight": 8638
+        },
+        "C": {
+          "held": 2062,
+          "kept": 2062
+        },
+        "D": {
+          "top": 434,
+          "bottom": 746,
+          "height": 312,
+          "view": 424,
+          "scrollTop": 3568,
+          "scrollHeight": 4318
+        },
+        "E": {
+          "scrollTop": 0
+        },
+        "F": {
+          "top": 435,
+          "bottom": 608,
+          "height": 173,
+          "view": 424,
+          "scrollTop": 2681,
+          "scrollHeight": 3292
+        },
+        "G": {
+          "top": 457,
+          "bottom": 1751,
+          "height": 1294,
+          "view": 424,
+          "scrollTop": 2939,
+          "scrollHeight": 4694
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    },
+    {
+      "width": 390,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 578,
+          "bottom": 798,
+          "height": 219,
+          "view": 568,
+          "scrollTop": 2155,
+          "scrollHeight": 2956
+        },
+        "B": {
+          "top": 578,
+          "bottom": 4147,
+          "height": 3569,
+          "view": 568,
+          "scrollTop": 2155,
+          "scrollHeight": 6306
+        },
+        "C": {
+          "held": 1255,
+          "kept": 1255
+        },
+        "D": {
+          "top": 578,
+          "bottom": 798,
+          "height": 219,
+          "view": 568,
+          "scrollTop": 2624,
+          "scrollHeight": 3425
+        },
+        "E": {
+          "scrollTop": 0
+        },
+        "F": {
+          "top": 578,
+          "bottom": 729,
+          "height": 151,
+          "view": 568,
+          "scrollTop": 1919,
+          "scrollHeight": 2652
+        },
+        "G": {
+          "top": 578,
+          "bottom": 1856,
+          "height": 1278,
+          "view": 568,
+          "scrollTop": 2155,
+          "scrollHeight": 4014
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    },
+    {
+      "width": 1440,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 716,
+          "bottom": 862,
+          "height": 146,
+          "view": 710,
+          "scrollTop": 1015,
+          "scrollHeight": 1884
+        },
+        "B": {
+          "top": 716,
+          "bottom": 2635,
+          "height": 1918,
+          "view": 710,
+          "scrollTop": 1015,
+          "scrollHeight": 3656
+        },
+        "C": {
+          "held": 115,
+          "kept": 115
+        },
+        "D": {
+          "top": 716,
+          "bottom": 862,
+          "height": 146,
+          "view": 710,
+          "scrollTop": 1332,
+          "scrollHeight": 2201
+        },
+        "E": {
+          "scrollTop": 0
+        },
+        "F": {
+          "top": 717,
+          "bottom": 825,
+          "height": 109,
+          "view": 710,
+          "scrollTop": 857,
+          "scrollHeight": 1689
+        },
+        "G": {
+          "top": 716,
+          "bottom": 1822,
+          "height": 1105,
+          "view": 710,
+          "scrollTop": 1015,
+          "scrollHeight": 2844
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    }
+  ]
+}

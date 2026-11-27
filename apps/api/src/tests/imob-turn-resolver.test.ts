@@ -4,6 +4,15 @@ import assert from "node:assert/strict";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
 import type { ImobProposalDraft } from "../services/imob/imobConversationContract";
 
+test("draft e formulário recebem unidades já resolvidas pelo intake, inclusive singular", () => {
+  for (const unitLabels of [["Kitnet 102", "Kitnet 103", "Kitnet 104"], ["unidade do fundo"]]) {
+    const result = resolveImobTurn({ message: "cadastrar imóvel", propertyUnitIntake: { status: "resolved", source: "openai", unitLabels },
+      access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } } });
+    assert.deepEqual(result.conversationState.operational?.propertyDraft?.unitLabels, unitLabels);
+    assert.equal(result.presentation.form?.fields.find((field) => field.name === "unitLabel")?.value, unitLabels.join(", "));
+  }
+});
+
 test("IMOB turn resolver returns consult mode for broad rental discovery", () => {
   const result = resolveImobTurn({
     message: "quero alugar apto",
@@ -597,7 +606,7 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
     [
-      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "cep", "city", "neighborhood", "address",
+      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "city", "address", "neighborhood", "cep",
       "areaM2", "bedrooms", "bathrooms", "garageSpots",
     ],
   );
@@ -606,7 +615,8 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerId")?.optionsSource, "imob_owners");
   assert.deepEqual(
     result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
-    ["propertyType", "goal", "city", "address"],
+    // Destinação é opcional (vazio = ainda não informada); só tipo, cidade e endereço são obrigatórios.
+    ["propertyType", "city", "address"],
   );
 });
 
@@ -1396,11 +1406,16 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
     [
-      "propertyId", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
+      "propertyId", "leaseState", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
       "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
       "guaranteeType", "guaranteeAmount", "iptu", "condominio", "condominioAmount",
+      "endedOn", "closeReason",
     ],
   );
+  // Situação da locação tem padrão "vigente"; encerrada exige saída e motivo (validado no cliente e na API).
+  const leaseState = result.presentation.form?.fields.find((field) => field.name === "leaseState");
+  assert.equal(leaseState?.value, "vigente");
+  assert.deepEqual(leaseState?.options?.map((option) => option.value), ["vigente", "encerrada"]);
   const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");
   assert.equal(propertyField?.optionsSource, "imob_properties");
   assert.equal(propertyField?.required, true);

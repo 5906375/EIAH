@@ -1,0 +1,518 @@
+{
+  "browser": "149.0.7827.55",
+  "origin": "http://127.0.0.1:8765",
+  "context": "descartável",
+  "externalBlocked": [
+    "https://isolation-probe.invalid"
+  ],
+  "results": [
+    {
+      "id": "A",
+      "status": "PASS",
+      "observation": "input file real e diálogo confirm nativo acionados por vitrine-imob.json"
+    },
+    {
+      "id": "B",
+      "status": "PASS",
+      "observation": "cancelamento preservou integralmente localStorage e registro IndexedDB"
+    },
+    {
+      "id": "C",
+      "status": "FAIL",
+      "observation": "Confirmação aceita e dados persistidos restaurados, mas #brandName vazio e prévia Sua imobiliária no editor; status de sucesso exibido na origem."
+    },
+    {
+      "id": "D",
+      "status": "NOT_RUN",
+      "reason": "Rodada interrompida após falha funcional em C"
+    },
+    {
+      "id": "E",
+      "status": "NOT_RUN",
+      "reason": "Rodada interrompida após falha funcional em C"
+    },
+    {
+      "id": "F",
+      "status": "NOT_RUN",
+      "reason": "Rodada interrompida após falha funcional em C"
+    },
+    {
+      "id": "G",
+      "status": "NOT_RUN",
+      "reason": "Rodada interrompida após falha funcional em C"
+    },
+    {
+      "id": "H",
+      "status": "NOT_RUN",
+      "reason": "Rodada interrompida após falha funcional em C"
+    }
+  ],
+  "errors": [],
+  "cancelDialog": "O arquivo traz a marca \"Marca Sintética Restaurada\" e 1 imóvel.\n\nAbrir este rascunho substitui a marca e os imóveis que você editou neste navegador. Continuar?",
+  "partialObservationF": {
+    "publishedUnchangedThroughC": true,
+    "nonGET": []
+  },
+  "editorErrors": [],
+  "observedEditor": {
+    "brandName": "",
+    "brandPreview": [
+      "Sua imobiliária"
+    ],
+    "properties": [
+      "Adicionar imóvel",
+      "Casa Sintética Restaurada",
+      "Casa com jardim em Morretes",
+      "Apartamento com vista na Praia Brava",
+      "Apartamento para locação no Centro",
+      "Studio mobiliado no bairro das Nações",
+      "Casa de alto padrão para locação nos Pioneiros",
+      "Apartamento de temporada em Meia Praia"
+    ]
+  },
+  "before": {
+    "local": {
+      "eiah-imob-visual:client-brand:v1": "{\"name\":\"Marca Sintética Anterior\",\"accent\":\"#123456\"}",
+      "eiah-imob-visual:client-properties:v1": "{\"l-01\":{\"titulo\":\"Imóvel Sintético Anterior\",\"tipo\":\"Casa\",\"cidade\":\"Cidade Sintética\",\"bairro\":\"Bairro Sintético\",\"descricao\":\"\",\"caracteristicas\":\"\",\"preco\":1200,\"condominio\":null,\"iptu\":null,\"area\":0,\"quartos\":0,\"suites\":0,\"banheiros\":0,\"vagas\":0,\"maxGuests\":0,\"cleaning\":0,\"finalidade\":\"locacao\",\"cover\":\"\",\"photos\":[]}}"
+    },
+    "setup": {
+      "experts": {},
+      "profile": {
+        "name": "Responsável Sintético",
+        "business": "Marca Sintética Anterior",
+        "email": "qa@example.invalid",
+        "slug": "aceitacao-sintetica"
+      },
+      "draft": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "accent": "#123456",
+          "introduction": "Conheça nossos imóveis e fale com nossa equipe."
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      },
+      "published": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "accent": "#123456",
+          "introduction": "Conheça nossos imóveis e fale com nossa equipe."
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      }
+    }
+  },
+  "afterRestoration": {
+    "local": {
+      "eiah-imob-visual:client-brand:v1": "{\"name\":\"Marca Sintética Restaurada\",\"introduction\":\"Aceitação local sintética.\",\"accent\":\"#087566\"}",
+      "eiah-imob-visual:client-properties:v1": "{\"v-01\":{\"titulo\":\"Casa Sintética Restaurada\",\"tipo\":\"Casa\",\"cidade\":\"Cidade Sintética\",\"bairro\":\"Bairro Sintético\",\"descricao\":\"Fixture local de aceitação.\",\"caracteristicas\":\"\",\"preco\":765432,\"condominio\":null,\"iptu\":null,\"area\":0,\"quartos\":0,\"suites\":0,\"banheiros\":0,\"vagas\":0,\"maxGuests\":0,\"cleaning\":0,\"finalidade\":\"venda\",\"cover\":\"\",\"photos\":[]}}"
+    },
+    "setup": {
+      "experts": {},
+      "profile": {
+        "name": "Responsável Sintético",
+        "business": "Marca Sintética Anterior",
+        "email": "qa@example.invalid",
+        "slug": "aceitacao-sintetica"
+      },
+      "draft": {
+        "brand": {
+          "name": "Marca Sintética Restaurada",
+          "introduction": "Aceitação local sintética.",
+          "accent": "#087566"
+        },
+        "properties": [
+          {
+            "id": "v-01",
+            "finalidade": "venda",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Casa Sintética Restaurada",
+            "preco": 765432,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-fachada.webp",
+              "http://127.0.0.1:8765/imob/assets/previa02-v01-cozinha.webp"
+            ],
+            "destaque": true,
+            "descricao": "Fixture local de aceitação.",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 2
+      },
+      "published": {
+        "brand": {
+          "name": "Marca Sintética Anterior",
+          "accent": "#123456",
+          "introduction": "Conheça nossos imóveis e fale com nossa equipe."
+        },
+        "properties": [
+          {
+            "id": "l-01",
+            "finalidade": "locacao",
+            "tipo": "Casa",
+            "bairro": "Bairro Sintético",
+            "cidade": "Cidade Sintética",
+            "titulo": "Imóvel Sintético Anterior",
+            "preco": 1200,
+            "condominio": null,
+            "iptu": null,
+            "area": 0,
+            "quartos": 0,
+            "suites": 0,
+            "banheiros": 0,
+            "vagas": 0,
+            "fotos": [
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-cozinha.webp",
+              "http://127.0.0.1:8765/imob/assets/vitrine-locacao-quarto.webp"
+            ],
+            "destaque": true,
+            "descricao": "",
+            "caracteristicas": [],
+            "origem": "informed_by_manager",
+            "unidadePreco": "mês"
+          }
+        ],
+        "revision": 1
+      }
+    }
+  },
+  "allowedRequests": [
+    {
+      "method": "GET",
+      "url": "/imob/ia-cliente/criar-site/"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/site-setup.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/site-setup.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/draft-restore.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/site-setup-store.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/carousel-navigation.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/imob-specialists.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/pilot-site.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/draft-rules.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/contact-eiah.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/guias-eiah.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/piloto-vagas.json"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/piloto-exemplos.json"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/especialista-j360.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/especialista-finnexus.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/especialista-radar.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-casa.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-alto-padrao-cozinha.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/site-ia-vista-mar-balneario.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-temporada.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-locacao.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-alto-padrao-quarto.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-apartamento.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-alto-padrao-gourmet.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-varanda.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/vitrine-alto-padrao-sala.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/ia-cliente/personalizar/"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/catalog.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/visual.css"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/assets/previa02-abertura.webp"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/brand-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/property-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/guided-capture-panel.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/guide-voice-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/eiah-logo.png"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-properties.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/property-video-editor.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/stay-visual.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/guide-voice-store.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/microphone-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/guided-capture.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-brand.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/client-footer.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/context-audio.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide-content.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/properties.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/properties-ia-cliente.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/property-videos.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/video-files.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/financing.mjs"
+    },
+    {
+      "method": "GET",
+      "url": "/imob/demo-guide.css"
+    }
+  ],
+  "blockedOrigins": [
+    "https://isolation-probe.invalid"
+  ],
+  "cleanup": {
+    "contextClosed": true,
+    "browserConnected": false,
+    "temporaryFixturesRemoved": true,
+    "staticServerExitCode": 0,
+    "interactiveNodeExitCode": 0
+  }
+}

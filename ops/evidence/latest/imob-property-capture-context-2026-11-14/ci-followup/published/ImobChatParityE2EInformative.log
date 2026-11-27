@@ -1,0 +1,1097 @@
+﻿2026-11-14T18:13:08.1815046Z Current runner version: '2.338.2'
+2026-11-14T18:13:08.1836328Z ##[group]Runner Image Provisioner
+2026-11-14T18:13:08.1837384Z Hosted Compute Agent
+2026-11-14T18:13:08.1837903Z Version: 20261103.629
+2026-11-14T18:13:08.1838446Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-14T18:13:08.1839063Z Build Date: 2026-11-03T17:26:59Z
+2026-11-14T18:13:08.1839623Z Worker ID: {a7f9122b-0bf7-4915-89c1-90254bc22cf4}
+2026-11-14T18:13:08.1840243Z Region: eastus2
+2026-11-14T18:13:08.1840725Z Cloud: Azure
+2026-11-14T18:13:08.1841239Z ##[endgroup]
+2026-11-14T18:13:08.1842353Z ##[group]Operating System
+2026-11-14T18:13:08.1842841Z Ubuntu
+2026-11-14T18:13:08.1843588Z 26.04.1
+2026-11-14T18:13:08.1844042Z LTS
+2026-11-14T18:13:08.1844502Z ##[endgroup]
+2026-11-14T18:13:08.1844990Z ##[group]Runner Image
+2026-11-14T18:13:08.1845490Z Image: ubuntu-26.04
+2026-11-14T18:13:08.1845988Z Version: 20261111.196.1
+2026-11-14T18:13:08.1847037Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261111.196/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-14T18:13:08.1848314Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261111.196
+2026-11-14T18:13:08.1849093Z ##[endgroup]
+2026-11-14T18:13:08.1851734Z ##[group]GITHUB_TOKEN Permissions
+2026-11-14T18:13:08.1853966Z Actions: write
+2026-11-14T18:13:08.1854570Z ArtifactMetadata: write
+2026-11-14T18:13:08.1855081Z Attestations: write
+2026-11-14T18:13:08.1855581Z Checks: write
+2026-11-14T18:13:08.1856077Z CodeQuality: write
+2026-11-14T18:13:08.1856540Z Contents: write
+2026-11-14T18:13:08.1857073Z CopilotRequests: write
+2026-11-14T18:13:08.1857552Z Deployments: write
+2026-11-14T18:13:08.1858030Z Discussions: write
+2026-11-14T18:13:08.1858545Z Drives: write
+2026-11-14T18:13:08.1858978Z Issues: write
+2026-11-14T18:13:08.1859517Z Metadata: read
+2026-11-14T18:13:08.1859969Z Models: read
+2026-11-14T18:13:08.1860387Z Packages: write
+2026-11-14T18:13:08.1860918Z Pages: write
+2026-11-14T18:13:08.1861400Z PullRequests: write
+2026-11-14T18:13:08.1861935Z RepositoryProjects: write
+2026-11-14T18:13:08.1862452Z SecurityEvents: write
+2026-11-14T18:13:08.1862921Z Statuses: write
+2026-11-14T18:13:08.1863709Z VulnerabilityAlerts: read
+2026-11-14T18:13:08.1864200Z ##[endgroup]
+2026-11-14T18:13:08.1865946Z Secret source: Actions
+2026-11-14T18:13:08.1866725Z Cache mode: write
+2026-11-14T18:13:08.1867508Z Prepare workflow directory
+2026-11-14T18:13:08.2224976Z Prepare all required actions
+2026-11-14T18:13:08.2265187Z Getting action download info
+2026-11-14T18:13:08.4086983Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-14T18:13:08.5611407Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-11-14T18:13:08.7413875Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-14T18:13:08.9222035Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+2026-11-14T18:13:09.2462111Z Complete job name: ImobChatParityE2EInformative
+2026-11-14T18:13:09.3000893Z ##[group]Checking docker version
+2026-11-14T18:13:09.3011290Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-11-14T18:13:09.3761257Z '1.54'
+2026-11-14T18:13:09.3779601Z Docker daemon API version: '1.54'
+2026-11-14T18:13:09.3780293Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-11-14T18:13:09.3984793Z '1.54'
+2026-11-14T18:13:09.3999034Z Docker client API version: '1.54'
+2026-11-14T18:13:09.4004000Z ##[endgroup]
+2026-11-14T18:13:09.4006064Z ##[group]Clean up resources from previous jobs
+2026-11-14T18:13:09.4010676Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=b4b7d2"
+2026-11-14T18:13:09.4161536Z ##[command]/usr/bin/docker network prune --force --filter "label=b4b7d2"
+2026-11-14T18:13:09.4297585Z ##[endgroup]
+2026-11-14T18:13:09.4298055Z ##[group]Create local container network
+2026-11-14T18:13:09.4306826Z ##[command]/usr/bin/docker network create --label b4b7d2 github_network_5b5d3275a5ae47e2aefae32fa840af59
+2026-11-14T18:13:09.4698434Z b9b634d65423f9bf02c0b13d3be75ea313ebc4462902955442d8e501adf2dac7
+2026-11-14T18:13:09.4720166Z ##[endgroup]
+2026-11-14T18:13:09.4741619Z ##[group]Starting job container
+2026-11-14T18:13:09.4760181Z ##[command]/usr/bin/docker pull mcr.microsoft.com/playwright:v1.61.1-noble
+2026-11-14T18:13:09.6112399Z v1.61.1-noble: Pulling from playwright
+2026-11-14T18:13:09.6851548Z dfbf326447c4: Pulling fs layer
+2026-11-14T18:13:09.6852521Z 0e5f8475f38b: Pulling fs layer
+2026-11-14T18:13:09.6853509Z 11a52a28a3f8: Pulling fs layer
+2026-11-14T18:13:09.6854146Z 0b569fd65eaf: Pulling fs layer
+2026-11-14T18:13:09.7911303Z 11a52a28a3f8: Download complete
+2026-11-14T18:13:10.0917307Z 0e5f8475f38b: Download complete
+2026-11-14T18:13:10.7909051Z dfbf326447c4: Download complete
+2026-11-14T18:13:10.8935124Z 0e5f8475f38b: Pull complete
+2026-11-14T18:13:14.1920825Z dfbf326447c4: Pull complete
+2026-11-14T18:13:15.7917741Z 11a52a28a3f8: Pull complete
+2026-11-14T18:13:17.8908694Z 0b569fd65eaf: Download complete
+2026-11-14T18:13:27.0910929Z 0b569fd65eaf: Pull complete
+2026-11-14T18:13:27.3886532Z Digest: sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
+2026-11-14T18:13:27.3887539Z Status: Downloaded newer image for mcr.microsoft.com/playwright:v1.61.1-noble
+2026-11-14T18:13:27.4279421Z mcr.microsoft.com/playwright:v1.61.1-noble
+2026-11-14T18:13:27.4354923Z ##[command]/usr/bin/docker create --name bc2b1a35dcc04da396583f88fd84f768_mcrmicrosoftcomplaywrightv1611noble_514c91 --label b4b7d2 --workdir /__w/EIAH/EIAH --network github_network_5b5d3275a5ae47e2aefae32fa840af59 --ipc=host -e "HOME=/github/home" -e GITHUB_ACTIONS=true -e CI=true -v "/var/run/docker.sock":"/var/run/docker.sock" -v "/home/runner/work":"/__w" -v "/home/runner/actions-runner/cached/2.338.2/externals":"/__e":ro -v "/home/runner/work/_temp":"/__w/_temp" -v "/home/runner/work/_actions":"/__w/_actions" -v "/opt/hostedtoolcache":"/__t" -v "/home/runner/work/_temp/_github_home":"/github/home" -v "/home/runner/work/_temp/_github_workflow":"/github/workflow" --entrypoint "tail" mcr.microsoft.com/playwright:v1.61.1-noble "-f" "/dev/null"
+2026-11-14T18:13:35.6587134Z 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:13:35.6616309Z ##[command]/usr/bin/docker start 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:13:35.8180843Z 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:13:35.8201097Z ##[command]/usr/bin/docker ps --all --filter id=389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-11-14T18:13:35.8361524Z 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 Up Less than a second
+2026-11-14T18:13:35.8381698Z ##[command]/usr/bin/docker inspect --format "{{range .Config.Env}}{{println .}}{{end}}" 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:13:35.8499538Z HOME=/github/home
+2026-11-14T18:13:35.8500645Z GITHUB_ACTIONS=true
+2026-11-14T18:13:35.8512608Z CI=true
+2026-11-14T18:13:35.8513542Z PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+2026-11-14T18:13:35.8513922Z LANG=C.UTF-8
+2026-11-14T18:13:35.8514103Z LC_ALL=C.UTF-8
+2026-11-14T18:13:35.8514398Z PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+2026-11-14T18:13:35.8521373Z ##[endgroup]
+2026-11-14T18:13:35.8522377Z ##[group]Starting postgres service container
+2026-11-14T18:13:35.8523866Z ##[command]/usr/bin/docker pull pgvector/pgvector:pg16
+2026-11-14T18:13:36.1365282Z pg16: Pulling from pgvector/pgvector
+2026-11-14T18:13:36.2585865Z eee1703e0e36: Pulling fs layer
+2026-11-14T18:13:36.2588864Z 705db54eb6f9: Pulling fs layer
+2026-11-14T18:13:36.2589149Z 88d6e4059ddb: Pulling fs layer
+2026-11-14T18:13:36.2589453Z 02082338f6fc: Pulling fs layer
+2026-11-14T18:13:36.2589725Z dd051e1b8c92: Pulling fs layer
+2026-11-14T18:13:36.2589991Z ae3b39dd856e: Pulling fs layer
+2026-11-14T18:13:36.2590261Z 40a1c034d098: Pulling fs layer
+2026-11-14T18:13:36.2591012Z c8474e93cf43: Pulling fs layer
+2026-11-14T18:13:36.2591265Z a0c21698d159: Pulling fs layer
+2026-11-14T18:13:36.2591510Z dacdcfbc697e: Pulling fs layer
+2026-11-14T18:13:36.2591773Z d66fa994cd3b: Pulling fs layer
+2026-11-14T18:13:36.2592066Z 85a95895b814: Pulling fs layer
+2026-11-14T18:13:36.2592346Z 53b079a925c4: Pulling fs layer
+2026-11-14T18:13:36.2592607Z 85320d1bc048: Pulling fs layer
+2026-11-14T18:13:36.2592874Z bbc81ca93e43: Pulling fs layer
+2026-11-14T18:13:36.2593312Z 03a9acd43566: Pulling fs layer
+2026-11-14T18:13:36.3681369Z eee1703e0e36: Download complete
+2026-11-14T18:13:36.3684691Z 53b079a925c4: Download complete
+2026-11-14T18:13:36.3745171Z 88d6e4059ddb: Download complete
+2026-11-14T18:13:36.3758666Z a0c21698d159: Download complete
+2026-11-14T18:13:36.3775922Z 02082338f6fc: Download complete
+2026-11-14T18:13:36.3778956Z 85a95895b814: Download complete
+2026-11-14T18:13:36.3783553Z ae3b39dd856e: Download complete
+2026-11-14T18:13:36.3786038Z c8474e93cf43: Download complete
+2026-11-14T18:13:36.3791584Z bbc81ca93e43: Download complete
+2026-11-14T18:13:36.3793841Z 40a1c034d098: Download complete
+2026-11-14T18:13:36.4656810Z 705db54eb6f9: Download complete
+2026-11-14T18:13:36.4660584Z 03a9acd43566: Download complete
+2026-11-14T18:13:36.4662933Z 85320d1bc048: Download complete
+2026-11-14T18:13:36.6654875Z dacdcfbc697e: Download complete
+2026-11-14T18:13:36.6678345Z dd051e1b8c92: Download complete
+2026-11-14T18:13:36.6686918Z 837ceb5aa9a0: Download complete
+2026-11-14T18:13:37.4659310Z d66fa994cd3b: Download complete
+2026-11-14T18:13:37.4697878Z eee1703e0e36: Pull complete
+2026-11-14T18:13:37.4834844Z dd051e1b8c92: Pull complete
+2026-11-14T18:13:37.5781797Z 03a9acd43566: Pull complete
+2026-11-14T18:13:37.5797485Z 85320d1bc048: Pull complete
+2026-11-14T18:13:37.6755610Z dacdcfbc697e: Pull complete
+2026-11-14T18:13:37.7682670Z a0c21698d159: Pull complete
+2026-11-14T18:13:37.7754014Z 40a1c034d098: Pull complete
+2026-11-14T18:13:37.7760735Z 705db54eb6f9: Pull complete
+2026-11-14T18:13:39.3665660Z 53b079a925c4: Pull complete
+2026-11-14T18:13:39.3673497Z 88d6e4059ddb: Pull complete
+2026-11-14T18:13:39.3682141Z 02082338f6fc: Pull complete
+2026-11-14T18:13:39.3706047Z 85a95895b814: Pull complete
+2026-11-14T18:13:39.3718416Z ae3b39dd856e: Pull complete
+2026-11-14T18:13:39.3737456Z bbc81ca93e43: Pull complete
+2026-11-14T18:13:39.3746536Z d66fa994cd3b: Pull complete
+2026-11-14T18:13:39.3913205Z c8474e93cf43: Pull complete
+2026-11-14T18:13:39.3913995Z Digest: sha256:484e838076e04939d27d3e176e91c86eea96236126023be8d3059761122e579f
+2026-11-14T18:13:39.3914585Z Status: Downloaded newer image for pgvector/pgvector:pg16
+2026-11-14T18:13:39.3917816Z docker.io/pgvector/pgvector:pg16
+2026-11-14T18:13:39.3941467Z ##[command]/usr/bin/docker create --name 4f8f7c3b1c094ea690252a5fc28ba7d5_pgvectorpgvectorpg16_28a0f3 --label b4b7d2 --network github_network_5b5d3275a5ae47e2aefae32fa840af59 --network-alias postgres -p 5432:5432 --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 -e "POSTGRES_USER=ci" -e "POSTGRES_PASSWORD=[REDACTED_TEST_SECRET] -e "POSTGRES_DB=eiah_ci" -e GITHUB_ACTIONS=true -e CI=true pgvector/pgvector:pg16
+2026-11-14T18:13:42.1909370Z ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:42.1926023Z ##[command]/usr/bin/docker start ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:42.5287334Z ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:42.5315719Z ##[command]/usr/bin/docker ps --all --filter id=ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-11-14T18:13:42.5553711Z ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c Up Less than a second (health: starting)
+2026-11-14T18:13:42.5579928Z ##[command]/usr/bin/docker port ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:42.5712842Z 5432/tcp -> 0.0.0.0:5432
+2026-11-14T18:13:42.5713453Z 5432/tcp -> [::]:5432
+2026-11-14T18:13:42.5766480Z ##[endgroup]
+2026-11-14T18:13:42.5767965Z ##[group]Starting redis service container
+2026-11-14T18:13:42.5768809Z ##[command]/usr/bin/docker pull redis:7
+2026-11-14T18:13:42.8091179Z 7: Pulling from library/redis
+2026-11-14T18:13:42.9401781Z b978112db001: Pulling fs layer
+2026-11-14T18:13:42.9402643Z 94e14de0ef29: Pulling fs layer
+2026-11-14T18:13:42.9403244Z 1af2d1c5b5d7: Pulling fs layer
+2026-11-14T18:13:42.9403560Z e68f2e5c8d50: Pulling fs layer
+2026-11-14T18:13:42.9403842Z 4f4fb700ef54: Pulling fs layer
+2026-11-14T18:13:42.9404121Z f43705d71c46: Pulling fs layer
+2026-11-14T18:13:42.9920750Z e68f2e5c8d50: Download complete
+2026-11-14T18:13:42.9921239Z 4f4fb700ef54: Already exists
+2026-11-14T18:13:42.9923933Z b978112db001: Download complete
+2026-11-14T18:13:42.9927134Z 94e14de0ef29: Download complete
+2026-11-14T18:13:42.9930270Z 1af2d1c5b5d7: Download complete
+2026-11-14T18:13:43.2914540Z f43705d71c46: Download complete
+2026-11-14T18:13:43.2947568Z 94e14de0ef29: Pull complete
+2026-11-14T18:13:43.3911863Z 997e218b00c5: Download complete
+2026-11-14T18:13:43.4914097Z 713b18672f38: Download complete
+2026-11-14T18:13:43.4950320Z e68f2e5c8d50: Pull complete
+2026-11-14T18:13:43.6584869Z 4f4fb700ef54: Pull complete
+2026-11-14T18:13:43.6597300Z b978112db001: Pull complete
+2026-11-14T18:13:43.6603462Z 1af2d1c5b5d7: Pull complete
+2026-11-14T18:13:43.6615152Z f43705d71c46: Pull complete
+2026-11-14T18:13:43.6615887Z Digest: sha256:2e3eb11462c4e3759e6972678dd051d150ff54b1e60714b3c33b701260172a90
+2026-11-14T18:13:43.6618617Z Status: Downloaded newer image for redis:7
+2026-11-14T18:13:43.6624793Z docker.io/library/redis:7
+2026-11-14T18:13:43.6653768Z ##[command]/usr/bin/docker create --name 2fbe67873ffe46c0acb3cfda677a3ff1_redis7_8d8e9b --label b4b7d2 --network github_network_5b5d3275a5ae47e2aefae32fa840af59 --network-alias redis -p 6379:6379 --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5 -e GITHUB_ACTIONS=true -e CI=true redis:7
+2026-11-14T18:13:44.0230519Z 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:13:44.0272197Z ##[command]/usr/bin/docker start 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:13:44.1621849Z 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:13:44.1640614Z ##[command]/usr/bin/docker ps --all --filter id=28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-11-14T18:13:44.1840818Z 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033 Up Less than a second (health: starting)
+2026-11-14T18:13:44.1855385Z ##[command]/usr/bin/docker port 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:13:44.1970170Z 6379/tcp -> 0.0.0.0:6379
+2026-11-14T18:13:44.1970692Z 6379/tcp -> [::]:6379
+2026-11-14T18:13:44.1984711Z ##[endgroup]
+2026-11-14T18:13:44.1994500Z ##[group]Waiting for all services to be ready
+2026-11-14T18:13:44.2003748Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:44.2121379Z starting
+2026-11-14T18:13:44.2141619Z postgres service is starting, waiting 2 seconds before checking again.
+2026-11-14T18:13:46.2144947Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:46.2269709Z starting
+2026-11-14T18:13:46.2283865Z postgres service is starting, waiting 3 seconds before checking again.
+2026-11-14T18:13:50.0243787Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:50.0366072Z starting
+2026-11-14T18:13:50.0380743Z postgres service is starting, waiting 8 seconds before checking again.
+2026-11-14T18:13:58.2544900Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:13:58.2674616Z healthy
+2026-11-14T18:13:58.2692174Z postgres service is healthy.
+2026-11-14T18:13:58.2692886Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:13:58.2803728Z healthy
+2026-11-14T18:13:58.2817336Z redis service is healthy.
+2026-11-14T18:13:58.2817897Z ##[endgroup]
+2026-11-14T18:13:58.3057880Z ##[group]Run actions/checkout@v4
+2026-11-14T18:13:58.3058292Z with:
+2026-11-14T18:13:58.3058467Z   repository: 5906375/EIAH
+2026-11-14T18:13:58.3060530Z   token: ***
+2026-11-14T18:13:58.3060710Z   ssh-strict: true
+2026-11-14T18:13:58.3060888Z   ssh-user: git
+2026-11-14T18:13:58.3061065Z   persist-credentials: true
+2026-11-14T18:13:58.3061267Z   clean: true
+2026-11-14T18:13:58.3061448Z   sparse-checkout-cone-mode: true
+2026-11-14T18:13:58.3061677Z   fetch-depth: 1
+2026-11-14T18:13:58.3061841Z   fetch-tags: false
+2026-11-14T18:13:58.3062013Z   show-progress: true
+2026-11-14T18:13:58.3062188Z   lfs: false
+2026-11-14T18:13:58.3062343Z   submodules: false
+2026-11-14T18:13:58.3062515Z   set-safe-directory: true
+2026-11-14T18:13:58.3062714Z   allow-unsafe-pr-checkout: false
+2026-11-14T18:13:58.3063264Z env:
+2026-11-14T18:13:58.3063504Z   NODE_VERSION: 20
+2026-11-14T18:13:58.3063677Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:58.3064081Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:13:58.3064366Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:13:58.3064614Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:13:58.3064853Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:13:58.3065084Z ##[endgroup]
+2026-11-14T18:13:58.3115270Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:13:58.5878258Z Syncing repository: 5906375/EIAH
+2026-11-14T18:13:58.5879347Z ##[group]Getting Git version info
+2026-11-14T18:13:58.5879614Z Working directory is '/__w/EIAH/EIAH'
+2026-11-14T18:13:58.5880005Z [command]/usr/bin/git version
+2026-11-14T18:13:58.5880212Z git version 2.43.0
+2026-11-14T18:13:58.5880898Z ##[endgroup]
+2026-11-14T18:13:58.5908362Z Temporarily overriding HOME='/__w/_temp/9303ab7a-d865-46fc-9249-e30d546228fc' before making global git config changes
+2026-11-14T18:13:58.5909498Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:13:58.5913491Z [command]/usr/bin/git config --global --add safe.directory /__w/EIAH/EIAH
+2026-11-14T18:13:58.5955843Z Deleting the contents of '/__w/EIAH/EIAH'
+2026-11-14T18:13:58.5961946Z ##[group]Initializing the repository
+2026-11-14T18:13:58.5966163Z [command]/usr/bin/git init /__w/EIAH/EIAH
+2026-11-14T18:13:58.6004866Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-14T18:13:58.6005730Z hint: is subject to change. To configure the initial branch name to use in all
+2026-11-14T18:13:58.6006483Z hint: of your new repositories, which will suppress this warning, call:
+2026-11-14T18:13:58.6007004Z hint:
+2026-11-14T18:13:58.6007364Z hint: 	git config --global init.defaultBranch <name>
+2026-11-14T18:13:58.6007766Z hint:
+2026-11-14T18:13:58.6008205Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-14T18:13:58.6008905Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-14T18:13:58.6009443Z hint:
+2026-11-14T18:13:58.6009712Z hint: 	git branch -m <name>
+2026-11-14T18:13:58.6013760Z Initialized empty Git repository in /__w/EIAH/EIAH/.git/
+2026-11-14T18:13:58.6023397Z [command]/usr/bin/git remote add origin https://github.com/5906375/EIAH
+2026-11-14T18:13:58.6088313Z ##[endgroup]
+2026-11-14T18:13:58.6088805Z ##[group]Disabling automatic garbage collection
+2026-11-14T18:13:58.6098783Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-14T18:13:58.6128178Z ##[endgroup]
+2026-11-14T18:13:58.6128615Z ##[group]Setting up auth
+2026-11-14T18:13:58.6134222Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:13:58.6162843Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:13:58.6438678Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:13:58.6688407Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:13:58.6692517Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:13:58.6732870Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:13:58.6954244Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-14T18:13:58.6995581Z ##[endgroup]
+2026-11-14T18:13:58.6995941Z ##[group]Fetching the repository
+2026-11-14T18:13:58.7005593Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +67250024941e64760e577b152f77be15f638dbdf:refs/remotes/pull/536/merge
+2026-11-14T18:14:01.1245662Z From https://github.com/5906375/EIAH
+2026-11-14T18:14:01.1246239Z  * [new ref]         67250024941e64760e577b152f77be15f638dbdf -> pull/536/merge
+2026-11-14T18:14:01.1264401Z ##[endgroup]
+2026-11-14T18:14:01.1264734Z ##[group]Determining the checkout info
+2026-11-14T18:14:01.1266696Z ##[endgroup]
+2026-11-14T18:14:01.1271800Z [command]/usr/bin/git sparse-checkout disable
+2026-11-14T18:14:01.1314158Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-14T18:14:01.1347165Z ##[group]Checking out the ref
+2026-11-14T18:14:01.1350982Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/536/merge
+2026-11-14T18:14:01.7911431Z Note: switching to 'refs/remotes/pull/536/merge'.
+2026-11-14T18:14:01.7911784Z
+2026-11-14T18:14:01.7912031Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-14T18:14:01.7912648Z changes and commit them, and you can discard any commits you make in this
+2026-11-14T18:14:01.7913424Z state without impacting any branches by switching back to a branch.
+2026-11-14T18:14:01.7913778Z
+2026-11-14T18:14:01.7914148Z If you want to create a new branch to retain commits you create, you may
+2026-11-14T18:14:01.7914716Z do so (now or later) by using -c with the switch command. Example:
+2026-11-14T18:14:01.7915034Z
+2026-11-14T18:14:01.7915175Z   git switch -c <new-branch-name>
+2026-11-14T18:14:01.7915394Z
+2026-11-14T18:14:01.7915514Z Or undo this operation with:
+2026-11-14T18:14:01.7915718Z
+2026-11-14T18:14:01.7915838Z   git switch -
+2026-11-14T18:14:01.7916038Z
+2026-11-14T18:14:01.7916304Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-14T18:14:01.7916700Z
+2026-11-14T18:14:01.7917157Z HEAD is now at 6725002 Merge 780eafb8abef0630d0ae1c9cafe69decfe3a1726 into 751cbc3c7e23bc92db5a986136e221178af0c24b
+2026-11-14T18:14:01.7979763Z ##[endgroup]
+2026-11-14T18:14:01.8033261Z [command]/usr/bin/git log -1 --format=%H
+2026-11-14T18:14:01.8063561Z 67250024941e64760e577b152f77be15f638dbdf
+2026-11-14T18:14:01.8297221Z ##[group]Run pnpm/action-setup@v4
+2026-11-14T18:14:01.8297450Z with:
+2026-11-14T18:14:01.8297612Z   version: 10.12.4
+2026-11-14T18:14:01.8297782Z   run_install: false
+2026-11-14T18:14:01.8297956Z   dest: ~/setup-pnpm
+2026-11-14T18:14:01.8298123Z   cache: false
+2026-11-14T18:14:01.8298298Z   cache_dependency_path: pnpm-lock.yaml
+2026-11-14T18:14:01.8298531Z   package_json_file: package.json
+2026-11-14T18:14:01.8298727Z   standalone: false
+2026-11-14T18:14:01.8298888Z env:
+2026-11-14T18:14:01.8299204Z   NODE_VERSION: 20
+2026-11-14T18:14:01.8299370Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:01.8299809Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:01.8300093Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:01.8300347Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:01.8300598Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:01.8300837Z ##[endgroup]
+2026-11-14T18:14:01.8304571Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:14:02.0453826Z ##[group]Running self-installer...
+2026-11-14T18:14:02.4782471Z (node:163) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:14:02.4783837Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:14:02.6495203Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:14:02.6562724Z Packages: +1
+2026-11-14T18:14:02.6563301Z +
+2026-11-14T18:14:03.0429992Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-11-14T18:14:03.0798382Z
+2026-11-14T18:14:03.0798869Z dependencies:
+2026-11-14T18:14:03.0799196Z + pnpm 10.12.4 (12.18.0 is available)
+2026-11-14T18:14:03.0799434Z
+2026-11-14T18:14:03.0818203Z Done in 894ms
+2026-11-14T18:14:03.1014944Z ##[endgroup]
+2026-11-14T18:14:03.1047265Z Installation Completed!
+2026-11-14T18:14:03.1231616Z ##[group]Run actions/setup-node@v4
+2026-11-14T18:14:03.1231853Z with:
+2026-11-14T18:14:03.1232012Z   node-version: 22
+2026-11-14T18:14:03.1232182Z   cache: pnpm
+2026-11-14T18:14:03.1232368Z   cache-dependency-path: pnpm-lock.yaml
+2026-11-14T18:14:03.1232593Z   always-auth: false
+2026-11-14T18:14:03.1232767Z   check-latest: false
+2026-11-14T18:14:03.1235010Z   token: ***
+2026-11-14T18:14:03.1235174Z env:
+2026-11-14T18:14:03.1235326Z   NODE_VERSION: 20
+2026-11-14T18:14:03.1235517Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:03.1235841Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:03.1236122Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:03.1236357Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:03.1236594Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:03.1236869Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:03.1237110Z ##[endgroup]
+2026-11-14T18:14:03.1243815Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:14:03.3516982Z Found in cache @ /__t/node/22.23.4/x64
+2026-11-14T18:14:03.3518304Z (node:185) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-14T18:14:03.3519268Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:14:03.3520352Z ##[group]Environment details
+2026-11-14T18:14:06.2532881Z node: v22.23.4
+2026-11-14T18:14:06.2533305Z npm: 10.9.9
+2026-11-14T18:14:06.2533538Z yarn: 1.22.22
+2026-11-14T18:14:06.2534617Z ##[endgroup]
+2026-11-14T18:14:06.2548148Z [command]/github/home/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-11-14T18:14:06.6914749Z /__w/.pnpm-store/v10
+2026-11-14T18:14:06.7787375Z Cache hit for: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:14:06.7869787Z (node:185) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:14:07.3497556Z Received 109811000 of 109811000 (100.0%), 200.2 MBs/sec
+2026-11-14T18:14:07.3498037Z Cache Size: ~105 MB (109811000 B)
+2026-11-14T18:14:07.3513608Z [command]/usr/bin/tar -xf /__w/_temp/178d268d-f51c-4521-9436-5dc680745763/cache.tgz -P -C /__w/EIAH/EIAH -z
+2026-11-14T18:14:09.8555206Z Cache restored successfully
+2026-11-14T18:14:09.8602965Z Cache restored from key: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:14:09.8888824Z ##[group]Run pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:14:09.8889279Z pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:14:09.8891686Z shell: sh -e {0}
+2026-11-14T18:14:09.8891875Z env:
+2026-11-14T18:14:09.8892043Z   NODE_VERSION: 20
+2026-11-14T18:14:09.8892227Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:09.8892682Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:09.8892966Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:09.8893500Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:09.8893750Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:09.8894044Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:09.8894293Z ##[endgroup]
+2026-11-14T18:14:10.1720541Z Scope: all 12 workspace projects
+2026-11-14T18:14:10.2324573Z Lockfile is up to date, resolution step is skipped
+2026-11-14T18:14:10.2762806Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:14:10.3641200Z Packages: +812
+2026-11-14T18:14:10.3641768Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-11-14T18:14:11.2764291Z Progress: resolved 812, reused 811, downloaded 0, added 375
+2026-11-14T18:14:12.1347074Z Progress: resolved 812, reused 811, downloaded 0, added 812, done
+2026-11-14T18:14:12.5061638Z
+2026-11-14T18:14:12.5062268Z dependencies:
+2026-11-14T18:14:12.5062842Z + @prisma/client 7.2.0
+2026-11-14T18:14:12.5063362Z + prisma 7.2.0
+2026-11-14T18:14:12.5063524Z
+2026-11-14T18:14:12.5063663Z devDependencies:
+2026-11-14T18:14:12.5063956Z + @eslint/js 9.39.2
+2026-11-14T18:14:12.5064278Z + @prisma/config 7.2.0
+2026-11-14T18:14:12.5064579Z + @types/node 25.0.3
+2026-11-14T18:14:12.5064957Z + @typescript-eslint/eslint-plugin 8.50.0
+2026-11-14T18:14:12.5065522Z + @typescript-eslint/parser 8.50.0
+2026-11-14T18:14:12.5066079Z + @typescript-eslint/utils 8.50.0
+2026-11-14T18:14:12.5066523Z + eslint 9.39.2
+2026-11-14T18:14:12.5067154Z + eslint-config-prettier 10.1.8
+2026-11-14T18:14:12.5067746Z + eslint-plugin-import 2.32.0
+2026-11-14T18:14:12.5068446Z + eslint-plugin-unused-imports 4.3.0
+2026-11-14T18:14:12.5068970Z + playwright 1.61.1
+2026-11-14T18:14:12.5069352Z + tsx 4.21.0
+2026-11-14T18:14:12.5069896Z + typescript 5.9.3
+2026-11-14T18:14:12.5070098Z
+2026-11-14T18:14:12.5197948Z Done in 2.5s using pnpm v10.12.4
+2026-11-14T18:14:12.5430210Z ##[group]Run pnpm --filter @eiah/contracts build
+2026-11-14T18:14:12.5430548Z pnpm --filter @eiah/contracts build
+2026-11-14T18:14:12.5430796Z pnpm --filter @repo/db build
+2026-11-14T18:14:12.5431027Z pnpm --filter @eiah/core build
+2026-11-14T18:14:12.5431275Z pnpm --filter @eiah/providers build
+2026-11-14T18:14:12.5431741Z shell: sh -e {0}
+2026-11-14T18:14:12.5431909Z env:
+2026-11-14T18:14:12.5432066Z   NODE_VERSION: 20
+2026-11-14T18:14:12.5432257Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:12.5432699Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:12.5432998Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:12.5433551Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:12.5433804Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:12.5434088Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:12.5434342Z ##[endgroup]
+2026-11-14T18:14:12.8447849Z
+2026-11-14T18:14:12.8448763Z > @eiah/contracts@1.0.1 prebuild /__w/EIAH/EIAH/packages/contracts
+2026-11-14T18:14:12.8449367Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:14:12.8449616Z
+2026-11-14T18:14:12.8633834Z
+2026-11-14T18:14:12.8634538Z > @eiah/contracts@1.0.1 build /__w/EIAH/EIAH/packages/contracts
+2026-11-14T18:14:12.8635174Z > tsc -p tsconfig.json
+2026-11-14T18:14:12.8635357Z
+2026-11-14T18:14:16.8045128Z
+2026-11-14T18:14:16.8051442Z > @repo/db@1.0.0 prebuild /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:16.8052642Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:14:16.8053155Z
+2026-11-14T18:14:16.8121252Z
+2026-11-14T18:14:16.8121970Z > @repo/db@1.0.0 build /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:16.8122486Z > pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts
+2026-11-14T18:14:16.8122728Z
+2026-11-14T18:14:17.0252550Z
+2026-11-14T18:14:17.0253391Z > @repo/db@1.0.0 generate /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:17.0253911Z > pnpm prisma generate
+2026-11-14T18:14:17.0254163Z
+2026-11-14T18:14:17.2410799Z
+2026-11-14T18:14:17.2411336Z > @repo/db@1.0.0 prisma /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:17.2411681Z > prisma generate
+2026-11-14T18:14:17.2411799Z
+2026-11-14T18:14:17.9933450Z Loaded Prisma config from prisma.config.ts.
+2026-11-14T18:14:17.9934103Z
+2026-11-14T18:14:18.4293192Z Prisma schema loaded from prisma/schema.prisma.
+2026-11-14T18:14:19.1212913Z
+2026-11-14T18:14:19.1214159Z ✔ Generated Prisma Client (v7.2.0) to ./src/generated/client in 366ms
+2026-11-14T18:14:19.1214500Z
+2026-11-14T18:14:19.1214796Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-11-14T18:14:19.1215081Z
+2026-11-14T18:14:19.1215321Z Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+2026-11-14T18:14:19.1215555Z
+2026-11-14T18:14:19.4257878Z CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+2026-11-14T18:14:19.4258994Z CLI Using tsconfig: tsconfig.json
+2026-11-14T18:14:19.4259869Z CLI tsup v8.5.1
+2026-11-14T18:14:19.4260572Z CLI Using tsup config: /__w/EIAH/EIAH/packages/db/tsup.config.ts
+2026-11-14T18:14:19.4271561Z CLI Target: es2022
+2026-11-14T18:14:19.4277406Z CLI Cleaning output folder
+2026-11-14T18:14:19.4285670Z ESM Build start
+2026-11-14T18:14:19.4374286Z ESM dist/index.js                  407.00 B
+2026-11-14T18:14:19.4375753Z ESM dist/middleware/tenantGuard.js 3.74 KB
+2026-11-14T18:14:19.4377248Z ESM dist/client.js                 2.21 KB
+2026-11-14T18:14:19.4378045Z ESM ⚡️ Build success in 9ms
+2026-11-14T18:14:19.6522125Z
+2026-11-14T18:14:19.6522900Z > @repo/db@1.0.0 build:dts /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:19.6523506Z > tsc --build tsconfig.json --force
+2026-11-14T18:14:19.6523751Z
+2026-11-14T18:14:23.7228645Z
+2026-11-14T18:14:23.7229435Z > @repo/db@1.0.0 postbuild /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:23.7230319Z > node ./scripts/copy-publish-artifacts.mjs
+2026-11-14T18:14:23.7230511Z
+2026-11-14T18:14:24.0157485Z
+2026-11-14T18:14:24.0158518Z > @eiah/core@0.1.0 prebuild /__w/EIAH/EIAH/packages/core
+2026-11-14T18:14:24.0159428Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:14:24.0159794Z
+2026-11-14T18:14:24.0220800Z
+2026-11-14T18:14:24.0221320Z > @eiah/core@0.1.0 build /__w/EIAH/EIAH/packages/core
+2026-11-14T18:14:24.0221956Z > pnpm run clean && pnpm exec tsc -p tsconfig.json --emitDeclarationOnly && pnpm exec tsup --config tsup.config.ts
+2026-11-14T18:14:24.0222344Z
+2026-11-14T18:14:24.2333505Z
+2026-11-14T18:14:24.2334677Z > @eiah/core@0.1.0 clean /__w/EIAH/EIAH/packages/core
+2026-11-14T18:14:24.2335461Z > node -e "require('fs').rmSync('dist', { recursive: true, force: true })"
+2026-11-14T18:14:24.2335864Z
+2026-11-14T18:14:29.2869133Z CLI Building entry: src/index.ts, src/actions/actionRegistry.ts, src/actions/billing.ts, src/actions/defi.ts, src/actions/finance.ts, src/actions/guardian.ts, src/actions/guardianChecklistTools.ts, src/actions/guardrails.ts, src/actions/index.ts, src/actions/knowledge.ts, src/actions/notifications.ts, src/actions/risk.ts, src/billing/reconciliation.ts, src/catalog/apeWeeklyCycleV3.test.ts, src/catalog/apeWeeklyCycleV3.ts, src/catalog/apeWeeklyCycleV3Validator.test.ts, src/catalog/apeWeeklyCycleV3Validator.ts, src/catalog/governedOperationCatalog.test.ts, src/catalog/governedOperationCatalog.ts, src/catalog/versionedActionRegistry.ts, src/catalog/workspaceActionPolicyProvisioning.ts, src/catalog/workspaceAgentProvisioning.test.ts, src/catalog/workspaceAgentProvisioning.ts, src/events/redisPublisher.ts, src/llm/LLMProvider.ts, src/llm/LLMRegistry.ts, src/llm/LLMRouter.ts, src/llm/completionEngine.ts, src/llm/types.ts, src/logging/index.ts, src/logging/logger.ts, src/queue/actionQueue.ts, src/queue/connection.test.ts, src/queue/connection.ts, src/queue/maintenanceQueue.ts, src/queue/redrive.ts, src/queue/runAtivoUniversalDLQ.ts, src/queue/runAtivoUniversalQueue.ts, src/queue/runQueue.ts, src/queue/snapshot.ts, src/queue/workerOwnershipLease.test.ts, src/queue/workerOwnershipLease.ts, src/queue/workerTopology.test.ts, src/queue/workerTopology.ts, src/policy/TenantPolicyStore.ts, src/reasons/index.ts, src/reasons/reasonCatalog.ts, src/security/killSwitch.ts, src/services/guardrailLedgerStore.ts, src/services/ledgerService.ts, src/services/mcpGovernanceEnv.test.ts, src/services/mcpGovernanceEnv.ts, src/services/planStepStore.ts, src/services/reconcileLedgerService.ts, src/services/sclLedger.ts, src/services/tenantInvoiceService.ts, src/services/workspaceProvenanceClassifier.test.ts, src/services/workspaceProvenanceClassifier.ts, src/services/workspaceProvenanceFacts.ts, src/taxonomy/publicProductTaxonomy.ts, src/utils/canonicalDigest.test.ts, src/utils/canonicalDigest.ts, src/utils/normalizeMessages.ts, src/utils/retry.ts, src/utils/timeout.ts, src/actions/agents/aadvAction.ts, src/actions/agents/defiOneAction.ts, src/actions/agents/diariasAction.ts, src/actions/agents/eiahAction.ts, src/actions/agents/finNexusAction.ts, src/actions/agents/flowOrchestratorAction.ts, src/actions/agents/guardianAction.ts, src/actions/agents/iBCAction.ts, src/actions/agents/imageNftDiariasAction.ts, src/actions/agents/index.ts, src/actions/agents/j360Action.ts, src/actions/agents/mktAction.ts, src/actions/agents/nftPyAction.ts, src/actions/agents/onchainMonitorAction.ts, src/actions/agents/pitchAction.ts, src/actions/agents/registry.ts, src/actions/agents/resolveLegalSpecialtyContext.ts, src/actions/agents/riskAnalyzerAction.ts, src/actions/agents/types.ts, src/actions/registry/TenantActionResolver.ts, src/actions/registry/VersionedActionRegistry.ts, src/actions/reporting/guardianReportRenderer.ts, src/actions/reporting/guardianReportSchema.ts, src/actions/reporting/index.ts, src/actions/reporting/j360LegalReportRenderer.ts, src/actions/reporting/j360LegalReportSchema.ts, src/actions/reporting/mktCampaignReportRenderer.ts, src/actions/reporting/mktCampaignReportSchema.ts, src/actions/reporting/recipeOrchestrationRenderer.ts, src/actions/reporting/recipeOrchestrationSchema.ts, src/actions/reporting/runAtivoSchema.ts
+2026-11-14T18:14:29.2886543Z CLI Using tsconfig: tsconfig.json
+2026-11-14T18:14:29.2887014Z CLI tsup v8.5.1
+2026-11-14T18:14:29.2887646Z CLI Using tsup config: /__w/EIAH/EIAH/packages/core/tsup.config.ts
+2026-11-14T18:14:29.2888241Z CLI Target: node20
+2026-11-14T18:14:29.2888625Z ESM Build start
+2026-11-14T18:14:29.4800811Z ESM dist/actions/billing.js                                   10.74 KB
+2026-11-14T18:14:29.4801887Z ESM dist/actions/defi.js                                      6.62 KB
+2026-11-14T18:14:29.4803242Z ESM dist/actions/guardianChecklistTools.js                    2.54 KB
+2026-11-14T18:14:29.4804334Z ESM dist/actions/guardian.js                                  17.08 KB
+2026-11-14T18:14:29.4805686Z ESM dist/actions/finance.js                                   18.50 KB
+2026-11-14T18:14:29.4806880Z ESM dist/actions/guardrails.js                                4.06 KB
+2026-11-14T18:14:29.4808321Z ESM dist/actions/actionRegistry.js                            20.36 KB
+2026-11-14T18:14:29.4809481Z ESM dist/actions/knowledge.js                                 5.97 KB
+2026-11-14T18:14:29.4811013Z ESM dist/actions/risk.js                                      3.54 KB
+2026-11-14T18:14:29.4812189Z ESM dist/actions/notifications.js                             8.54 KB
+2026-11-14T18:14:29.4813455Z ESM dist/billing/reconciliation.js                            6.57 KB
+2026-11-14T18:14:29.4814633Z ESM dist/catalog/apeWeeklyCycleV3.test.js                     11.15 KB
+2026-11-14T18:14:29.4815827Z ESM dist/catalog/apeWeeklyCycleV3.js                          4.72 KB
+2026-11-14T18:14:29.4817155Z ESM dist/catalog/apeWeeklyCycleV3Validator.test.js            24.56 KB
+2026-11-14T18:14:29.4818405Z ESM dist/catalog/apeWeeklyCycleV3Validator.js                 12.26 KB
+2026-11-14T18:14:29.4819648Z ESM dist/catalog/governedOperationCatalog.test.js             9.22 KB
+2026-11-14T18:14:29.4820879Z ESM dist/catalog/versionedActionRegistry.js                   549.00 B
+2026-11-14T18:14:29.4822123Z ESM dist/catalog/workspaceActionPolicyProvisioning.js         1.21 KB
+2026-11-14T18:14:29.4823495Z ESM dist/catalog/workspaceAgentProvisioning.test.js           2.99 KB
+2026-11-14T18:14:29.4824678Z ESM dist/catalog/governedOperationCatalog.js                  4.12 KB
+2026-11-14T18:14:29.4825857Z ESM dist/catalog/workspaceAgentProvisioning.js                1.28 KB
+2026-11-14T18:14:29.4826972Z ESM dist/actions/index.js                                     325.98 KB
+2026-11-14T18:14:29.4827985Z ESM dist/events/redisPublisher.js                             2.41 KB
+2026-11-14T18:14:29.4828939Z ESM dist/llm/LLMProvider.js                                   120.00 B
+2026-11-14T18:14:29.4829862Z ESM dist/llm/LLMRegistry.js                                   525.00 B
+2026-11-14T18:14:29.4830666Z ESM dist/llm/completionEngine.js                              6.13 KB
+2026-11-14T18:14:29.4831298Z ESM dist/logging/index.js                                     1.90 KB
+2026-11-14T18:14:29.4831888Z ESM dist/llm/types.js                                         33.00 B
+2026-11-14T18:14:29.4833513Z ESM dist/logging/logger.js                                    1.90 KB
+2026-11-14T18:14:29.4834509Z ESM dist/queue/connection.test.js                             3.88 KB
+2026-11-14T18:14:29.4835337Z ESM dist/queue/actionQueue.js                                 9.33 KB
+2026-11-14T18:14:29.4835910Z ESM dist/queue/connection.js                                  2.79 KB
+2026-11-14T18:14:29.4836467Z ESM dist/queue/redrive.js                                     2.04 KB
+2026-11-14T18:14:29.4837032Z ESM dist/queue/runAtivoUniversalDLQ.js                        3.79 KB
+2026-11-14T18:14:29.4837592Z ESM dist/index.js                                             503.47 KB
+2026-11-14T18:14:29.4838137Z ESM dist/queue/maintenanceQueue.js                            7.99 KB
+2026-11-14T18:14:29.4838729Z ESM dist/queue/runAtivoUniversalQueue.js                      4.05 KB
+2026-11-14T18:14:29.4839298Z ESM dist/queue/runQueue.js                                    10.71 KB
+2026-11-14T18:14:29.4839860Z ESM dist/queue/workerOwnershipLease.js                        2.82 KB
+2026-11-14T18:14:29.4840496Z ESM dist/queue/workerOwnershipLease.test.js                   12.72 KB
+2026-11-14T18:14:29.4844597Z ESM dist/queue/snapshot.js                                    13.60 KB
+2026-11-14T18:14:29.4845589Z ESM dist/queue/workerTopology.js                              3.81 KB
+2026-11-14T18:14:29.4846635Z ESM dist/queue/workerTopology.test.js                         7.16 KB
+2026-11-14T18:14:29.4847617Z ESM dist/llm/LLMRouter.js                                     1.06 KB
+2026-11-14T18:14:29.4848559Z ESM dist/security/killSwitch.js                               5.18 KB
+2026-11-14T18:14:29.4849536Z ESM dist/reasons/index.js                                     16.65 KB
+2026-11-14T18:14:29.4850569Z ESM dist/services/guardrailLedgerStore.js                     1.84 KB
+2026-11-14T18:14:29.4851631Z ESM dist/policy/TenantPolicyStore.js                          6.68 KB
+2026-11-14T18:14:29.4852651Z ESM dist/reasons/reasonCatalog.js                             16.66 KB
+2026-11-14T18:14:29.4853799Z ESM dist/services/mcpGovernanceEnv.test.js                    2.68 KB
+2026-11-14T18:14:29.4854875Z ESM dist/services/mcpGovernanceEnv.js                         757.00 B
+2026-11-14T18:14:29.4855945Z ESM dist/services/planStepStore.js                            612.00 B
+2026-11-14T18:14:29.4857018Z ESM dist/services/ledgerService.js                            6.92 KB
+2026-11-14T18:14:29.4858096Z ESM dist/services/tenantInvoiceService.js                     9.11 KB
+2026-11-14T18:14:29.4859157Z ESM dist/services/sclLedger.js                                14.73 KB
+2026-11-14T18:14:29.4860250Z ESM dist/services/reconcileLedgerService.js                   4.16 KB
+2026-11-14T18:14:29.4861444Z ESM dist/services/workspaceProvenanceClassifier.test.js       49.24 KB
+2026-11-14T18:14:29.4862602Z ESM dist/taxonomy/publicProductTaxonomy.js                    23.90 KB
+2026-11-14T18:14:29.4863903Z ESM dist/services/workspaceProvenanceClassifier.js            22.67 KB
+2026-11-14T18:14:29.4865148Z ESM dist/utils/canonicalDigest.test.js                        2.45 KB
+2026-11-14T18:14:29.4866475Z ESM dist/utils/canonicalDigest.js                             642.00 B
+2026-11-14T18:14:29.4867556Z ESM dist/services/workspaceProvenanceFacts.js                 34.28 KB
+2026-11-14T18:14:29.4868673Z ESM dist/utils/normalizeMessages.js                           334.00 B
+2026-11-14T18:14:29.4869698Z ESM dist/utils/retry.js                                       1.19 KB
+2026-11-14T18:14:29.4870687Z ESM dist/actions/agents/aadvAction.js                         9.67 KB
+2026-11-14T18:14:29.4871700Z ESM dist/actions/agents/diariasAction.js                      2.24 KB
+2026-11-14T18:14:29.4872707Z ESM dist/utils/timeout.js                                     390.00 B
+2026-11-14T18:14:29.4873806Z ESM dist/actions/agents/defiOneAction.js                      8.10 KB
+2026-11-14T18:14:29.4874828Z ESM dist/actions/agents/eiahAction.js                         17.88 KB
+2026-11-14T18:14:29.4875793Z ESM dist/actions/agents/finNexusAction.js                     6.61 KB
+2026-11-14T18:14:29.4876773Z ESM dist/actions/agents/flowOrchestratorAction.js             2.65 KB
+2026-11-14T18:14:29.4877791Z ESM dist/actions/agents/iBCAction.js                          2.28 KB
+2026-11-14T18:14:29.4878997Z ESM dist/actions/agents/guardianAction.js                     15.42 KB
+2026-11-14T18:14:29.4880068Z ESM dist/actions/agents/imageNftDiariasAction.js              2.34 KB
+2026-11-14T18:14:29.4881137Z ESM dist/actions/agents/mktAction.js                          2.51 KB
+2026-11-14T18:14:29.4882165Z ESM dist/actions/agents/index.js                              109.60 KB
+2026-11-14T18:14:29.4883291Z ESM dist/actions/agents/j360Action.js                         12.48 KB
+2026-11-14T18:14:29.4884362Z ESM dist/actions/agents/nftPyAction.js                        2.40 KB
+2026-11-14T18:14:29.4885489Z ESM dist/actions/agents/pitchAction.js                        11.19 KB
+2026-11-14T18:14:29.4886591Z ESM dist/actions/agents/onchainMonitorAction.js               8.60 KB
+2026-11-14T18:14:29.4887703Z ESM dist/actions/agents/registry.js                           101.70 KB
+2026-11-14T18:14:29.4888795Z ESM dist/actions/agents/resolveLegalSpecialtyContext.js       2.60 KB
+2026-11-14T18:14:29.4889928Z ESM dist/actions/registry/VersionedActionRegistry.js          1.56 KB
+2026-11-14T18:14:29.4891033Z ESM dist/actions/agents/riskAnalyzerAction.js                 2.57 KB
+2026-11-14T18:14:29.4892164Z ESM dist/actions/registry/TenantActionResolver.js             665.00 B
+2026-11-14T18:14:29.4893531Z ESM dist/actions/agents/types.js                              201.00 B
+2026-11-14T18:14:29.4894688Z ESM dist/actions/reporting/guardianReportRenderer.js          35.53 KB
+2026-11-14T18:14:29.4896009Z ESM dist/actions/reporting/guardianReportSchema.js            3.44 KB
+2026-11-14T18:14:29.4897340Z ESM dist/actions/reporting/j360LegalReportRenderer.js         49.12 KB
+2026-11-14T18:14:29.4898494Z ESM dist/actions/reporting/index.js                           135.90 KB
+2026-11-14T18:14:29.4899669Z ESM dist/actions/reporting/mktCampaignReportRenderer.js       38.84 KB
+2026-11-14T18:14:29.4900839Z ESM dist/actions/reporting/j360LegalReportSchema.js           5.48 KB
+2026-11-14T18:14:29.4902171Z ESM dist/actions/reporting/mktCampaignReportSchema.js         7.83 KB
+2026-11-14T18:14:29.4903644Z ESM dist/actions/reporting/recipeOrchestrationRenderer.js     14.96 KB
+2026-11-14T18:14:29.4904871Z ESM dist/actions/reporting/recipeOrchestrationSchema.js       4.58 KB
+2026-11-14T18:14:29.4906149Z ESM dist/actions/reporting/runAtivoSchema.js                  22.36 KB
+2026-11-14T18:14:29.4907525Z ESM dist/actions/defi.js.map                                  38.15 KB
+2026-11-14T18:14:29.4908703Z ESM dist/actions/guardianChecklistTools.js.map                3.75 KB
+2026-11-14T18:14:29.4909757Z ESM dist/actions/billing.js.map                               47.28 KB
+2026-11-14T18:14:29.4910753Z ESM dist/actions/guardian.js.map                              49.69 KB
+2026-11-14T18:14:29.4911715Z ESM dist/actions/guardrails.js.map                            8.48 KB
+2026-11-14T18:14:29.4912615Z ESM dist/actions/finance.js.map                               63.71 KB
+2026-11-14T18:14:29.4913721Z ESM dist/actions/actionRegistry.js.map                        40.49 KB
+2026-11-14T18:14:29.4914541Z ESM dist/actions/knowledge.js.map                             37.12 KB
+2026-11-14T18:14:29.4915313Z ESM dist/actions/risk.js.map                                  33.46 KB
+2026-11-14T18:14:29.4915878Z ESM dist/billing/reconciliation.js.map                        18.56 KB
+2026-11-14T18:14:29.4916489Z ESM dist/catalog/apeWeeklyCycleV3.test.js.map                 27.71 KB
+2026-11-14T18:14:29.4917097Z ESM dist/actions/notifications.js.map                         41.55 KB
+2026-11-14T18:14:29.4917680Z ESM dist/catalog/apeWeeklyCycleV3.js.map                      16.42 KB
+2026-11-14T18:14:29.4918287Z ESM dist/catalog/governedOperationCatalog.test.js.map         21.05 KB
+2026-11-14T18:14:29.4918910Z ESM dist/catalog/apeWeeklyCycleV3Validator.js.map             44.08 KB
+2026-11-14T18:14:29.4919539Z ESM dist/catalog/apeWeeklyCycleV3Validator.test.js.map        66.60 KB
+2026-11-14T18:14:29.4920176Z ESM dist/catalog/versionedActionRegistry.js.map               992.00 B
+2026-11-14T18:14:29.4920823Z ESM dist/catalog/workspaceActionPolicyProvisioning.js.map     3.05 KB
+2026-11-14T18:14:29.4921795Z ESM dist/catalog/workspaceAgentProvisioning.test.js.map       6.49 KB
+2026-11-14T18:14:29.4922491Z ESM dist/catalog/governedOperationCatalog.js.map              11.83 KB
+2026-11-14T18:14:29.4923384Z ESM dist/catalog/workspaceAgentProvisioning.js.map            3.30 KB
+2026-11-14T18:14:29.4923997Z ESM dist/events/redisPublisher.js.map                         4.43 KB
+2026-11-14T18:14:29.4924579Z ESM dist/llm/LLMRegistry.js.map                               1012.00 B
+2026-11-14T18:14:29.4925145Z ESM dist/logging/index.js.map                                 3.93 KB
+2026-11-14T18:14:29.4925704Z ESM dist/llm/LLMProvider.js.map                               380.00 B
+2026-11-14T18:14:29.4926242Z ESM dist/llm/types.js.map                                     71.00 B
+2026-11-14T18:14:29.4926800Z ESM dist/llm/completionEngine.js.map                          13.05 KB
+2026-11-14T18:14:29.4927540Z ESM dist/logging/logger.js.map                                3.93 KB
+2026-11-14T18:14:29.4928110Z ESM dist/queue/connection.test.js.map                         7.64 KB
+2026-11-14T18:14:29.4928674Z ESM dist/queue/connection.js.map                              5.38 KB
+2026-11-14T18:14:29.4929231Z ESM dist/queue/redrive.js.map                                 4.90 KB
+2026-11-14T18:14:29.4929784Z ESM dist/queue/actionQueue.js.map                             18.80 KB
+2026-11-14T18:14:29.4930380Z ESM dist/queue/runAtivoUniversalDLQ.js.map                    8.32 KB
+2026-11-14T18:14:29.4930968Z ESM dist/queue/maintenanceQueue.js.map                        16.46 KB
+2026-11-14T18:14:29.4931576Z ESM dist/queue/runAtivoUniversalQueue.js.map                  7.90 KB
+2026-11-14T18:14:29.4932151Z ESM dist/queue/runQueue.js.map                                21.39 KB
+2026-11-14T18:14:29.4932727Z ESM dist/queue/workerOwnershipLease.test.js.map               26.39 KB
+2026-11-14T18:14:29.4933479Z ESM dist/queue/workerTopology.js.map                          7.54 KB
+2026-11-14T18:14:29.4934077Z ESM dist/queue/workerTopology.test.js.map                     13.52 KB
+2026-11-14T18:14:29.4934693Z ESM dist/reasons/index.js.map                                 27.00 KB
+2026-11-14T18:14:29.4935366Z ESM dist/queue/snapshot.js.map                                41.88 KB
+2026-11-14T18:14:29.4935924Z ESM dist/security/killSwitch.js.map                           9.89 KB
+2026-11-14T18:14:29.4936503Z ESM dist/services/guardrailLedgerStore.js.map                 3.87 KB
+2026-11-14T18:14:29.4937082Z ESM dist/llm/LLMRouter.js.map                                 2.16 KB
+2026-11-14T18:14:29.4937651Z ESM dist/queue/workerOwnershipLease.js.map                    5.83 KB
+2026-11-14T18:14:29.4938235Z ESM dist/reasons/reasonCatalog.js.map                         27.00 KB
+2026-11-14T18:14:29.4938834Z ESM dist/services/mcpGovernanceEnv.test.js.map                5.16 KB
+2026-11-14T18:14:29.4939452Z ESM dist/policy/TenantPolicyStore.js.map                      12.53 KB
+2026-11-14T18:14:29.4940044Z ESM dist/services/planStepStore.js.map                        1.26 KB
+2026-11-14T18:14:29.4940623Z ESM dist/services/mcpGovernanceEnv.js.map                     1.71 KB
+2026-11-14T18:14:29.4941203Z ESM dist/services/ledgerService.js.map                        13.53 KB
+2026-11-14T18:14:29.4941804Z ESM dist/services/tenantInvoiceService.js.map                 17.14 KB
+2026-11-14T18:14:29.4942393Z ESM dist/services/sclLedger.js.map                            28.93 KB
+2026-11-14T18:14:29.4942982Z ESM dist/services/reconcileLedgerService.js.map               8.46 KB
+2026-11-14T18:14:29.4943796Z ESM dist/taxonomy/publicProductTaxonomy.js.map                38.12 KB
+2026-11-14T18:14:29.4944428Z ESM dist/services/workspaceProvenanceClassifier.test.js.map   98.86 KB
+2026-11-14T18:14:29.4945060Z ESM dist/services/workspaceProvenanceClassifier.js.map        47.97 KB
+2026-11-14T18:14:29.4945666Z ESM dist/utils/canonicalDigest.js.map                         2.06 KB
+2026-11-14T18:14:29.4946244Z ESM dist/utils/normalizeMessages.js.map                       611.00 B
+2026-11-14T18:14:29.4946908Z ESM dist/utils/retry.js.map                                   2.20 KB
+2026-11-14T18:14:29.4947496Z ESM dist/services/workspaceProvenanceFacts.js.map             71.19 KB
+2026-11-14T18:14:29.4948098Z ESM dist/utils/canonicalDigest.test.js.map                    5.42 KB
+2026-11-14T18:14:29.4948715Z ESM dist/actions/agents/aadvAction.js.map                     21.12 KB
+2026-11-14T18:14:29.4949319Z ESM dist/actions/agents/diariasAction.js.map                  10.15 KB
+2026-11-14T18:14:29.4949889Z ESM dist/utils/timeout.js.map                                 770.00 B
+2026-11-14T18:14:29.4950500Z ESM dist/actions/agents/defiOneAction.js.map                  20.46 KB
+2026-11-14T18:14:29.4951091Z ESM dist/actions/agents/eiahAction.js.map                     31.52 KB
+2026-11-14T18:14:29.4951695Z ESM dist/actions/agents/flowOrchestratorAction.js.map         10.61 KB
+2026-11-14T18:14:29.4952297Z ESM dist/actions/agents/iBCAction.js.map                      10.34 KB
+2026-11-14T18:14:29.4952885Z ESM dist/actions/agents/finNexusAction.js.map                 16.46 KB
+2026-11-14T18:14:29.4953625Z ESM dist/actions/agents/guardianAction.js.map                 26.99 KB
+2026-11-14T18:14:29.4954233Z ESM dist/actions/agents/imageNftDiariasAction.js.map          10.23 KB
+2026-11-14T18:14:29.4954946Z ESM dist/actions/agents/mktAction.js.map                      10.58 KB
+2026-11-14T18:14:29.4955530Z ESM dist/actions/agents/j360Action.js.map                     22.63 KB
+2026-11-14T18:14:29.4956123Z ESM dist/actions/agents/nftPyAction.js.map                    10.40 KB
+2026-11-14T18:14:29.4956714Z ESM dist/actions/agents/pitchAction.js.map                    19.66 KB
+2026-11-14T18:14:29.4957298Z ESM dist/actions/agents/index.js.map                          184.48 KB
+2026-11-14T18:14:29.4957897Z ESM dist/actions/agents/onchainMonitorAction.js.map           21.32 KB
+2026-11-14T18:14:29.4958512Z ESM dist/actions/agents/resolveLegalSpecialtyContext.js.map   4.98 KB
+2026-11-14T18:14:29.4959128Z ESM dist/actions/registry/VersionedActionRegistry.js.map      3.09 KB
+2026-11-14T18:14:29.4959743Z ESM dist/actions/agents/riskAnalyzerAction.js.map             10.65 KB
+2026-11-14T18:14:29.4960330Z ESM dist/actions/agents/types.js.map                          7.30 KB
+2026-11-14T18:14:29.4960912Z ESM dist/actions/agents/registry.js.map                       151.72 KB
+2026-11-14T18:14:29.4961516Z ESM dist/actions/registry/TenantActionResolver.js.map         1.25 KB
+2026-11-14T18:14:29.4962123Z ESM dist/actions/reporting/guardianReportSchema.js.map        6.39 KB
+2026-11-14T18:14:29.4962764Z ESM dist/actions/reporting/guardianReportRenderer.js.map      56.02 KB
+2026-11-14T18:14:29.4963541Z ESM dist/actions/reporting/j360LegalReportRenderer.js.map     75.81 KB
+2026-11-14T18:14:29.4964164Z ESM dist/actions/reporting/mktCampaignReportRenderer.js.map   62.54 KB
+2026-11-14T18:14:29.4964871Z ESM dist/actions/reporting/j360LegalReportSchema.js.map       9.94 KB
+2026-11-14T18:14:29.4965831Z ESM dist/actions/reporting/recipeOrchestrationRenderer.js.map 24.10 KB
+2026-11-14T18:14:29.4966777Z ESM dist/actions/reporting/index.js.map                       244.79 KB
+2026-11-14T18:14:29.4967927Z ESM dist/actions/reporting/mktCampaignReportSchema.js.map     14.42 KB
+2026-11-14T18:14:29.4969006Z ESM dist/actions/reporting/runAtivoSchema.js.map              44.68 KB
+2026-11-14T18:14:29.4970019Z ESM dist/actions/reporting/recipeOrchestrationSchema.js.map   7.79 KB
+2026-11-14T18:14:29.4970984Z ESM dist/actions/index.js.map                                 539.58 KB
+2026-11-14T18:14:29.4971820Z ESM dist/index.js.map                                         851.50 KB
+2026-11-14T18:14:29.4972479Z ESM ⚡️ Build success in 195ms
+2026-11-14T18:14:29.7511193Z
+2026-11-14T18:14:29.7511680Z > @eiah/providers@0.1.0 prebuild /__w/EIAH/EIAH/packages/providers
+2026-11-14T18:14:29.7512569Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:14:29.7512960Z
+2026-11-14T18:14:29.7588498Z
+2026-11-14T18:14:29.7589030Z > @eiah/providers@0.1.0 build /__w/EIAH/EIAH/packages/providers
+2026-11-14T18:14:29.7589548Z > tsc -p tsconfig.json
+2026-11-14T18:14:29.7589684Z
+2026-11-14T18:14:30.5445714Z ##[group]Run pnpm --filter @repo/db migrate:deploy
+2026-11-14T18:14:30.5446236Z pnpm --filter @repo/db migrate:deploy
+2026-11-14T18:14:30.5447212Z shell: sh -e {0}
+2026-11-14T18:14:30.5447471Z env:
+2026-11-14T18:14:30.5447706Z   NODE_VERSION: 20
+2026-11-14T18:14:30.5447983Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:30.5448664Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:30.5449381Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:30.5449763Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:30.5450145Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:30.5450588Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:30.5450976Z ##[endgroup]
+2026-11-14T18:14:30.8316454Z
+2026-11-14T18:14:30.8317177Z > @repo/db@1.0.0 migrate:deploy /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:30.8317553Z > pnpm prisma migrate deploy
+2026-11-14T18:14:30.8317699Z
+2026-11-14T18:14:31.0395683Z
+2026-11-14T18:14:31.0396525Z > @repo/db@1.0.0 prisma /__w/EIAH/EIAH/packages/db
+2026-11-14T18:14:31.0397047Z > prisma migrate deploy
+2026-11-14T18:14:31.0397256Z
+2026-11-14T18:14:31.6953199Z Loaded Prisma config from prisma.config.ts.
+2026-11-14T18:14:31.6953980Z
+2026-11-14T18:14:31.7859714Z Prisma schema loaded from prisma/schema.prisma.
+2026-11-14T18:14:31.7961277Z Datasource "db": PostgreSQL database "eiah_ci", schema "public" at "postgres:5432"
+2026-11-14T18:14:31.8667575Z
+2026-11-14T18:14:31.8668103Z 36 migrations found in prisma/migrations
+2026-11-14T18:14:31.8668340Z
+2026-11-14T18:14:31.9511422Z Applying migration `20251205150019_registry_policies_guardrails`
+2026-11-14T18:14:32.0229614Z Applying migration `20251218090000_scl_signature_gate`
+2026-11-14T18:14:32.0298593Z Applying migration `20251227140942_add_run_critical_hash`
+2026-11-14T18:14:32.0410853Z Applying migration `20260113180359`
+2026-11-14T18:14:32.0657032Z Applying migration `20260116140205_guardrail_ledger_txid`
+2026-11-14T18:14:32.0960127Z Applying migration `20260119125244_guardrail_ledger_append_only`
+2026-11-14T18:14:32.1013834Z Applying migration `20260119131249_drop_guardrail_ledger_backup`
+2026-11-14T18:14:32.1029112Z Applying migration `20260119133736_add_immutable_trigger_to_ledger`
+2026-11-14T18:14:32.1045610Z Applying migration `20260120000000_bootstrap_missing_tables`
+2026-11-14T18:14:32.1225590Z Applying migration `20260213141438`
+2026-11-14T18:14:32.1410326Z Applying migration `20260306123000_tenant_billing_v1`
+2026-11-14T18:14:32.1577383Z Applying migration `20260309170000_payment_intents_settlement_v1`
+2026-11-14T18:14:32.1650175Z Applying migration `20260309182000_reputation_disputes_v1`
+2026-11-14T18:14:32.1852462Z Applying migration `20260309193000_tenant_product_installations_v1`
+2026-11-14T18:14:32.1932891Z Applying migration `20260312120000_tenant_invoices_v1`
+2026-11-14T18:14:32.2142281Z Applying migration `20260312164000_helpdesk_sessions_v1`
+2026-11-14T18:14:32.2193878Z Applying migration `20260313113000_run_approval_status_v1`
+2026-11-14T18:14:32.2212993Z Applying migration `20260325120000_imob_operational_entities_v1`
+2026-11-14T18:14:32.2418903Z Applying migration `20260330051147_p0_workspace_agent_billing`
+2026-11-14T18:14:32.2500704Z Applying migration `20260330051225_p0_workspace_agent_billing`
+2026-11-14T18:14:32.2516048Z Applying migration `20260330051329_p0_workspace_agent_billing`
+2026-11-14T18:14:32.2670488Z Applying migration `20260330114500_run_context_on_runs`
+2026-11-14T18:14:32.2695527Z Applying migration `20260518120000_imob_market_scan_runs`
+2026-11-14T18:14:32.2748301Z Applying migration `20260612193000_run_archives_v1`
+2026-11-14T18:14:32.2814486Z Applying migration `20260723120000_tool_contract_tenant_name_version_unique`
+2026-11-14T18:14:32.2836593Z Applying migration `20260909200000_pre_duimp_governed_cases_v1`
+2026-11-14T18:14:32.2915062Z Applying migration `20260922170000_oraculo_s1_persistence`
+2026-11-14T18:14:32.3106019Z Applying migration `20260923090000_oraculo_ci1_context_guard`
+2026-11-14T18:14:32.3122782Z Applying migration `20260923120000_oraculo_ci1_negative_results`
+2026-11-14T18:14:32.3160161Z Applying migration `20260929170000_p1_run_transition_storage`
+2026-11-14T18:14:32.3251877Z Applying migration `20260929180000_p1_transition_immutability`
+2026-11-14T18:14:32.3270090Z Applying migration `20261002180000_vertical_access_approvals_v1`
+2026-11-14T18:14:32.3332305Z Applying migration `20261002200000_vertical_access_revocation_v1`
+2026-11-14T18:14:32.3345979Z Applying migration `20261003090000_vertical_access_notices_v1`
+2026-11-14T18:14:32.3401871Z Applying migration `20261022120000_financial_authority_designation_v1`
+2026-11-14T18:14:32.3439514Z Applying migration `20261113120000_vertical_access_evaluation_grant_v1`
+2026-11-14T18:14:32.3493704Z
+2026-11-14T18:14:32.3498097Z ┌─────────────────────────────────────────────────────────┐
+2026-11-14T18:14:32.3498843Z │  Update available 7.2.0 -> 8.0.0-rc.33                  │
+2026-11-14T18:14:32.3499449Z │                                                         │
+2026-11-14T18:14:32.3500098Z │  This is a major update - please follow the guide at    │
+2026-11-14T18:14:32.3500796Z │  https://pris.ly/d/major-version-upgrade                │
+2026-11-14T18:14:32.3501393Z │                                                         │
+2026-11-14T18:14:32.3501972Z │  Run the following to update                            │
+2026-11-14T18:14:32.3502579Z │    npm i --save-dev prisma@latest                       │
+2026-11-14T18:14:32.3504082Z │    npm i @prisma/client@latest                          │
+2026-11-14T18:14:32.3505004Z └─────────────────────────────────────────────────────────┘
+2026-11-14T18:14:32.3505570Z The following migration(s) have been applied:
+2026-11-14T18:14:32.3505848Z
+2026-11-14T18:14:32.3505954Z migrations/
+2026-11-14T18:14:32.3506378Z   └─ 20251205150019_registry_policies_guardrails/
+2026-11-14T18:14:32.3506778Z     └─ migration.sql
+2026-11-14T18:14:32.3507115Z   └─ 20251218090000_scl_signature_gate/
+2026-11-14T18:14:32.3507464Z     └─ migration.sql
+2026-11-14T18:14:32.3507825Z   └─ 20251227140942_add_run_critical_hash/
+2026-11-14T18:14:32.3508164Z     └─ migration.sql
+2026-11-14T18:14:32.3508435Z   └─ 20260113180359/
+2026-11-14T18:14:32.3508699Z     └─ migration.sql
+2026-11-14T18:14:32.3509026Z   └─ 20260116140205_guardrail_ledger_txid/
+2026-11-14T18:14:32.3509356Z     └─ migration.sql
+2026-11-14T18:14:32.3509726Z   └─ 20260119125244_guardrail_ledger_append_only/
+2026-11-14T18:14:32.3510101Z     └─ migration.sql
+2026-11-14T18:14:32.3510449Z   └─ 20260119131249_drop_guardrail_ledger_backup/
+2026-11-14T18:14:32.3510830Z     └─ migration.sql
+2026-11-14T18:14:32.3511188Z   └─ 20260119133736_add_immutable_trigger_to_ledger/
+2026-11-14T18:14:32.3511552Z     └─ migration.sql
+2026-11-14T18:14:32.3511915Z   └─ 20260120000000_bootstrap_missing_tables/
+2026-11-14T18:14:32.3512274Z     └─ migration.sql
+2026-11-14T18:14:32.3512543Z   └─ 20260213141438/
+2026-11-14T18:14:32.3512803Z     └─ migration.sql
+2026-11-14T18:14:32.3513293Z   └─ 20260306123000_tenant_billing_v1/
+2026-11-14T18:14:32.3513643Z     └─ migration.sql
+2026-11-14T18:14:32.3514012Z   └─ 20260309170000_payment_intents_settlement_v1/
+2026-11-14T18:14:32.3514438Z     └─ migration.sql
+2026-11-14T18:14:32.3514799Z   └─ 20260309182000_reputation_disputes_v1/
+2026-11-14T18:14:32.3515144Z     └─ migration.sql
+2026-11-14T18:14:32.3515505Z   └─ 20260309193000_tenant_product_installations_v1/
+2026-11-14T18:14:32.3515872Z     └─ migration.sql
+2026-11-14T18:14:32.3516195Z   └─ 20260312120000_tenant_invoices_v1/
+2026-11-14T18:14:32.3516520Z     └─ migration.sql
+2026-11-14T18:14:32.3516836Z   └─ 20260312164000_helpdesk_sessions_v1/
+2026-11-14T18:14:32.3517177Z     └─ migration.sql
+2026-11-14T18:14:32.3517552Z   └─ 20260313113000_run_approval_status_v1/
+2026-11-14T18:14:32.3517916Z     └─ migration.sql
+2026-11-14T18:14:32.3518284Z   └─ 20260325120000_imob_operational_entities_v1/
+2026-11-14T18:14:32.3518651Z     └─ migration.sql
+2026-11-14T18:14:32.3519082Z   └─ 20260330051147_p0_workspace_agent_billing/
+2026-11-14T18:14:32.3519762Z     └─ migration.sql
+2026-11-14T18:14:32.3520152Z   └─ 20260330051225_p0_workspace_agent_billing/
+2026-11-14T18:14:32.3520521Z     └─ migration.sql
+2026-11-14T18:14:32.3520869Z   └─ 20260330051329_p0_workspace_agent_billing/
+2026-11-14T18:14:32.3521260Z     └─ migration.sql
+2026-11-14T18:14:32.3521638Z   └─ 20260330114500_run_context_on_runs/
+2026-11-14T18:14:32.3522008Z     └─ migration.sql
+2026-11-14T18:14:32.3522686Z   └─ 20260518120000_imob_market_scan_runs/
+2026-11-14T18:14:32.3523224Z     └─ migration.sql
+2026-11-14T18:14:32.3523558Z   └─ 20260612193000_run_archives_v1/
+2026-11-14T18:14:32.3523886Z     └─ migration.sql
+2026-11-14T18:14:32.3524317Z   └─ 20260723120000_tool_contract_tenant_name_version_unique/
+2026-11-14T18:14:32.3524752Z     └─ migration.sql
+2026-11-14T18:14:32.3525121Z   └─ 20260909200000_pre_duimp_governed_cases_v1/
+2026-11-14T18:14:32.3525499Z     └─ migration.sql
+2026-11-14T18:14:32.3525856Z   └─ 20260922170000_oraculo_s1_persistence/
+2026-11-14T18:14:32.3526231Z     └─ migration.sql
+2026-11-14T18:14:32.3526586Z   └─ 20260923090000_oraculo_ci1_context_guard/
+2026-11-14T18:14:32.3526956Z     └─ migration.sql
+2026-11-14T18:14:32.3527327Z   └─ 20260923120000_oraculo_ci1_negative_results/
+2026-11-14T18:14:32.3527698Z     └─ migration.sql
+2026-11-14T18:14:32.3528047Z   └─ 20260929170000_p1_run_transition_storage/
+2026-11-14T18:14:32.3528402Z     └─ migration.sql
+2026-11-14T18:14:32.3528805Z   └─ 20260929180000_p1_transition_immutability/
+2026-11-14T18:14:32.3529214Z     └─ migration.sql
+2026-11-14T18:14:32.3529600Z   └─ 20261002180000_vertical_access_approvals_v1/
+2026-11-14T18:14:32.3529988Z     └─ migration.sql
+2026-11-14T18:14:32.3530366Z   └─ 20261002200000_vertical_access_revocation_v1/
+2026-11-14T18:14:32.3530763Z     └─ migration.sql
+2026-11-14T18:14:32.3531135Z   └─ 20261003090000_vertical_access_notices_v1/
+2026-11-14T18:14:32.3531519Z     └─ migration.sql
+2026-11-14T18:14:32.3531943Z   └─ 20261022120000_financial_authority_designation_v1/
+2026-11-14T18:14:32.3532374Z     └─ migration.sql
+2026-11-14T18:14:32.3532799Z   └─ 20261113120000_vertical_access_evaluation_grant_v1/
+2026-11-14T18:14:32.3533559Z     └─ migration.sql
+2026-11-14T18:14:32.3533711Z
+2026-11-14T18:14:32.3533940Z All migrations have been successfully applied.
+2026-11-14T18:14:32.3965943Z ##[group]Run mkdir -p "../../${E2E_ARTIFACT_DIR}"
+2026-11-14T18:14:32.3966269Z mkdir -p "../../${E2E_ARTIFACT_DIR}"
+2026-11-14T18:14:32.3966637Z nohup node --import tsx src/index.ts > "../../${E2E_ARTIFACT_DIR}/api.log" 2>&1 &
+2026-11-14T18:14:32.3967114Z shell: sh -e {0}
+2026-11-14T18:14:32.3967287Z env:
+2026-11-14T18:14:32.3967447Z   NODE_VERSION: 20
+2026-11-14T18:14:32.3967621Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:32.3968035Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:32.3968323Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:32.3968571Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:32.3968819Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:32.3969101Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:32.3969360Z   REDIS_URL: redis://redis:6379
+2026-11-14T18:14:32.3969590Z   RUN_EVENTS_REDIS_URL: redis://redis:6379
+2026-11-14T18:14:32.3969849Z   NODE_ENV: development
+2026-11-14T18:14:32.3970035Z   PORT: 58080
+2026-11-14T18:14:32.3970209Z   FRONTEND_URL: http://127.0.0.1:55173
+2026-11-14T18:14:32.3970424Z   LOG_LEVEL: warn
+2026-11-14T18:14:32.3970635Z   EIAH_ENVIRONMENT_ID: ci-imob-chat-parity
+2026-11-14T18:14:32.3970899Z   EIAH_PLATFORM_ADMIN_EMAILS: [REDACTED_TEST_EMAIL]
+2026-11-14T18:14:32.3971148Z   SERVICE_ROLE: api
+2026-11-14T18:14:32.3971333Z   RUN_QUEUE_CONSUMER_MODE: api-embedded
+2026-11-14T18:14:32.3971562Z   RUN_ATIVO_CONSUMER_MODE: disabled
+2026-11-14T18:14:32.3971783Z   EIAH_ALLOW_PASSWORD_BOOTSTRAP: true
+2026-11-14T18:14:32.3972027Z   INTENT_SIGNATURE_SECRET: [REDACTED_TEST_SECRET]
+2026-11-14T18:14:32.3972277Z   MCP_PROXY_ALL_ACTIONS: true
+2026-11-14T18:14:32.3972482Z   MCP_ENFORCE_CONTRACTS: true
+2026-11-14T18:14:32.3972680Z   MCP_DEFAULT_VERSION: 1.0.0
+2026-11-14T18:14:32.3972877Z   RUN_EVENTS_USE_OUTBOX: true
+2026-11-14T18:14:32.3973294Z   INTENT_VALIDATOR_MODE: observe
+2026-11-14T18:14:32.3973615Z   SIGNER_REQUIRED: false
+2026-11-14T18:14:32.3973828Z   SIGNATURE_DISABLED: true
+2026-11-14T18:14:32.3974020Z ##[endgroup]
+2026-11-14T18:14:32.4533606Z ##[group]Run nohup npx vite --host 127.0.0.1 --port 55173 --strictPort > "../../${E2E_ARTIFACT_DIR}/web.log" 2>&1 &
+2026-11-14T18:14:32.4534657Z nohup npx vite --host 127.0.0.1 --port 55173 --strictPort > "../../${E2E_ARTIFACT_DIR}/web.log" 2>&1 &
+2026-11-14T18:14:32.4535229Z shell: sh -e {0}
+2026-11-14T18:14:32.4535405Z env:
+2026-11-14T18:14:32.4535571Z   NODE_VERSION: 20
+2026-11-14T18:14:32.4535750Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:32.4536206Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:32.4536647Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:32.4536884Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:32.4537133Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:32.4537421Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:32.4537696Z   VITE_API_PROXY_TARGET: http://127.0.0.1:58080
+2026-11-14T18:14:32.4537931Z   VITE_API_URL: /api
+2026-11-14T18:14:32.4538113Z ##[endgroup]
+2026-11-14T18:14:32.5218587Z ##[group]Run for i in $(seq 1 60); do
+2026-11-14T18:14:32.5218885Z for i in $(seq 1 60); do
+2026-11-14T18:14:32.5219326Z   if curl -sf -o /dev/null http://127.0.0.1:58080/health && curl -sf -o /dev/null http://127.0.0.1:55173/; then
+2026-11-14T18:14:32.5219740Z     echo "stack up"; exit 0
+2026-11-14T18:14:32.5219949Z   fi
+2026-11-14T18:14:32.5220126Z   sleep 3
+2026-11-14T18:14:32.5220299Z done
+2026-11-14T18:14:32.5220595Z echo "stack did not come up"; tail -50 "${E2E_ARTIFACT_DIR}/api.log" || true; exit 1
+2026-11-14T18:14:32.5221027Z shell: sh -e {0}
+2026-11-14T18:14:32.5221202Z env:
+2026-11-14T18:14:32.5221362Z   NODE_VERSION: 20
+2026-11-14T18:14:32.5221542Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:32.5221957Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:32.5222237Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:32.5222472Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:32.5222751Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:32.5223299Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:32.5223599Z ##[endgroup]
+2026-11-14T18:14:38.6702780Z stack up
+2026-11-14T18:14:38.6851213Z ##[group]Run pnpm test:e2e-imob-chat-parity
+2026-11-14T18:14:38.6851699Z pnpm test:e2e-imob-chat-parity
+2026-11-14T18:14:38.6852143Z shell: sh -e {0}
+2026-11-14T18:14:38.6852365Z env:
+2026-11-14T18:14:38.6852568Z   NODE_VERSION: 20
+2026-11-14T18:14:38.6852810Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:14:38.6853558Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:14:38.6854008Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:14:38.6854401Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:14:38.6854799Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:14:38.6855257Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:14:38.6855654Z ##[endgroup]
+2026-11-14T18:14:39.0256907Z
+2026-11-14T18:14:39.0257774Z > eiah-builder@ test:e2e-imob-chat-parity /__w/EIAH/EIAH
+2026-11-14T18:14:39.0258562Z > node --import tsx scripts/e2e/imobChatParity.ts
+2026-11-14T18:14:39.0258923Z
+2026-11-14T18:15:43.6065892Z locator.waitFor: Timeout 60000ms exceeded.
+2026-11-14T18:15:43.6081592Z Call log:
+2026-11-14T18:15:43.6082322Z   - waiting for locator('textarea').first() to be visible
+2026-11-14T18:15:43.6082727Z
+2026-11-14T18:15:43.6083153Z     at openPage (/__w/EIAH/EIAH/scripts/e2e/imobChatParity.ts:109:42)
+2026-11-14T18:15:43.6083897Z     at async runSurface (/__w/EIAH/EIAH/scripts/e2e/imobChatParity.ts:139:26)
+2026-11-14T18:15:43.6084607Z     at async main (/__w/EIAH/EIAH/scripts/e2e/imobChatParity.ts:323:5) {
+2026-11-14T18:15:43.6085233Z   log: [ "  - waiting for locator('textarea').first() to be visible" ],
+2026-11-14T18:15:43.6085662Z   name: 'TimeoutError'
+2026-11-14T18:15:43.6085954Z }
+2026-11-14T18:15:43.6378356Z  ELIFECYCLE  Command failed with exit code 1.
+2026-11-14T18:15:43.6565543Z ##[error]Process completed with exit code 1.
+2026-11-14T18:15:43.6626629Z ##[group]Run actions/upload-artifact@v4
+2026-11-14T18:15:43.6627064Z with:
+2026-11-14T18:15:43.6627248Z   name: imob-chat-parity-e2e-informative
+2026-11-14T18:15:43.6627495Z   path: .artifacts/imob-chat-parity
+2026-11-14T18:15:43.6627714Z   if-no-files-found: warn
+2026-11-14T18:15:43.6627908Z   compression-level: 6
+2026-11-14T18:15:43.6628088Z   overwrite: false
+2026-11-14T18:15:43.6628274Z   include-hidden-files: false
+2026-11-14T18:15:43.6628467Z env:
+2026-11-14T18:15:43.6628620Z   NODE_VERSION: 20
+2026-11-14T18:15:43.6628792Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:15:43.6629251Z   DATABASE_URL: ***postgres:5432/eiah_ci?schema=public
+2026-11-14T18:15:43.6629537Z   E2E_API_URL: http://127.0.0.1:58080/api
+2026-11-14T18:15:43.6629804Z   E2E_WEB_URL: http://127.0.0.1:55173
+2026-11-14T18:15:43.6630064Z   E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
+2026-11-14T18:15:43.6630363Z   PNPM_HOME: /github/home/setup-pnpm/node_modules/.bin
+2026-11-14T18:15:43.6630611Z ##[endgroup]
+2026-11-14T18:15:43.6634025Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:15:43.8957267Z (node:892) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-14T18:15:43.8958380Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:15:43.9025220Z With the provided path, there will be 2 files uploaded
+2026-11-14T18:15:43.9025930Z Artifact name is valid!
+2026-11-14T18:15:43.9026180Z Root directory input is valid!
+2026-11-14T18:15:44.1174112Z Beginning upload of artifact content to blob storage
+2026-11-14T18:15:44.1341905Z (node:892) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:15:44.1566836Z Uploaded bytes 1738
+2026-11-14T18:15:44.1695267Z Finished uploading artifact content to blob storage!
+2026-11-14T18:15:44.1702739Z SHA256 digest of uploaded artifact zip is d542888c58aa557012ad19c29b5f0bb79a04a2401d8f0a077398336c4cd2f328
+2026-11-14T18:15:44.1703566Z Finalizing artifact upload
+2026-11-14T18:15:44.4776338Z Artifact imob-chat-parity-e2e-informative.zip successfully finalized. Artifact ID 14125004671
+2026-11-14T18:15:44.4777563Z Artifact imob-chat-parity-e2e-informative has been successfully uploaded! Final size is 1738 bytes. Artifact ID is 14125004671
+2026-11-14T18:15:44.4797779Z Artifact download URL: https://github.com/5906375/EIAH/actions/runs/43625317335/artifacts/14125004671
+2026-11-14T18:15:44.4990006Z Post job cleanup.
+2026-11-14T18:15:44.4993428Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:15:44.7177716Z Pruning is unnecessary.
+2026-11-14T18:15:44.7378859Z Post job cleanup.
+2026-11-14T18:15:44.7389231Z ##[command]/usr/bin/docker exec  389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22 sh -c "cat /etc/*release | grep ^ID"
+2026-11-14T18:15:44.9069660Z [command]/usr/bin/git version
+2026-11-14T18:15:44.9108821Z git version 2.43.0
+2026-11-14T18:15:44.9144881Z Temporarily overriding HOME='/__w/_temp/94a4c267-a8da-4089-b129-3a4ebc7f1dd2' before making global git config changes
+2026-11-14T18:15:44.9145921Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:15:44.9150493Z [command]/usr/bin/git config --global --add safe.directory /__w/EIAH/EIAH
+2026-11-14T18:15:44.9184248Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:15:44.9217640Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:15:44.9462598Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:15:44.9487724Z http.https://github.com/.extraheader
+2026-11-14T18:15:44.9497845Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-14T18:15:44.9530339Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:15:44.9821634Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:15:44.9866150Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:15:45.0237563Z Stop and remove container: bc2b1a35dcc04da396583f88fd84f768_mcrmicrosoftcomplaywrightv1611noble_514c91
+2026-11-14T18:15:45.0241382Z ##[command]/usr/bin/docker rm --force 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:15:45.2611932Z 389eff7f99963aba4ed230151b971b77d4cfef047e167edc80a13f7183769c22
+2026-11-14T18:15:45.2643551Z Print service container logs: 4f8f7c3b1c094ea690252a5fc28ba7d5_pgvectorpgvectorpg16_28a0f3
+2026-11-14T18:15:45.2647697Z ##[command]/usr/bin/docker logs --details ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:15:45.2779591Z  initdb: warning: enabling "trust" authentication for local connections
+2026-11-14T18:15:45.2780350Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-11-14T18:15:45.2781369Z  2026-11-14 18:13:44.051 UTC [1] LOG:  starting PostgreSQL 16.16 (Debian 16.16-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-14T18:15:45.2781996Z  The files belonging to this database system will be owned by user "postgres".
+2026-11-14T18:15:45.2782510Z  2026-11-14 18:13:44.052 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-14T18:15:45.2782857Z  This user must also own the server process.
+2026-11-14T18:15:45.2783414Z  2026-11-14 18:13:44.052 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-14T18:15:45.2783722Z
+2026-11-14T18:15:45.2784081Z  2026-11-14 18:13:44.053 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-14T18:15:45.2784506Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-11-14T18:15:45.2784964Z  2026-11-14 18:13:44.056 UTC [64] LOG:  database system was shut down at 2026-11-14 18:13:44 UTC
+2026-11-14T18:15:45.2785373Z  The default database encoding has accordingly been set to "UTF8".
+2026-11-14T18:15:45.2785815Z  2026-11-14 18:13:44.062 UTC [1] LOG:  database system is ready to accept connections
+2026-11-14T18:15:45.2786192Z  The default text search configuration will be set to "english".
+2026-11-14T18:15:45.2786694Z  2026-11-14 18:13:52.583 UTC [75] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2787092Z  2026-11-14 18:14:02.645 UTC [83] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2787594Z  2026-11-14 18:14:12.705 UTC [91] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2788118Z  2026-11-14 18:14:22.773 UTC [100] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2788603Z  2026-11-14 18:14:32.874 UTC [110] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2789093Z  2026-11-14 18:14:42.948 UTC [124] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2789593Z  2026-11-14 18:14:53.008 UTC [133] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2790107Z  2026-11-14 18:15:03.062 UTC [141] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2790625Z  2026-11-14 18:15:13.117 UTC [149] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2791155Z  2026-11-14 18:15:23.171 UTC [158] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2791668Z  2026-11-14 18:15:33.227 UTC [166] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2792186Z  2026-11-14 18:15:43.281 UTC [175] FATAL:  role "root" does not exist
+2026-11-14T18:15:45.2792601Z
+2026-11-14T18:15:45.2792867Z  Data page checksums are disabled.
+2026-11-14T18:15:45.2793640Z
+2026-11-14T18:15:45.2794021Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-11-14T18:15:45.2794539Z  creating subdirectories ... ok
+2026-11-14T18:15:45.2794947Z  selecting dynamic shared memory implementation ... posix
+2026-11-14T18:15:45.2795392Z  selecting default max_connections ... 100
+2026-11-14T18:15:45.2795761Z  selecting default shared_buffers ... 128MB
+2026-11-14T18:15:45.2796129Z  selecting default time zone ... Etc/UTC
+2026-11-14T18:15:45.2796488Z  creating configuration files ... ok
+2026-11-14T18:15:45.2796828Z  running bootstrap script ... ok
+2026-11-14T18:15:45.2797423Z  performing post-bootstrap initialization ... ok
+2026-11-14T18:15:45.2797809Z  syncing data to disk ... ok
+2026-11-14T18:15:45.2798077Z
+2026-11-14T18:15:45.2798339Z
+2026-11-14T18:15:45.2798635Z  Success. You can now start the database server using:
+2026-11-14T18:15:45.2799014Z
+2026-11-14T18:15:45.2799316Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-11-14T18:15:45.2799709Z
+2026-11-14T18:15:45.2800594Z  waiting for server to start....2026-11-14 18:13:43.529 UTC [48] LOG:  starting PostgreSQL 16.16 (Debian 16.16-1.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit
+2026-11-14T18:15:45.2801767Z  2026-11-14 18:13:43.529 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-14T18:15:45.2802513Z  2026-11-14 18:13:43.532 UTC [51] LOG:  database system was shut down at 2026-11-14 18:13:42 UTC
+2026-11-14T18:15:45.2803277Z  2026-11-14 18:13:43.537 UTC [48] LOG:  database system is ready to accept connections
+2026-11-14T18:15:45.2803799Z   done
+2026-11-14T18:15:45.2803959Z  server started
+2026-11-14T18:15:45.2804174Z  CREATE DATABASE
+2026-11-14T18:15:45.2804438Z
+2026-11-14T18:15:45.2804602Z
+2026-11-14T18:15:45.2804871Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-11-14T18:15:45.2805190Z
+2026-11-14T18:15:45.2805491Z  waiting for server to shut down...2026-11-14 18:13:43.790 UTC [48] LOG:  received fast shutdown request
+2026-11-14T18:15:45.2805916Z  .2026-11-14 18:13:43.930 UTC [48] LOG:  aborting any active transactions
+2026-11-14T18:15:45.2806383Z  2026-11-14 18:13:43.932 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+2026-11-14T18:15:45.2806801Z  2026-11-14 18:13:43.932 UTC [49] LOG:  shutting down
+2026-11-14T18:15:45.2807111Z  2026-11-14 18:13:43.940 UTC [49] LOG:  checkpoint starting: shutdown immediate
+2026-11-14T18:15:45.2807949Z  2026-11-14 18:13:44.019 UTC [49] LOG:  checkpoint complete: wrote 931 buffers (5.7%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.073 s, sync=0.003 s, total=0.087 s; sync files=301, longest=0.002 s, average=0.001 s; distance=4328 kB, estimate=4328 kB; lsn=0/1935FD8, redo lsn=0/1935FD8
+2026-11-14T18:15:45.2808749Z  2026-11-14 18:13:44.027 UTC [48] LOG:  database system is shut down
+2026-11-14T18:15:45.2809013Z   done
+2026-11-14T18:15:45.2809170Z  server stopped
+2026-11-14T18:15:45.2809350Z
+2026-11-14T18:15:45.2809552Z  PostgreSQL init process complete; ready for start up.
+2026-11-14T18:15:45.2809807Z
+2026-11-14T18:15:45.2813559Z Stop and remove container: 4f8f7c3b1c094ea690252a5fc28ba7d5_pgvectorpgvectorpg16_28a0f3
+2026-11-14T18:15:45.2814230Z ##[command]/usr/bin/docker rm --force ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:15:45.4024810Z ee4ef4d7bda890e36674609237f6b10c62421445021ac136e5ea5032b3e7b33c
+2026-11-14T18:15:45.4045723Z Print service container logs: 2fbe67873ffe46c0acb3cfda677a3ff1_redis7_8d8e9b
+2026-11-14T18:15:45.4046410Z ##[command]/usr/bin/docker logs --details 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:15:45.4176702Z  1:C 14 Nov 2026 18:13:44.169 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
+2026-11-14T18:15:45.4184857Z  1:C 14 Nov 2026 18:13:44.169 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+2026-11-14T18:15:45.4185332Z  1:C 14 Nov 2026 18:13:44.169 * Redis version=7.4.12, bits=64, commit=00000000, modified=0, pid=1, just started
+2026-11-14T18:15:45.4186020Z  1:C 14 Nov 2026 18:13:44.169 # Warning: no config file specified, using the default config. In order to specify a config file use redis-server /path/to/redis.conf
+2026-11-14T18:15:45.4186748Z  1:M 14 Nov 2026 18:13:44.169 * monotonic clock: POSIX clock_gettime
+2026-11-14T18:15:45.4187080Z  1:M 14 Nov 2026 18:13:44.170 * Running mode=standalone, port=6379.
+2026-11-14T18:15:45.4187374Z  1:M 14 Nov 2026 18:13:44.170 * Server initialized
+2026-11-14T18:15:45.4187651Z  1:M 14 Nov 2026 18:13:44.170 * Ready to accept connections tcp
+2026-11-14T18:15:45.4192418Z Stop and remove container: 2fbe67873ffe46c0acb3cfda677a3ff1_redis7_8d8e9b
+2026-11-14T18:15:45.4192986Z ##[command]/usr/bin/docker rm --force 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:15:45.5199406Z 28bc0be57d38ccc01b268d65d59000e55cd821f0bb68d5d131285a466e973033
+2026-11-14T18:15:45.5223660Z Remove container network: github_network_5b5d3275a5ae47e2aefae32fa840af59
+2026-11-14T18:15:45.5227325Z ##[command]/usr/bin/docker network rm github_network_5b5d3275a5ae47e2aefae32fa840af59
+2026-11-14T18:15:45.5945775Z github_network_5b5d3275a5ae47e2aefae32fa840af59
+2026-11-14T18:15:45.6021358Z Cleaning up orphan processes
+2026-11-14T18:15:45.6391959Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, actions/upload-artifact@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

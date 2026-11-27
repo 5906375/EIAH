@@ -34,11 +34,14 @@ export function maskEmail(email: string) {
   return `${local.slice(0, Math.min(2, local.length))}***@${domain}`;
 }
 
+// Avaliação: uma linha `aprovado` com grant só conta enquanto o grant foi iniciado e está dentro da validade (mesmo que o fechamento
+// ainda não tenha sido persistido); linhas sem grant seguem a regra de sempre.
 async function hasApprovedVertical(prisma: PrismaClient, tenantId: string, workspaceId: string) {
   await ensureVerticalAccessStore(prisma);
   const rows = await prisma.$queryRaw<Array<{ total: bigint }>>`
     SELECT COUNT(*)::bigint AS total FROM vertical_access_approvals
     WHERE tenant_id = ${tenantId} AND workspace_id = ${workspaceId} AND status = 'aprovado'
+      AND (grant_kind IS NULL OR (grant_started_at IS NOT NULL AND grant_valid_until > ${new Date()}::timestamp))
   `;
   return Number(rows[0]?.total ?? 0) > 0;
 }

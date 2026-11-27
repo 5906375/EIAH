@@ -1,0 +1,145 @@
+{
+  "status": "PASS",
+  "branch": "docs/whatsapp-meta-candidate-assessment",
+  "HEAD": "cecc2d8ca63fddb667f86e39eaa8066e0135ede5",
+  "stageEmpty": true,
+  "trackedChanged": [
+    "apps/api/src/index.ts",
+    "apps/api/src/services/whatsappMetaAdapter.ts",
+    "docs/EVIDENCE_INDEX.md",
+    "docs/ops/whatsapp-provider-meta-controlled-development-decision-record.md",
+    "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/README.md",
+    "package.json",
+    "packages/db/prisma/schema.prisma",
+    "scripts/unit-tests-manifest.txt"
+  ],
+  "newFiles": [
+    "apps/api/src/routes/whatsappMeta.ts",
+    "apps/api/src/services/whatsappMetaOperationalConfig.ts",
+    "apps/api/src/services/whatsappMetaPostgresStore.ts",
+    "apps/api/src/tests/whatsapp.meta-operational.test.ts",
+    "packages/db/prisma/migrations/20261125180000_whatsapp_meta_ingress_receipt/migration.sql"
+  ],
+  "prohibitedSurfacesDiff": [],
+  "preserved": [
+    {
+      "file": "docs/ops/whatsapp-provider-meta-f2-24-phase-transition-decision-record.md",
+      "sha256": "ec5e559c1222338444a29e8fd8c58ca6c40e6c66aaa54ed46b9e1207b1f2a826",
+      "unchanged": true
+    },
+    {
+      "file": "ops/evidence/latest/whatsapp-meta-f2-24-formalization-2026-11-25.md",
+      "sha256": "3028afd164572eb6752b306366c320e9e53c78813df654b762b034a682d24dcd",
+      "unchanged": true
+    },
+    {
+      "file": "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/acceptance.log",
+      "sha256": "1e211d32df34b7b17f9eeb7e08fa3640522579710f66d156265f3333799e4457",
+      "unchanged": true
+    },
+    {
+      "file": "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/typecheck.log",
+      "sha256": "de74d4834cdf3e1e2853c056aed704c95e980e268a3c3dccea908a1811e1c1c0",
+      "unchanged": true
+    },
+    {
+      "file": "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/isolation.log",
+      "sha256": "978c866399da2d1d51fe075e19d239412bd50d7b57d0f8da50ef684bdb348382",
+      "unchanged": true
+    }
+  ],
+  "manifestCommandMatches": true,
+  "newLogsPhysicallyPreserved": [
+    "operational-dependencies.log",
+    "operational-tests.log",
+    "operational-focal-types.log",
+    "operational-api-build.log",
+    "operational-schema.log",
+    "operational-docs.log"
+  ],
+  "notes": "No real database, API startup, deploy, external provider call or Git mutation executed; HTTP tests used loopback only. Ignored dist outputs were prepared locally."
+}
+
+Final whitespace check (single round, tracked plus every new nonignored file):
+[
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "diagnostic": "",
+    "PASS": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "apps/api/src/routes/whatsappMeta.ts"
+    ],
+    "exitCode": 1,
+    "diagnostic": "",
+    "PASS": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "apps/api/src/services/whatsappMetaOperationalConfig.ts"
+    ],
+    "exitCode": 1,
+    "diagnostic": "",
+    "PASS": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "apps/api/src/services/whatsappMetaPostgresStore.ts"
+    ],
+    "exitCode": 1,
+    "diagnostic": "",
+    "PASS": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "apps/api/src/tests/whatsapp.meta-operational.test.ts"
+    ],
+    "exitCode": 1,
+    "diagnostic": "",
+    "PASS": true
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "--",
+      "/dev/null",
+      "packages/db/prisma/migrations/20261125180000_whatsapp_meta_ingress_receipt/migration.sql"
+    ],
+    "exitCode": 1,
+    "diagnostic": "",
+    "PASS": true
+  }
+]

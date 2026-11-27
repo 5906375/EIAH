@@ -5,6 +5,7 @@ import { selfServiceConfigs } from "@/pages/self-service/config";
 import {
   apiApproveRun,
   apiAdoptRecommendation,
+  apiCancelRun,
   apiCreateSession,
   apiFinalizeConversation,
   apiGetBillingReconciliationSummary,
@@ -82,7 +83,32 @@ import {
   attachFrontDoorBillingToSnapshot,
   billingCardRows,
   enrichLauncherDecisionWithFrontDoorBilling,
+  findPendingFrontDoorActivationInMessages,
+  findPendingFrontDoorBillingInMessages,
 } from "@/components/agents/frontDoorBillingEngine";
+import { enrichLauncherDecisionWithFrontDoorIntake } from "@/components/agents/frontDoorIntakeEngine";
+import {
+  cancelOutcomeOfStatus,
+  createRunTracking,
+  credentialOf,
+  describeAbandonResult,
+  describeCancelOutcome,
+  describeRunSettlement,
+  GOVERNANCE_VERIFY_ATTEMPTS,
+  GOVERNANCE_VERIFY_DELAY_MS,
+  readPersistedTracking,
+  reasonCodeOfRun,
+  RUN_POLL_MAX_CONSECUTIVE_FAILURES,
+  RUN_TRACKING_TIMEOUT_MS,
+  terminalOfRunStatus,
+  sameCredential,
+  type AbandonResult,
+  type CredentialSnapshot,
+  type PersistedRunTracking,
+  type RunSettlement,
+  type RunTerminal,
+  type RunTracking,
+} from "@/components/agents/runLifecycle";
 import {
   attachVerticalApprovalChatToSnapshot,
   enrichLauncherDecisionWithVerticalApprovalChat,
@@ -95,7 +121,12 @@ import type { StructuredMessage } from "@/features/imob/structured/types";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { getSession, useSession } from "@/state/sessionStore";
 import { isImobSurfaceAvailable } from "@/lib/entitlements";
-import { conversationDomainLabel } from "./conversationDomainLabel";
+import FrontDoorSessionHeader from "./FrontDoorSessionHeader";
+import FrontDoorSidebar from "./FrontDoorSidebar";
+import FrontDoorConversationSequence from "./FrontDoorConversationSequence";
+import { appendedAssistantReplyId, replyScrollTop } from "./conversationScroll";
+import FrontDoorWaitingIndicator from "./FrontDoorWaitingIndicator";
+import { createScopeKeyer, isFrontDoorWaiting, trackDecision, useFrontDoorPendingWork } from "@/lib/frontDoorPendingWork";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useAgents } from "@/hooks/useAgents";
 import {
@@ -122,6 +153,8 @@ type ChatMessage = {
 type ThreadSnapshot = {
   messages: ChatMessage[];
   runId: string | null;
+  /** Run acompanhada quando a conversa foi guardada: permite retomar o acompanhamento ao recarregar, em vez de abandoná-la em silêncio. */
+  tracking?: PersistedRunTracking | null;
 };
 
 type RunFinanceSummary = {
@@ -456,6 +489,15 @@ export default function ChatAgentLauncher({
   const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null);
   const [pendingAgentReplayInput, setPendingAgentReplayInput] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  // Run acompanhada agora (identidade, contexto de origem, desfecho e pedido de cancelamento): lógica pura em runLifecycle.ts.
+  const runTrackingRef = useRef<RunTracking | null>(null);
+  const trackingTimerRef = useRef<number | null>(null);
+  const pollFailuresRef = useRef(0);
+  const [trackedRun, setTrackedRun] = useState<PersistedRunTracking | null>(null);
+  // Cancelamento em fases: idle → sending (tentativa iniciada) → accepted (API aceitou). A confirmação só vem do estado do servidor.
+  const [cancelPhase, setCancelPhase] = useState<"idle" | "sending" | "accepted">("idle");
+  // Só quem criou a run (credencial conhecida) vê a ação de cancelar; run retomada de criador desconhecido é só acompanhada.
+  const [cancelAvailable, setCancelAvailable] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
   const seenEventsRef = useRef<Set<string>>(new Set());
   const lastEventIdRef = useRef<string | null>(null);
@@ -474,6 +516,34 @@ export default function ChatAgentLauncher({
   >({});
   const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const followConversationEnd = useRef(true);
+  // Intenção do leitor: só gesto deliberado (roda, toque, teclas de subida) a liga; voltar ao fim ou enviar mensagem a desliga. Ao
+  // contrário de followConversationEnd, não é alterada quando o conteúdo cresce sem rolagem (ex.: o card do handoff ao fim da digitação).
+  const readerLeftEnd = useRef(false);
+  // Resposta do assistente anexada à conversa sem passar pela digitação (resposta estruturada do IMOB, avisos, runs) ficava abaixo da
+  // dobra. Vale para qualquer vertical e formato; só acompanha quem estava no fim (a leitura manual e a hidratação não mudam) e,
+  // sendo mais alta que a área visível, mostra o início dela. A digitação progressiva continua acompanhando o fim por conta própria.
+  const previousMessageIds = useRef<string[]>([]);
+  useEffect(() => {
+    const replyId = appendedAssistantReplyId(previousMessageIds.current, messages);
+    previousMessageIds.current = messages.map((message) => message.id);
+    const viewport = scrollRef.current;
+    if (!replyId || !viewport || readerLeftEnd.current) return;
+    const target = Array.from(viewport.querySelectorAll<HTMLElement>("[data-message-id]")).find((element) => element.dataset.messageId === replyId);
+    if (!target) return;
+    // A entrada anima com translateY: mede sem esse deslocamento para o início não ficar cortado depois da animação.
+    const shift = new DOMMatrixReadOnly(getComputedStyle(target).transform).m42;
+    const top = target.getBoundingClientRect().top - viewport.getBoundingClientRect().top - shift;
+    const destination = replyScrollTop({ top, height: target.offsetHeight }, { height: viewport.clientHeight, scrollTop: viewport.scrollTop, scrollHeight: viewport.scrollHeight });
+    if (destination !== null) viewport.scrollTo({ top: destination, behavior: "auto" });
+  }, [messages]);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const textarea = composerInputRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${input ? Math.min(textarea.scrollHeight, 128) : 44}px`;
+  }, [input]);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const clearAttachmentComposer = useCallback(
     (options?: { resetMode?: boolean }) => {
@@ -521,11 +591,28 @@ export default function ChatAgentLauncher({
     scopeKey: `${session.tenantId ?? ""}:${effectiveWorkspaceId ?? ""}:${session.userId ?? ""}`,
     active: showImobSurface, messages, setMessages,
   });
+  // Trabalho pendente compartilhado do Front Door (qualquer agente ou vertical): cada solicitação tem identidade própria e vale só para a
+  // conversa em que nasceu. A geração da conversa já muda com tenant, workspace, agente e tópico (via threadKey); o que ela não cobre (usuário,
+  // sessão ativa, agente em conversa única) entra pela chave de escopo, que distingue hidratação de troca real e de logout/remoção. Nada aqui conhece vertical.
+  const scopeKeyerRef = useRef(createScopeKeyer());
+  const pendingWork = useFrontDoorPendingWork(() => `${conversationGenerationRef.current}:${scopeKeyerRef.current({ user: session.userId, session: session.token ? "active" : undefined, agent: activeAgentId })}`);
   const imobFrontDoor = useImobFrontDoorForms<ChatMessage>({
     messages, setMessages, getConversationGeneration: () => conversationGenerationRef.current,
     getConversationScopeKey: () => activeAgentId ?? FALLBACK_AGENT.id,
     persistence: imobPersistence,
+    trackPending: pendingWork.tracker.track,
   });
+  // Um só indicador de espera para a mesma solicitação: trabalho pendente compartilhado ou run em andamento ainda sem texto aparecendo.
+  // Aparece no fim da conversa, então só acompanha quem já estava no fim (mesma regra das respostas anexadas).
+  const showWaiting = isFrontDoorWaiting({ pendingCount: pendingWork.pendingCount, isStreaming, hasStreamingMessage: messages.some((message) => message.status === "streaming") });
+  const waitingIndicatorRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    const indicator = waitingIndicatorRef.current;
+    if (!showWaiting || !viewport || !indicator || readerLeftEnd.current) return;
+    const destination = replyScrollTop({ top: 0, height: indicator.offsetHeight }, { height: viewport.clientHeight, scrollTop: viewport.scrollTop, scrollHeight: viewport.scrollHeight });
+    if (destination !== null) viewport.scrollTo({ top: destination, behavior: "auto" });
+  }, [showWaiting]);
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&
     normalizeAgentKey(activeAgent?.id ?? FALLBACK_AGENT.id) === "eiah";
@@ -586,6 +673,9 @@ export default function ChatAgentLauncher({
       setMessages(parsed.messages ?? []);
       setRunId(parsed.runId ?? null);
       onRunIdChange?.(parsed.runId ?? null);
+      // Run que estava sendo acompanhada ao recarregar: o estado real dela é lido e o acompanhamento é retomado ou o desfecho é dito.
+      const persistedTracking = readPersistedTracking(parsed.tracking);
+      if (persistedTracking) void resumeTrackingRef.current(persistedTracking, parsed.messages ?? []);
     } catch {
       setMessages([]);
       setRunId(null);
@@ -597,9 +687,9 @@ export default function ChatAgentLauncher({
     if (typeof window === "undefined") return;
     // A primeira renderização da nova chave ainda contém mensagens da chave anterior.
     if (skipHistoryPersistRef.current) { skipHistoryPersistRef.current = false; return; }
-    const payload: ThreadSnapshot = { messages, runId };
+    const payload: ThreadSnapshot = { messages, runId, tracking: trackedRun };
     window.sessionStorage.setItem(threadKey, JSON.stringify(payload));
-  }, [threadKey, messages, runId]);
+  }, [threadKey, messages, runId, trackedRun]);
 
   const explicitRunIds = useMemo(
     () =>
@@ -729,9 +819,10 @@ export default function ChatAgentLauncher({
   }, [activeAgentId, pendingAgentReplayInput]);
 
   const pushMessage = (message: ChatMessage) => {
+    if (message.role === "user") { followConversationEnd.current = true; readerLeftEnd.current = false; }
     setMessages((prev) => [...prev, message]);
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      if (followConversationEnd.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "auto" });
     });
   };
 
@@ -741,11 +832,15 @@ export default function ChatAgentLauncher({
       content: string;
       runId?: string | null;
       presentationSnapshot?: MessagePresentationSnapshot;
-    }) => {
+      /** Se informado e o contexto do turno mudar durante a digitação, a digitação para e a mensagem parcial é removida. Devolve false nesse caso. */
+      isCurrent?: () => boolean;
+    }): Promise<boolean> => {
       const chunks = params.content
         .split(/(\s+)/)
         .filter((chunk) => chunk.length > 0);
-      const messageId = `${params.idPrefix}-${Date.now()}`;
+      // Sufixo aleatório: o id é exclusivo desta invocação, então remover a mensagem parcial nunca atinge outra mensagem.
+      const messageId = `${params.idPrefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const discard = () => setMessages((prev) => prev.filter((message) => message.id !== messageId));
 
       setMessages((prev) => [
         ...prev,
@@ -761,6 +856,7 @@ export default function ChatAgentLauncher({
 
       let rendered = "";
       for (const chunk of chunks) {
+        if (params.isCurrent && !params.isCurrent()) { discard(); return false; }
         rendered += chunk;
         setMessages((prev) =>
           prev.map((message) =>
@@ -774,12 +870,14 @@ export default function ChatAgentLauncher({
           )
         );
         requestAnimationFrame(() => {
-          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+          if (followConversationEnd.current) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "auto" });
         });
         // Mantém o ritmo de escrita sem travar a interface.
         // Respostas curtas ficam naturais; respostas longas continuam rápidas.
         await new Promise((resolve) => window.setTimeout(resolve, chunk.trim() ? 18 : 8));
       }
+      // Também depois do último await: não finaliza nem devolve sucesso se o contexto mudou no término da digitação.
+      if (params.isCurrent && !params.isCurrent()) { discard(); return false; }
 
       setMessages((prev) =>
         prev.map((message) =>
@@ -792,6 +890,7 @@ export default function ChatAgentLauncher({
             : message
         )
       );
+      return true;
     },
     []
   );
@@ -901,6 +1000,15 @@ export default function ChatAgentLauncher({
   );
 
   const stopStreaming = () => {
+    if (trackingTimerRef.current !== null) {
+      window.clearTimeout(trackingTimerRef.current);
+      trackingTimerRef.current = null;
+    }
+    runTrackingRef.current = null;
+    pollFailuresRef.current = 0;
+    setTrackedRun(null);
+    setCancelPhase("idle");
+    setCancelAvailable(false);
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -914,6 +1022,14 @@ export default function ChatAgentLauncher({
   };
 
   const handleIncomingEvent = (event: RunEvent) => {
+    // Só a run acompanhada, no contexto em que nasceu: evento de outra run, de contexto obsoleto, duplicado ou tardio é descartado.
+    const tracking = runTrackingRef.current;
+    if (!tracking) return;
+    const decision = tracking.accept(event, pendingWork.tracker.scope());
+    if (decision.action === "ignore") {
+      if (decision.reason === "stale_context") void abandonTracking();
+      return;
+    }
     if (seenEventsRef.current.has(event.id)) return;
     seenEventsRef.current.add(event.id);
     lastEventIdRef.current = event.id;
@@ -950,20 +1066,189 @@ export default function ChatAgentLauncher({
       });
     }
 
-    if (event.type === "run.orchestrator.finished") {
-      setIsStreaming(false);
-    }
+    // Encerramento por estado terminal REAL (concluída, falha, cancelamento confirmado, bloqueio). `run.orchestrator.finished` é só progresso.
+    if (decision.action === "settle") void concludeTracking(tracking, decision.terminal, decision.reasonCode);
+    // Bloqueio por governança: o evento sozinho não encerra (em modo permissivo a run continua); o estado persistido decide.
+    if (decision.action === "verify_status") void verifyGovernanceBlock(tracking);
+  };
 
-    if (event.type === "run.completed") {
-      void fetchRunSummary(event.runId);
+  // --- Ciclo de vida da run acompanhada (regras puras em runLifecycle.ts; aqui só se liga SSE, polling e API e se apresenta o estado) ---
+  const releaseTracking = (tracking: RunTracking) => {
+    if (runTrackingRef.current === tracking) stopStreaming();
+  };
+
+  const pushSettlementMessage = (settlement: RunSettlement, tracking: RunTracking, reasonCode?: string | null) => {
+    const text = describeRunSettlement(settlement, { cancelRequested: tracking.cancelRequested, reasonCode });
+    if (text) pushMessage({ id: `assistant-run-${settlement}-${tracking.runId}`, role: "assistant", content: text, status: "done" });
+  };
+
+  /** Desfecho terminal vindo do servidor. O resultado de uma execução concluída é carregado ANTES de encerrar a espera (nada se perde). */
+  const concludeTracking = async (tracking: RunTracking, terminal: RunTerminal, reasonCode: string | null) => {
+    // Identidade e contexto: só encerra a run que ainda é a acompanhada, no contexto em que nasceu (resposta tardia não encerra outra run).
+    if (runTrackingRef.current !== tracking || pendingWork.tracker.scope() !== tracking.contextId || !tracking.settle(terminal)) return;
+    if (trackingTimerRef.current !== null) { window.clearTimeout(trackingTimerRef.current); trackingTimerRef.current = null; }
+    const stillCurrent = () => pendingWork.tracker.scope() === tracking.contextId;
+    if (terminal === "completed") {
+      const loaded = await fetchRunSummary(tracking.runId, stillCurrent);
+      if (!loaded && stillCurrent()) {
+        pushMessage({ id: `assistant-run-noresult-${tracking.runId}`, role: "assistant", content: "A execução terminou, mas não consegui carregar o resultado dela agora.", status: "done" });
+      }
+    }
+    if (stillCurrent()) pushSettlementMessage(terminal, tracking, reasonCode);
+    releaseTracking(tracking);
+  };
+
+  /** Fim da espera LOCAL (limite de tempo, ação do usuário ou conexão perdida). A execução NÃO é cancelada no servidor. */
+  const settleLocally = (settlement: "timed_out" | "interrupted_locally" | "connection_lost") => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || !tracking.settle(settlement)) return;
+    if (pendingWork.tracker.scope() === tracking.contextId) pushSettlementMessage(settlement, tracking);
+    releaseTracking(tracking);
+  };
+
+  /** Rede de segurança: estado persistido da run quando um evento terminal não chegou (SSE caído, evento perdido). */
+  const checkRunStatus = async (tracking: RunTracking): Promise<boolean> => {
+    try {
+      const run = await apiGetRun(tracking.runId);
+      // A resposta pode chegar tarde: revalida identidade e contexto DEPOIS da consulta e antes de concluir.
+      if (runTrackingRef.current !== tracking || tracking.settlement || pendingWork.tracker.scope() !== tracking.contextId) return false;
+      const terminal = terminalOfRunStatus(run as { status?: string; errorCode?: string | null });
+      if (!terminal) return false;
+      await concludeTracking(tracking, terminal, reasonCodeOfRun(run as { errorCode?: string | null }));
+      return true;
+    } catch {
+      return false;
     }
   };
 
-  const fetchRunSummary = async (targetRunId?: string | null) => {
-    if (!targetRunId || runSummaryLoadedRef.current === targetRunId) return;
+  // Esgotar as tentativas NÃO classifica a run: o acompanhamento normal e o limite de espera seguem valendo.
+  const verifyingBlockRef = useRef<RunTracking | null>(null);
+  const verifyGovernanceBlock = async (tracking: RunTracking) => {
+    if (verifyingBlockRef.current === tracking) return;
+    verifyingBlockRef.current = tracking;
+    try {
+      for (let attempt = 0; attempt < GOVERNANCE_VERIFY_ATTEMPTS; attempt += 1) {
+        if (runTrackingRef.current !== tracking || tracking.settlement) return;
+        if (await checkRunStatus(tracking)) return;
+        await new Promise((resolve) => window.setTimeout(resolve, GOVERNANCE_VERIFY_DELAY_MS));
+      }
+    } finally {
+      if (verifyingBlockRef.current === tracking) verifyingBlockRef.current = null;
+    }
+  };
+
+  const onTrackingTimeout = async () => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || tracking.settlement) return;
+    if (await checkRunStatus(tracking)) return;
+    settleLocally("timed_out");
+  };
+
+  const beginTracking = (targetRunId: string, credential?: CredentialSnapshot) => {
+    const tracking = createRunTracking({ runId: targetRunId, contextId: pendingWork.tracker.scope(), credential });
+    runTrackingRef.current = tracking;
+    pollFailuresRef.current = 0;
+    setCancelPhase("idle");
+    setCancelAvailable(tracking.mayCancelWith(credentialOf(getSession())));
+    setTrackedRun({ runId: tracking.runId, startedAt: tracking.startedAt });
+    if (trackingTimerRef.current !== null) window.clearTimeout(trackingTimerRef.current);
+    trackingTimerRef.current = window.setTimeout(() => void onTrackingTimeout(), RUN_TRACKING_TIMEOUT_MS);
+    return tracking;
+  };
+
+  /** Pedido de cancelamento à API: devolve o que a API respondeu (aceito, já terminada ou falha). Nunca engole o erro. */
+  const requestRunCancel = async (targetRunId: string): Promise<"sent" | "already_finished" | "failed"> => {
+    try {
+      await apiCancelRun(targetRunId);
+      return "sent";
+    } catch (error) {
+      const outcome = cancelOutcomeOfStatus(error instanceof ApiError ? error.status : null);
+      if (outcome === "failed") console.warn("[ChatAgentLauncher] pedido de cancelamento falhou", error instanceof ApiError ? error.status : "sem resposta");
+      return outcome;
+    }
+  };
+
+  /**
+   * Contexto da run mudou (nova conversa, troca de usuário/sessão/workspace/agente). A interface é limpa na hora; depois:
+   *  - mesma credencial que criou a run: o cancelamento é PEDIDO e o resultado real (aceito, já terminada, falha) é devolvido;
+   *  - credencial diferente ou desconhecida: NADA é pedido (a API usaria a credencial do contexto novo); só descarte local, e a run segue no servidor.
+   */
+  const abandonTracking = async (): Promise<AbandonResult | null> => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || !tracking.settle("interrupted_locally")) return null;
+    const mayCancel = tracking.mayCancelWith(credentialOf(getSession()));
+    releaseTracking(tracking);
+    if (!mayCancel) return "discarded_locally";
+    const outcome = await requestRunCancel(tracking.runId);
+    return outcome === "sent" ? "cancel_accepted" : outcome === "already_finished" ? "cancel_already_finished" : "cancel_failed";
+  };
+
+  /** Pedido de cancelamento pelo mecanismo existente (`POST /runs/:id/cancel`). Enviar o pedido não confirma o cancelamento. */
+  const handleCancelRun = async () => {
+    const tracking = runTrackingRef.current;
+    if (!tracking || tracking.settlement || tracking.cancelRequested) return;
+    // Credencial trocada antes do efeito de abandono rodar (ou criador desconhecido): não pede cancelamento com a credencial de outro contexto.
+    if (!tracking.mayCancelWith(credentialOf(getSession()))) { void abandonTracking(); return; }
+    tracking.markCancelRequested();
+    setCancelPhase("sending");
+    const outcome = await requestRunCancel(tracking.runId);
+    // A resposta pode chegar tarde: só atualiza a conversa se ainda for ESTA run, no contexto dela e com a credencial que a criou.
+    if (runTrackingRef.current !== tracking || pendingWork.tracker.scope() !== tracking.contextId || !tracking.mayCancelWith(credentialOf(getSession()))) return;
+    if (outcome === "failed") { tracking.clearCancelRequested(); setCancelPhase("idle"); } else setCancelPhase("accepted");
+    pushMessage({ id: `assistant-cancel-${outcome}-${Date.now()}`, role: "assistant", content: describeCancelOutcome(outcome), status: "done" });
+    // 409: a run já terminou; o estado terminal confirma o desfecho real (evento ou status).
+    if (outcome === "already_finished") void checkRunStatus(tracking);
+  };
+
+  /** Retomada depois de recarregar: lê o estado real da run em vez de deixá-la abandonada em silêncio. */
+  const resumeTracking = async (persisted: PersistedRunTracking, restored: ChatMessage[]) => {
+    // Sessão e escopo ANTES da consulta; depois dela, a resposta só vale se ambos continuam os mesmos (não é atribuída a um contexto novo).
+    const resumeScope = pendingWork.tracker.scope();
+    const resumeCredential = credentialOf(getSession());
+    try {
+      const run = await apiGetRun(persisted.runId);
+      if (pendingWork.tracker.scope() !== resumeScope || !sameCredential(resumeCredential, credentialOf(getSession()))) return;
+      // GET /runs/:id é autorizado por tenant/workspace, não por criador: o sucesso da consulta NÃO prova quem criou a run. O criador vem do
+      // próprio registro (`userId`); run de outro usuário não é acompanhada, e sem criador conhecido é só acompanhada (sem ação de cancelar).
+      if (run.userId && resumeCredential.userId && run.userId !== resumeCredential.userId) return;
+      const creatorIsCurrentUser = Boolean(run.userId) && run.userId === resumeCredential.userId;
+      const terminal = terminalOfRunStatus(run as { status?: string; errorCode?: string | null });
+      if (!terminal) {
+        setIsStreaming(true);
+        beginTracking(persisted.runId, creatorIsCurrentUser ? resumeCredential : undefined);
+        await startSse(persisted.runId);
+        return;
+      }
+      const tracking = createRunTracking({ runId: persisted.runId, contextId: pendingWork.tracker.scope() });
+      tracking.settle(terminal);
+      if (terminal === "completed" && !restored.some((message) => message.id === `assistant-summary-${persisted.runId}`)) {
+        if (!(await fetchRunSummary(persisted.runId))) {
+          pushMessage({ id: `assistant-run-noresult-${persisted.runId}`, role: "assistant", content: "A execução terminou, mas não consegui carregar o resultado dela agora.", status: "done" });
+        }
+      }
+      pushSettlementMessage(terminal, tracking);
+    } catch {
+      pushMessage({ id: `assistant-run-resume-failed-${persisted.runId}`, role: "assistant", content: "Não consegui verificar a execução da conversa anterior. Ela pode ter continuado no servidor.", status: "done" });
+    }
+  };
+  const resumeTrackingRef = useRef(resumeTracking);
+  resumeTrackingRef.current = resumeTracking;
+
+  // Troca real de contexto (usuário, agente, conversa) com uma run acompanhada: o cancelamento é pedido e o indicador não vaza para o contexto novo.
+  const trackingScope = pendingWork.tracker.scope();
+  useEffect(() => {
+    const tracking = runTrackingRef.current;
+    if (tracking && !tracking.settlement && tracking.contextId !== trackingScope) void abandonTracking();
+  }, [trackingScope]);
+
+  /** `isCurrent`: quando informado e falso depois da consulta, o resultado não é anexado (outro contexto). Devolve se o resultado foi carregado. */
+  const fetchRunSummary = async (targetRunId?: string | null, isCurrent: () => boolean = () => true): Promise<boolean> => {
+    if (!targetRunId) return false;
+    if (runSummaryLoadedRef.current === targetRunId) return true;
     runSummaryLoadedRef.current = targetRunId;
     try {
       const run = await apiGetRun(targetRunId);
+      if (!isCurrent()) return true;
       const responseText =
         typeof run.response === "string"
           ? run.response
@@ -1025,23 +1310,34 @@ export default function ChatAgentLauncher({
           proposalDomain: summarySnapshot.proposalDomain ?? null,
           conversationStage: summarySnapshot.conversationStage ?? null,
         });
+        return true;
       }
+      return false;
     } catch (error) {
       console.warn("[ChatAgentLauncher] falha ao buscar resumo do run", error);
+      runSummaryLoadedRef.current = null; // permite nova tentativa
+      return false;
     }
   };
 
   const startPolling = (targetRunId: string) => {
     updateSseStatus("polling");
     const poll = async () => {
+      const tracking = runTrackingRef.current;
+      if (!tracking || tracking.runId !== targetRunId || tracking.settlement) return;
       try {
         const response = await apiListRunEvents(targetRunId, {
           cursor: lastEventIdRef.current ?? undefined,
         });
+        pollFailuresRef.current = 0;
         response.items.forEach(handleIncomingEvent);
+        // Evento terminal que não veio: o estado persistido da run encerra o acompanhamento.
+        if (!tracking.settlement) await checkRunStatus(tracking);
       } catch {
         updateSseStatus("error");
-        setIsStreaming(false);
+        pollFailuresRef.current += 1;
+        // Sem conexão com o servidor por várias consultas seguidas: para de aguardar COM aviso (a execução não é cancelada).
+        if (pollFailuresRef.current >= RUN_POLL_MAX_CONSECUTIVE_FAILURES) settleLocally("connection_lost");
       }
     };
     poll();
@@ -1079,11 +1375,20 @@ export default function ChatAgentLauncher({
     }
   };
 
-  const handleSend = async () => {
+  // `handover`: espera que passa da decisão do turno para o encaminhamento adiante (cobre a digitação das mensagens intermediárias).
+  const sendTurn = async (handover: { release: () => void }) => {
     const trimmed = input.trim();
     const artifactText = pastedArtifactText.trim();
     const hasAttachmentPayload = Boolean(selectedAttachment) || Boolean(artifactText);
     if ((!trimmed && !hasAttachmentPayload) || isStreaming) return;
+    // Contexto de origem do turno: a mesma chave do estado de espera (conversa, usuário, sessão e agente; hidratação da sessão não conta como troca).
+    // Garantia efetiva: se o contexto mudar durante a decisão ou a digitação do aviso, o turno para ali; não encaminha a consulta, não conclui a digitação
+    // (a mensagem parcial é removida) e não executa o restante do turno, incluindo persistHelpdeskSession. NÃO desfaz o que já ocorreu antes da troca
+    // (mensagem do usuário, upload, requisições em andamento). Toda saída passa pelo finally de `handleSend`, que solta só a ponte deste turno.
+    const turnScope = pendingWork.tracker.scope();
+    const turnIsCurrent = () => pendingWork.tracker.scope() === turnScope;
+    // Credencial no INÍCIO do turno (antes do POST que cria a run): se a sessão mudar durante o POST, a resposta tardia não é atribuída à sessão nova.
+    const creationCredential = credentialOf(getSession());
     const resolvedAgentId = activeAgentId ?? FALLBACK_AGENT.id;
     let uploadedArtifacts: UploadedDocumentInfo[] = [];
     if (attachmentIntake.enabled && selectedAttachment) {
@@ -1156,7 +1461,8 @@ export default function ChatAgentLauncher({
     });
     navigationRequestGenerationRef.current += 1;
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
+    // A espera pela decisão (avaliação do handoff, ativação, cobrança, reivindicação) é trabalho pendente desde a mensagem do usuário.
+    const turnDecision = await trackDecision(pendingWork.tracker, handover, async () => enrichLauncherDecisionWithNoticeAck(await enrichLauncherDecisionWithVerticalApprovalChat(await enrichLauncherDecisionWithFrontDoorIntake(await enrichLauncherDecisionWithFrontDoorBilling(await enrichLauncherDecisionWithVerticalActivation(await enrichLauncherDecisionWithVerticalHandoff(
       await enrichLauncherDecisionWithImobRuntimeShadow(
       await resolveLauncherTurnDecision({
         input: turnInput,
@@ -1172,7 +1478,11 @@ export default function ChatAgentLauncher({
         previousUserMessage: lastUserMessage,
         previousAssistantMessage: lastAssistantMessage,
         previousAssistantSnapshot: lastAssistantSnapshot,
+        // A etapa de billing pendente é da conversa, não só da última mensagem: respostas intermediárias não a apagam.
+        pendingFrontDoorBilling: findPendingFrontDoorBillingInMessages(messages),
+        pendingFrontDoorActivation: findPendingFrontDoorActivationInMessages(messages),
         imobOperationalContinuation: {
+          propertyCaptureContext: imobFrontDoor.getPropertyCaptureContext(),
           threadState: imobFrontDoor.getConversationState(),
           available: showImobSurface,
           consume: imobFrontDoor.consumeOperationalTurn,
@@ -1188,7 +1498,8 @@ export default function ChatAgentLauncher({
       }),
       { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
       ),
-    )))));
+    )))))));
+    if (!turnIsCurrent()) return;
     if (turnDecision?.turnConsumed) {
       clearAttachmentComposer();
       return;
@@ -1231,13 +1542,17 @@ export default function ChatAgentLauncher({
         clearAttachmentComposer();
         return;
       }
-      await pushAssistantMessageWithTyping({
+      const typed = await pushAssistantMessageWithTyping({
         idPrefix: `assistant-${turnDecision.kind}`,
         content: turnDecision.content,
         presentationSnapshot: localSnapshot,
+        isCurrent: turnIsCurrent,
       });
+      if (!typed || !turnIsCurrent()) return;
       if (turnDecision.verticalHandoffForwardInput) {
         void imobFrontDoor.forwardToImob(turnDecision.verticalHandoffForwardInput);
+        // O encaminhamento já está registrado como pendente (sem intervalo): solta a espera que cobriu a digitação do aviso de handoff.
+        handover.release();
       }
       persistHelpdeskSession({
         message: turnInput,
@@ -1301,6 +1616,26 @@ export default function ChatAgentLauncher({
         metadata: preparedRun.metadata,
       });
       const created = response.data;
+      if (!sameCredential(creationCredential, credentialOf(getSession()))) {
+        // A sessão mudou durante a criação: a run pertence à credencial anterior. Não é acompanhada nem atribuída à sessão nova, e nada é
+        // cancelado com a credencial do contexto novo (descarte local; a run segue no servidor).
+        if (!runTrackingRef.current) setIsStreaming(false);
+        return;
+      }
+      if (!turnIsCurrent()) {
+        // Mesma credencial, mas a conversa ou o agente mudou durante a criação: não acompanha; o cancelamento é pedido e o resultado real é dito
+        // só se o contexto atual ainda for o mesmo de quando o pedido saiu (escopo e credencial, não só a geração).
+        if (!runTrackingRef.current) setIsStreaming(false);
+        const requestScope = pendingWork.tracker.scope();
+        const requestCredential = credentialOf(getSession());
+        void requestRunCancel(created.id).then((outcome) => {
+          const text = describeAbandonResult(outcome === "sent" ? "cancel_accepted" : outcome === "already_finished" ? "cancel_already_finished" : "cancel_failed");
+          if (text && pendingWork.tracker.scope() === requestScope && sameCredential(requestCredential, credentialOf(getSession()))) {
+            pushMessage({ id: `assistant-abandoned-run-${created.id}`, role: "assistant", content: text, status: "done" });
+          }
+        });
+        return;
+      }
       setRunId(created.id);
       onRunIdChange?.(created.id);
       runPromptRef.current[created.id] = turnInput;
@@ -1323,10 +1658,16 @@ export default function ChatAgentLauncher({
         role: "system",
         content: `Run criada: ${created.id}. Aguardando eventos...`,
       });
+      beginTracking(created.id, creationCredential);
       await startSse(created.id);
       clearAttachmentComposer();
     } catch (error) {
-      setIsStreaming(false);
+      // Erro de um turno cujo contexto já mudou não vira mensagem no contexto novo nem derruba o acompanhamento dele.
+      if (!turnIsCurrent() || !sameCredential(creationCredential, credentialOf(getSession()))) {
+        if (!runTrackingRef.current) setIsStreaming(false);
+        return;
+      }
+      stopStreaming();
       updateSseStatus("error");
       const message = formatLauncherError(error);
       pushMessage({
@@ -1351,6 +1692,16 @@ export default function ChatAgentLauncher({
     }
   };
 
+  // Envio de mensagem, quick reply e ação de cartão passam todos por aqui. A ponte de espera é solta em qualquer saída do turno.
+  const handleSend = async () => {
+    const handover = { release: () => {} };
+    try {
+      await sendTurn(handover);
+    } finally {
+      handover.release();
+    }
+  };
+
   useEffect(() => {
     if (!autoSendInput || input !== autoSendInput || isStreaming) return;
     setAutoSendInput(null);
@@ -1361,7 +1712,7 @@ export default function ChatAgentLauncher({
   const handleApprove = async () => {
     if (!runId) return;
     try {
-      const response = await apiApproveRun(runId, { parentRunId: runId });
+      const response = await pendingWork.tracker.track(() => apiApproveRun(runId, { parentRunId: runId }));
       conversation.markApproved();
       pushMessage({
         id: `system-approve-${runId}`,
@@ -1382,11 +1733,11 @@ export default function ChatAgentLauncher({
       return;
     }
     try {
-      await apiAdoptRecommendation(targetRunId, {
+      await pendingWork.tracker.track(() => apiAdoptRecommendation(targetRunId, {
         key: rec.key,
         tatica: rec.tatica,
         adopted: true,
-      });
+      }));
       setCopyToast("Recomendacao marcada como adotada.");
     } catch {
       setCopyToast("Falha ao marcar recomendacao.");
@@ -1431,7 +1782,11 @@ export default function ChatAgentLauncher({
   };
 
   const handleNewConversation = () => {
+    // Run em andamento da conversa que está sendo deixada: o cancelamento é pedido e o resultado REAL (aceito, falha, já terminada) é dito na conversa nova.
+    const abandoning = abandonTracking();
     conversationGenerationRef.current += 1;
+    const resetScope = pendingWork.tracker.scope();
+    const resetCredential = credentialOf(getSession());
     imobPersistence.startNew();
     stopStreaming();
     setMessages([]);
@@ -1456,6 +1811,14 @@ export default function ChatAgentLauncher({
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(threadKey);
     }
+    // Mensagens de papel "system" não aparecem na conversa (só a identidade): o aviso é do assistente para ser visto. Só entra se o contexto
+    // (escopo e credencial) ainda for o da conversa nova quando a API responder.
+    void abandoning.then((result) => {
+      const text = result ? describeAbandonResult(result) : null;
+      if (text && pendingWork.tracker.scope() === resetScope && sameCredential(resetCredential, credentialOf(getSession()))) {
+        pushMessage({ id: `assistant-abandoned-run-${Date.now()}`, role: "assistant", content: text, status: "done" });
+      }
+    });
   };
 
   const loadGovernanceReport = async () => {
@@ -1660,13 +2023,16 @@ export default function ChatAgentLauncher({
     const timer = window.setTimeout(() => {
       void (async () => {
         if (!isCurrent()) return;
-        const decision = await resolveLauncherNavigationDecision({
-          domainHint: launcherContext?.domainHint,
-          entryHint: launcherContext?.entryHint,
-          isUnifiedEiah: isUnifiedEiahMode,
-          continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
+        // A avaliação de entrada (inclui o handoff) também é espera real do Front Door: usa o mesmo estado compartilhado.
+        const resolved = await pendingWork.tracker.track(async () => {
+          const decision = await resolveLauncherNavigationDecision({
+            domainHint: launcherContext?.domainHint,
+            entryHint: launcherContext?.entryHint,
+            isUnifiedEiah: isUnifiedEiahMode,
+            continuation: { threadState: imobFrontDoor.getConversationState(), consume: imobFrontDoor.consumeOperationalTurn },
+          });
+          return enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
         });
-        const resolved = await enrichLauncherDecisionWithVerticalHandoff(decision, undefined, undefined, undefined, isCurrent);
         if (!isCurrent() || !resolved?.content) return;
         const snapshot = attachPreDuimpCardToSnapshot(attachVerticalHandoffToSnapshot(createLauncherPresentationSnapshot({
           selectedAgent: selectedCatalogAgent, routeIntent: resolved.presentationRouteIntent,
@@ -1856,65 +2222,86 @@ export default function ChatAgentLauncher({
   );
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-2 shadow-lg shadow-black/20 sm:p-8">
-      <div className="absolute -left-32 top-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" aria-hidden />
-      <div className="absolute -right-10 top-40 h-72 w-72 rounded-full bg-white/5 blur-3xl" aria-hidden />
-
-      <header className="relative z-10 mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="pt-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Launcher</p>
-          <h3 className="mt-1 text-lg font-semibold text-foreground sm:text-xl">Chat Agent Launcher</h3>
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-start gap-3 sm:w-auto sm:justify-end">
-          {headerControls}
-          {onPlaybookClick ? (
-            <button
-              type="button"
-              onClick={onPlaybookClick}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
-            >
-              Playbook
-            </button>
+    <section className="front-door-launcher relative flex min-w-0 flex-col rounded-3xl border border-white/10 bg-surface/70 p-2 sm:p-3">
+      <div className="front-door-workspace relative z-10 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
+        <FrontDoorSidebar
+          heading={<FrontDoorSessionHeader activeDomain={session.activeDomain}>{null}</FrontDoorSessionHeader>}
+          actions={<button type="button" data-sidebar-navigation="true" onClick={handleNewConversation}>Nova conversa</button>}
+          sequence={<FrontDoorConversationSequence messages={messages} onNavigate={(messageId) => {
+            const target = Array.from(scrollRef.current?.querySelectorAll<HTMLElement>("[data-message-id]") ?? []).find((element) => element.dataset.messageId === messageId);
+            if (target && scrollRef.current) {
+              scrollRef.current.scrollTo({ top: target.getBoundingClientRect().top - scrollRef.current.getBoundingClientRect().top + scrollRef.current.scrollTop, behavior: "smooth" });
+              target.focus({ preventScroll: true });
+            }
+          }} />}
+          status={
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {copyToast ? (
+                <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
+                  {copyToast}
+                </div>
+              ) : null}
+              {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
+                <ContextualCostPanel
+                  compact
+                  run={{
+                    runId,
+                    actualCostCents: activeRunFinance?.amountCents ?? null,
+                    estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                    tokens: activeRunFinance?.tokens ?? null,
+                    issueLabel: activeRunFinance?.issueLabel ?? null,
+                    hasGap: activeRunFinance?.hasGap ?? false,
+                  }}
+                  workspace={workspaceBillingContext}
+                />
+              ) : null}
+            </div>
+          }
+          controls={<>
+            {headerControls}
+            {onPlaybookClick ? (
+              <button
+                type="button"
+                onClick={onPlaybookClick}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-surface-strong/70 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground shadow-lg shadow-black/20 transition hover:border-accent/40"
+              >
+                Playbook
+              </button>
+            ) : null}
+          </>}
+        >
+          {showImobSurface ? (
+            <ImobActionMenuBar
+              layout="sidebar"
+              embedded
+              menus={IMOB_ACTION_MENUS}
+              onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
+            />
           ) : null}
-        </div>
-      </header>
-
-      <div className="relative z-10 grid gap-6">
-        <div className="flex h-full flex-col gap-4">
-          <div className="glass-subtle flex-1 p-2 sm:p-6">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-muted-foreground">
-                  Conversa ativa · {conversationDomainLabel(session.activeDomain)}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {copyToast ? (
-                    <div className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
-                      {copyToast}
-                    </div>
-                  ) : null}
-                  {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
-                    <ContextualCostPanel
-                      compact
-                      run={{
-                        runId,
-                        actualCostCents: activeRunFinance?.amountCents ?? null,
-                        estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
-                        tokens: activeRunFinance?.tokens ?? null,
-                        issueLabel: activeRunFinance?.issueLabel ?? null,
-                        hasGap: activeRunFinance?.hasGap ?? false,
-                      }}
-                      workspace={workspaceBillingContext}
-                    />
-                  ) : null}
-                </div>
-              </div>
-
+        </FrontDoorSidebar>
+        <div className="front-door-workspace-main flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div
               ref={scrollRef}
               data-testid="launcher-conversation-surface"
-              className={`no-scrollbar h-[62vh] min-h-[360px] overflow-y-auto rounded-3xl border border-white/5 bg-black/20 p-1.5 sm:p-4 ${lastLogisticaJourneyMessageId || lastLogisticaPendingMessageId || lastPreDuimpMessageId ? "sm:h-[70vh]" : "sm:h-[360px]"}`}
+              role="region"
+              aria-label="Conversa"
+              onScroll={(event) => {
+                const viewport = event.currentTarget;
+                followConversationEnd.current = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 48;
+                if (followConversationEnd.current) readerLeftEnd.current = false;
+              }}
+              onWheel={(event) => {
+                if (event.deltaY < 0) { followConversationEnd.current = false; readerLeftEnd.current = true; }
+              }}
+              onTouchMove={() => { followConversationEnd.current = false; readerLeftEnd.current = true; }}
+              onKeyDown={(event) => {
+                if (["ArrowUp", "PageUp", "Home"].includes(event.key)) { followConversationEnd.current = false; readerLeftEnd.current = true; }
+              }}
+              tabIndex={0}
+              className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:p-2"
             >
-              <div className="space-y-4">
+              <div className="front-door-reading-column space-y-4">
                 {messages
                   .filter(
                     (message) =>
@@ -1925,9 +2312,11 @@ export default function ChatAgentLauncher({
                       return (
                         <div
                           key={message.id}
-                          className="flex w-full max-w-full animate-in flex-col gap-3 overflow-hidden fade-in slide-in-from-bottom-2"
+                          data-message-id={message.id}
+                          tabIndex={-1}
+                          className="flex w-full min-w-0 max-w-full animate-in flex-col gap-3 fade-in slide-in-from-bottom-2"
                         >
-                          <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-2.5 shadow-xl backdrop-blur-md sm:p-4">
+                          <div className="min-w-0 px-2 py-1 sm:px-3">
                             {message.imobStructured ? (
                               <ImobFrontDoorPart
                                 message={message.imobStructured}
@@ -1953,7 +2342,7 @@ export default function ChatAgentLauncher({
                                         <button
                                           key={i}
                                           onClick={() => handleAdoptRec(displayRunId, rec)}
-                                          className="flex flex-col rounded-xl border border-accent/20 bg-accent/5 p-3 text-left transition-all hover:bg-accent/10 active:scale-95"
+                                          className="flex min-h-[44px] flex-col p-3 text-left text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         >
                                           <span className="text-[9px] font-bold uppercase tracking-tighter text-accent">
                                             Sugerido
@@ -1966,7 +2355,7 @@ export default function ChatAgentLauncher({
                                     </div>
                                   ) : null}
 
-                                  <div className="prose prose-invert prose-sm max-w-full break-words leading-relaxed prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/50">
+                                  <div className="prose prose-invert prose-sm max-w-full break-words leading-relaxed prose-pre:border-0 prose-pre:bg-transparent">
                                     <ReactMarkdown components={markdownComponents}>
                                       {(() => {
                                         return buildRenderableAssistantMarkdown({
@@ -2076,7 +2465,7 @@ export default function ChatAgentLauncher({
                                           onClick={() => {
                                             setInput(reply);
                                           }}
-                                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
+                                          className="min-h-[44px] px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                                         >
                                           {reply}
                                         </button>
@@ -2097,10 +2486,13 @@ export default function ChatAgentLauncher({
                     return (
                       <div
                         key={message.id}
-                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        data-message-role={message.role}
+                        data-message-id={message.id}
+                        tabIndex={-1}
+                        className={`max-w-[85%] break-words px-4 py-3 text-sm leading-relaxed ${
                           message.role === "user"
-                            ? "ml-auto bg-accent/20 text-foreground"
-                            : "mx-auto bg-white/10 text-muted-foreground"
+                            ? "ml-auto text-accent"
+                            : "mx-auto text-muted-foreground"
                         }`}
                       >
                         <p className="whitespace-pre-line">{message.content}</p>
@@ -2119,18 +2511,29 @@ export default function ChatAgentLauncher({
                       </div>
                     );
                   })}
-                {isStreaming ? (
-                  <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-muted-foreground">
-                    Pensando...
-                  </div>
+                {showWaiting ? (
+                  <FrontDoorWaitingIndicator
+                    ref={waitingIndicatorRef}
+                    {...(trackedRun
+                      ? {
+                          actions: [
+                            ...(cancelAvailable
+                              ? [{ label: cancelPhase === "accepted" ? "Cancelamento solicitado" : cancelPhase === "sending" ? "Enviando pedido..." : "Cancelar execução", onClick: () => void handleCancelRun(), disabled: cancelPhase !== "idle" }]
+                              : []),
+                            { label: "Parar de aguardar", onClick: () => settleLocally("interrupted_locally") },
+                          ],
+                          note: cancelPhase === "sending" ? "Enviando o pedido de cancelamento ao servidor..." : cancelPhase === "accepted" ? "O servidor aceitou o pedido; aguardando a confirmação do cancelamento." : undefined,
+                        }
+                      : {})}
+                  />
                 ) : null}
               </div>
             </div>
 
           </div>
 
-	          <div className="glass-subtle flex flex-wrap items-end gap-3 p-3 sm:p-4">
-            <div className="flex-1 basis-full space-y-3 sm:basis-0">
+	          <div className="front-door-composer front-door-reading-column grid shrink-0 grid-cols-[minmax(0,1fr)_44px] items-end gap-2 border-t border-white/10 pt-2">
+            <div className="min-w-0 space-y-2">
               {attachmentIntake.enabled ? (
                 <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -2229,33 +2632,22 @@ export default function ChatAgentLauncher({
                   ) : null}
                 </div>
               ) : null}
-              {showImobSurface ? (
-                <div className="w-full">
-                  <ImobActionMenuBar
-                    menus={IMOB_ACTION_MENUS}
-                    onSelect={(item) => (item.kind === "front_door" ? (setInput(item.prompt), setAutoSendInput(item.prompt)) : imobFrontDoor.structuredForms.handleActionMenuSelect(item))}
-                  />
-                </div>
-              ) : null}
               <textarea
+                ref={composerInputRef}
+                rows={1}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder={mainComposerPlaceholder}
-                className="min-h-[64px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+                className="min-h-[44px] max-h-[128px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
               />
             </div>
-	            <button
-	              type="button"
-	              onClick={handleNewConversation}
-	              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-muted-foreground transition hover:border-accent/40"
-	            >
-	              Nova conversa
-	            </button>
 	            {conversation.policy?.requiresConfirmation && runId ? (
 	              <button
                 type="button"
                 onClick={handleApprove}
-                className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:border-accent hover:bg-accent/30"
+                style={{ gridColumn: "1 / -1", gridRow: 2 }}
+                data-front-door-primary="true"
+                className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
                 Aprovar
               </button>
@@ -2263,10 +2655,17 @@ export default function ChatAgentLauncher({
 	            <button
 	              type="button"
 	              onClick={handleSend}
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label={isUploadingAttachment ? "Enviando mensagem" : "Enviar mensagem"}
+              title={isUploadingAttachment ? "Enviando mensagem" : "Enviar mensagem"}
+              aria-busy={isUploadingAttachment}
+              data-front-door-send="true"
+              data-front-door-primary="true"
+              className="min-h-[44px] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] sm:py-1.5 text-foreground transition hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!canSend}
             >
-              {isUploadingAttachment ? "Enviando..." : "Enviar"}
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5m-6 6 6-6 6 6" />
+              </svg>
             </button>
           </div>
         </div>

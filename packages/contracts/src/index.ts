@@ -15,3 +15,5 @@ export * from "./dataSourceProvenance.js";
 export * from "./supplierChannel.js";
 export * from "./dataSourceCandidateCatalog.js";
 export * from "./dataSourceQuery.js";
+export * from "./imobAssetDestination.js";
+export * from "./imobPropertyCapture.js";

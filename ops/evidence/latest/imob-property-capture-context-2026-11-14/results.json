@@ -1,0 +1,131 @@
+{
+  "branch": "feat/front-door-intake-run-lifecycle-imob-evaluation",
+  "head": "453a3b0bf5e666e227a129b4930399e5ffac6efb",
+  "status": "parcial",
+  "paidCalls": false,
+  "providerRealValidated": false,
+  "browserValidated": false,
+  "intakeFinal": {
+    "log": "intake-final.log",
+    "exitCode": 0,
+    "tests": 9,
+    "pass": 9,
+    "fail": 0,
+    "skipped": 0
+  },
+  "formsInitialFull": {
+    "log": "forms-tests.log",
+    "exitCode": 0,
+    "tests": 180,
+    "pass": 180,
+    "fail": 0,
+    "skipped": 0
+  },
+  "formsFinalAffected": {
+    "log": "forms-final-focused.log",
+    "exitCode": 0,
+    "tests": 7,
+    "pass": 7,
+    "fail": 0,
+    "skipped": 0
+  },
+  "noDbAuthorizedOutsideSandbox": {
+    "log": "no-db-gate.log",
+    "exitCode": 0,
+    "tests": 2,
+    "pass": 2,
+    "fail": 0,
+    "skipped": 0
+  },
+  "regressionInitial": {
+    "log": "regression-tests.log",
+    "exitCode": 1,
+    "tests": 6,
+    "pass": 5,
+    "fail": 1,
+    "skipped": 0,
+    "countUnit": "files",
+    "reason": "no-DB subprocess output capture blocked by sandbox EPERM; replaced by authorized no-db-gate.log"
+  },
+  "reusedPassingRegressionFiles": [
+    "imob-agent-contract.test.ts",
+    "chatLauncherEngine.test.ts",
+    "imobCepAutofill.test.ts",
+    "propertyCreateForm.test.ts",
+    "unitSuiteInventory.test.ts"
+  ],
+  "gates": {
+    "launcher-gate.log": {
+      "log": "launcher-gate.log",
+      "exitCode": 0,
+      "ok": true
+    },
+    "entrypoint-gate.log": {
+      "log": "entrypoint-gate.log",
+      "exitCode": 0,
+      "ok": true
+    },
+    "snapshot-gate.log": {
+      "log": "snapshot-gate.log",
+      "exitCode": 0,
+      "ok": true
+    }
+  },
+  "typecheckFocused": {
+    "log": "typecheck-final.log",
+    "exitCode": 0,
+    "focusedDiagnostics": 0,
+    "dependencyDiagnosticsExcluded": 17,
+    "includesViteEnv": true
+  },
+  "typecheckContracts": {
+    "log": "contracts-typecheck.log",
+    "exitCode": 0
+  },
+  "initialFailuresPreserved": [
+    "tests-initial.log",
+    "typecheck-initial.log",
+    "regression-tests.log",
+    "no-db-diagnostic.log"
+  ],
+  "lastAdapterEdit": [
+    "bind late results to form thread and case",
+    "clear errors only for fields in the validated patch"
+  ],
+  "temporaryArtifacts": {
+    "createdOutsideEvidenceFolder": false,
+    "cleanup": "No temporary files removed; local logs and focused diagnostic preserved for review."
+  },
+  "evidenceIndexGate": {
+    "log": "evidence-gate-authorized.log",
+    "exitCode": 0,
+    "tests": 8,
+    "pass": 8,
+    "fail": 0,
+    "skipped": 0,
+    "refsChecked": 950,
+    "ok": true,
+    "outsideSandboxAuthorized": true
+  },
+  "evidenceIndexInitial": {
+    "log": "evidence-gate.log",
+    "exitCode": 1,
+    "reason": "subprocess Git capture in sandbox; revalidated by authorized gate"
+  },
+  "diffCheck": {
+    "exitCode": 0,
+    "stagedChanges": false
+  },
+  "authorizedCommitPreparation": {
+    "plannedFiles": 39,
+    "normalFiles": 23,
+    "forcedLogFiles": 16,
+    "initialCachedCheckExitCode": 2,
+    "formatFixes": {
+      "changes.diff": "20 empty context lines normalized without source edits",
+      "stage-commit-plan.md": "removed extra blank line at EOF"
+    },
+    "normalizedDiffSha256": "2f6bc3f83318d225310d2530fd10bbd798f66cfd095ddb5367fd0570852e0651",
+    "suitesRerun": false
+  }
+}

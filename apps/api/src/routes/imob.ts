@@ -1,3 +1,6 @@
+import { createLogger } from "@eiah/core/logging/logger";
+import { llmFailureDiagnostic, llmDiagnosticIdentifier } from "@eiah/core/llm/LLMProviderError";
+import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
 import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
@@ -82,7 +85,10 @@ import {
   resolveLegacyCrmFallbackDecision,
   type LegacyCrmFallbackDecision,
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
-import { resolveImobCrmTurnEngine, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { resolveImobCrmTurnEngine, resolveImobPropertyUnitIntakeTurn, resolveImobPropertyCaptureTurn, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
+import { executeLlmStep } from "../orchestrator/llmExecutor";
+import { getAgentProfile } from "../services/agents";
 import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
 import { evaluateImobFrontDoorCapabilityAccess, IMOB_CASE_CONSULT_CAPABILITY } from "../services/chat/verticalRegistryComposition";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
@@ -109,6 +115,8 @@ import {
   imobPropertyUpdateSchema,
   imobRentalLeaseCreateSchema,
   imobRentalLeaseCloseSchema,
+  imobAssetDealCreateSchema,
+  imobAssetDealCompleteSchema,
   imobDocumentLinkSchema,
   imobRentalContractGenerateSchema,
   imobSaleContractGenerateSchema,
@@ -1152,6 +1160,10 @@ async function gateImobHistory(req: TenantAwareRequest, res: Response, conversat
     sendImobHistoryDenied(res, decision);
     return null;
   }
+  if (conversationId && req.prisma && await isConversationDeleted(req.prisma, decision, conversationId)) {
+    res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+    return null;
+  }
   return decision;
 }
 
@@ -1537,6 +1549,8 @@ registerImobCrmRoutes({
     imobCaseCreateSchema,
     imobRentalLeaseCreateSchema,
     imobRentalLeaseCloseSchema,
+    imobAssetDealCreateSchema,
+    imobAssetDealCompleteSchema,
     imobDocumentLinkSchema,
     imobRentalContractGenerateSchema,
     imobSaleContractGenerateSchema,
@@ -1711,6 +1725,49 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
   if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
     return;
+  }
+
+  // Contextual continuation of an editable property form. The client supplies draft DATA, never access or authority.
+  // As with field intake, return before resolving cases, recipes or operational mutations.
+  if (body.intake === "property_draft") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    const parsed = imobPropertyCaptureRequestSchema.safeParse(body.propertyCapture);
+    if (!parsed.success || parsed.data.message !== message) return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_INVALID" } });
+    // The request middleware owns this ID; never replace it with a completion/provider ID.
+    const traceId = llmDiagnosticIdentifier(res.getHeader("x-trace-id"));
+    const intakeLogger = createLogger({ component: "imob-property-capture", traceId });
+    return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      traceId,
+      scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId },
+      observe: (diagnostic) => intakeLogger.info(diagnostic, "imob.property_capture.intake"),
+      interpret: async ({ systemPrompt, userPrompt }) => {
+        // Same coordinator and provider registry as the contextual Front Door intake; IMOB owns the domain contract.
+        intakeLogger.info({ stage: "profile_resolution" }, "imob.property_capture.runtime");
+        const profile = await (async () => {
+          try {
+            const resolved = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);
+            if (!resolved || resolved.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
+            return resolved;
+          } catch (error) {
+            intakeLogger.info({ stage: "profile_resolution", failure: llmFailureDiagnostic(error, "profile_resolution") }, "imob.property_capture.runtime.failure");
+            throw error;
+          }
+        })();
+        const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
+          knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
+          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId } });
+        return result.outputText;
+      },
+    }) });
+  }
+
+  // Intake de campo: auth/escopo, revogação, instalação, vínculo ativo e imob.chat.use já passaram; exige REAL_ESTATE_CORE.
+  // Não consulta/binda caso nem usa recipe, capability de consulta de caso ou action; retorna antes de dispatch e telemetria operacional.
+  if (body.intake === "property_units") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    return res.json({ ok: true, data: await resolveImobPropertyUnitIntakeTurn(message, body.threadState) });
   }
 
   // P11: o Front Door (/app/chat) reivindica o turno SOMENTE LEITURA. Acesso: handoff v2 + vertical.access.v1 sobre fatos do servidor
@@ -2000,6 +2057,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       formatImobCaseFlowLabel,
     },
   });
+
+  if (data.action === "property.units.clarify") return res.json({ ok: true, data });
 
   await recordImobResolveTurnSemanticTelemetry({
     prisma: prisma as never,
@@ -2857,12 +2916,32 @@ imobRouter.get("/chat/conversations", async (req, res) => {
   }
 
   // FD-IMOB-HISTORY-AUTHZ-001: só as conversas das quais o usuário é titular (as demais nem aparecem).
-  const items = Array.from(conversationMap.values())
+  const authorized = Array.from(conversationMap.values())
     .filter((item) => ownedConversationIds.has(item.conversationId))
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, limit);
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const visible = await applyConversationChanges(prisma, { tenantId: historyActor.tenantId, workspaceId: historyActor.workspaceId }, authorized);
+  const search = typeof req.query.q === "string" ? conversationSearchText(req.query.q.trim().slice(0, 200)) : "";
+  const items = visible.filter((item) => !search || conversationSearchText(`${item.title} ${item.lastMessagePreview ?? ""}`).includes(search)).slice(0, limit);
+  return res.json({ ok: true, items, capabilities: { search: true, rename: true, delete: true } });
+});
 
-  return res.json({ ok: true, items });
+imobRouter.patch("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  const title = conversationTitle(req.body?.title);
+  if (!title) return res.status(400).json({ ok: false, error: { code: "INVALID_CONVERSATION_TITLE", message: "Informe um título entre 1 e 120 caracteres, sem quebras de linha." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "rename", title);
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, title });
+});
+
+imobRouter.delete("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  if (req.body?.confirm !== true) return res.status(400).json({ ok: false, error: { code: "CONVERSATION_DELETE_CONFIRMATION_REQUIRED", message: "Confirme a exclusão da conversa." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "delete");
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, deleted: true });
 });
 
 imobRouter.post("/chat/conversations", async (req, res) => {

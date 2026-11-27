@@ -158,6 +158,10 @@ apps/api/src/tests/vertical-entitlement-gate.contract.test.ts
 apps/api/src/tests/vertical-entity-type-registry.contract.test.ts
 apps/api/src/tests/vertical-responsible-actor.contract.test.ts
 apps/api/src/tests/whatsapp.webhook-read-only.test.ts
+apps/api/src/tests/whatsapp.meta-adapter.test.ts
+apps/api/src/tests/whatsapp.meta-operational.test.ts
+# Conditional real PostgreSQL: skipped without EIAH_META_DISPOSABLE_POSTGRES_URL; skip is not a PASS.
+apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts
 apps/api/src/tests/channel-binding.test.ts
 apps/api/src/tests/replay-guard.test.ts
 apps/web/src/components/agents/helpDictionaryResolver.test.ts
@@ -232,6 +236,7 @@ apps/api/src/tests/imob-document-link.test.ts
 apps/api/src/tests/imob-rental-lifecycle.test.ts
 apps/web/src/pages/app/imob/rentalLifecycleForms.test.ts
 apps/web/src/features/imob/structured/createImobStructuredForms.test.ts
+apps/web/src/features/imob/structured/imobCepAutofill.test.ts
 apps/api/src/tests/chat-vertical-registry.test.ts
 apps/web/src/components/agents/verticalHandoffEngine.test.ts
 apps/web/src/components/agents/verticalActivationEngine.test.ts
@@ -272,3 +277,15 @@ apps/web/src/components/agents/useImobAuthority.test.ts
 apps/api/src/tests/imob-history-access.unit.test.ts
 apps/web/src/features/logistica/PreDuimpConversationCard.test.tsx
 apps/api/src/tests/graceful-shutdown.unit.test.ts
+apps/web/src/components/agents/conversationSequence.test.ts
+apps/api/src/tests/imob-chat-conversation-management.test.ts
+apps/web/src/pages/app/imob/propertyBulkArchive.test.ts
+apps/web/src/lib/frontDoorPendingWork.test.ts
+apps/api/src/tests/front-door-intake.test.ts
+apps/api/src/tests/imob-property-capture-intake.test.ts
+apps/web/src/components/agents/frontDoorIntakeEngine.test.ts
+apps/web/src/components/agents/runLifecycle.test.ts
+apps/api/src/tests/vertical-evaluation-contract.test.ts
+apps/api/src/tests/vertical-evaluation-guards.test.ts
+apps/api/src/tests/front-door-evaluation-intake.test.ts
+apps/web/src/components/agents/verticalEvaluationEngine.test.ts

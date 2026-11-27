@@ -120,9 +120,19 @@ const RECOMMENDATION_LABEL: Record<string, string> = {
 const itemLabel = (item: VerticalApprovalAdminItem) => `${item.vertical} para ${item.tenantName} · ${item.workspaceName}`;
 
 export function describeApprovalQueue(items: VerticalApprovalAdminItem[]): VerticalApprovalChatPresentation {
-  const awaiting = items.filter((item) => ["pendente", "em_analise", "aguardando_humano"].includes(item.status)).slice(0, MAX_ITEMS);
+  const open = items.filter((item) => ["pendente", "em_analise", "aguardando_humano"].includes(item.status));
+  // Pedido de avaliação exige definir as condições: não se aprova por botão no chat, só pela tela de aprovações.
+  const evaluationsPending = open.filter((item) => item.grantKind === "evaluation").length;
+  const awaiting = open.filter((item) => item.grantKind !== "evaluation").slice(0, MAX_ITEMS);
+  const evaluationNote = evaluationsPending > 0
+    ? `Há ${evaluationsPending} pedido(s) de avaliação gratuita aguardando decisão: eles exigem definir as condições e são decididos em /app/admin/aprovacoes (nada é aprovado pelo chat).`
+    : null;
   if (awaiting.length === 0) {
-    return { content: "Não há pedidos de liberação aguardando decisão.", quickReplies: [], approvalChat: { status: "empty" } };
+    return {
+      content: ["Não há pedidos de liberação aguardando decisão pelo chat.", ...(evaluationNote ? [evaluationNote] : [])].join("\n"),
+      quickReplies: [],
+      approvalChat: { status: "empty" },
+    };
   }
   const entries: QueueEntry[] = awaiting.map((item, index) => ({
     id: item.id,
@@ -139,6 +149,7 @@ export function describeApprovalQueue(items: VerticalApprovalAdminItem[]): Verti
       `Pedidos aguardando decisão (${awaiting.length}). O score é do agente verificador; a decisão é sua.`,
       "",
       "Use os botões de cada pedido abaixo. Nada é decidido até você confirmar.",
+      ...(evaluationNote ? ["", evaluationNote] : []),
     ].join("\n"),
     // Os botões ficam no cartão de cada pedido, dentro da conversa.
     quickReplies: [],

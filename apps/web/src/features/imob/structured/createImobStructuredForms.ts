@@ -1,8 +1,10 @@
+import { formatImobUnitList, IMOB_PROPERTY_UNIT_INTAKE_POLICY, parseCanonicalImobUnits, resolveImobAssetNextSteps, type ImobAssetNextAction, type ImobAssetNextSteps } from "@eiah/contracts";
 import {
   ApiError,
   apiArchiveImobOwner,
   apiArchiveImobProperty,
   apiCloseImobRentalLease,
+  apiCreateImobAssetDeal,
   apiCreateImobCase,
   apiCreateImobOwner,
   apiCreateImobProperty,
@@ -14,13 +16,39 @@ import {
   apiGetImobRentalHistory,
   apiGetImobSaleContractPrefill,
   apiLinkImobDocuments,
+  apiListImobCases,
   apiListImobOwners,
   apiListImobProperties,
+  apiResolveImobTurn,
   apiUpdateImobOwner,
   apiUpdateImobProperty,
   apiUpdateImobRentalLease,
   apiUploadDocuments,
 } from "@/lib/api";
+import { getSession } from "@/state/sessionStore";
+import {
+  applyBulkArchiveEligibility,
+  backToBulkArchiveSelection,
+  buildBulkArchiveResultText,
+  buildPropertyBulkArchiveForm,
+  bulkArchiveResultLines,
+  clearBulkArchiveSelection,
+  enterBulkArchiveReview,
+  finishBulkArchiveRun,
+  initialBulkArchiveState,
+  loadedBulkArchiveState,
+  pendingBulkArchiveIds,
+  prepareBulkArchiveRetry,
+  recordBulkArchiveOutcome,
+  runBulkArchive,
+  selectVisibleBulkArchive,
+  setBulkArchiveQuery,
+  startBulkArchiveRun,
+  summarizeBulkArchiveOutcomes,
+  toggleBulkArchiveSelection,
+  type BulkArchiveEvent,
+  type PropertyBulkArchiveState,
+} from "@/pages/app/imob/propertyBulkArchive";
 import type { ImobActionMenuItem } from "@/features/imob/imobActionMenus";
 import {
   INLINE_DOCUMENT_CATEGORY_FIELD,
@@ -51,11 +79,26 @@ import {
   ownerToEditValues,
 } from "@/pages/app/imob/ownerEditForm";
 import {
+  assetDealKindOf,
+  buildAssetDealConfirmationText,
+  buildAssetDealForm,
+  buildAssetDealRequest,
+  describeAssetDealError,
+  isAssetDealForm,
+} from "@/pages/app/imob/assetDealForm";
+import {
   OCCUPANCY_LABELS,
+  buildPropertyBatchConfirmationText,
+  buildPropertyBatchForm,
+  buildPropertyBatchRequests,
   buildPropertyCreateConfirmationText,
-  buildPropertyCreateRequest,
   findDuplicateProperty,
+  isPropertyBatchForm,
   isPropertyCreateForm,
+  planPropertyCreate,
+  propertyBatchBaseValues,
+  toPropertyBatchBaseValues,
+  type PropertyBatchItem,
 } from "@/pages/app/imob/propertyCreateForm";
 import {
   buildPropertyEditForm,
@@ -110,7 +153,7 @@ import {
   type TokenizationSubject,
 } from "@/pages/app/imob/tokenizationForm";
 import type { ImobFormState } from "./useImobFormState";
-import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage } from "./types";
+import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type StructuredMessage, type StructuredQuickReply } from "./types";
 
 /**
  * Abrir, pré-preencher e salvar os formulários estruturados do IMOB
@@ -120,7 +163,7 @@ import { formatUploadSize, makeStructuredId, type ImobStructuredFormsHost, type 
  *
  * Funciona em qualquer chat que implemente `ImobStructuredFormsHost`.
  */
-export function createImobStructuredForms(state: ImobFormState, host: ImobStructuredFormsHost) {
+export function createImobStructuredForms(state: ImobFormState, host: ImobStructuredFormsHost, dependencies: { resolveTurn?: typeof apiResolveImobTurn } = {}) {
   const {
     setFormValuesByMessageId,
     setFormErrorsByMessageId,
@@ -158,7 +201,9 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
     if (formSubmittingRef.current.has(message.id)) return;
     const leaseValues = resolveFormValuesForMessage(message);
-    const built = buildRentalLeaseRequest(leaseValues);
+    const now = new Date();
+    const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const built = buildRentalLeaseRequest(leaseValues, todayIso);
     if (!built.ok) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
       return;
@@ -173,19 +218,26 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       clearThreadOperationalState(message);
       const leasePropertyId = response.data.propertyId;
       const documentsNote = await attachInlineDocuments(message, leaseValues, leasePropertyId);
-      const openContractNow = contractAfterLeaseRef.current === leasePropertyId;
+      const historical = response.data.historical === true;
+      // Locação encerrada não ocupa o imóvel nem abre contrato: segue para o histórico.
+      const openContractNow = !historical && contractAfterLeaseRef.current === leasePropertyId;
       contractAfterLeaseRef.current = null;
       const confirmation: StructuredMessage = {
         id: makeStructuredId("assistant"),
         role: "assistant",
         text: [buildRentalLeaseConfirmationText(response.data), documentsNote].filter(Boolean).join(" "),
         thread: message.thread,
-        ...(openContractNow
-          ? {}
-          : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
+        ...(historical
+          ? { quickReplies: [{ id: "next-history", label: "Ver histórico", onSelect: () => openRentalLifecycleForm("rental_history", leasePropertyId) }] }
+          : openContractNow
+            ? {}
+            : { quickReplies: [{ id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) }] }),
       };
       appendMessage(confirmation);
-      void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+      void persistMessage(confirmation, {
+        intent: historical ? "rental.lease.registered_historical" : "rental.lease.registered",
+        action: "imob.rentals.create",
+      });
       if (openContractNow) openRentalContractForm(leasePropertyId);
     } catch (error) {
       const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
@@ -194,7 +246,13 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       const errors: Record<string, string> =
         code === "RENTAL_LEASE_ALREADY_ACTIVE"
           ? { propertyId: "Este imóvel já tem uma locação ativa." }
-          : code === "INVALID_TENANT_DOCUMENT"
+          : code === "RENTAL_LEASE_ALREADY_REGISTERED"
+            ? { _form: "Esta locação encerrada já está registrada neste imóvel (mesmo início). Nada foi gravado." }
+            : code === "ENDED_BEFORE_START"
+              ? { endedOn: "A saída não pode ser antes do início da locação." }
+              : code === "ENDED_IN_FUTURE"
+                ? { endedOn: "A data de saída não pode ser futura." }
+                : code === "INVALID_TENANT_DOCUMENT"
             ? { tenantDocument: "CPF inválido: confira os dígitos." }
             : code === "PROPERTY_NOT_FOUND"
               ? { propertyId: "Imóvel não encontrado neste workspace. Atualize a lista e tente de novo." }
@@ -207,8 +265,40 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     }
   }
 
+  /** Próximos passos orientados pela destinação (regra no contrato; aqui só vira chip). Nunca abre nada sozinho. */
+  function nextStepReplies(steps: ImobAssetNextSteps | null, propertyId: string | null): StructuredQuickReply[] {
+    return (steps?.actions ?? []).map((action: ImobAssetNextAction) => ({
+      id: `next-${action.intent}`,
+      label: action.label,
+      onSelect: () => runAssetNextAction(action.intent, propertyId),
+    }));
+  }
+
+  function runAssetNextAction(intent: ImobAssetNextAction["intent"], propertyId: string | null) {
+    const id = propertyId ?? undefined;
+    switch (intent) {
+      case "lease_register_current":
+        return startRentalLeaseFor(id);
+      case "lease_register_historical":
+        return startRentalLeaseFor(id, { historical: true });
+      // Nova locação: abre o formulário de locação (imóvel preservado quando conhecido). O contrato só é
+      // oferecido depois que a locação é criada, pelo fluxo existente de confirmação.
+      case "lease_start_new":
+        return startRentalLeaseFor(id);
+      case "sale_register_existing":
+        return openAssetDealForm("venda", id);
+      case "sale_start_new":
+        return openAssetDealForm("venda", id, "em_andamento");
+      case "exchange_register_existing":
+        return openAssetDealForm("permuta", id);
+      case "exchange_start_new":
+        return openAssetDealForm("permuta", id, "em_andamento");
+    }
+  }
+
   async function handlePropertyCreateFormAction(message: StructuredMessage, actionId: "cancel" | "submit") {
     if (actionId === "cancel") {
+      formSubmittingRef.current.delete(message.id);
       updateMessageById(message.id, { form: undefined });
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
       clearThreadOperationalState(message);
@@ -223,12 +313,86 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
 
     if (formSubmittingRef.current.has(message.id)) return;
     const values = resolveFormValuesForMessage(message);
-    const built = buildPropertyCreateRequest(values);
-    if (built.ok && !checkInlineDocuments(message, values)) return;
-    if (!built.ok) {
-      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+    const knownUnits = message.propertyUnitIntake?.status === "resolved" ? message.propertyUnitIntake.unitLabels
+      : message.conversationState?.operational?.propertyDraft?.unitLabels;
+    let plan = planPropertyCreate(values, knownUnits?.length && values.unitLabel?.trim() === knownUnits.join(", ") ? knownUnits : undefined);
+    if (!plan.ok && plan.needsIntake) {
+      const before = getSession();
+      const contextKey = host.getFormContextKey?.();
+      const isCurrentIntake = () => {
+        const current = getSession();
+        const currentValues = resolveFormValuesForMessage(message);
+        return host.isFormCurrent?.(message) !== false && formSubmittingRef.current.has(message.id)
+          && contextKey === host.getFormContextKey?.()
+          && before.token === current.token && before.workspaceId === current.workspaceId && before.tenantId === current.tenantId
+          && [...new Set([...Object.keys(values), ...Object.keys(currentValues)])].every((field) => currentValues[field] === values[field]);
+      };
+      formSubmittingRef.current.add(message.id);
+      try {
+        const response = await (dependencies.resolveTurn ?? apiResolveImobTurn)({
+          message: values.unitLabel, intake: "property_units", threadId: message.thread?.id,
+          threadState: message.conversationState ?? null,
+        });
+        if (!isCurrentIntake()) return;
+        const intake = response.data.propertyUnitIntake;
+        if (!response.ok || intake?.status !== "resolved") {
+          pendingFormPrefillRef.current = { submitTarget: "imob.properties.create",
+            isCurrent: () => {
+              const current = getSession();
+              return host.isFormCurrent?.(message) !== false && before.token === current.token
+                && before.tenantId === current.tenantId && before.workspaceId === current.workspaceId;
+            },
+            values: Object.fromEntries(Object.entries(values).filter(([field]) => field !== "unitLabel")) };
+          setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { unitLabel: response.data.presentation.text } }));
+          appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: response.data.presentation.text,
+            thread: message.thread, conversationState: response.data.conversationState, caseContext: message.caseContext });
+          return;
+        }
+        plan = planPropertyCreate(values, intake.unitLabels);
+        message = { ...message, conversationState: response.data.conversationState, propertyUnitIntake: intake };
+        updateMessageById(message.id, { conversationState: response.data.conversationState, propertyUnitIntake: intake });
+        setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...values, unitLabel: intake.unitLabels.join(", ") } }));
+      } catch {
+        if (!isCurrentIntake()) return;
+        const text = IMOB_PROPERTY_UNIT_INTAKE_POLICY.unavailable;
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { unitLabel: text } }));
+        appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text, thread: message.thread });
+        return;
+      } finally { formSubmittingRef.current.delete(message.id); }
+    }
+    if (!plan.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: plan.errors }));
       return;
     }
+
+    // Várias unidades: nada é gravado aqui. Abre a confirmação do lote (destinação geral/individual, editar, remover, adicionar).
+    if (plan.mode === "batch") {
+      if ((formFilesRef.current[message.id] ?? []).length > 0) {
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { _form: "Para várias unidades, anexe os documentos depois, em cada imóvel. Retire os arquivos para continuar." },
+        }));
+        return;
+      }
+      const batchId = makeStructuredId("assistant");
+      // Valores do formulário original acompanham a confirmação (prefixo `base:`); nada vai à API ainda.
+      setFormValuesByMessageId((prev) => ({ ...prev, [batchId]: toPropertyBatchBaseValues(values) }));
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      updateMessageById(message.id, { form: undefined });
+      appendMessage({
+        id: batchId,
+        role: "assistant",
+        text: `Identifiquei ${plan.units.length} unidades. Confirme o lote antes de gravar: nada foi cadastrado ainda.`,
+        form: buildPropertyBatchForm(plan.units, values, plan.duplicatesInInput, batchId),
+        thread: message.thread,
+        conversationState: message.conversationState,
+        caseContext: message.caseContext,
+      });
+      return;
+    }
+
+    const built = plan;
+    if (!checkInlineDocuments(message, values)) return;
 
     formSubmittingRef.current.add(message.id);
     setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
@@ -249,6 +413,9 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       const documentsNote = await attachInlineDocuments(message, values, created.id);
       const [label] = buildImobPropertyOptions([created]).map((option) => option.label);
       const occupancy = typeof values.occupancy === "string" ? values.occupancy.trim() : "";
+      const unitName = typeof built.request.metadata.externalPropertyRef === "string" ? built.request.metadata.externalPropertyRef : null;
+      // Destinação escolhida → próximos passos já resolvidos pelo contrato. Sem destinação informada, nada é sugerido.
+      const steps = resolveImobAssetNextSteps(built.request.goal, unitName ?? label ?? null);
       const confirmation: StructuredMessage = {
         id: makeStructuredId("assistant"),
         role: "assistant",
@@ -258,17 +425,13 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
             ownerName: created.owner?.name ?? null,
             occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
           }),
+          steps?.message,
           documentsNote,
         ].filter(Boolean).join(" "),
         thread: message.thread,
-        // Próximo passo segue a finalidade escolhida no formulário (temporada ainda não tem contrato);
-        // com proprietário, dá para seguir cadastrando a carteira dele.
+        // Com proprietário, dá para seguir cadastrando a carteira dele.
         quickReplies: [
-          ...(built.request.goal === "locacao"
-            ? [{ id: "next-rental-contract", label: "Gerar contrato de locação", onSelect: () => startRentalContractFor(created.id) }]
-            : built.request.goal === "venda"
-              ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(created.id) }]
-              : []),
+          ...nextStepReplies(steps, created.id),
           ...(created.ownerId && created.owner?.name
             ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created.owner.name}`, onSelect: () => startPropertyCreateFor(created.ownerId as string) }]
             : []),
@@ -286,6 +449,196 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
             ? { _form: "Algum campo foi recusado pelo servidor. Confira os valores e tente de novo. Nada foi gravado." }
             : { _form: `Não foi possível salvar o imóvel agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` };
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  /**
+   * Confirmação do lote: pré-valida tudo (nomes, repetições, destinações, imóveis já cadastrados) e só então grava,
+   * uma unidade por vez. Se algo falhar no meio, o que já entrou fica e o formulário volta só com as pendentes.
+   */
+  async function handlePropertyBatchFormAction(message: StructuredMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      formSubmittingRef.current.delete(message.id);
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Cadastro em lote cancelado. Nada foi gravado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const batchSession = getSession();
+    const batchContextKey = host.getFormContextKey?.();
+    const isCurrentBatchIntake = () => {
+      const current = getSession();
+      const currentValues = resolveFormValuesForMessage(message);
+      return host.isFormCurrent?.(message) !== false && formSubmittingRef.current.has(message.id)
+        && batchContextKey === host.getFormContextKey?.()
+        && batchSession.token === current.token && batchSession.workspaceId === current.workspaceId && batchSession.tenantId === current.tenantId
+        && [...new Set([...Object.keys(values), ...Object.keys(currentValues)])].every((field) => currentValues[field] === values[field]);
+    };
+    let interpretingUnits = false;
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      if (values.extraUnits?.trim() && !parseCanonicalImobUnits(values.extraUnits)) {
+        interpretingUnits = true;
+        const response = await (dependencies.resolveTurn ?? apiResolveImobTurn)({
+          message: values.extraUnits, intake: "property_units", threadId: message.thread?.id, threadState: message.conversationState ?? null,
+        });
+        if (!isCurrentBatchIntake()) return;
+        const intake = response.data.propertyUnitIntake;
+        if (intake?.status !== "resolved") {
+          setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { extraUnits: response.data.presentation.text } }));
+          appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: response.data.presentation.text, thread: message.thread });
+          return;
+        }
+        const fields = Object.keys(values).filter((field) => /^unit_\d+$/.test(field)).sort((a, b) => Number(a.slice(5)) - Number(b.slice(5)));
+        const labels = fields.map((field) => values[field]);
+        const additions = Object.fromEntries(intake.unitLabels.map((label, index) => [`unit_${fields.length + index}`, label]));
+        setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...values, ...additions, extraUnits: "" } }));
+        updateMessageById(message.id, { form: buildPropertyBatchForm([...labels, ...intake.unitLabels], propertyBatchBaseValues(values), [], message.id),
+          text: response.data.presentation.text });
+        return; // Nova estrutura sempre volta à confirmação; nenhuma unidade é gravada neste clique.
+      }
+      const existing = await apiListImobProperties();
+      const built = buildPropertyBatchRequests(values, existing.data.items ?? []);
+      if (!built.ok) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+        return;
+      }
+
+      const created: Array<PropertyBatchItem & { id: string; ownerName: string | null; ownerId: string | null }> = [];
+      let failure: unknown = null;
+      for (const item of built.items) {
+        try {
+          const response = await apiCreateImobProperty(item.request);
+          created.push({ ...item, id: response.data.id, ownerName: response.data.owner?.name ?? null, ownerId: response.data.ownerId ?? null });
+        } catch (error) {
+          failure = error;
+          break; // as demais não são tentadas: a mesma causa (permissão, rede) tende a se repetir
+        }
+      }
+      const createdKeys = new Set(created.map((item) => `${item.field}:${item.label}`));
+      const pending = built.items.filter((item) => !createdKeys.has(`${item.field}:${item.label}`));
+      const place = [built.items[0]?.request.address, built.items[0]?.request.city].filter(Boolean).join(", ") || null;
+
+      if (created.length > 0) {
+        const confirmation: StructuredMessage = {
+          id: makeStructuredId("assistant"),
+          role: "assistant",
+          text: buildPropertyBatchConfirmationText({ created, failed: pending, place, ownerName: created[0]?.ownerName ?? null }),
+          thread: message.thread,
+          quickReplies: created[0]?.ownerId && created[0]?.ownerName
+            ? [{ id: "next-owner-property", label: `Cadastrar outro imóvel de ${created[0].ownerName}`, onSelect: () => startPropertyCreateFor(created[0].ownerId as string) }]
+            : [],
+        };
+        appendMessage(confirmation);
+        void persistMessage(confirmation, { intent: "property.batch_registered", action: "imob.properties.create" });
+        // Próximos passos por destinação: um grupo por destinação escolhida; unidade única leva o imóvel, lote deixa escolher.
+        const groups = new Map<string, typeof created>();
+        for (const item of created) {
+          if (!item.destination) continue;
+          groups.set(item.destination, [...(groups.get(item.destination) ?? []), item]);
+        }
+        for (const [destination, items] of groups) {
+          const steps = resolveImobAssetNextSteps(destination, items[0].label, { unitCount: items.length });
+          if (!steps) continue;
+          appendMessage({
+            id: makeStructuredId("assistant"),
+            role: "assistant",
+            text: items.length > 1 ? `${steps.message} (${items.map((item) => item.label).join(", ")})` : steps.message,
+            thread: message.thread,
+            quickReplies: nextStepReplies(steps, items.length === 1 ? items[0].id : null),
+          });
+        }
+      }
+
+      if (pending.length === 0) {
+        updateMessageById(message.id, { form: undefined });
+        clearThreadOperationalState(message);
+        return;
+      }
+
+      // Falha no meio: devolve ao formulário só as pendentes (linhas já gravadas ficam vazias = removidas do lote).
+      setFormValuesByMessageId((prev) => {
+        const current = { ...(prev[message.id] ?? {}) };
+        for (const item of created) if (item.field.startsWith("unit_")) current[item.field] = "";
+        const pendingExtras = pending.filter((item) => item.field === "extraUnits");
+        current.extraUnits = formatImobUnitList(pendingExtras);
+        return { ...prev, [message.id]: current };
+      });
+      const status = failure instanceof ApiError ? failure.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          _form: `${created.length > 0 ? `${created.length} unidade(s) já gravada(s). ` : "Nada foi gravado. "}Não foi possível cadastrar ${pending.length} unidade(s)${status ? ` (HTTP ${status})` : ""}. Revise e confirme de novo para tentar só as pendentes.`,
+        },
+      }));
+    } catch (error) {
+      if (interpretingUnits && !isCurrentBatchIntake()) return;
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: { _form: `Não foi possível validar o lote agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  function openAssetDealForm(kind: "venda" | "permuta", propertyId?: string, state?: "em_andamento" | "concluida") {
+    const threadId = host.activeThreadId ?? makeStructuredId("thread");
+    const messageId = makeStructuredId("assistant");
+    if (propertyId || state) {
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { ...(propertyId ? { propertyId } : {}), ...(state ? { state } : {}) } }));
+    }
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: kind === "venda" ? "Escolha o imóvel e informe a situação da venda." : "Escolha o imóvel oferecido e informe a situação da permuta.",
+      form: buildAssetDealForm(kind),
+      thread: { id: threadId, label: kind === "venda" ? "Venda" : "Permuta", status: "active" },
+    });
+  }
+
+  async function handleAssetDealFormAction(message: StructuredMessage, actionId: "cancel" | "submit" | "archive") {
+    if (actionId !== "submit") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Nenhum negócio foi registrado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const kind = assetDealKindOf(message.form);
+    const values = resolveFormValuesForMessage(message);
+    const built = buildAssetDealRequest(kind, values);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const response = await apiCreateImobAssetDeal(built.request);
+      updateMessageById(message.id, { form: undefined });
+      const done: StructuredMessage = {
+        id: makeStructuredId("assistant"),
+        role: "assistant",
+        text: buildAssetDealConfirmationText(response.data),
+        thread: message.thread,
+        quickReplies: kind === "venda" && response.data.state === "em_andamento"
+          ? [{ id: "next-sale-contract", label: "Gerar contrato de venda", onSelect: () => openSaleContractForm(response.data.propertyId) }]
+          : [],
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: `${kind === "venda" ? "sale" : "exchange"}.deal.registered`, action: "imob.deals.create" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: { _form: describeAssetDealError(status, body?.error?.code) } }));
     } finally {
       formSubmittingRef.current.delete(message.id);
     }
@@ -394,6 +747,211 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     });
   }
 
+  // -------------------------------------------------------------------------
+  // Arquivar imóveis (seleção múltipla). Cada escrita é o `DELETE /imob/properties/:id` existente.
+  // Fluxo: seleção → revisão (sem escrita) → confirmação explícita do lote exato → execução sequencial → resultado por imóvel.
+  // -------------------------------------------------------------------------
+
+  const { bulkArchiveRef, setBulkArchiveByMessageId, bulkArchiveScopeRef, bulkArchiveStopRef } = state;
+  const readBulkArchive = (messageId: string) => bulkArchiveRef.current[messageId];
+  const patchBulkArchive = (messageId: string, update: (current: PropertyBulkArchiveState) => PropertyBulkArchiveState) =>
+    setBulkArchiveByMessageId((previous) => (previous[messageId] ? { ...previous, [messageId]: update(previous[messageId]) } : previous));
+  const bulkArchiveScopeHolds = (messageId: string) => {
+    const scope = bulkArchiveScopeRef.current[messageId];
+    const now = getSession();
+    return Boolean(scope) && scope.token === now.token && scope.tenantId === now.tenantId && scope.workspaceId === now.workspaceId;
+  };
+  const forgetBulkArchive = (messageId: string) => {
+    delete bulkArchiveScopeRef.current[messageId];
+    bulkArchiveStopRef.current.delete(messageId);
+    setBulkArchiveByMessageId((previous) => {
+      const { [messageId]: _removed, ...rest } = previous;
+      return rest;
+    });
+  };
+  const STALE_NOTICE = "A sessão ou o workspace mudou desde que esta lista foi carregada. Nada foi alterado. Abra Imóveis → Arquivar imóvel de novo.";
+
+  async function loadBulkArchiveList(
+    messageId: string,
+    apply: (current: PropertyBulkArchiveState, items: Awaited<ReturnType<typeof apiListImobProperties>>["data"]["items"]) => PropertyBulkArchiveState,
+    onFailure: (current: PropertyBulkArchiveState) => PropertyBulkArchiveState = (current) => ({ ...current, stage: "error", notice: "Não foi possível carregar os imóveis agora. Nada foi alterado." }),
+  ) {
+    try {
+      const response = await apiListImobProperties();
+      if (!bulkArchiveScopeHolds(messageId)) return; // outro contexto: a lista antiga não é reaproveitada
+      patchBulkArchive(messageId, (current) => apply(current, response.data.items ?? []));
+    } catch {
+      if (!bulkArchiveScopeHolds(messageId)) return;
+      patchBulkArchive(messageId, onFailure);
+    }
+  }
+
+  function openPropertyBulkArchiveForm() {
+    const threadId = host.activeThreadId ?? makeStructuredId("thread");
+    const messageId = makeStructuredId("assistant");
+    const now = getSession();
+    bulkArchiveScopeRef.current[messageId] = { token: now.token, tenantId: now.tenantId, workspaceId: now.workspaceId };
+    setBulkArchiveByMessageId((previous) => ({ ...previous, [messageId]: initialBulkArchiveState() }));
+    appendMessage({
+      id: messageId,
+      role: "assistant",
+      text: "Escolha os imóveis que você quer arquivar. Nada é arquivado antes da sua confirmação.",
+      form: buildPropertyBulkArchiveForm(),
+      thread: { id: threadId, label: "Cadastro", status: "active" },
+    });
+    void loadBulkArchiveList(messageId, (current, items) => loadedBulkArchiveState(current, items));
+  }
+
+  /** Verificação preliminar, só leitura e só informativa; o servidor decide de novo em cada escrita. */
+  async function checkBulkArchiveEligibility(messageId: string, reviewedIds: string[]) {
+    let linked: Set<string> | null = null;
+    try {
+      const response = await apiListImobCases();
+      linked = new Set((response.data.items ?? []).map((item) => item.propertyId).filter((id): id is string => Boolean(id)));
+    } catch {
+      linked = null;
+    }
+    if (!bulkArchiveScopeHolds(messageId)) return;
+    patchBulkArchive(messageId, (current) => (
+      current.stage === "review" && current.reviewedIds.join("|") === reviewedIds.join("|")
+        ? applyBulkArchiveEligibility(current, linked)
+        : current
+    ));
+  }
+
+  async function runConfirmedBulkArchive(message: StructuredMessage) {
+    const messageId = message.id;
+    if (formSubmittingRef.current.has(messageId)) return; // duplo clique: só uma execução por vez
+    const reviewed = readBulkArchive(messageId);
+    if (reviewed?.stage !== "review" || reviewed.reviewedIds.length === 0) return;
+    // O lote é exatamente o que foi apresentado na revisão, não a seleção corrente.
+    const known = new Set(reviewed.candidates.map((candidate) => candidate.id));
+    const batch = reviewed.reviewedIds.filter((id) => known.has(id) && reviewed.outcomes[id] !== "archived");
+    if (batch.length === 0) return;
+    formSubmittingRef.current.add(messageId);
+    bulkArchiveStopRef.current.delete(messageId);
+    patchBulkArchive(messageId, startBulkArchiveRun);
+    let notice: string | null = null;
+    try {
+      await runBulkArchive({
+        ids: batch,
+        archive: (propertyId) => apiArchiveImobProperty(propertyId),
+        failureOf: (error) => error instanceof ApiError
+          ? { status: error.status, code: (error.body as { error?: { code?: string } } | undefined)?.error?.code ?? null }
+          : { status: 0 },
+        canContinue: () => bulkArchiveScopeHolds(messageId) && host.isFormCurrent?.(message) !== false && !bulkArchiveStopRef.current.has(messageId),
+        onOutcome: (propertyId, outcome) => patchBulkArchive(messageId, (current) => recordBulkArchiveOutcome(current, propertyId, outcome)),
+      });
+      if (!bulkArchiveScopeHolds(messageId)) notice = "A sessão ou o workspace mudou durante a operação. Os itens restantes não foram processados.";
+      else if (bulkArchiveStopRef.current.has(messageId)) notice = "Operação interrompida a seu pedido. Os itens restantes não foram processados.";
+    } finally {
+      formSubmittingRef.current.delete(messageId);
+    }
+    // Contexto trocado: nada é retomável a partir daqui (a seleção pertencia a outra sessão/workspace).
+    const contextChanged = !bulkArchiveScopeHolds(messageId);
+    patchBulkArchive(messageId, (current) => finishBulkArchiveRun(contextChanged ? { ...current, reviewedIds: [] } : current, notice));
+    const finished = readBulkArchive(messageId);
+    if (!finished || !bulkArchiveScopeHolds(messageId) || host.isFormCurrent?.(message) === false) return;
+
+    const totals = summarizeBulkArchiveOutcomes(finished.outcomes, Object.keys(finished.outcomes));
+    const record: StructuredMessage = {
+      id: makeStructuredId("assistant"),
+      role: "assistant",
+      text: buildBulkArchiveResultText(finished),
+      card: { type: "evidence", chip: "Resultado", title: "Resultado do arquivamento", lines: bulkArchiveResultLines(finished) },
+      thread: message.thread,
+    };
+    appendMessage(record);
+    if (totals.archived > 0) void persistMessage(record, { intent: "property.bulk_archived", action: "imob.properties.archive" });
+    if (pendingBulkArchiveIds(finished).length === 0) {
+      updateMessageById(messageId, { form: undefined });
+      forgetBulkArchive(messageId);
+    }
+  }
+
+  async function handlePropertyBulkArchiveEvent(message: StructuredMessage, event: BulkArchiveEvent) {
+    const messageId = message.id;
+    const current = readBulkArchive(messageId);
+
+    if (event.type === "cancel" || event.type === "close") {
+      if (current?.stage === "running") {
+        bulkArchiveStopRef.current.add(messageId); // nenhuma nova escrita depois do item em voo
+        return;
+      }
+      const changedSomething = Object.values(current?.outcomes ?? {}).includes("archived");
+      updateMessageById(messageId, { form: undefined });
+      forgetBulkArchive(messageId);
+      if (event.type === "cancel" && !changedSomething) {
+        appendMessage({ id: makeStructuredId("assistant"), role: "assistant", text: "Arquivamento cancelado. Nada foi alterado.", thread: message.thread });
+      }
+      return;
+    }
+
+    if (!current || current.stage === "stale") {
+      setBulkArchiveByMessageId((previous) => ({ ...previous, [messageId]: { ...(current ?? initialBulkArchiveState()), stage: "stale", notice: STALE_NOTICE } }));
+      return;
+    }
+    if (current.stage === "running") return; // durante a execução só "interromper" é aceito
+    if (!bulkArchiveScopeHolds(messageId) || host.isFormCurrent?.(message) === false) {
+      // Resultado já produzido continua legível, mas sem retomada; seleção/revisão antigas são descartadas.
+      patchBulkArchive(messageId, (state) => (
+        state.stage === "result" ? { ...state, reviewedIds: [], notice: STALE_NOTICE } : { ...state, stage: "stale", notice: STALE_NOTICE }
+      ));
+      return;
+    }
+
+    switch (event.type) {
+      case "toggle":
+        patchBulkArchive(messageId, (state) => toggleBulkArchiveSelection(state, event.propertyId));
+        return;
+      case "query":
+        patchBulkArchive(messageId, (state) => setBulkArchiveQuery(state, event.value));
+        return;
+      case "select_visible":
+        patchBulkArchive(messageId, selectVisibleBulkArchive);
+        return;
+      case "clear":
+        patchBulkArchive(messageId, clearBulkArchiveSelection);
+        return;
+      case "back":
+        patchBulkArchive(messageId, backToBulkArchiveSelection);
+        return;
+      case "review": {
+        patchBulkArchive(messageId, enterBulkArchiveReview);
+        const reviewed = readBulkArchive(messageId);
+        if (reviewed?.stage === "review") void checkBulkArchiveEligibility(messageId, reviewed.reviewedIds);
+        return;
+      }
+      case "confirm":
+        await runConfirmedBulkArchive(message);
+        return;
+      case "reload":
+        if (current.stage !== "error") return;
+        patchBulkArchive(messageId, (state) => ({ ...state, stage: "loading", notice: null }));
+        await loadBulkArchiveList(messageId, (state, items) => loadedBulkArchiveState(state, items));
+        return;
+      case "retry_pending": {
+        if (current.stage !== "result" || pendingBulkArchiveIds(current).length === 0) return;
+        if (formSubmittingRef.current.has(messageId)) return;
+        formSubmittingRef.current.add(messageId);
+        try {
+          patchBulkArchive(messageId, (state) => ({ ...state, stage: "loading", notice: null }));
+          // Recarrega e reavalia: só pendentes ainda existentes voltam, e sempre para uma nova confirmação explícita.
+          await loadBulkArchiveList(
+            messageId,
+            (state, items) => prepareBulkArchiveRetry({ ...state, stage: "result" }, items),
+            (state) => ({ ...state, stage: "result", notice: "Não foi possível recarregar os imóveis agora. Nada foi alterado; tente de novo." }),
+          );
+        } finally {
+          formSubmittingRef.current.delete(messageId);
+        }
+        const retried = readBulkArchive(messageId);
+        if (retried?.stage === "review") void checkBulkArchiveEligibility(messageId, retried.reviewedIds);
+        return;
+      }
+    }
+  }
+
   function handleActionMenuSelect(item: ImobActionMenuItem) {
     if (item.kind === "prompt") {
       void sendMessageText(item.prompt, { displayText: item.label });
@@ -403,7 +961,7 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     if (item.form === "owner_edit") openOwnerEditForm("edit");
     else if (item.form === "owner_archive") openOwnerEditForm("archive");
     else if (item.form === "property_edit") openPropertyEditForm("edit");
-    else if (item.form === "property_archive") openPropertyEditForm("archive");
+    else if (item.form === "property_archive") openPropertyBulkArchiveForm();
     else if (item.form.startsWith("tokenization_")) {
       openTokenizationForm(item.form.slice("tokenization_".length) as TokenizationSubject);
     } else if (item.form.startsWith("documents_")) {
@@ -412,6 +970,12 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       openRentalContractForm();
     } else if (item.form === "contract_sale") {
       openSaleContractForm();
+    } else if (item.form === "deal_sale") {
+      openAssetDealForm("venda");
+    } else if (item.form === "deal_exchange") {
+      openAssetDealForm("permuta");
+    } else if (item.form === "rental_historical") {
+      startRentalLeaseFor(undefined, { historical: true });
     } else if (item.form === "rental_edit" || item.form === "rental_close" || item.form === "rental_history") {
       openRentalLifecycleForm(item.form);
     }
@@ -635,9 +1199,12 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
   }
 
   /** Nova locação para o mesmo imóvel, com o formulário de cadastro que já existe. */
-  function startRentalLeaseFor(propertyId: string) {
-    pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
-    void sendMessageText("cadastrar locatário", { displayText: "Cadastrar locação" });
+  function startRentalLeaseFor(propertyId?: string, options?: { historical?: boolean }) {
+    pendingFormPrefillRef.current = {
+      submitTarget: "imob.rentals.create",
+      values: { ...(propertyId ? { propertyId } : {}), ...(options?.historical ? { leaseState: "encerrada" } : {}) },
+    };
+    void sendMessageText("cadastrar locatário", { displayText: options?.historical ? "Registrar locação encerrada" : "Cadastrar locação" });
   }
 
   function openSaleContractForm(propertyId?: string) {
@@ -1208,6 +1775,14 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
       await handleSaleContractFormAction(message, actionId);
       return true;
     }
+    if (isPropertyBatchForm(form)) {
+      await handlePropertyBatchFormAction(message, actionId);
+      return true;
+    }
+    if (isAssetDealForm(form)) {
+      await handleAssetDealFormAction(message, actionId);
+      return true;
+    }
     if (actionId === "archive") return true;
     if (isOwnerCreateForm(form)) {
       await handleOwnerCreateFormAction(message, actionId);
@@ -1239,8 +1814,10 @@ export function createImobStructuredForms(state: ImobFormState, host: ImobStruct
     handleActionMenuSelect,
     handleStructuredFormAction,
     handleSelectChange,
+    handlePropertyBulkArchiveEvent,
     openRentalContractForm,
     openSaleContractForm,
+    openAssetDealForm,
     openDocumentAttachForm,
     openRentalLifecycleForm,
     startPropertyCreateFor,

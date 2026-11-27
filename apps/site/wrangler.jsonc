@@ -8,6 +8,13 @@
   // Hoje ele atende apenas /api/votacao/ (votação ao vivo de /ia-na-pratica-juridica/).
   "main": "./src/worker.js",
 
+  // Antes de cada deploy, confere o teto de 10 vitrines do piloto IMOB (apps/site/public/imob/<nome>/).
+  // O Wrangler executa o comando na pasta de onde foi chamado (raiz do repositório ou apps/site),
+  // por isso o caminho do script é escolhido pela pasta atual. O --check é sempre explícito.
+  "build": {
+    "command": "node -e \"const dir = require('node:fs').existsSync('scripts/publish-imob-pilot.mjs') ? './scripts/' : './apps/site/scripts/'; import(dir + 'publish-imob-pilot.mjs').then(pilot => pilot.main(['--check']))\""
+  },
+
   "workers_dev": true,
   "preview_urls": true,
 

@@ -1,11 +1,14 @@
-# ROADMAP ATUALIZADO v8.1
+# ROADMAP ATUALIZADO v8.2
 
-Data de referência desta revisão: **2026-07-01**
+Data de referência desta revisão: **2026-11-21**
+Adendo normativo: **2026-11-25 — TWDG (§9.6)**; preservada a referência histórica da revisão v8.2.
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
 >
-> Revisão v8.1: atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
+> **Status da revisão v8.2: mesclada na `main` pelo PR #548 em 2026-11-21 (commit `9894097`).** As seções 1.3, 10.10, 11.2 (acréscimo), 11.4 (acréscimo), 14.1, 15.1 e 16 foram adicionadas a partir da leitura de `git log` (títulos de commit e PRs) até o commit `d5ad280` de 2026-11-21. O código de cada PR não foi revisado; as colunas "a indicar" e os itens "evidência a indexar" seguem pendentes de confirmação humana e de indexação no Evidence Index. Nenhum item novo é declarado `DONE`.
+>
+> Revisão v8.1 (preservada): atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
 
 ## Cláusula anti-drift interna
 
@@ -60,6 +63,28 @@ Leitura normativa correta após F0.45:
 - a cadeia F0.34–F0.44 comprova readiness, dry-run, preflight e gate reforçado, mas não fecha a Camada B produtiva;
 - a camada Conversação está consolidada documentalmente no plano interativo, porém continua `especificada/parcial`, não `DONE`;
 - F0/P0 transversal permanecem parciais e não devem ser declarados fechados sem decisão/evidência adicionais.
+
+## 1.3) Atualização executiva v8.2 — 2026-11-21
+
+Esta revisão não reabre o roadmap v8; ela sincroniza o documento com o que o repositório contém em 2026-11-21 (`main`, commit `d5ad280`).
+
+Leitura consolidada:
+- Desde 2026-07-01 foram mergeados **296 PRs** (entre os commits sem merge: 121 `feat`, 101 `fix`, 195 `docs`, 38 `test`, 31 `ci`, 6 `evidence`).
+- O **Front Door único** (`/app/chat`) passou a ser a superfície operacional da plataforma, sob a ADR-010.
+- A **liberação de verticais** por tenant, workspace e vertical (ADR-011) foi implementada em PRs sequenciais (#481 a #486), com pedido e decisão pela conversa, acesso por link de uso único e billing antes da liberação. O status real da implementação deve ser confirmado (a ADR estava "implementação pendente" em 2026-10-02).
+- A **autorização** ganhou vínculo ativo e autoridade efetiva; o **billing** passou a exigir designação de autoridade financeira nas escritas de cota e ajuste.
+- A vertical **Logística** avançou com o Oráculo (preparação, decisão humana J17, contratos governados de consulta a fontes), sem alterar o status `PRE_DUIMP`/shadow do §15 nem a ordem oficial de rollout.
+- O **IMOB** continua acima do programado: destinação de ativo, intake agêntico de unidades, arquivamento governado em lote, rascunho guiado e cartões de especialistas, além das demos no site.
+- **MKT** segue como futura frente vertical (ordem `LEGAL -> MKT -> Financeiro -> URBAN -> Logística` inalterada); existe a ponte de leitura **P11 IMOB-MKT** (Front Door lê o caso e as necessidades transversais, sem escrita).
+- As edições posteriores a julho já presentes neste arquivo (gate PRE_DUIMP, rebaixamento do P1 de fechado para parcial, plano multicanal, checklist IMOB) foram **preservadas**.
+
+Reavaliações de estado **a confirmar com evidência** (a tabela do §2 não foi alterada):
+- **5.2 (policies e human approvals):** há avanço de autorização e de designação de autoridade; avaliar se muda de "Parcial avançada".
+- **Track P:** novas superfícies do Front Door e do site IMOB; avaliar se muda de "Parcial avançada+".
+
+Regra de decisão v8.2:
+- Não reabrir frentes fechadas sem decisão explícita; manter fora de escopo o que as ADR-010 e ADR-011 já declararam fora (billing/custo, IMOB Cost, ruleset, Evidence Index).
+- O Evidence Index só aponta para arquivos existentes e evidências geradas por execução real.
 
 ## 2) Estado consolidado por fase
 
@@ -183,6 +208,20 @@ Leitura normativa correta após F0.45:
 - nenhum runtime interno deve ser exposto como nome principal de produto sem decisão explícita;
 - componentes internos como `IMOB_CRM` e subagentes `IMOB_*` permanecem fora da nomenclatura pública principal.
 
+**Princípio transversal de entrada semântica — todas as verticais atuais e futuras**
+
+O usuário se expressa naturalmente; a EIAH interpreta semanticamente. Toda superfície destinada a receber significado humano deve aceitar linguagem natural, independentemente da vertical, agente, campo ou formato de interface. É proibido exigir sintaxe interna, palavras-chave obrigatórias, ordem de tokens, gramática de parser, nomes de actions, contratos técnicos ou nomes internos de campos para compreender uma entrada semântica.
+
+A interpretação de significado pertence ao intake contextual/runtime agêntico do agente ou vertical, utilizando provider/model conforme policy, disponibilidade, contexto, entitlement, escopo e governança vigente. O engine coordena esse fluxo e executa o resultado estruturado; o launcher/formulário coleta e renderiza. Parsers, regex, schemas e validadores determinísticos atuam posteriormente para normalização, validação e enforcement de invariantes, sem substituir a interpretação semântica.
+
+As entradas devem ser classificadas como **semânticas**, **canônicas** ou **híbridas**. Dados cuja exatidão material dependa de um valor canônico não podem ser inventados pela IA: podem ser extraídos de informação fornecida, formatados, normalizados, validados ou submetidos a confirmação, preservando sua verificabilidade. Entradas híbridas passam por estruturação agêntica e posterior validação determinística.
+
+Ambiguidade material ou confiança insuficiente antes de mutação exige clarificação ou confirmação humana no próprio Front Door. É proibido fallback silencioso que converta interpretação incerta em persistência ou operação diferente. Indisponibilidade do provider/model não autoriza contornar essas exigências nem os gates de execução.
+
+**IA interpreta significado e contexto. Código determinístico garante exatidão e invariantes. Humano confirma quando houver incerteza material antes de efeito.**
+
+Especificação canônica: [Entrada agêntica, linguagem natural e validação determinística](docs/architecture/agent-chat-runtime.md#entrada-agêntica-linguagem-natural-e-validação-determinística). Este registro é normativo; não declara conformidade dos runtimes existentes, capacidade evidenciada, ativação de vertical nem mudança de status de fase.
+
 **DoD P4**
 - KPI mínimo por vertical atingido.
 - Sem regressão de isolamento multi-tenant/workspace.
@@ -192,6 +231,8 @@ Leitura normativa correta após F0.45:
 - Taxonomia pública oficial documentada e aplicada sem ambiguidade entre `EIAH`, especialistas, verticais e áreas operacionais.
 - Ordem das próximas frentes verticais registrada explicitamente no roadmap e nas superfícies de produto: `LEGAL` -> `MKT` -> `Financeiro` -> `URBAN` -> `Logística`.
 - Componentes internos de vertical permanecem fora da nomenclatura pública principal.
+- Cada vertical nova demonstra `linguagem natural -> estrutura de domínio -> validação determinística -> clarificação/HITL quando necessário`, antes da execução governada, conforme a especificação transversal de entrada.
+- Testes demonstram que variações semanticamente equivalentes produzem estrutura de domínio equivalente quando não houver ambiguidade material; valores canônicos preservam exatidão e normalização; ambiguidade material antes de mutação produz clarificação/confirmação e zero side effects da operação solicitada.
 
 ## 5) Riscos principais e mitigação
 
@@ -312,6 +353,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Sem regressão de isolamento multi-tenant/workspace.
 - Evidência semanal de operação e rollout.
 - Busca documental `IMOB` disponível in-chat sem reabrir lógica no launcher e com fonte do resultado explicitada no payload/renderização.
+- Aplicar os requisitos transversais de entrada semântica e seus testes definidos no **DoD P4** (§4), inclusive para novas verticais, sem exigir gramática interna do usuário.
 
 ### 9.6) P0 transversal (obrigatório durante todas as frentes)
 - Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
@@ -319,8 +361,26 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
 - Manter a cadeia documental F0.34–F0.45 sincronizada entre roadmap, plano consolidado e Evidence Index, sem promover `release.yml` produtivo, Camada B real ou Conversação para status acima do que estiver evidenciado.
 
+**Governança transversal de worktrees e deployment (TWDG) — decisão humana aprovada em 25/11/2026**
+
+A governança de worktrees e deployment é requisito permanente para integração e autorização de implantação de todas as verticais e serviços compartilhados, independentemente da quantidade de worktrees existentes.
+
+Preservar integralmente o trabalho das frentes e exigir reconciliação rastreável entre worktrees locais, branches remotas, `main` e versões implantadas, com identificação de commits exclusivos, equivalências demonstradas e deltas residuais. Diferenças críticas não resolvidas bloqueiam a intervenção afetada em modo fail-closed.
+
+Executar o protocolo operacional comum de `IA_EIAH.md`, §8.1, reutilizando instrumentos e evidências existentes. Esta política não concede autorização de intervenção Git ou deployment, não substitui gates e aprovações específicos e não levanta bloqueios operacionais de qualquer frente.
+
+**Governança da propriedade intelectual e da informação (IPIG) — decisão humana aprovada em 27/11/2026**
+
+A IPIG complementa a TWDG como obrigação transversal. A autorização para desenvolver, integrar ou implantar um incremento não equivale automaticamente à autorização para divulgá-lo. Antes da divulgação, identificar classificação da informação, direitos de propriedade intelectual, licenciamento aplicável, finalidade, destino, autoridade humana responsável e identidade da versão autorizada, preservando a integridade desse conteúdo.
+
+Aplicar o protocolo comum de `IA_EIAH.md`, §8.2, às superfícies de divulgação pertinentes, com conferência proporcional do conteúdo, histórico Git e artefatos de distribuição. Conteúdo não autorizado à divulgação não pode ser promovido a `PUBLIC` por localização, inclusão forçada, resultado de CI ou existência de evidência. Preservar originais internos e distinguir suas representações públicas aprovadas. Pendências materiais bloqueiam a publicação afetada, sem interromper automaticamente outras frentes ou modificar direitos anteriormente concedidos.
+
+A direção estratégica híbrida foi aprovada, sem autorizar migração de módulos, mudança de visibilidade, alteração de licença ou implementação de gates. A política não recupera confidencialidade de conteúdo já divulgado, não impede clones ou forks e não levanta freezes, holds ou No-Go Ledgers. A segurança operacional não pode depender exclusivamente da confidencialidade da implementação.
+
 **DoD P0 transversal**
 - Fonte única estável e auditável durante todo o ciclo de execução.
+- Integração e deployment com reconciliação, preflight, autorização humana específica e evidências verificáveis no escopo afetado, conforme TWDG; sem declaração de conformidade global baseada apenas na publicação desta norma.
+- Divulgação com classificação, direitos e licenciamento considerados, autorização humana específica para a versão e o destino e conferência proporcional, conforme IPIG; sem presumir conformidade global ou controle automatizado implementado.
 
 ## 10) Implementado extra (além do escopo normativo v8)
 
@@ -379,6 +439,28 @@ Itens já implementados que não eram requisito explícito do backlog P0-P4, mas
 **Observação de governança**
 - Itens “implementado extra” não substituem DoD de P0-P4.
 - Promoção para “operacionalmente fechado” continua condicionada às métricas e evidências normativas do v8.
+
+### 10.10) Implementado extra desde o v8.1 (v8.2)
+
+Classificação: **Além do programado**. Convenção da coluna Evidência: "existe" = arquivo confirmado no repositório; "a indicar" = caminho não confirmado nesta leitura. Os números de PR agrupam intervalos e devem ser confirmados um a um.
+
+| # | Tema | Referência (PR/commit) | Evidência | Estado proposto |
+| --- | --- | --- | --- | --- |
+| 1 | **Front Door único** (ADR-010): superfície operacional única EIAH-FD-001 no Chat Agent Launcher; base de especialistas; descoberta de capacidades | `c052960e` (2026-10-24) e anteriores de 2026-10-22; PRs #504, #505 | `apps/api/src/services/chat/verticalRegistryComposition.ts` (existe); demais a indicar | Implementado (código); evidência a indexar |
+| 2 | **Front Door — UX e ciclo de vida**: intake contextual, ciclo de vida do run, avaliação IMOB, histórico e sequência da conversa, layout responsivo | PRs #516 a #535 | a indicar | Implementado (código); evidência a indexar |
+| 3 | **Liberação de verticais** (ADR-011): pedido e decisão pela conversa, link de uso único, billing antes da liberação, fila de liberações | PRs #481 a #486 (2026-10-02 e 2026-10-03) | a indicar | Implementado (código); **confirmar status real** |
+| 4 | **Autorização**: vínculo ativo e histórico por titularidade, autoridade efetiva, sombra G2 de bootstrap e troca de workspace, capacidade da Logística por membro | `ca91c060`, `a0088070`, `53e90436`, `359714ab`, `1d5f7b45` (2026-10-22 a 2026-10-26) | a indicar | Implementado (código); evidência a indexar |
+| 5 | **Billing**: designação de autoridade financeira nas escritas de cota e ajuste | `3377afc5` (2026-10-24) | a indicar | Implementado (código); não altera preços nem o IMOB Cost |
+| 6 | **GuardrailLedger** referenciado no fluxo (`enforceTenant`, `runs`, `billing`, `governance`, `delegations`, `onboarding`, `help`, `checkDelegationPolicy`) | referências no código | `packages/core/src/audit/guardrailLedger.ts` (existe) | Parcial: ligação confirmada por referência; semântica e cobertura não verificadas |
+| 7 | **IMOB — destinação de ativo**, lotes e negócios | PR #514 (2026-11-07) | `packages/contracts/src/imobAssetDestination.ts` (existe) | Implementado (código); evidência a indexar |
+| 8 | **IMOB — intake agêntico de unidades**, guarda de unidade e CEP opcional, rascunho guiado | PRs #515, #536, #537 (2026-11-09 a 2026-11-16) | a indicar | Implementado (código); evidência a indexar |
+| 9 | **IMOB — arquivamento governado em lote** e leitura de arquivados | PRs #531, #532 (2026-11-11) | a indicar | Implementado (código); evidência a indexar |
+| 10 | **Site IMOB**: catálogo de demos, onboarding do site, cartões dos especialistas, Radar Social, gravação do rodapé | PRs #542 a #545 (2026-11-20 e 2026-11-21) | `docs/ops/evidence/latest/imob-demo-footer-save-2026-11-21.md` e `docs/ops/evidence/latest/imob-specialists-cards-demo-2026-11-21.md` (existem) | Implementado, com evidência indexada |
+| 11 | **P11 IMOB-MKT**: leitura transversal pelo Front Door, sem escrita | `c052960e` (2026-10-24); PR #512 (evidência sanitizada) | a indicar | Parcial: só leitura; MKT continua sem vertical |
+| 12 | **MCP — governança endurecida** (negar execução quando contrato ou guarda de DB falha; saída simulada tipada) | 11 commits no escopo `mcp` (2026-07-22 a 2026-07-28) | a indicar | Implementado (código); evidência a indexar |
+| 13 | **Provider**: propagação de falha do LLM | PR #538 | a indicar | Implementado (código) |
+| 14 | **P0 de operação**: observabilidade de staging, decisão Redis/IMOB, vista pública de agentes, encerramento gracioso da API | PRs #501, #502, #503, #509 | a indicar | Parcial: evidenciar |
+
 ## 11) Atualização operacional v8.1 — comparação roadmap vs código atual
 
 Esta seção registra o alinhamento entre o roadmap v8, o estado do código e os checklists operacionais mais recentes. Ela existe para reduzir drift entre documentação macro, runtime e evidências.
@@ -411,6 +493,8 @@ Esta seção registra o alinhamento entre o roadmap v8, o estado do código e os
 | #145 — IMOB Funnel/Team consolidation | Implementado | Consolida equipe dentro do funil e reduz duplicação de UX. |
 | #146 — IMOB Trilha B runtime mínimo | Implementado | `assignResponsibleActor()` passa a validar contrato canônico antes da persistência compat IMOB. |
 
+Acréscimo v8.2: os avanços posteriores a #146 estão na tabela do §10.10 (PRs #481 a #486, #501 a #505, #509, #510, #512, #514 a #545 e commits de autorização, billing, Oráculo e MCP), com a mesma leitura de governança: implementados além do backlog normativo, sem substituir DoD P0–P4.
+
 ### 11.3) Trilha B runtime mínimo — estado normativo
 
 O PR `PR-IMOB-DATA-TRILHA-B-RUNTIME-01` está registrado como concluído no checklist operacional com:
@@ -442,6 +526,13 @@ Ações remanescentes:
 6. Deixar o gate bloquear de fato.
 
 Enquanto isso não ocorrer, não declarar o v8 como “operacionalmente fechado” em termos de SLO.
+
+Acréscimo v8.2 — pendências adicionais a tratar:
+- Confirmar o status de implementação da **ADR-011** e registrar a evidência.
+- Indexar no Evidence Index as evidências dos itens 1 a 5, 7 a 9 e 12 a 14 do §10.10.
+- Revisar a data de referência do cabeçalho a cada ciclo documental (a de 2026-07-01 contradizia as edições posteriores).
+- Reconfirmar se a pendência de SLO acima e a ausência do checklist **IMOB Cost** (frente bloqueada até sua criação e ratificação) continuam verdadeiras; não foram reconfirmadas nesta revisão.
+- Reconciliar materiais de comunicação (por exemplo, o Kit Evento de 2026-06-28) com o estado atual: os números nele citados são anteriores a esta revisão.
 
 ## 12) Diretriz de atualização documental após v8.1
 
@@ -488,6 +579,16 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 - Risco residual: **regressão documental futura se novos roadmaps, evidências ou referências forem adicionados sem passar pelos gates de integridade documental**.
 
 **Status normativo desta revisão:** parcial avançado, não operacionalmente fechado.
+
+### 14.1) Status v8.2
+
+- Front Door: **superfície única implementada** (código), evidência a indexar.
+- Liberação de verticais (ADR-011): **implementada em código**, status a confirmar.
+- Logística: **Oráculo e decisão humana J17 implementados** (código); `PRE_DUIMP` segue em shadow e a ordem oficial de rollout não muda.
+- MKT: **continua sem vertical**; a ponte P11 é somente leitura.
+- Risco residual: regressão documental se as evidências não forem indexadas.
+
+**Status normativo da revisão v8.2:** mesclada pelo PR #548, com evidências ainda a indexar; parcial avançado, não operacionalmente fechado.
 
 ## 15) PRE_DUIMP — Gate de preparação técnica (vertical Logística)
 
@@ -564,3 +665,62 @@ Critérios verificáveis, ainda não satisfeitos nesta revisão:
 ### Relação com CORE-01A0b / CORE-01A0
 
 Nenhum DoD versionado explícito foi localizado para `CORE-01A0b` ou `CORE-01A0` nas fontes normativas vigentes na data desta revisão. `CORE-01A0b-R` está evidenciado (`ops/evidence/latest/core-01a0b-r-run-governance-validation-2026-08-26.md`), mas essa evidência não promove `CORE-01A0b` nem `CORE-01A0` a fechados — ambos permanecem `parcial` por ausência de DoD adicional localizado. A abertura documental de `PRE_DUIMP` nesta seção não depende do fechamento de `CORE-01A0b`/`CORE-01A0` e não os declara fechados.
+
+## 15.1) Logística — Oráculo e decisão humana J17 (v8.2)
+
+Complementa o §15 (`PRE_DUIMP`), sem alterar a ordem oficial de rollout (`LEGAL -> MKT -> Financeiro -> URBAN -> Logística`) nem os critérios do §15, que continuam não satisfeitos. `Comex/DUIMP` segue como recorte interno da Logística, não como vertical pública adicional.
+
+| Frente | Referência | Estado proposto |
+| --- | --- | --- |
+| Reconhecimento do produto LOGISTICA, provisionamento fail-closed e contratos de preparação do Oráculo | `958f11a0` (2026-10-19) | Implementado (código); evidência a indexar |
+| API de acesso governado, canais de ativação, preparação do Oráculo e proteção de upload | `3e0c6274` (2026-10-19) | Implementado (código); evidência a indexar |
+| Front Door conectado ao cockpit do Oráculo, com continuidade explícita de caso | `4739b24b` (2026-10-19) | Implementado (código); evidência a indexar |
+| Decisão humana J17 no caso da Logística: contratos, serviço, repositório e API | `49634d3f` (2026-10-22) | Implementado (código); evidência a indexar |
+| Contratos governados de consulta a fontes | `a40f951e` (2026-11-04); PR #510 | Implementado (código); evidência a indexar |
+| Suítes de contrato, mock e integração registradas em CI | `f200ee96`, `57b226dd`, `e08c54d2` | Evidência de CI a indexar |
+
+Estado público: a promoção de `PRE_DUIMP` além de shadow continua dependendo dos critérios do §15 e de decisão própria. Nenhum item acima autoriza transmissão externa.
+
+## 16) Catálogo das ADRs — decisão, implementação e limites (v8.2)
+
+Atualização documental de 2026-11-27, sobre a main de referência `957554e2d0a8543f7c40b3a6eb1962bc9f93f864`, reutilizando a reconciliação da [ADR-009](docs/adr/ADR-009-reconciliacao-pendencias-adr-001-a-008.md) e os registros TWDG existentes. Foram identificados 15 documentos de decisão: 12 presentes nessa main e três fora dela. A inclusão neste catálogo não concede vigência, ratificação, autorização de implementação ou autorização operacional.
+
+Continuidade documental de 2026-11-27, sobre a main `d43158cd7c95c8cfd52b7aafd4f99218dbb9901f`: a ADR-002 Coletiva foi integrada pelo PR #441 e sua localização é atualizada abaixo. Para a ADR-012, foi aprovada e preparada localmente uma representação pública limitada, ainda não integrada; o original integral permanece interno. A contagem do parágrafo anterior descreve a baseline histórica indicada, sem acrescentar uma nova decisão pela existência da representação pública. Os demais registros do catálogo permanecem preservados.
+
+Os estados abaixo reproduzem as fontes disponíveis e distinguem decisão formal, aprovação parcial, implementação técnica e operação. Datas são as declaradas nas fontes; ausência de versão numérica, de manifestação nominal ou de comprovação é indicada, sem completar metadados por inferência. Resultados históricos não certificam automaticamente outro SHA ou ambiente. Permanecem a hierarquia normativa, a TWDG (§9.6 e `IA_EIAH.md` §8.1), os freezes, holds e No-Go Ledgers de cada frente.
+
+### 16.1) Documentos presentes na main de referência
+
+Os links desta tabela apontam para documentos existentes no repositório. O estado resumido deve ser lido com suas notas e emendas posteriores, não apenas com o cabeçalho original.
+
+| Identidade e localização | Versão ou revisão | Estado formal e ratificação | Implementação comprovada | Limites e autorização operacional |
+| --- | --- | --- | --- | --- |
+| [ADR-001 — Stack Oficial de Domain Runtime para Go-Live Controlado](docs/adr/ADR-001-domain-runtime-stack.md) | Sem versão numérica; data 2026-05-31 | `Aceita` no documento; ato nominal de ratificação separado não identificado | Decisão de stack e referências de evidência versionadas; implantação atual não reconfirmada nesta atualização | Go-live depende dos gates e evidências de ambiente; a divergência banco/compute com a ADR-002 Banco permanece registrada na ADR-009 |
+| [ADR-002 — Banco: PostgreSQL autogerenciado](docs/adr/ADR-002-database-self-managed-postgres.md) | v1.1, 2026-07-25; §12 registra implementação verificada em 2026-09-26 | `Proposta`, fase `shadow`; ratificação integral não comprovada | §12: Fase A de CI/PR confirmada em CI real; `tenantGuard` confirmado historicamente apenas por teste local; Fase B/produção sem implementação comprovada nesse registro | Não autoriza provisionamento ou produção; pré-condições e cadeia de abertura/ativação das §§6–9 preservadas; custos são estimativas |
+| [ADR-002 — Coletiva: Inteligência Coletiva Governada (Swarm Conservador)](docs/adr/ADR-002-governed-collective-intelligence.md) | v2-r3; integração documental pelo [PR #441](https://github.com/5906375/EIAH/pull/441) | Manifestação humana de ratificação de Carlos em 2026-09-07, vinculada ao conteúdo exato pela ficha `docs/ops/adr-002-v2-r3-ratification-record.md`; ressalvas de completude mantidas | Pacote documental e validações históricas integrados. Diagnóstico histórico do catálogo: ausência dos oito nomes de contratos coletivos confirmada; equivalência funcional inconclusiva, sem investigação adicional nesta atualização | Ratificação arquitetural e integração documental não autorizam implementação, scopes ou piloto. Conteúdo congelado; preservar campos históricos de submissão, ficha, matriz AUTHZ-RUNS e evidências |
+| [ADR-003 — Hierarquia dos registros de trabalho durante a auditoria de integridade da evidência](docs/adr/ADR-003-work-registry-hierarchy.md) | Sem versão numérica; 2026-08-03 | `Aceita` no documento; decisão do owner registrada, sem ato nominal separado identificado | `docs/ops/open-fronts.md` é o registro primário durante o objetivo declarado; plano de PRs subordinado | Não inicia frentes nem promove status; as condições de integridade da evidência e a pausa seletiva continuam aplicáveis |
+| [ADR-004 — Semântica de bloqueio para required status checks](docs/adr/ADR-004-required-check-blocking-semantics.md) | Sem versão numérica; 2026-08-03; nota de implementação de 2026-09-26 | `Proposta`; ratificação formal não comprovada | Nota final distingue as etapas técnicas implementadas, commits e CI histórico da aceitação formal | Implementação técnica não ratifica a ADR nem comprova providers reais; sem supressão implícita de required checks |
+| [ADR-005 — Tratamento da evidência declarativa de interop P2](docs/adr/ADR-005-p2-interop-declarative-evidence-treatment.md) | Sem versão numérica; 2026-08-04 | `Proposta`; ratificação formal não comprovada | ADR-009 §§9–10 registra rebaixamento das três afirmações do índice; captura real dos segmentos permanece pendente nas fontes consultadas | Aceitação em fila (`202`) não prova conclusão ou receipt; correção documental não é execução HTTP |
+| [ADR-006 — Detecção de circularidade estrutural entre geradores e checks](docs/adr/ADR-006-structural-circularity-detection.md) | Sem versão numérica; 2026-08-04 | `Proposta`; ratificação formal não comprovada | Checker e alvo canônico existentes; ADR-009 registra implementação e pendências de exceções/enforcement | Enforcement bloqueante não presumido; desenho de reutilização de waivers e contrato separado de exceções precisam de reconciliação própria, sem renovação automática |
+| [ADR-007 — Relocação temporária de P1ReconciliationRecurring e P2HighGlobalCoverage](docs/adr/ADR-007-temporary-required-gate-relocation-p1-p2.md) | 2026-08-08; §24 acrescenta decisão de 2026-09-30 | Cabeçalho `Proposta para ratificação`; Carlos manteve F-1 em 2026-09-30, sem ratificar integralmente a ADR; próxima reavaliação em 2026-12-31 | §23 registra aplicação administrativa de F-1 em 2026-08-08 e seu pacote de evidências; §24 registra reavaliação posterior | `temporarily_non_required` não significa saudável; retorno exige condições próprias e decisão explícita; relocação de workflow não é presumida executada |
+| [ADR-008 — Modelo de revisão: administrador único, sem exigência de segundo revisor humano](docs/adr/ADR-008-sole-administrator-review-model.md) | Sem versão numérica; 2026-09-26 | `Ratificada` por Carlos Alberto Merlo; manifestação literal no documento | Modelo e procedimento de registro rastreável integrados pelo PR #457 | Trata revisão de PR; não dispensa gates ou autorização específica e não substitui as regras distintas dos Environments de release |
+| [ADR-009 — Reconciliação das decisões e pendências das ADR-001 a ADR-008](docs/adr/ADR-009-reconciliacao-pendencias-adr-001-a-008.md) | 2026-09-26; notas posteriores e política M1 de 2026-09-27 | Status geral `Proposta`; Carlos aprovou parcialmente a política M1 na §14, sem ratificação integral | Correções documentais, mecanismos e testes locais registrados; garantias operacionais continuam pendentes | Regra 14/28 restrita a M1 v3; aprovação parcial não ativa CI/operação nem restaura P1/P2; supersessões das recomendações anteriores devem ser preservadas |
+| [ADR-010 — Unificação do chat: EIAH em `/app/chat` como front door único de todas as verticais](docs/adr/ADR-010-unificacao-chat-front-door-verticais.md) | Decisão de 2026-09-30; Emenda 1 EIAH-FD-001 de 2026-10-21 | Aprovada por Carlos; emenda torna o Front Door a superfície operacional única | Partes implementadas em PRs sequenciais integrados, incluindo #462, #469–#472 e evoluções #504/#505; cabeçalho de implementação pendente não resume todo o avanço | Contrato → engine → launcher, confirmação explícita e paridade preservados; cockpit paralelo permanente foi superado pela emenda; rollout não é automaticamente autorizado |
+| [ADR-011 — Liberação de verticais pela EIAH (agente + humano) e acesso por link de senha no front door](docs/adr/ADR-011-liberacao-eiah-de-verticais-e-acesso-por-convite.md) | 2026-10-02; complemento de 2026-10-03 e nota restritiva de 2026-10-20 | Aprovada por Carlos; complemento de billing simulado registrado | Partes implementadas pelos PRs #475, #477 e #481–#486; cabeçalho de implementação pendente não comprova ausência de implementação | Score não aprova sozinho; billing simulado não é cobrança real; administração por e-mail limitada ao desenvolvimento controlado; canal WhatsApp não liberado por esta decisão |
+| [ADR sem número — Vertical CHAT IMOB como Jornada Operacional Governada por Casos](docs/architecture/adr-imob-journey-governed-by-case.md) | Sem versão numérica ou data de ratificação declarada; histórico integrado pelo PR #73 | `Aceita` no documento; ato nominal de ratificação não identificado | Referencia contratos e superfícies implementados; conformidade integral não comprovada pela existência do texto | CRM mantém ownership do caso; specialists apoiam; UI renderiza; superfícies operacionais subordinadas à Emenda 1 da ADR-010, sem autorização operacional adicional |
+
+### 16.2) Documentos residuais fora da main de referência
+
+Os caminhos em código nesta tabela identificam conteúdo residual; não são links relativos para arquivos supostamente presentes na main. Worktrees e registros de preservação são referências de continuidade, não autorização de integração. Arquivo não rastreado pelo Git não significa arquivo sem preservação.
+
+| Identidade, versão e localização residual | Estado formal e ratificação | Implementação comprovada | Limites e autorização operacional |
+| --- | --- | --- | --- |
+| **ADR-012 — Congelamento da implementação de AUTHZ-ROOT-001**, decisão de 2026-10-20, sem versão numérica. [Representação pública limitada](docs/adr/ADR-012-congelamento-authz-root-001-publica.md) preparada localmente para futura integração; documento integral preservado internamente, sem autorização de publicação integral | Decisão de Carlos registrada como `ARCHITECTURAL_DECISION_FROZEN`; não aceita riscos para produção. A aprovação da representação refere-se exclusivamente à divulgação documental, sem nova ratificação arquitetural | Representação distinta do original interno; registro de congelamento e referências preservados. Não comprova implementação da autoridade raiz ou correção dos riscos; publicação e integração ainda não realizadas | Implementação de Registro Raiz, passkeys, migrations e alteração de identidade administrativa congeladas; primeira autoridade e demais bloqueios nomeados permanecem. A representação não substitui o original nem autoriza descongelamento, implementação, piloto ou produção |
+| **ADR-013 — Topologia de bancos de dados do EIAH (núcleo comum, verticais e clientes), v0.1**, 2026-11-21. `docs/adr/ADR-013-topologia-de-bancos-de-dados.md`, worktree `EIAH_IMOB_ASSET_DESTINATION`; não rastreada pelo Git e fora da main | `PROPOSTA — decisão pendente`; Carlos é o decisor indicado, sem escolha de topologia aprovada | Análise documental de quatro opções sobre baseline histórico, não medição operacional ou implementação; incluída na preservação incremental existente | Nenhuma topologia, provisionamento, roteamento, mudança de schema ou migração autorizada; banco descartável de teste não constitui decisão arquitetural |
+
+### 16.3) Desambiguação e preservação das decisões
+
+- **ADR-002 Banco** é a proposta v1.1 em `docs/adr/ADR-002-database-self-managed-postgres.md`; **ADR-002 Coletiva** é a v2-r3 em `docs/adr/ADR-002-governed-collective-intelligence.md`, integrada à main pelo PR #441. São decisões distintas, não revisões ou renomeações do mesmo documento. A recomendação de renumeração da ADR-009 §13.4 permanece pendente de decisão humana; este catálogo não renumera nem altera arquivos.
+- **Conteúdo exato da ADR-002 Coletiva:** SHA-256 `13f6c01d3fb5fc739d0cc1b2a844a302a2bd7cbcdc1810f746109c20885e4431`. A ficha registra a manifestação de ratificação e as lacunas de justificativa adicional, horário exato e comprovação externa de identidade. O hash identifica conteúdo, não assinatura humana. Os campos `PROPOSTA`/`PENDENTE` do texto congelado retratam a submissão; não devem ser reescritos para atualizar o estado posterior. A ficha e a matriz AUTHZ-RUNS não concedem autorização operacional.
+- A Emenda 1 da ADR-010, a nota restritiva da ADR-011 e o congelamento registrado na ADR-012 devem acompanhar futuras reconciliações; versões antigas não os substituem. A ADR-013 continua proposta e não escolhe topologia. Ratificação, implementação técnica, integração documental e autorização operacional permanecem decisões distintas.
+- Este catálogo não substitui os registros primários, não ratifica propostas, não integra documentos residuais e não registra conformidade arquitetural integral. A integração documental do #441 foi concluída independentemente deste catálogo; a representação pública da ADR-012 permanece preparada localmente, sem publicação ou integração. Eventual adendo futuro à ADR-009 deve atualizar a reconciliação sem reescrever decisões históricas.

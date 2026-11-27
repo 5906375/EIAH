@@ -91,6 +91,15 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
         run: pnpm test:action-runner-gates
 
+      - name: Run LLM provider failure propagation tests (synthetic transport only)
+        run: pnpm test:llm-provider-failure
+
+      - name: Run capability metadata regression (deterministic only)
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
+          TSX_TSCONFIG_PATH: tsconfig.base.json
+        run: node --import tsx --test-name-pattern=^executeCapability apps/api/src/tests/capability-execution.test.ts
+
       - name: Run Tests
         env:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
@@ -133,7 +142,7 @@ jobs:
           ESBUILD_TMPDIR: /tmp 
           NODE_ENV: production
         # O filtro garante que apenas 'apps/web' seja construído
-        run: pnpm --filter apps/web build
+        run: pnpm --filter @eiah/web build
 
   self_service_dedup_guards:
     name: SelfServiceDedupGuards
@@ -822,6 +831,14 @@ jobs:
       - name: Run assignment fail-closed suite
         run: pnpm test:assignment-fail-closed
 
+      # Dublês injetados; sem Redis nem banco. A fila IMOB é criada no primeiro uso (não na importação), então o processo encerra
+      # sozinho: não usa --test-force-exit.
+      - name: Run evaluation worker gate suite (dublês injetados, sem Redis)
+        run: pnpm test:evaluation-worker-gate
+
+      - name: Run IMOB asset destination unit suite
+        run: pnpm test:imob-asset-destination
+
   imob_chat_parity_e2e_informative:
     # ADR-010 etapa E: mesmas jornadas do IMOB no /app/chat e no /app/imob/chat,
     # com stack completa (Postgres + Redis + API + web). Informativo até a decisão de redirect.
@@ -829,6 +846,9 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -853,7 +873,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+      DATABASE_URL: postgresql://ci:ci@postgres:5432/eiah_ci?schema=public
       E2E_API_URL: http://127.0.0.1:58080/api
       E2E_WEB_URL: http://127.0.0.1:55173
       E2E_ARTIFACT_DIR: .artifacts/imob-chat-parity
@@ -887,14 +907,11 @@ jobs:
       - name: Run database migrations
         run: pnpm --filter @repo/db migrate:deploy
 
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
       - name: Start API
         working-directory: apps/api
         env:
-          REDIS_URL: redis://localhost:6379
-          RUN_EVENTS_REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://redis:6379
+          RUN_EVENTS_REDIS_URL: redis://redis:6379
           NODE_ENV: development
           PORT: '58080'
           FRONTEND_URL: http://127.0.0.1:55173
@@ -1722,4 +1739,12 @@ jobs:
 
       - name: Run LOGISTICA/Oraculo integration suite (upload security, activation channels, persistence integrity, J-360 isolation)
         run: pnpm test:logistica-core:integration
+        timeout-minutes: 10
+
+      # Avaliação gratuita IMOB com Prisma/PostgreSQL reais (ciclo, rotas autenticadas, datas/::timestamp, atomicidade, concorrência com
+      # sessões independentes). A oferta só é habilitada nas fixtures; a composição de produção segue desligada. Sem --test-force-exit.
+      - name: Run vertical evaluation integration suite (PostgreSQL real, concorrência real)
+        run: pnpm test:vertical-evaluation:integration
+        env:
+          EIAH_DISPOSABLE_INFRA: "1"
         timeout-minutes: 10

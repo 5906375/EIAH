@@ -171,6 +171,7 @@ test("arquivos que dependem de Postgres real estão no manifesto e permanecem cl
   assert.deepEqual(conditional, [
     "apps/api/src/services/apeWeeklyCycleV3BillingCollector.realPostgres.integration.test.ts",
     "apps/api/src/services/apeWeeklyCycleV3BillingCycle.realPostgres.integration.test.ts",
+    "apps/api/src/tests/whatsapp.meta-postgres.realPostgres.integration.test.ts",
   ]);
   const integrationSuffix = parsed.files.filter((file) => /\.integration\.test\.tsx?$/.test(file) && !isConditionalCoverageFile(file));
   assert.deepEqual(integrationSuffix, [], "nenhum arquivo *.integration.test.* fora da classificação condicional");

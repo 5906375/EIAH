@@ -1,4 +1,6 @@
 import { runCompletion } from "@eiah/core/llm/completionEngine";
+import { createLogger } from "@eiah/core/logging/logger";
+import { llmFailureDiagnostic, llmDiagnosticIdentifier, type LLMInternalStage } from "@eiah/core/llm/LLMProviderError";
 import { llmRegistry } from "@eiah/core/llm/LLMRegistry";
 import type { ChatMessage, ChatCompletionUsage } from "@eiah/core/llm/types";
 import { OpenAIProvider, AnthropicProvider, GeminiProvider, DeepSeekProvider } from "@eiah/providers";
@@ -32,6 +34,9 @@ export type LlmExecutorResult = {
   provider?: string;
   model?: string;
   requestId?: string;
+  completionId?: string;
+  providerRequestId?: string;
+  modelUsed?: string;
   usage?: ChatCompletionUsage | null;
 };
 
@@ -197,68 +202,90 @@ export async function executeLlmStep({
   userPrompt,
   metadata,
 }: LlmExecutorParams): Promise<LlmExecutorResult> {
-  assertKnowledgePolicy({ profile, userPrompt, metadata });
+  const traceId = llmDiagnosticIdentifier(metadata?.traceId);
+  const diagnosticLogger = metadata?.source === "imob-property-capture-intake"
+    ? createLogger({ component: "llm-executor", traceId }) : undefined;
+  const executionStartedAt = Date.now();
+  let stage: LLMInternalStage = "policy_check";
+  diagnosticLogger?.info({ stage, modelRequested: llmDiagnosticIdentifier(profile.model) }, "llm.executor.enter");
+  try {
+    assertKnowledgePolicy({ profile, userPrompt, metadata });
 
-  const deterministicResponse = getDeterministicResponse(metadata);
-  if (profile.knowledgePolicy?.llmUsageMode === "none" && deterministicResponse) {
-    return {
-      outputText: deterministicResponse,
-      rawResponse: {
-        mode: "deterministic_only",
-        source: "metadata.deterministicResponse",
-      },
-      tookMs: 0,
-      provider: profile.model.includes(":") ? profile.model.split(":")[0] : undefined,
-      model: profile.model.includes(":") ? profile.model.split(":").slice(1).join(":") : profile.model,
-      requestId: undefined,
-      usage: null,
-    };
-  }
-
-  ensureProvidersRegistered();
-
-  const maskingEnabled = shouldMask(profile.knowledgePolicy, metadata);
-  const sanitizedPrompt = maskingEnabled ? sanitizeTextForLlm(userPrompt) : { text: userPrompt, flags: [] };
-  const sanitizedMetadataResult = maskingEnabled
-    ? sanitizeMetadataForLlm(metadata ?? {})
-    : { value: metadata, flags: [] as string[] };
-  const sanitizedMetadata = (() => {
-    const base =
-      sanitizedMetadataResult.value && typeof sanitizedMetadataResult.value === "object"
-        ? { ...(sanitizedMetadataResult.value as Record<string, unknown>) }
-        : {};
-    if (maskingEnabled) {
-      base.llmMasking = {
-        applied: true,
-        policy: profile.knowledgePolicy?.maskingPolicy ?? "none",
-        flags: Array.from(new Set([...sanitizedPrompt.flags, ...sanitizedMetadataResult.flags])),
+    const deterministicResponse = getDeterministicResponse(metadata);
+    if (profile.knowledgePolicy?.llmUsageMode === "none" && deterministicResponse) {
+      return {
+        outputText: deterministicResponse,
+        rawResponse: {
+          mode: "deterministic_only",
+          source: "metadata.deterministicResponse",
+        },
+        tookMs: 0,
+        provider: profile.model.includes(":") ? profile.model.split(":")[0] : undefined,
+        model: profile.model.includes(":") ? profile.model.split(":").slice(1).join(":") : profile.model,
+        requestId: undefined,
+        usage: null,
       };
     }
-    return base;
-  })();
 
-  const startedAt = Date.now();
-  const messages: ChatMessage[] = [
-    { role: "system", content: profile.systemPrompt },
-    { role: "user", content: sanitizedPrompt.text },
-  ];
+    stage = "provider_registration";
+    diagnosticLogger?.info({ stage }, "llm.executor.stage");
+    ensureProvidersRegistered();
+    stage = "prompt_preparation";
 
-  const response = await runCompletion({
-    model: profile.model,
-    messages,
-    maxTokens: profile.maxTokens,
-    temperature: undefined,
-    metadata: sanitizedMetadata,
-  });
+    const maskingEnabled = shouldMask(profile.knowledgePolicy, metadata);
+    const sanitizedPrompt = maskingEnabled ? sanitizeTextForLlm(userPrompt) : { text: userPrompt, flags: [] };
+    const sanitizedMetadataResult = maskingEnabled
+      ? sanitizeMetadataForLlm(metadata ?? {})
+      : { value: metadata, flags: [] as string[] };
+    const sanitizedMetadata = (() => {
+      const base =
+        sanitizedMetadataResult.value && typeof sanitizedMetadataResult.value === "object"
+          ? { ...(sanitizedMetadataResult.value as Record<string, unknown>) }
+          : {};
+      if (maskingEnabled) {
+        base.llmMasking = {
+          applied: true,
+          policy: profile.knowledgePolicy?.maskingPolicy ?? "none",
+          flags: Array.from(new Set([...sanitizedPrompt.flags, ...sanitizedMetadataResult.flags])),
+        };
+      }
+      return base;
+    })();
 
-  return {
-    outputText: response.output,
-    rawResponse: response.raw,
-    traceId: response.id,
-    tookMs: Date.now() - startedAt,
-    provider: response.provider,
-    model: response.model,
-    requestId: response.requestId ?? response.id,
-    usage: response.usage ?? null,
-  };
+    // Mask content as before, but do not rewrite the middleware's diagnostic correlation.
+    if (traceId) sanitizedMetadata.traceId = traceId;
+    const startedAt = Date.now();
+    const messages: ChatMessage[] = [
+      { role: "system", content: profile.systemPrompt },
+      { role: "user", content: sanitizedPrompt.text },
+    ];
+
+    stage = "provider_execution";
+    const response = await runCompletion({
+      model: profile.model,
+      messages,
+      maxTokens: profile.maxTokens,
+      temperature: undefined,
+      metadata: sanitizedMetadata,
+    });
+
+    return {
+      outputText: response.output,
+      rawResponse: response.raw,
+      traceId: typeof sanitizedMetadata.traceId === "string" && sanitizedMetadata.traceId.trim() ? sanitizedMetadata.traceId : undefined,
+      tookMs: Date.now() - startedAt,
+      provider: response.provider,
+      model: response.model,
+      requestId: response.requestId,
+      completionId: response.completionId,
+      providerRequestId: response.providerRequestId,
+      modelUsed: response.modelUsed,
+      usage: response.usage ?? null,
+    };
+  } catch (error) {
+    // Completion owns the final provider-execution event; log only failures it cannot see.
+    if (stage !== "provider_execution") diagnosticLogger?.info({ stage, failure: llmFailureDiagnostic(error, stage),
+      durationMs: Date.now() - executionStartedAt }, "llm.executor.failure");
+    throw error;
+  }
 }

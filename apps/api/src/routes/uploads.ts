@@ -9,6 +9,7 @@ import { loadStoredObject, persistBuffer } from "../services/storage";
 import { createUploadedDocument, findDocumentById, updateDocumentUrl } from "../services/uploads";
 import { canAccessImobUploads } from "../services/imobUploadAccess";
 import { resolveImobEnablement } from "../services/imob/imobInstallationGate";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
 import { hasWorkspacePermission, readActiveWorkspaceMembershipPermissions } from "../services/workspaceResponsibility";
 
 const MAX_FILE_SIZE_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024); // 5 MB default
@@ -87,7 +88,10 @@ uploadsRouter.post(
       agentSlug,
       userId: auth.userId ?? null,
       hasImobChatPermission: () => hasImobChatPermission(client, auth),
-      isImobEnabled: async () => (await resolveImobEnablement(client, auth)).enabled,
+      // Envio é escrita: com grant de avaliação, só com o acesso ativo e válido (uso pleno). Sem grant: regra de sempre.
+      isImobEnabled: async () =>
+        (await resolveImobEnablement(client, auth)).enabled
+        && (await readEvaluationGrantGate({ prisma: client as never, tenantId: auth.tenantId, workspaceId: auth.workspaceId }).then((gate) => !gate.applies || gate.allowed)),
     });
     if (!allowed) {
       return res.status(403).json({

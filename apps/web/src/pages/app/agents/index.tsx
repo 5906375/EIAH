@@ -7,7 +7,6 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
-import FrontDoorSessionHeader from "../../../components/agents/FrontDoorSessionHeader";
 import {
   buildChatRouteEntryTelemetry,
   emitChatRouteTelemetry,
@@ -851,7 +850,7 @@ function CompactAttributeList({
 
 const AgentsPage: React.FC = () => {
   const location = useLocation();
-  const { workspaceId, activeDomain } = useSession();
+  const { workspaceId } = useSession();
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
@@ -1027,24 +1026,22 @@ const AgentsPage: React.FC = () => {
 
   return (
     <>
-      <div className="glass-panel p-3 sm:p-8">
-        <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
-          <div className="space-y-2">
-            <div className="mt-6" id="chat-agent-launcher">
+      <div className="front-door-page min-w-0">
+        <div className="grid min-w-0 lg:grid-cols-1 lg:items-start">
+          <div className="min-w-0 space-y-2">
+            <div className="min-w-0" id="chat-agent-launcher">
               <ChatAgentLauncher
                 historyScope="conversation"
                 activeAgentId={agentId}
                 onAgentChangeRequest={setAgentId}
                 onPlaybookClick={agentId ? handlePlaybookClick : undefined}
                 headerControls={
-                  <FrontDoorSessionHeader activeDomain={activeDomain}>
-                    <AgentSelect
-                      value={agentId}
-                      onChange={setAgentId}
-                      showPlaybook={false}
-                      inline
-                    />
-                  </FrontDoorSessionHeader>
+                  <AgentSelect
+                    value={agentId}
+                    onChange={setAgentId}
+                    showPlaybook={false}
+                    inline
+                  />
                 }
                 workspaceId={workspaceId}
                 launcherContext={{

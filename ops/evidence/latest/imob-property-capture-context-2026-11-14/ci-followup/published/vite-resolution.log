@@ -1,0 +1,14 @@
+{"purpose":"Temporary cache for the affected Vite development dependency scan","cacheDir":"/tmp/imob-property-vite-resolution-4AiSMo","disposition":"Remove only this new cache in finally"}
+▲ [WARNING] Unrecognized target environment "ES2024" [tsconfig.json]
+
+    tsconfig.json:5:18:
+      5 │         "target": "ES2024",
+        ╵                   ~~~~~~~~
+
+{"importer":"src/components/agents/chatLauncherEngine.ts","contractsEntry":"packages/contracts/src/browser.ts","ok":true}
+{"importer":"src/features/imob/structured/useImobFrontDoorForms.ts","contractsEntry":"packages/contracts/src/browser.ts","ok":true}
+Forced re-optimization of dependencies
+Optimizing dependencies:
+  @radix-ui/react-select, intro.js, jspdf, react, react-dom/client, react-markdown, react-router-dom, react/jsx-runtime, zod, react-dom, react/jsx-dev-runtime
+{"ok":true,"check":"Vite development dependency scan and optimization","optimizedDependencies":11,"requiresHttp":false,"requiresBrowser":false,"requiresDatabase":false}
+{"temporaryCacheRemoved":"/tmp/imob-property-vite-resolution-4AiSMo"}

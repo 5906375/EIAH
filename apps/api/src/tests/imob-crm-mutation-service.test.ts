@@ -1436,3 +1436,72 @@ test("IMOB_CRM mutation service rejects assignResponsibleActor when canonical re
   assert.equal(prisma.cases[0].ownerResponsible, null);
   assert.equal(prisma.caseEvents.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// archiveProperty: guardrails reaproveitados pelo arquivamento múltiplo (um DELETE por imóvel).
+// ---------------------------------------------------------------------------
+
+function archiveFixture() {
+  const prisma = createMockPrisma() as any;
+  const base = { tenantId: "tenant-1", workspaceId: "workspace-1", status: "ready", metadata: { externalPropertyRef: "x" }, ownerId: null };
+  prisma.properties.push(
+    { id: "prop-a", ...base, ownerId: "owner-1", address: "Rua Sintética, 1" },
+    { id: "prop-b", ...base, address: "Rua Sintética, 1" },
+    { id: "prop-c", ...base, address: "Rua Sintética, 1" },
+    { id: "prop-other-ws", ...base, workspaceId: "workspace-2", address: "Rua Sintética, 1" },
+  );
+  prisma.owners.push({ id: "owner-1", tenantId: "tenant-1", workspaceId: "workspace-1", name: "Proprietário Sintético", status: "ready" });
+  // O mock padrão devolve sempre 0; aqui a dependência de caso/locação é exercida de verdade.
+  prisma.imobCase.count = async ({ where }: any = {}) => prisma.cases.filter((item: any) => (
+    (!where?.tenantId || item.tenantId === where.tenantId) &&
+    (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+    (!where?.propertyId || item.propertyId === where.propertyId)
+  )).length;
+  return { prisma, service: new ImobCrmMutationService(prisma), scope: { tenantId: "tenant-1", workspaceId: "workspace-1", userId: "user-operador" } };
+}
+
+test("IMOB_CRM archiveProperty arquiva só o imóvel pedido (com ou sem proprietário), audita o operador e não toca o proprietário", async () => {
+  const { prisma, service, scope } = archiveFixture();
+  for (const id of ["prop-a", "prop-b"]) {
+    const result = await service.archiveProperty(scope, id);
+    assert.equal(result.status, "archived");
+  }
+  const byId = (id: string) => prisma.properties.find((item: any) => item.id === id);
+  assert.equal(byId("prop-a").status, "archived");
+  assert.equal(byId("prop-b").status, "archived");
+  assert.equal(byId("prop-b").ownerId, null, "ownerId ausente não é inferido nem alterado");
+  assert.equal(byId("prop-c").status, "ready", "não selecionado permanece ativo");
+  assert.equal(byId("prop-other-ws").status, "ready");
+  assert.equal(byId("prop-a").metadata.archivedByUserId, "user-operador");
+  assert.equal(prisma.owners[0].status, "ready", "arquivar imóvel não arquiva proprietário");
+  const audits = prisma.memoryEvents.filter((event: any) => event.key === "crm.audit" && event.metadata.subjectType === "property" && event.metadata.action === "deleted");
+  assert.deepEqual(audits.map((event: any) => [event.metadata.subjectId, event.metadata.userId, event.tenantId, event.workspaceId]), [
+    ["prop-a", "user-operador", "tenant-1", "workspace-1"],
+    ["prop-b", "user-operador", "tenant-1", "workspace-1"],
+  ]);
+});
+
+test("IMOB_CRM archiveProperty bloqueia imóvel com caso ou locação ligados e não deixa rastro de escrita", async () => {
+  const { prisma, service, scope } = archiveFixture();
+  prisma.cases.push(
+    { id: "case-lease", tenantId: "tenant-1", workspaceId: "workspace-1", propertyId: "prop-a", flow: "rental_lease", status: "active" },
+    { id: "case-other", tenantId: "tenant-1", workspaceId: "workspace-1", propertyId: "prop-b", flow: "sale", status: "open" },
+  );
+  assert.equal((await service.archiveProperty(scope, "prop-a")).status, "blocked");
+  assert.equal((await service.archiveProperty(scope, "prop-b")).status, "blocked");
+  assert.equal((await service.archiveProperty(scope, "prop-c")).status, "archived", "bloqueio de um não impede os outros do lote");
+  assert.equal(prisma.properties.find((item: any) => item.id === "prop-a").status, "ready");
+  assert.equal(prisma.properties.find((item: any) => item.id === "prop-b").status, "ready");
+  assert.equal(prisma.memoryEvents.filter((event: any) => event.key === "crm.audit").length, 1, "só o arquivado gera auditoria");
+});
+
+test("IMOB_CRM archiveProperty respeita tenant/workspace e é idempotente: outro escopo e repetição retornam not_found sem escrever", async () => {
+  const { prisma, service, scope } = archiveFixture();
+  assert.equal((await service.archiveProperty({ ...scope, workspaceId: "workspace-2" }, "prop-a")).status, "not_found");
+  assert.equal((await service.archiveProperty({ ...scope, tenantId: "tenant-2" }, "prop-a")).status, "not_found");
+  assert.equal((await service.archiveProperty(scope, "prop-other-ws")).status, "not_found");
+  assert.equal(prisma.properties.find((item: any) => item.id === "prop-a").status, "ready");
+  assert.equal((await service.archiveProperty(scope, "prop-a")).status, "archived");
+  assert.equal((await service.archiveProperty(scope, "prop-a")).status, "not_found");
+  assert.equal(prisma.memoryEvents.filter((event: any) => event.key === "crm.audit").length, 1, "repetir não duplica a auditoria");
+});

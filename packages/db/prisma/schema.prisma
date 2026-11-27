@@ -9,6 +9,21 @@ datasource db {
   provider = "postgresql"
 }
 
+// Technical inbound receipt only: no payload, sender, content or domain relation.
+// Proposed in 8.9.2. Migration/retention policy require review before real activation.
+model WhatsappMetaIngressReceipt {
+  tenantId    String   @db.VarChar(160)
+  workspaceId String   @db.VarChar(160)
+  scope       String   @db.VarChar(64)
+  eventKey    String   @db.Char(64)
+  digest      String   @db.Char(64)
+  receivedAt  DateTime @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@id([tenantId, workspaceId, eventKey])
+  @@index([expiresAt])
+}
+
 // ========================================
 // 🧠 Enums — Execução e Pagamentos
 // (necessários para validação e índices)
@@ -226,6 +241,19 @@ model VerticalAccessApproval {
   scoreRuleVersion  String?   @map("score_rule_version")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @default(now()) @map("updated_at")
+  /// Avaliação gratuita (migration 20261113120000): todas nulas em linhas sem grant. `pre_ativacao` = decisão/aceite sem uso;
+  /// `encerrado` = fim regular por validade (distinto de `revogado`).
+  requestContext    Json?     @map("request_context")
+  grantKind         String?   @map("grant_kind")
+  grantTerms        Json?     @map("grant_terms")
+  grantTermsHash    String?   @map("grant_terms_hash")
+  grantAcceptedBy   String?   @map("grant_accepted_by")
+  grantAcceptedAt   DateTime? @map("grant_accepted_at")
+  grantAcceptedHash String?   @map("grant_accepted_hash")
+  grantStartedAt    DateTime? @map("grant_started_at")
+  grantValidUntil   DateTime? @map("grant_valid_until")
+  grantClosedReason String?   @map("grant_closed_reason")
+  evaluationUsedAt  DateTime? @map("evaluation_used_at")
 
   @@unique([tenantId, workspaceId, vertical], map: "vertical_access_approvals_scope_key")
   @@index([status, updatedAt], map: "vertical_access_approvals_status_idx")
@@ -247,6 +275,7 @@ model VerticalAccessApprovalEvent {
   recommendation String?
   revocationMode String?  @map("revocation_mode")
   channel        String?
+  detail         Json?
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([approvalId, createdAt], map: "vertical_access_approval_events_approval_idx")

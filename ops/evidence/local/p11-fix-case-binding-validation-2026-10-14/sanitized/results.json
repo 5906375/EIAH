@@ -1,0 +1,296 @@
+{
+  "date": "2026-10-14",
+  "status": "parcial",
+  "publication": "local_only_not_published",
+  "originalVerdict": "P11_CASE_BINDING_FIXED_AND_VALIDATED",
+  "originalVerdictScope": "fail-closed binding in the claimOnly branch only; the normal resolve-turn was not changed at that time; historical local validation on the P11 worktree (base 88bb3a2); NOT re-executed against origin/main",
+  "scenarioMatrix": {
+    "header": [
+      "Cenário",
+      "Resultado"
+    ],
+    "rows": [
+      [
+        "A. `caseId` explícito autorizado, 3 turnos encadeados (Ana) e Bruno",
+        "PASS: CASE_A nos 4; nada do B; autoridade correta (Ana somente consulta / Bruno autorizado)"
+      ],
+      [
+        "B. sem `caseId`, \"Batel\" (Ana e Bruno)",
+        "PASS: sem caso, sem marcadores de imóvel, pede identificação; autoridade por pessoa"
+      ],
+      [
+        "B2. sem `caseId`, \"imóvel do Centro\"",
+        "PASS: continua sem caso (não resolve por texto)"
+      ],
+      [
+        "C. ambíguo (\"meu apartamento\", \"campanha para esse imóvel\", \"contratou o Marketing?\")",
+        "PASS: sem vínculo arbitrário"
+      ],
+      [
+        "D. continuidade na UI: 3 turnos + Self-service + retorno + 4º turno (desktop e celular)",
+        "PASS: todos os pedidos `claimOnly` com `caseId` nulo; nenhum caso fixado; cartões restaurados"
+      ],
+      [
+        "E. `caseId` de outro workspace / outro tenant / inexistente",
+        "PASS: negado (`CASE_NOT_IN_SCOPE`), sem fallback, sem marcadores \"SEGREDO\", sem ids de caso"
+      ],
+      [
+        "F1. só etapa `proposal`, sem `caseId`",
+        "PASS: recomendação sem caso (nada do caso lido)"
+      ],
+      [
+        "F2/F3. só etapa `proposal`, `caseId` A e B",
+        "PASS: `STAGE_DENIED` com 200 limpo (sem 500), sem dados"
+      ],
+      [
+        "G. billing, convite, contrato, cadastro, \"bom dia\"",
+        "PASS: `claimed:false` / fluxos do Front Door intactos (UI: 0 reivindicações nos 3 primeiros; cadastro = handoff existente)"
+      ],
+      [
+        "Ana e Bruno em `/app/chat` (desktop e celular), MKT sem caso, sem passar por `/app/imob/chat`",
+        "PASS: cartão sem caso; links de detalhes ao Self-service com retorno à conversa"
+      ],
+      [
+        "Mutações comerciais / banco",
+        "PASS: `blocked-mutations=[]`; snapshot do banco idêntico antes x depois"
+      ],
+      [
+        "Erros de console",
+        "PARCIAL: 404 herdado de `runtime-shadow-state` (handoff IMOB existente)"
+      ]
+    ],
+    "tally": {
+      "PASS": 11,
+      "PARCIAL": 1
+    }
+  },
+  "directedTests": {
+    "files": [
+      {
+        "file": "imob-specialist-bridge.test.ts",
+        "rc": 0,
+        "pass": 28,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "vertical-access-resolver.test.ts",
+        "rc": 0,
+        "pass": 20,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chat-vertical-registry.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chat-vertical-imob-handoff.test.ts",
+        "rc": 0,
+        "pass": 13,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "vertical-access-revocation.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "agents-public-view.contract.test.ts",
+        "rc": 0,
+        "pass": 37,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "createImobStructuredForms.test.ts",
+        "rc": 0,
+        "pass": 126,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chatLauncherEngine.test.ts",
+        "rc": 0,
+        "pass": 112,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "verticalHandoffEngine.test.ts",
+        "rc": 0,
+        "pass": 30,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "frontDoorAccessEngine.test.ts",
+        "rc": 0,
+        "pass": 3,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "frontDoorBillingEngine.test.ts",
+        "rc": 0,
+        "pass": 6,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "FrontDoorSessionHeader.test.tsx",
+        "rc": 0,
+        "pass": 23,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "verticalActivationEngine.test.ts",
+        "rc": 0,
+        "pass": 15,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "ImobChatWidgets.test.tsx",
+        "rc": 0,
+        "pass": 16,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "imobCommandCenterHelper.test.ts",
+        "rc": 0,
+        "pass": 14,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "imob-copilot-conversation.test.ts",
+        "rc": null,
+        "pass": 16,
+        "fail": 2,
+        "note": "falhas preexistentes esperadas (segundo o original)"
+      },
+      {
+        "file": "imob-crm-resolver.test.ts",
+        "rc": null,
+        "pass": 39,
+        "fail": 5,
+        "note": "falhas preexistentes esperadas (segundo o original)"
+      },
+      {
+        "file": "imob-owner-blocker-consult.test.ts",
+        "rc": null,
+        "pass": 2,
+        "fail": 2,
+        "note": "falhas preexistentes esperadas (segundo o original)"
+      }
+    ],
+    "otherLines": [
+      "integration: # pass 32 # fail 0",
+      "typecheck api: fix=430 baseline=430 idênticos=SIM",
+      "typecheck web: fix=62 baseline=62 idênticos=SIM"
+    ],
+    "failuresOnlyInFilesMarkedPreexisting": true
+  },
+  "mutationChecks": "7/7 detected (per original README)",
+  "independentPendingItemsPreserved": {
+    "nota": "rota normal (sem claimOnly); Carla opera só a etapa 'proposal'; casos em 'listing'",
+    "normal_sem_caseId": {
+      "http": 200,
+      "action": "crm.case.pipeline_status",
+      "boundCase": "CASE_B(Centro, mais recente)"
+    },
+    "normal_com_caseId_A": {
+      "http": 500,
+      "action": null
+    }
+  },
+  "independentPendingItemsNote": "items recorded as open at that time (normal resolve-turn without caseId used the most recent case; 500 instead of 403); later work may have changed them; not re-evaluated here",
+  "notDemonstrated": [
+    "behavior of the normal resolve-turn (explicitly out of scope of this stage)",
+    "execution against origin/main or the current IMOB integration branch",
+    "GitHub Actions / CI run",
+    "production or staging deployment",
+    "complete manually accepted journey"
+  ],
+  "originalEvidenceSha256": {
+    "A-01-front-door-entry.png": "3dd474aa5e897e34a88ff5da381e81d047a48f8fbce17ca732e0f0ad58fd6317",
+    "A-02-agent-eiah.png": "3223fb2e87fd326d457d7c93af0371729416ad6f3cda45c85a80f22c5c4575e5",
+    "A-03-divulgacao.png": "69730b967ec2174dc177c243fd526781816389eda6faea93d15c552189dc4ac4",
+    "A-03b-card-mkt.png": "fa15e1e8dcdb663de4c3c70b73c81d4a2218b5c8269dea735031d0bbe75a0381",
+    "A-04-marketing-ajuda.png": "96f96c29fcb7d8b50c1a4e69c90b0cb28a96a0750402f54ebc336ff3afe9d2bb",
+    "A-05-ja-contratou.png": "257c532bb0bd0207a9ab67f82fcbcfc7d9b1f87ea45815a8e06e779c50c9f523",
+    "A-05b-conversa-completa.png": "257c532bb0bd0207a9ab67f82fcbcfc7d9b1f87ea45815a8e06e779c50c9f523",
+    "A-06-protegido-billing.png": "49135c7165274d7c3591ff6b280280905ec6ad1d9608318f5cc2b0fa45af4183",
+    "A-06-protegido-bomdia.png": "ab5768412e8008d5e9f9a7e36ac72d1582b7b4144617ade12120ab03ca4df726",
+    "A-06-protegido-cadastrar.png": "e85ee7183b13bc6e2ef5af960bb28ed1f5f5e64f2dc1d4ad5aa48ff1ab8a284c",
+    "A-06-protegido-contrato.png": "c41b07f47681da3acb508f2bf7d22620d9dcaf8e7b313a35f7487be3605f6af7",
+    "A-06-protegido-convidar.png": "da4aab9121d26b033180aca10aa0397045343c11f40aa873429f5ad1bc179353",
+    "A-07-self-service-mkt.png": "23c5104fcba0f4b6ed53943ffd833eb40197b2c9a4b61251577dadae57329268",
+    "A-08-retorno-a-conversa.png": "cd32ddf8373d1ff08e18c8cac773e6be7d059ccc5b17f5e7fb1be79bce75a7eb",
+    "A-09-continua-apos-retorno.png": "5e0bce143e05b33c7fda67417c33f6b4cdde9d31fbfb9be69b9d078ba38e2d9d",
+    "A-10-mobile-front-door.png": "d353bca16f32727bfcd9ddfc05f140ab4382b9979875542dc56e9253b58c52a5",
+    "A-11-mobile-cartao.png": "fdc4898e49b53de2bc2119cc2e54e1f683036151cf96cbf5681c6d617981e1bf",
+    "A-12-mobile-self-service.png": "658e1b0501ec2573119c9697c4a80f0e39643cadd9f09bc9d1497a1c5c3ddf20",
+    "A-13-mobile-retorno.png": "4a96ab229e833df9f32149f6fe185c7b678360e17862a90ada107e69f81c5b8a",
+    "A-console.txt": "66f24169aa64caa5ab8b184b9ff884d0bf2ab6d8547e064e454152ec627ebfdd",
+    "A-result.json": "0c55163ed9435ee7f49176178976ad245985ee6d4ec9bd8f5dc3ba1af3515ba9",
+    "B-01-front-door-entry.png": "3dd474aa5e897e34a88ff5da381e81d047a48f8fbce17ca732e0f0ad58fd6317",
+    "B-02-agent-eiah.png": "3223fb2e87fd326d457d7c93af0371729416ad6f3cda45c85a80f22c5c4575e5",
+    "B-03-divulgacao.png": "824413ace46b2d8c708ef62deffb30408543051d4fc9e0e9a4294d0140a0ccef",
+    "B-03b-card-mkt.png": "69705689bc0393401e854f3cc89b79faedaf6d1fd6a69fcb3e35b0a774e7144f",
+    "B-04-marketing-ajuda.png": "3ce8f04c0de0a7fffc93f693b9d397d79f098b917cf2258b7ee51644ecb9037a",
+    "B-05-ja-contratou.png": "ed270241554b90eed708ef1234f2c75c680efae3dd56e47263333534189c0d1f",
+    "B-05b-conversa-completa.png": "ed270241554b90eed708ef1234f2c75c680efae3dd56e47263333534189c0d1f",
+    "B-06-protegido-billing.png": "6b10532b5d722beef81e77ef8a941459438f9747f829647347905bb8a0efe37b",
+    "B-06-protegido-bomdia.png": "ab5768412e8008d5e9f9a7e36ac72d1582b7b4144617ade12120ab03ca4df726",
+    "B-06-protegido-cadastrar.png": "b47f1d85e0d5c503e0e33ed666a9e42568fdc1eec6f6c9ab48694bb41734e1bb",
+    "B-06-protegido-contrato.png": "45f5ef5431d8bd17674b06097eae475fd901344300eadd4197b7e0256526b012",
+    "B-06-protegido-convidar.png": "4f75b3c753ea30b8f5ccb916340a8ff2e9a4f5138c23f6074a45003be61b06a3",
+    "B-07-self-service-mkt.png": "8de90445b5b948530172aa60c88e3bdc7736468e6e5e13102d75b0c00b12b461",
+    "B-08-retorno-a-conversa.png": "cd32ddf8373d1ff08e18c8cac773e6be7d059ccc5b17f5e7fb1be79bce75a7eb",
+    "B-09-continua-apos-retorno.png": "359632cb1a3780c0266180fbedf5e2772a4041d5dedd36f769d30d7bb184b86e",
+    "B-10-mobile-front-door.png": "dcd06e9959bcb4bdf5cb808e400f44296386d60bd56223ac056b5db90eb9be52",
+    "B-11-mobile-cartao.png": "a0c3da59066855cb86b2461cb381aa03f3ea218ec6c8a3d5b75efd51a2770716",
+    "B-12-mobile-self-service.png": "0ed88d5a4aafb6bf208ff00c234dee008d10fe6e81e88ad368ddd6a8a83acc45",
+    "B-13-mobile-retorno.png": "2d3b9bcc5b4376ff7342089c93305b2354aa1966b969a671945a7fdccd812cc9",
+    "B-console.txt": "d96d36693224e9427ecfed05794d9410906350a598d3e919ee2f730421367933",
+    "B-result.json": "4b526e11af3a1a9b51761fe1bdda8ebbab295b2fe050f95d1fd4de26fcb23c84",
+    "README.md": "606b37ea9f55e253e215fd33c947805f5831e97b68f075847df7d01d3443d92d",
+    "api_scenarios.json": "4e7e9300e08d0461485a3572f7c8585a8110354fc15ef2c9fd7af3543a43139a",
+    "db_snapshot_0_before.txt": "1cd81b173ead4a45b2c70c591e441d6f2faf3a75347c77667ef831ec52ae44a2",
+    "db_snapshot_after_A.txt": "5b7c9a040bdc75c8bc450876feb4b94e1536323f926a367218bc077b3249210c",
+    "db_snapshot_after_B.txt": "4df8e68fa6263ebc7adfcfaa0e7c5b078d43badb7933bedce0a2602aa4f30891",
+    "git_state_final.txt": "8985bc896e7599e2a59be5492342ea664521d579ef1a4491ecff3516c83b8d47",
+    "logs/FrontDoorSessionHeader.test.tsx.tap": "3f2d8672bb7e84c22614a7dd74b15d99c50379e90040f7d3c791d8d37758931d",
+    "logs/ImobChatWidgets.test.tsx.tap": "e87ea877ee7c46ae3d4b4d6412c94df4e0088ef21a25f7964f97e1313756ff9a",
+    "logs/agents-public-view.contract.test.ts.tap": "0b4f24a944e3b3da5ae51dd9069cedd169dd4a5fe364a39d063c330aceb5b7be",
+    "logs/chat-vertical-imob-handoff.test.ts.tap": "9be6603c058ced023a13cd5c7f8f16a50a3c329cddceaa2e00ea0b944b95e773",
+    "logs/chat-vertical-registry.test.ts.tap": "8133a1d73a628abb5de8140edad13a79feb59472b9974246e1e3e3d7eb3b1a80",
+    "logs/chatLauncherEngine.test.ts.tap": "bca05857abcdf5e404f719083a67f50ad45e0fdc63be7f4278d7194703be04cd",
+    "logs/createImobStructuredForms.test.ts.tap": "4be3d9dd4dd028d6eea3f684cba14c2fc883953fb80831907e3f6cd8da2762ca",
+    "logs/frontDoorAccessEngine.test.ts.tap": "317c45191b4941d8510f690bc3915c31397ad47d275d63795deaaff6a8bdf571",
+    "logs/frontDoorBillingEngine.test.ts.tap": "f863c3bac4b894f7b92d4cfa936cb23f84797d17b65e651344989f3beac4d56f",
+    "logs/imob-copilot-conversation.test.ts.tap": "a80389de2d5fff986b8cfad811f9d0688546cab3e29c710f4158060da7d3b4df",
+    "logs/imob-crm-resolver.test.ts.tap": "a7a47744b4af098b3c5791b19b7790107e726a0ffb91f3b870e185be5614fd4a",
+    "logs/imob-owner-blocker-consult.test.ts.tap": "2a533fb0c9a55939b6c2a012a78836818a934821f85b4572da51b1771a836dd9",
+    "logs/imob-specialist-bridge.test.ts.tap": "c4942324ade97e944dfb70498204d6d029d3857a7eb8bad7fe0dd908cac8e661",
+    "logs/imobCommandCenterHelper.test.ts.tap": "854b0d72d37073b7e7c70f3404ddcd9ec5fd5bbad8277d755c0992e5b309dad7",
+    "logs/marketplace.installations.activate.test.integration.tap": "f595afac54aca7fc857f2debe6ef8ad2cacebdbc0958a2a5aba59447a9ab311a",
+    "logs/vertical-access-resolver.test.ts.tap": "767f538544d58fb97a71587d33e45c5629ab8e1f68b730f59503db83a024a3a4",
+    "logs/vertical-access-revocation.test.ts.tap": "aa990ec86c3ae55efff894156395477e5c0731ef26cecf7c3c148308d552705c",
+    "logs/verticalActivationEngine.test.ts.tap": "a8af93db3e003d6346b23be4ea1c8031d298055e0b73f9b0e0eb1f4a6e7ad1c0",
+    "logs/verticalHandoffEngine.test.ts.tap": "963f8f8591693033350f793639e4e69868ed8f339c7de5c2e1f56a322417f16e",
+    "pendencias_independentes.json": "790367b94ef9ba90d0b245126e679c554ee064b0f7c8beadac232b11e644d21f",
+    "tests_summary.txt": "1571df2ba4d38be75c5c719e21c3a02de3b84c927c4f5b6a8ec90223fdb1a7e1"
+  },
+  "redaction": "scenario matrix and test summary copied with markers; raw api_scenarios.json, browser results/console and screenshots omitted; no user, tenant, workspace or request records copied"
+}

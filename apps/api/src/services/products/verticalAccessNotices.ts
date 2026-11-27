@@ -15,6 +15,9 @@ export const VERTICAL_ACCESS_NOTICE_KINDS = [
   "revogado_bloqueio_total",
   "revogado_sem_nova_ativacao",
   "restaurado",
+  // Avaliação gratuita: o aviso diz só o estado (nunca score, observação nem os termos em si; estes o servidor mostra na conversa).
+  "avaliacao_termos_propostos",
+  "avaliacao_encerrada",
 ] as const;
 export type VerticalAccessNoticeKind = (typeof VERTICAL_ACCESS_NOTICE_KINDS)[number];
 
@@ -34,6 +37,12 @@ export function verticalAccessNoticeMessage(kind: VerticalAccessNoticeKind, vert
       return `A EIAH revogou a liberação do ${vertical} neste workspace: o uso atual continua, mas não há nova ativação.`;
     case "restaurado":
       return `A EIAH restaurou a liberação do ${vertical} neste workspace. O uso volta ao normal.`;
+    case "avaliacao_termos_propostos":
+      // Três etapas distintas: proposta (este aviso), aceite (você responde na conversa) e ativação (só depois do aceite).
+      return `A EIAH propôs condições para a avaliação do ${vertical} neste workspace. Isto é só a proposta: nada foi aceito nem ativado. O acesso só começa depois que você aceitar as condições e confirmar a ativação, aqui na conversa.`;
+    case "avaliacao_encerrada":
+      // Sem afirmar retenção ou acesso aos dados: a política após o término ainda não foi definida.
+      return `A avaliação do ${vertical} neste workspace foi encerrada. Consulte aqui na conversa as condições de encerramento e de acesso aos dados.`;
   }
 }
 

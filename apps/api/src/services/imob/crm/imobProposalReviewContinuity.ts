@@ -44,14 +44,19 @@ export function parseProposalContinuity(operational: unknown, now = Date.now()):
   } };
 }
 
+/** Shared review correlation, not an approval credential or durable consumption mechanism. */
+export function imobDraftReviewRef(nonce: string, parts: unknown[]) {
+  return `q:${nonce}:` + createHash("sha256").update(JSON.stringify([nonce, ...parts])).digest("hex");
+}
+
 function questionRef(pending: NonNullable<ImobProposalContinuityV1["pending"]>, scope: { tenantId: string; workspaceId: string; userId?: string | null }) {
   // Correlation to the authenticated scope; this hash does not grant authority or prove durable freshness.
   const nonce = /^q:([0-9a-f-]{36}):/.exec(pending.ref)?.[1];
   if (!nonce) return null;
-  return `q:${nonce}:` + createHash("sha256").update(JSON.stringify([
-    nonce, scope.tenantId, scope.workspaceId, scope.userId ?? null, pending.contextRef, pending.caseId, pending.threadId, pending.draftRef,
+  return imobDraftReviewRef(nonce, [
+    scope.tenantId, scope.workspaceId, scope.userId ?? null, pending.contextRef, pending.caseId, pending.threadId, pending.draftRef,
     pending.purpose, pending.expiresAt,
-  ])).digest("hex");
+  ]);
 }
 
 export function buildProposalReviewQuestion(params: {
