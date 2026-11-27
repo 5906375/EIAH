@@ -14,6 +14,27 @@ export type ImobCrmEntityType = "lead" | "owner" | "property" | "case";
 
 export type ImobCrmTurnMode = "consult" | "execute";
 
+/** IMOB_CRM owns binding: threadId, message text and a singleton are not caseId.
+ * Guidance and discovery/listing may remain unbound; they never select a case.
+ * No global case operation is exempt from explicit binding.
+ */
+export const IMOB_CASE_BINDING_POLICY = {
+  missingReasonCode: "IMOB_CASE_CONTEXT_MISSING",
+  requiredReads: ["pipeline_status", "blocked_run_resolution", "next_best_action", "lookup", "recent_registration"],
+  independentGuidance: "crm.property.bulk_onboarding_guidance",
+} as const;
+
+export type ImobCaseContextMissingResolution = {
+  mode: "blocked";
+  action: string;
+  caseContext: null;
+  presentation: {
+    text: string;
+    suggestedNextAction: string;
+    metadata: { reasonCode: typeof IMOB_CASE_BINDING_POLICY.missingReasonCode };
+  };
+};
+
 export type ImobCrmConversationState = Record<string, unknown>;
 export type ImobCrmTurnEntitlements = Record<string, unknown>;
 export type ImobCrmRecommendedAction = {

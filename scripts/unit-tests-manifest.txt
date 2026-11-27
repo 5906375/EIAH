@@ -63,6 +63,7 @@ apps/api/src/tests/imob-dedupe-context.e2e.test.ts
 apps/api/src/tests/imob-document-checklist.e2e.test.ts
 apps/api/src/tests/imob-document-handoff.e2e.test.ts
 apps/api/src/tests/imob-enrichment-capture-runtime.test.ts
+apps/api/src/tests/imob-explicit-case-binding.test.ts
 apps/api/src/tests/imob-first-pilot-runtime.test.ts
 apps/api/src/tests/imob-geo-canonicalizer.test.ts
 apps/api/src/tests/imob-governed-intent.test.ts

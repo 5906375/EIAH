@@ -17,6 +17,20 @@ import { resolveImobCaseOperationalConsult } from "../services/imob/crm/imobCrmO
 import { resolveImobCrmOperationalConsult } from "../services/imob/crm/imobCrmResolver";
 import type { ImobCaseContext } from "../services/imob/imobConversationContract";
 
+test("operational case read without explicit binding never reads a case or discovers specialists", async () => {
+  const forbidden = () => { assert.fail("missing binding must stop before reads/discovery"); };
+  const result: any = await resolveImobCaseOperationalConsult(
+    { prisma: { imobCase: { findFirst: forbidden, findMany: forbidden } } as any,
+      tenantId: "tenant-fixture", workspaceId: "workspace-fixture", message: "qual status desse caso?" },
+    { isBulkPropertyOnboardingQuestion: () => false, isImobRecentRegistrationReadRequest: () => false,
+      readBackingSpecialistAvailability: forbidden, readTransversalCapabilities: forbidden } as any,
+    { normalized: "qual status desse caso?", businessReadIntent: "pipeline_status" } as any,
+  );
+  assert.equal(result.mode, "blocked");
+  assert.equal(result.presentation.metadata.reasonCode, "IMOB_CASE_CONTEXT_MISSING");
+  assert.equal(result.caseContext, null);
+});
+
 function buildCaseContext(overrides: Partial<ImobCaseContext> = {}): ImobCaseContext {
   return {
     caseId: "case-1",

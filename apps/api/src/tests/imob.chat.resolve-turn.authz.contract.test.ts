@@ -121,6 +121,30 @@ function returnedCaseId(response: { body: any }): string | null {
   return response.body?.data?.caseContext?.caseId ?? null;
 }
 
+// HTTP 200 is the conversational envelope, not permission to access or mutate a case.
+function assertCaseBindingMissing(response: { status: number; body: any }) {
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.equal(response.body?.data?.mode, "blocked");
+  assert.equal(response.body?.data?.caseContext, null);
+  assert.equal(response.body?.data?.presentation?.metadata?.reasonCode, "IMOB_CASE_CONTEXT_MISSING");
+  assertNoLeak(response, ...Object.values(cases).map((item) => item.id), ...Object.values(marker));
+}
+
+// Real disposable DB snapshots complement the no-read/no-dispatch route-double assertions.
+// Access audit rows may legitimately be appended; domain records and runs must not change.
+async function bindingOperationalState() {
+  const where = { tenantId, workspaceId };
+  const orderBy = { id: "asc" as const };
+  return {
+    cases: await prismaGlobal.imobCase.findMany({ where, orderBy, include: { events: { orderBy } } }),
+    owners: await prismaGlobal.imobOwner.findMany({ where, orderBy }),
+    properties: await prismaGlobal.imobProperty.findMany({ where, orderBy }),
+    leads: await prismaGlobal.imobLead.findMany({ where, orderBy }),
+    runs: await prismaGlobal.run.findMany({ where, orderBy }),
+  };
+}
+
 function deniedAuditRows() {
   return prismaGlobal.guardrailAuditLedger.count({ where: { tenantId, workspaceId, eventType: "imob.access_denied" } }) as Promise<number>;
 }
@@ -316,16 +340,19 @@ test("C2: leitor de caso com permissão de etapa (usado em todos os pontos de se
   assert.equal(await scopedImobCases(prismaGlobal, () => false).findFirst(latest), null, "sem nenhuma etapa permitida, nada é devolvido");
 });
 
-// D — sem caseId, acesso legítimo preservado: quem tem todas as etapas continua recebendo o caso mais recente.
-test("D: sem caseId, perfil com todas as etapas continua recebendo o caso mais recente; perfil limitado recebe o caso autorizado", async () => {
-  const admin = await resolveTurn(users.admin.token, { message: STATUS_MESSAGE });
-  assert.equal(admin.status, 200);
-  assert.ok(serialized(admin).includes(cases.denied.id) || serialized(admin).includes(marker.denied), "perfil com etapa '*' mantém o comportamento de caso mais recente");
+// D — wildcard stage access does not select a case; legitimate explicit access remains valid.
+test("D: sem caseId, admin e perfil limitado recebem bloqueio de binding, sem seleção ou mutação", async () => {
+  const before = await bindingOperationalState();
+  for (const token of [users.admin.token, users.limited.token]) {
+    const response = await resolveTurn(token, { message: STATUS_MESSAGE });
+    assertCaseBindingMissing(response);
+  }
+  assert.deepEqual(await bindingOperationalState(), before, "missing binding changes no domain record, event or run");
 
-  const limited = await resolveTurn(users.limited.token, { message: STATUS_MESSAGE });
-  assert.equal(limited.status, 200);
-  assert.ok(serialized(limited).includes(cases.allowed.id) || serialized(limited).includes(marker.allowed), "perfil limitado enxerga o caso da etapa autorizada");
-  assertNoLeak(limited, cases.denied.id, marker.denied);
+  const explicit = await resolveTurn(users.admin.token, { caseId: cases.denied.id, message: STATUS_MESSAGE });
+  assert.equal(explicit.status, 200);
+  assert.ok(serialized(explicit).includes(cases.denied.id) || serialized(explicit).includes(marker.denied),
+    "wildcard stage access remains valid when the case is explicitly bound");
 });
 
 // E — caso de outro workspace (mesmo tenant): negado/ausente, sem vazamento nem fallback.
@@ -386,28 +413,29 @@ test("H: falha interna genuína continua 500 INTERNAL_ERROR (não vira 403)", as
 });
 
 // I — sem desvio por recuperação de contexto, threadId, id na mensagem ou continuação de conversa.
-test("I: threadId, id na mensagem e contexto de conversa não contornam a etapa negada", async () => {
-  const byThread = await resolveTurn(users.limited.token, { threadId: cases.denied.threadId, message: STATUS_MESSAGE });
-  assertStageDenied(byThread);
-  assertNoLeak(byThread, cases.denied.id, marker.denied);
+test("I: threadId, id na mensagem e contexto de conversa não concedem binding nem autoridade", async () => {
+  const before = await bindingOperationalState();
+  const attempts = [
+    { threadId: cases.denied.threadId, message: STATUS_MESSAGE },
+    { message: `qual status do caso ${cases.denied.id}?` },
+    { message: STATUS_MESSAGE, threadState: { operational: { caseId: cases.denied.id, caseStage: STAGE_DENIED } } },
+  ];
+  for (const body of attempts) {
+    const response = await resolveTurn(users.limited.token, body);
+    assertCaseBindingMissing(response);
+    assert.deepEqual(await bindingOperationalState(), before, "unbound input changes no domain record, event or run");
+  }
 
-  const byMessage = await resolveTurn(users.limited.token, { message: `qual status do caso ${cases.denied.id}?` });
-  assert.notEqual(byMessage.status, 500);
-  assertNoLeak(byMessage, marker.denied);
-  assert.notEqual(returnedCaseId(byMessage), cases.denied.id);
-
-  const byContext = await resolveTurn(users.limited.token, {
-    message: STATUS_MESSAGE,
-    threadState: { operational: { caseId: cases.denied.id, caseStage: STAGE_DENIED } },
-  });
-  assert.notEqual(byContext.status, 500);
-  assertNoLeak(byContext, marker.denied);
-  assert.notEqual(returnedCaseId(byContext), cases.denied.id);
-
+  // Preserve the original continuation probe without assuming its semantic classification.
   const continuation = await resolveTurn(users.limited.token, { message: "e o que falta nele?" });
   assert.notEqual(continuation.status, 500);
-  assertNoLeak(continuation, marker.denied);
+  assertNoLeak(continuation, cases.denied.id, marker.denied);
   assert.notEqual(returnedCaseId(continuation), cases.denied.id);
+  assert.deepEqual(await bindingOperationalState(), before, "continuation does not recover authority or mutate domain state");
+
+  const explicitDenied = await resolveTurn(users.limited.token, { caseId: cases.denied.id, message: STATUS_MESSAGE });
+  assertStageDenied(explicitDenied);
+  assertNoLeak(explicitDenied, cases.denied.id, marker.denied);
 });
 
 test("I2: ação direcionada por actionId em caso de etapa negada é negada", async () => {
