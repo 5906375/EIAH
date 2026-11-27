@@ -5,6 +5,7 @@ import {
   type RecipeOrchestration,
   type RecipeOrchestrationAgentKey,
 } from "@eiah/core/actions/reporting/recipeOrchestrationSchema";
+import { VERTICAL_GOVERNANCE_NOT_EVALUATED } from "../services/runGovernanceMetadata";
 
 type PlainObject = Record<string, unknown>;
 
@@ -131,15 +132,15 @@ function extractGovernanceContext(metadata: PlainObject) {
   return {
     tenantIdPresent: raw.tenantIdPresent !== false,
     workspaceIdPresent: raw.workspaceIdPresent !== false,
-    rbacEvaluated: raw.rbacEvaluated === true,
-    entitlementEvaluated: raw.entitlementEvaluated === true,
+    rbacEvaluated: false,
+    entitlementEvaluated: false,
     trustScoreEvaluated: raw.trustScoreEvaluated === true,
     costGuardEvaluated: raw.costGuardEvaluated === true,
-    policyDecision:
-      raw.policyDecision === "denied" || raw.policyDecision === "needs_review"
-        ? (raw.policyDecision as "denied" | "needs_review")
-        : ("allowed" as const),
-    reasonCode: asTrimmedString(raw.reasonCode),
+    policyDecision: raw.policyDecision === "denied" ? ("denied" as const) : ("not_evaluated" as const),
+    reasonCode:
+      raw.policyDecision === "denied"
+        ? asTrimmedString(raw.reasonCode)
+        : VERTICAL_GOVERNANCE_NOT_EVALUATED,
     trustScore: typeof raw.trustScore === "number" && Number.isFinite(raw.trustScore) ? raw.trustScore : null,
     trustLevel:
       raw.trustLevel === "high" || raw.trustLevel === "medium" || raw.trustLevel === "low"
@@ -799,8 +800,8 @@ export function buildRecipeOrchestration(params: BuildRecipeOrchestrationParams)
     entitlementEvaluated: false,
     trustScoreEvaluated: false,
     costGuardEvaluated: typeof params.costCents === "number",
-    policyDecision: "allowed" as "allowed" | "denied" | "needs_review",
-    reasonCode: null as string | null,
+    policyDecision: "not_evaluated" as "denied" | "not_evaluated",
+    reasonCode: VERTICAL_GOVERNANCE_NOT_EVALUATED as string | null,
   };
   const governanceContext = extractGovernanceContext(params.metadata);
 

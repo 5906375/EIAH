@@ -4,7 +4,11 @@ import { formatBRL } from "@/lib/formatters";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiErrorMessage,
   apiGetAgentBillingSummary,
+  apiGetVerticalAccess,
+  apiRequestVerticalAccess,
+  type VerticalAccessClientView,
   apiGetSessionContext,
   apiGetTenantBillingSummary,
   apiListMarketplaceInstallations,
@@ -13,11 +17,35 @@ import {
 } from "@/lib/api";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { updateSession, useSession } from "@/state/sessionStore";
+import { syncSessionContext, beginSessionContextRequest } from "@/state/sessionContextSync";
+import { VerticalAccessNotices } from "@/components/verticalAccess/VerticalAccessNotices";
 
 function hasActiveImobInstall(items: Array<{ product: string; status: string }>) {
   return items.some(
     (item) => item.product.trim().toUpperCase() === "IMOB" && item.status.trim().toLowerCase() === "active"
   );
+}
+
+/** ADR-011: texto do estado da liberação pela EIAH. */
+function describeVerticalAccess(access: VerticalAccessClientView | null) {
+  if (!access) return "—";
+  const since = access.requestedAt ? ` desde ${new Date(access.requestedAt).toLocaleString("pt-BR")}` : "";
+  switch (access.status) {
+    case "aprovado":
+      return "liberado pela EIAH";
+    case "pendente":
+    case "em_analise":
+    case "aguardando_humano":
+      return `pedido em análise pela EIAH${since}`;
+    case "recusado":
+      return "não liberado pela EIAH";
+    case "revogado":
+      if (access.usage === "read_only") return "liberação revogada pela EIAH: somente consulta, os dados estão preservados";
+      if (access.usage === "blocked") return "liberação revogada pela EIAH: acesso bloqueado, os dados estão preservados";
+      return "liberação revogada pela EIAH: o uso atual continua, sem nova ativação";
+    default:
+      return "ainda não solicitado";
+  }
 }
 
 function averageCostPerRun(item: { costCents: number; runs: number } | null | undefined) {
@@ -32,6 +60,8 @@ const ImobMarketplacePage: React.FC = () => {
   const [activating, setActivating] = React.useState(false);
   const [isInstalled, setIsInstalled] = React.useState(false);
   const [activatedAt, setActivatedAt] = React.useState<string | null>(null);
+  const [access, setAccess] = React.useState<VerticalAccessClientView | null>(null);
+  const [requestingAccess, setRequestingAccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [billingSummary, setBillingSummary] = React.useState<TenantBillingSummary | null>(null);
@@ -42,13 +72,16 @@ const ImobMarketplacePage: React.FC = () => {
   const refreshStatus = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    const contextRequest = beginSessionContextRequest();
     try {
-      const [installations, context, billing, agents] = await Promise.all([
+      const [installations, context, billing, agents, accessResponse] = await Promise.all([
         apiListMarketplaceInstallations(),
         apiGetSessionContext().catch(() => null),
         apiGetTenantBillingSummary().catch(() => null),
         apiGetAgentBillingSummary({ workspaceId: session.workspaceId }).catch(() => null),
+        apiGetVerticalAccess("IMOB").catch(() => null),
       ]);
+      setAccess(accessResponse?.data ?? null);
       setBillingSummary(billing?.data ?? null);
       setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
@@ -60,7 +93,7 @@ const ImobMarketplacePage: React.FC = () => {
       );
       setActivatedAt(last?.activatedAt ?? null);
 
-      if (context?.ok && context.data) {
+      if (contextRequest.isCurrent() && context?.ok && context.data) {
         updateSession({
           activeDomain: context.data.activeDomain,
           availableDomains: context.data.availableDomains,
@@ -79,6 +112,7 @@ const ImobMarketplacePage: React.FC = () => {
       const message = err instanceof Error ? err.message : "Falha ao consultar status do IMOB";
       setError(message);
     } finally {
+      contextRequest.finish();
       setLoading(false);
     }
   }, [session.workspaceId]);
@@ -97,27 +131,18 @@ const ImobMarketplacePage: React.FC = () => {
       setActivatedAt(response.installation.activatedAt ?? null);
       setNotice("IMOB ativado com sucesso para este workspace.");
 
-      const imobContext = await apiGetSessionContext("imob");
-      if (imobContext.ok && imobContext.data) {
-        updateSession({
-          activeDomain: imobContext.data.activeDomain,
-          availableDomains: imobContext.data.availableDomains,
-          entitlements: imobContext.data.entitlements,
-          installedProducts: (imobContext.data.productInstallations ?? []).map((entry) => entry.product),
-          roles: imobContext.data.roles,
-          branding: {
-            brandName: imobContext.data.branding.brandName,
-            logoUrl: imobContext.data.branding.logoUrl,
-            primaryColor: imobContext.data.branding.primaryColor,
-            workspaceLabel: imobContext.data.branding.workspaceLabel,
-          },
-        });
+      try {
+        await syncSessionContext("imob");
+      } catch {
+        setNotice("O IMOB foi ativado, mas não consegui atualizar o contexto local da sessão. Atualize a página para sincronizar a conversa.");
+        return;
       }
 
-      navigate("/app/imob/chat?domain=imob", { replace: true });
+      // ADR-010: depois de ativar, a conversa segue no front door com o IMOB ativo.
+      navigate("/app/chat", { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Falha ao ativar IMOB (${err.status}).`);
+        setError(apiErrorMessage(err) ?? `Falha ao ativar IMOB (${err.status}).`);
       } else {
         setError(err instanceof Error ? err.message : "Falha ao ativar IMOB");
       }
@@ -125,6 +150,32 @@ const ImobMarketplacePage: React.FC = () => {
       setActivating(false);
     }
   };
+
+  const handleRequestAccess = async () => {
+    setRequestingAccess(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await apiRequestVerticalAccess({ vertical: "IMOB" });
+      setAccess(response.data);
+      setNotice(
+        response.data.outcome === "already_approved"
+          ? "O IMOB já está liberado pela EIAH. Pode ativar."
+          : "Pedido de liberação enviado. A EIAH vai analisar e você verá a resposta aqui.",
+      );
+    } catch (err) {
+      setError(apiErrorMessage(err) ?? "Não foi possível enviar o pedido de liberação.");
+    } finally {
+      setRequestingAccess(false);
+    }
+  };
+
+  const accessApproved = access?.status === "aprovado";
+
+  // ADR-011 §2.5: com bloqueio total pela EIAH, a instalação continua, mas nada do IMOB abre.
+
+  const accessBlocked = isInstalled && access?.usage === "blocked";
+  const accessInReview = access ? ["pendente", "em_analise", "aguardando_humano"].includes(access.status) : false;
 
   const activeWorkspaceBilling = React.useMemo(
     () => billingSummary?.byWorkspace.find((item) => item.workspaceId === session.workspaceId) ?? null,
@@ -142,6 +193,7 @@ const ImobMarketplacePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <VerticalAccessNotices />
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
         <p className="text-xs uppercase tracking-[0.35em] text-accent">Marketplace</p>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">IMOB Network</h1>
@@ -173,6 +225,9 @@ const ImobMarketplacePage: React.FC = () => {
                 Status: <span className="text-foreground">{isInstalled ? "ativo" : "não instalado"}</span>
               </p>
               <p>
+                Liberação EIAH: <span className="text-foreground">{describeVerticalAccess(access)}</span>
+              </p>
+              <p>
                 Ativado em: <span className="text-foreground">{activatedAt ? new Date(activatedAt).toLocaleString("pt-BR") : "—"}</span>
               </p>
               <p>
@@ -188,14 +243,36 @@ const ImobMarketplacePage: React.FC = () => {
           ) : null}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {isInstalled ? (
+            {accessBlocked ? (
+              <p className="text-xs text-amber-200">
+                O acesso ao IMOB está bloqueado pela EIAH neste workspace. Os dados estão preservados.
+              </p>
+            ) : isInstalled ? (
               <button
                 type="button"
-                onClick={() => navigate("/app/imob/chat?domain=imob")}
+                onClick={() => navigate("/app/chat?vertical=imob")}
                 className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30"
               >
                 Abrir IMOB
               </button>
+            ) : !accessApproved ? (
+              <div className="space-y-2">
+                <p className="text-xs text-amber-200">
+                  {accessInReview
+                    ? "A EIAH está analisando o pedido de liberação. A ativação fica disponível depois da aprovação."
+                    : "Antes de ativar, a EIAH precisa liberar o IMOB para este workspace."}
+                </p>
+                {!accessInReview ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestAccess()}
+                    disabled={requestingAccess}
+                    className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {requestingAccess ? "Enviando..." : "Solicitar liberação"}
+                  </button>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-amber-200">
@@ -224,7 +301,14 @@ const ImobMarketplacePage: React.FC = () => {
             </button>
           </div>
 
-          {notice ? <p className="mt-4 text-sm text-emerald-300">{notice}</p> : null}
+          {notice ? (
+            <div className="mt-4 space-y-2 text-sm text-emerald-300">
+              <p>{notice}</p>
+              {isInstalled && !accessBlocked ? (
+                <Link to="/app/chat" className="text-accent underline underline-offset-4">Continuar conversa</Link>
+              ) : null}
+            </div>
+          ) : null}
           {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
         </article>
 
@@ -249,11 +333,13 @@ const ImobMarketplacePage: React.FC = () => {
             )}
             {topAgent ? <p className="text-xs text-muted-foreground">Agente dominante no workspace: {topAgent.agent}</p> : null}
           </div>
+          {isInstalled && !accessBlocked ? (
+          <>
           <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
             <li>
-              <Link to="/app/imob/chat?domain=imob" className="text-accent underline underline-offset-4 hover:text-accent/80">
-                Chat Operacional
+              <Link to="/app/chat?vertical=imob" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Atendimento IMOB no EIAH
               </Link>
             </li>
             <li>
@@ -272,6 +358,8 @@ const ImobMarketplacePage: React.FC = () => {
               </Link>
             </li>
           </ul>
+          </>
+          ) : null}
         </aside>
       </section>
 
@@ -289,7 +377,7 @@ const ImobMarketplacePage: React.FC = () => {
         </div>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {IMOB_BUSINESS_QUICK_ACTIONS.map((item) => {
-            const target = isInstalled
+            const target = isInstalled && !accessBlocked
               ? `/app/imob/chat?domain=imob&autoprompt=${encodeURIComponent(item.autoprompt)}`
               : "/app/marketplace/imob";
             return (
@@ -301,7 +389,7 @@ const ImobMarketplacePage: React.FC = () => {
                 <p className="text-sm font-semibold text-foreground">{item.title}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{item.summary}</p>
                 <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-accent">
-                  {isInstalled ? "Abrir no chat IMOB" : "Ativar IMOB para usar"}
+                  {accessBlocked ? "Bloqueado pela EIAH" : isInstalled ? "Abrir no chat IMOB" : "Ativar IMOB para usar"}
                 </p>
               </Link>
             );

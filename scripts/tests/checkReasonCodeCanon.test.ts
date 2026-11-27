@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -6,7 +7,9 @@ import {
   type ReasonCodeDefinition,
 } from "../../packages/core/src/reasons/reasonCatalog.js";
 import {
+  ACTION_POLICY_REASON_CODE_SOURCE,
   CANONICAL_REASON_CODE_SOURCE,
+  validateActionPolicyReasonCodeBoundary,
   validateCanonicalSourcePointer,
   validateDocumentedReasonCodeCatalog,
   validateReasonCodeCatalog,
@@ -69,7 +72,7 @@ test("keeps MCP policy additions proposed and ratified DB input active", () => {
   }
 
   assert.equal(definitions.get("DB_SCOPE_VIOLATION")?.status, "proposed");
-  assert.equal(definitions.get("POLICY_NOT_FOUND")?.status, "proposed");
+  assert.equal(definitions.get("POLICY_NOT_FOUND")?.status, "active");
   const proposedCodes = [
     "MCP_POLICY_REFERENCE_MISSING",
     "MCP_POLICY_TARGET_NOT_FOUND",
@@ -95,6 +98,42 @@ test("keeps MCP policy additions proposed and ratified DB input active", () => {
   assert.equal(
     dbInputInvalid?.evidenceRef,
     "docs/ops/reason-codes-catalog.md#ratificacao-rc-db-1a-2026-07-28",
+  );
+});
+
+test("keeps the ratified Action Policy boundary mapped to active canonical codes", () => {
+  const source = readFileSync(ACTION_POLICY_REASON_CODE_SOURCE, "utf8");
+  const actionPolicyCodes = [
+    "POLICY_NOT_FOUND",
+    "ACTION_POLICY_SCOPE_DENIED",
+    "ACTION_POLICY_DISABLED",
+    "ACTION_POLICY_STORE_UNAVAILABLE",
+    "RUN_SCOPE_NOT_RESOLVED",
+  ] as const;
+
+  for (const code of actionPolicyCodes) {
+    const definition = REASON_CODE_CATALOG.find((entry) => entry.code === code);
+    assert.equal(definition?.status, "active");
+    assert.equal(definition?.owner, "Execution governance / Action Policy");
+    assert.deepEqual(definition?.approver, {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    });
+  }
+  assert.deepEqual(
+    validateActionPolicyReasonCodeBoundary(source, REASON_CODE_CATALOG),
+    [],
+  );
+
+  const drifted = source.replace(
+    'WORKSPACE_SCOPE_MISMATCH: "ACTION_POLICY_SCOPE_DENIED"',
+    'WORKSPACE_SCOPE_MISMATCH: "POLICY_NOT_FOUND"',
+  );
+  assert.equal(
+    validateActionPolicyReasonCodeBoundary(drifted, REASON_CODE_CATALOG).some(
+      (entry) => entry.code === "ACTION_POLICY_REASON_CODE_MAPPING_DRIFT",
+    ),
+    true,
   );
 });
 

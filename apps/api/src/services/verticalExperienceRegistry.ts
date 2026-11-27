@@ -1,6 +1,8 @@
+import type { LogisticaContextAccess } from "@eiah/contracts";
 import { buildVerticalExperienceContract } from "../types/verticalExperienceContract";
 
 export function resolveVerticalExperienceRegistry(params: {
+  logisticaAccess?: LogisticaContextAccess;
   installedProducts: Array<{ product: string; status: string }>;
 }) {
   const installedProducts = params.installedProducts
@@ -17,7 +19,7 @@ export function resolveVerticalExperienceRegistry(params: {
       installedProduct: "IMOB",
       rolloutStage: hasImob ? "operationalized" : "context_only",
       enabled: hasImob,
-      frontDoorSurface: hasImob ? "imob_chat" : null,
+      frontDoorSurface: hasImob ? "chat" : null,
       operationalHubSurface: hasImob ? "imob_dashboard" : null,
       governanceHubSurface: hasImob ? "marketplace" : null,
       investigationSurfaces: hasImob ? ["imob_dashboard", "billing"] : [],
@@ -48,6 +50,14 @@ export function resolveVerticalExperienceRegistry(params: {
       governanceHubSurface: null,
       investigationSurfaces: [],
       contextSpecRef: "docs/architecture/vertical-mvp-data-model-and-screens-template.md",
+    }),
+    buildVerticalExperienceContract({
+      verticalId: "LOGISTICA", label: "Logística & Comex", activeDomain: "logistica",
+      installedProduct: "LOGISTICA", rolloutStage: "context_only",
+      enabled: params.logisticaAccess?.allowed === true,
+      frontDoorSurface: params.logisticaAccess?.allowed ? "chat" : null,
+      operationalHubSurface: null, governanceHubSurface: null, investigationSurfaces: [],
+      contextSpecRef: "docs/ops/oraculo-jornada-acesso-core-2026-10-16.md",
     }),
   ];
 }

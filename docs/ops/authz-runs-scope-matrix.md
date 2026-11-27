@@ -59,3 +59,5 @@ Essas pendências não reabrem as escolhas de scopes registradas; delimitam sua 
 ## 5. Limites da publicação
 
 Rotas de leitura já protegidas permanecem fora desta unidade. Este PR publica documentação; não concede scopes a usuários, tokens ou participantes, não modifica a política de risco e não autoriza piloto. A ratificação arquitetural da ADR é acompanhada em [registro próprio](adr-002-v2-r3-ratification-record.md).
+
+Continuidade documental — 27/11/2026. A conferência e as pendências acima referem-se à baseline histórica `11805d1934573281e2787c2442b546c172b76947`. A main reconciliada para esta publicação é `329502cef041acb1764f46f377f3a9fc0a5f5630`. As evoluções posteriores de autoridade persistida no worker, identificadas na reconciliação TWDG aceita, devem ser preservadas. Esta nota não reaudita sua implementação nem declara AUTHZ-RUNS integralmente concluída. As escolhas históricas de scopes permanecem registradas, sem concessão de permissões, autorização de implementação ou liberação do piloto.

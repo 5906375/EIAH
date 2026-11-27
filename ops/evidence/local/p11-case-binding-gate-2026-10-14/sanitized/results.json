@@ -1,0 +1,157 @@
+{
+  "date": "2026-10-14",
+  "status": "parcial",
+  "publication": "local_only_not_published",
+  "originalVerdict": "P11_CASE_BINDING_AND_GOVERNANCE_BLOCKED",
+  "originalVerdictScope": "historical gate on the P11 worktree (16 uncommitted files, base 88bb3a2); nothing was fixed in this stage; NOT re-executed against origin/main",
+  "scenarioMatrix": {
+    "header": [
+      "Cenário",
+      "Esperado",
+      "Observado",
+      "Resultado"
+    ],
+    "rows": [
+      [
+        "A. `caseId`=A explícito, 3 turnos encadeados",
+        "vincula A; nada do B; `caseId` preservado",
+        "A1/A2/A3 → CASE_A; só marcador \"Batel\"; próximo passo do A",
+        "**PASS**"
+      ],
+      [
+        "B. sem `caseId`, \"divulgar o apartamento do Batel\"",
+        "achar o A por referência confiável, ou pedir esclarecimento/recomendação genérica; NUNCA vincular ao B em silêncio",
+        "vinculou **CASE_B (Centro)** (Ana e Bruno); card mostra \"Próximo passo: ativar anúncio do imóvel do Centro\"; texto \"usando o imóvel deste caso\"; nenhuma menção ao Batel",
+        "**FAIL**"
+      ],
+      [
+        "B2. sem `caseId`, \"…imóvel do Centro\"",
+        "—",
+        "CASE_B (coincide por ser o mais recente, não por referência)",
+        "informativo"
+      ],
+      [
+        "C. ambíguo \"Quero divulgar meu apartamento.\" / \"campanha para esse imóvel\"",
+        "não escolher arbitrariamente",
+        "vinculou CASE_B nos dois",
+        "**FAIL**"
+      ],
+      [
+        "D. continuidade: 3 turnos + Self-service + retorno (UI)",
+        "contexto estável",
+        "o `caseId` ficou estável (CASE_B) em todos os turnos e após ir ao Self-service e voltar; MAS o 4º turno (\"Batel\") continuou preso ao B",
+        "continuidade PASS; correção do vínculo **FAIL**"
+      ],
+      [
+        "E1. `caseId` de outro workspace (mesmo tenant)",
+        "sem acesso/vazamento",
+        "sem vazamento de dados do outro workspace; porém caiu no CASE_B (fallback silencioso)",
+        "vazamento **PASS** / vínculo **FAIL**"
+      ],
+      [
+        "E2. `caseId` de outro tenant",
+        "idem",
+        "idem",
+        "vazamento PASS / vínculo FAIL"
+      ],
+      [
+        "E3. `caseId` inexistente",
+        "recusar ou pedir esclarecimento",
+        "caiu no CASE_B",
+        "**FAIL**"
+      ],
+      [
+        "F1. usuária só com etapa `proposal`, sem `caseId`",
+        "não ver caso de etapa que não opera",
+        "recebeu o card do CASE_B (etapa `listing`)",
+        "**FAIL** (governança)"
+      ],
+      [
+        "F2. idem com `caseId`=B explícito",
+        "negar (403)",
+        "500 (fail-closed; bug preexistente de código de erro)",
+        "fail-closed; código incorreto"
+      ],
+      [
+        "Isolamento",
+        "nenhum dado de outro workspace/tenant",
+        "marcadores \"SEGREDO/Ecoville/Água Verde\" nunca apareceram",
+        "**PASS**"
+      ],
+      [
+        "Banco/efeitos",
+        "nenhuma escrita comercial",
+        "verificado nos testes P11; este gate só lê",
+        "**PASS**"
+      ]
+    ]
+  },
+  "scenariosWithFailRecordedAsHistoricalFail": [
+    "B",
+    "C",
+    "D",
+    "E1",
+    "E2",
+    "E3",
+    "F1"
+  ],
+  "scenariosWithPassOnly": [
+    "A",
+    "Isolamento",
+    "Banco/efeitos"
+  ],
+  "guardsReview": "both access guards (vertical.access.v1 and chat.vertical_handoff.v2) reviewed without own divergence or bypass; findings are in the conversation-to-case binding (see guards_review.md)",
+  "stagePermissionCheck": {
+    "nota": "Usuária Carla: imob.chat.use + SOMENTE a etapa 'proposal'; os casos estão na etapa 'listing'.",
+    "resolveTurn_normal_sem_caseId": {
+      "http": 200,
+      "action": "crm.case.pipeline_status",
+      "bound": "CASE_B(Centro, mais recente)",
+      "stage": "listing",
+      "nextStep": "ativar anúncio do imóvel do Centro"
+    },
+    "resolveTurn_normal_com_caseId_B": {
+      "http": 500,
+      "action": null,
+      "bound": null,
+      "stage": null,
+      "nextStep": null
+    },
+    "claimOnly_sem_caseId": {
+      "http": 200,
+      "action": "crm.case.transversal.request_capability",
+      "bound": "CASE_B(Centro, mais recente)",
+      "stage": "listing",
+      "nextStep": "ativar anúncio do imóvel do Centro"
+    },
+    "claimOnly_com_caseId_B": {
+      "http": 500,
+      "action": null,
+      "bound": null,
+      "stage": null,
+      "nextStep": null
+    }
+  },
+  "notDemonstrated": [
+    "correction of the binding (not implemented in this stage)",
+    "execution against origin/main or the current IMOB integration branch",
+    "GitHub Actions / CI run",
+    "production or staging deployment"
+  ],
+  "originalEvidenceSha256": {
+    "README.md": "0503df9804c999ceebaca6fe0028c14683a5436a40cf20324f2f27ab07be09ff",
+    "api_scenarios.json": "8789b6d5dda8ba6cefc78e425e0338f12bf30df3435cbc4e5e0ad81be1777beb",
+    "git_state_0_before.txt": "a56a54aad2ee36e2c8e5faa3679dc6c21d7f7b59b4f58eff39a5b96a9ad8dd22",
+    "git_state_1_after.txt": "06090fe305ec861538f70ba92d158d1c356c81d83ca0108b14b3b26832ae8456",
+    "guards_review.md": "f3ea6bc4fbd6a9f97b5b25aa7f13b1f107fedaae2cb5c2bad08f4210bb31df51",
+    "stage_permission_check.json": "464778280079f224b45f8eaf1ee6f9d4487b1bc7dfb8660616bc98e9deffa434",
+    "ui-01-batel-sem-caseid.png": "625d514e08a5003bb68f0c6faaf8dca66a6dc82c82c64b63871605ab150c3280",
+    "ui-02-ambiguo.png": "e8ee7480f47e2a47ad83a5eac0b364cf9ad9751f232b8ab9f26e26ac106952c9",
+    "ui-03-terceiro-turno.png": "69443059bfd36f1f79d4ca99f6e12a5430d6c187a82586a4e6d624db329f43ab",
+    "ui-04-self-service.png": "fd01f6e5e5e7e697cab9f1181078ea71105b705380cb67555374abdda95f4de6",
+    "ui-05-retorno.png": "7eb06471ac65c15137ab4b920e02d5feb01bc754ebfbf0377d7b9ba7e2d11f59",
+    "ui-06-turno-apos-retorno.png": "c79b19ba6a3885054f5fbdc2101aca39cc54fa08bc110e36a37bbeb63df89f2a",
+    "ui_scenarios.json": "4cf438c669492312f30eb42131fe40e316ce496c69c28916876dc34fe6f25ca6"
+  },
+  "redaction": "scenario matrix copied from the original README with markers; raw api_scenarios.json/ui_scenarios.json and screenshots omitted; no user, tenant, workspace or request records copied"
+}

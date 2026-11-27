@@ -122,6 +122,25 @@ deve pertencer a um agente específico e ser executada pelo engine.
 
 O `ChatAgentLauncher` não pode receber regra cognitiva nova diretamente.
 
+### Disciplina transversal de entrada semântica
+
+O usuário se expressa naturalmente; a EIAH interpreta semanticamente. A disciplina vale para todas as superfícies destinadas a significado humano, agentes e verticais atuais e futuros. Aplicar o princípio normativo do Track P no roadmap vigente e a [especificação canônica de entrada agêntica](docs/architecture/agent-chat-runtime.md#entrada-agêntica-linguagem-natural-e-validação-determinística).
+
+Antes de criar regex, parser ou heurística para interpretar linguagem do usuário:
+
+1. classificar a entrada como **semântica**, **canônica** ou **híbrida**, pela finalidade do conteúdo, não pelo widget;
+2. identificar o agente/vertical dono da intenção e de sua política de ambiguidade;
+3. localizar o intake/runtime contextual existente;
+4. verificar como provider/model participa pela arquitetura central, respeitando policy, disponibilidade, contexto, entitlement, escopo e governança;
+5. estruturar intenção, slots, entidades e draft no domínio pelo intake agêntico, quando a entrada for semântica ou híbrida;
+6. aplicar parser/schema/validator depois da interpretação, quando aplicável; para entrada canônica, normalizar e validar o valor informado;
+7. preservar valores canônicos verificáveis, sem inventar informações ausentes;
+8. em ambiguidade material ou confiança insuficiente antes de write, exigir clarificação/HITL no próprio Front Door e zero side effects da operação solicitada.
+
+Não transformar parser determinístico em substituto do intake agêntico nem obrigar o usuário a aprender sua sintaxe. Não usar IA para inventar identificadores ou valores canônicos ausentes, nem para flexibilizar invariantes determinísticos. Exemplos, placeholders e helpers são ajuda de UX, não gramática obrigatória.
+
+Heurísticas de segurança podem bloquear risco como safety nets; não assumem a compreensão semântica principal. Indisponibilidade de provider/model não autoriza fallback silencioso para persistência ou outra operação. Launcher/formulário coleta e renderiza; qualquer evolução cognitiva segue contrato do agente e engine.
+
 ---
 
 ## 7. Sequência obrigatória para mudanças no chat
@@ -155,6 +174,32 @@ Adicionar comportamento novo diretamente no ChatAgentLauncher.
 8. Não declarar compatibilidade sem baseline versionado e CI.
 9. Não criar breaking change sem política de versionamento e bump apropriado.
 10. Não executar ação crítica sem trilha verificável.
+
+## 8.1. Governança transversal de worktrees e deployment — TWDG
+
+Este protocolo executa a obrigação do roadmap canônico, §9.6, para Claude Code, Codex e demais executores sujeitos às instruções comuns. Aplica-se às worktrees existentes e futuras, às verticais e aos serviços compartilhados.
+
+1. **Autorização delimitada.** Antes de qualquer intervenção Git que altere índice, referências, histórico ou recursos de worktree, ou de qualquer deployment, confirmar autorização humana específica para a operação e seu escopo, origem, destino e ambiente, quando aplicáveis. Uma autorização pode abranger etapas expressamente delimitadas; não solicitar novamente o mesmo escopo já autorizado. A aprovação da política, um resultado de CI ou a existência de uma branch não autorizam essas intervenções.
+
+2. **Preservação e reuso.** Preservar trabalho commitado, staged, não commitado, não rastreado e evidências ignoradas relevantes de todas as frentes afetadas. Reutilizar registros de worktrees, preservação e evidências existentes, verificando apenas sua aplicabilidade e as mudanças necessárias. Não criar inventários, checkpoints, backups, branches ou worktrees duplicados, nem limpar, descartar ou sobrescrever trabalho para facilitar uma integração.
+
+3. **Reconciliação.** Identificar branch, HEAD, upstream, referência de `main`, recência conhecida das referências e relação com as frentes afetadas. Distinguir ancestralidade, commits exclusivos, equivalência de conteúdo comprovada e deltas residuais. Referência desatualizada ou de recência desconhecida deve ser declarada como limitação; sua atualização exige autorização correspondente. Divergência numérica, isoladamente, não justifica merge, rebase ou cherry-pick.
+
+4. **Preflight por operação.** Antes de commit, push, PR e deployment, confirmar que o estado continua correspondente ao escopo autorizado: caminhos, stage, alterações locais, destino e condições dos hooks aplicáveis. Conferir o diff pertinente, inclusive arquivos novos e evidências ignoradas que serão incluídas. Não exigir worktree limpa quando o próprio delta autorizado estiver em preparação; exigir isolamento e preservação do trabalho alheio.
+
+5. **Impacto transversal.** Identificar dependências e riscos de regressão entre verticais e serviços compartilhados, incluindo contratos, fontes e artefatos compilados, API, web, workers, persistência e configuração quando afetados. Reutilizar o preflight de estruturas existentes e os instrumentos de release, aprovação e recuperação aplicáveis, respeitando seu status e escopo. Não criar mecanismos paralelos nem transformar recomendações em bloqueios obrigatórios.
+
+6. **Preflight de deployment.** Por componente e ambiente afetados, comparar o SHA efetivamente implantado com o SHA candidato e identificar diferenças de artefato, configuração, migrations e dependências. Revisar compatibilidade, ordem de implantação, estratégia de recuperação e limites de reversão de dados. Registrar itens não aplicáveis com justificativa. SHA implantado desconhecido ou incompatibilidade crítica não resolvida impedem autorizar o deployment afetado.
+
+7. **Validação proporcional.** Reutilizar resultados concluídos enquanto permanecerem aplicáveis às fontes, dependências, configurações e condições relevantes do delta. Executar apenas validações necessárias às mudanças ou lacunas demonstradas, dentro da autorização recebida, preservando os gates obrigatórios. Evidência histórica não certifica automaticamente outro SHA, ambiente ou escopo; registrar resultados, falhas, pendências e limites sem promover controles antecipadamente.
+
+8. **Bloqueio e decisão.** Na ausência de autorização, preservação demonstrada ou requisito obrigatório da intervenção, interromper a ação afetada, preservar o estado e apresentar o impedimento concreto e a providência mínima. Não realizar correções, sincronizações ou novas rodadas automaticamente. Preservar as competências, aprovações e exceções expressamente ratificadas nos instrumentos aplicáveis, sem criar bypass por esta política.
+
+9. **Rastreabilidade.** Reutilizar os registros canônicos da frente e registrar as operações efetivamente realizadas, decisor, escopo, SHAs de origem e destino, validações, resultados e recuperação aplicável. Após deployment autorizado, registrar também a versão efetivamente implantada. Preservar históricos e sanitizar evidências; não versionar segredos ou dados pessoais indevidos. Atualizar o Evidence Index somente nas condições da §13, sem registrar planos ou conformidade não demonstrada como evidência.
+
+10. **Aplicação contínua.** Aplicar o protocolo antes da próxima intervenção em cada frente, sem auditoria geral automática. Worktrees com instruções anteriores devem consultar a versão canônica atualizada; sua incorporação local exige autorização e preservação do delta existente. Não presumir propagação entre worktrees nem copiar regras para arquivos de cada executor. A TWDG preserva freezes, holds, No-Go Ledgers e demais bloqueios específicos; integração, publicação e autorização operacional permanecem decisões distintas.
+
+A formalização documental não comprova conformidade das worktrees nem implementação de gate automatizado. Evolução de CI/CD exige autorização própria e deve estender mecanismos existentes após demonstrar a lacuna, sem substituir a decisão humana exigível.
 
 ---
 
@@ -252,6 +297,13 @@ Nunca adicionar ao Evidence Index:
 ## 14. Testes e gates
 
 Antes de encerrar uma tarefa, rodar os testes/gates aplicáveis ao escopo alterado.
+
+Para implementação/adaptação de entradas, verificar:
+
+- entradas semanticamente equivalentes geram estrutura de domínio equivalente quando não houver ambiguidade material;
+- campos canônicos preservam exatidão, verificabilidade e normalização;
+- ambiguidade material antes de mutação produz clarificação/confirmação e zero side effects da operação solicitada;
+- parser/regex não é tratado como contrato público de linguagem.
 
 Priorizar:
 

@@ -1,0 +1,10 @@
+{
+  "provenance": "Observed exec/write_stdin output; structured summary, not full raw log",
+  "command": "IMOB_SESSION_BASELINE_SOURCE=/tmp/imob-session-before.ts node --import tsx apps/api/src/tests/session-entitlement-shadow.contract.test.ts",
+  "exitCode": 1,
+  "tests": 22,
+  "pass": 0,
+  "fail": 22,
+  "error": "app.use() requires a middleware function",
+  "cause": "test harness assumed default export; source uses named sessionRouter export"
+}

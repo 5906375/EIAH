@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 import type { GuardianReport } from "@eiah/core";
+import { VERTICAL_GOVERNANCE_NOT_EVALUATED } from "../services/runGovernanceMetadata";
 
 type UsageStats = {
   promptTokens?: number;
@@ -115,22 +116,22 @@ function extractLinkedRecipeData(metadata: Record<string, unknown>) {
 function extractGovernanceContext(metadata: Record<string, unknown>): GovernanceContext | null {
   if (!isPlainObject(metadata.governanceContext)) return null;
   const raw = metadata.governanceContext;
-  const policyDecision =
-    raw.policyDecision === "allowed" || raw.policyDecision === "denied" || raw.policyDecision === "needs_review"
-      ? raw.policyDecision
-      : "needs_review";
+  const policyDecision = raw.policyDecision === "denied" ? "denied" : "needs_review";
   const trustLevel =
     raw.trustLevel === "high" || raw.trustLevel === "medium" || raw.trustLevel === "low" ? raw.trustLevel : undefined;
 
   return {
     tenantIdPresent: typeof raw.tenantIdPresent === "boolean" ? raw.tenantIdPresent : false,
     workspaceIdPresent: typeof raw.workspaceIdPresent === "boolean" ? raw.workspaceIdPresent : false,
-    rbacEvaluated: typeof raw.rbacEvaluated === "boolean" ? raw.rbacEvaluated : false,
-    entitlementEvaluated: typeof raw.entitlementEvaluated === "boolean" ? raw.entitlementEvaluated : false,
+    rbacEvaluated: false,
+    entitlementEvaluated: false,
     trustScoreEvaluated: typeof raw.trustScoreEvaluated === "boolean" ? raw.trustScoreEvaluated : false,
     costGuardEvaluated: typeof raw.costGuardEvaluated === "boolean" ? raw.costGuardEvaluated : false,
     policyDecision,
-    reasonCode: asString(raw.reasonCode),
+    reasonCode:
+      policyDecision === "denied"
+        ? asString(raw.reasonCode)
+        : VERTICAL_GOVERNANCE_NOT_EVALUATED,
     trustScore: parseUsageNumber(raw.trustScore),
     trustLevel,
   };
@@ -778,8 +779,10 @@ function resolveGovernance(params: {
       entitlementEvaluated: false,
       trustScoreEvaluated: false,
       costGuardEvaluated: false,
-      policyDecision: Boolean(params.tenantId) && Boolean(params.workspaceId) ? "allowed" : "denied",
-      reasonCode: null,
+      policyDecision: Boolean(params.tenantId) && Boolean(params.workspaceId) ? "needs_review" : "denied",
+      reasonCode: Boolean(params.tenantId) && Boolean(params.workspaceId)
+        ? VERTICAL_GOVERNANCE_NOT_EVALUATED
+        : params.reasonCode,
       trustScore: null,
       trustLevel: undefined,
     } satisfies GovernanceContext);
@@ -789,13 +792,6 @@ function resolveGovernance(params: {
       ...resolved,
       policyDecision: "denied",
       reasonCode: resolved.reasonCode ?? params.reasonCode,
-    };
-  }
-
-  if (resolved.policyDecision === "needs_review" && params.reasonCode === "GO_READY") {
-    return {
-      ...resolved,
-      policyDecision: "allowed",
     };
   }
 

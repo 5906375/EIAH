@@ -1,0 +1,22 @@
+COMMAND ['timeout', '60s', 'node', '--input-type=module'] via stdin:
+
+import ts from 'typescript';
+import path from 'node:path';
+const names = ['apps/api/src/routes/whatsappMeta.ts','apps/api/src/services/whatsappMetaAdapter.ts','apps/api/src/services/whatsappMetaOperationalConfig.ts','apps/api/src/services/whatsappMetaPostgresStore.ts','apps/api/src/tests/whatsapp.meta-operational.test.ts'];
+const c = ts.readConfigFile('apps/api/tsconfig.build.json', ts.sys.readFile);
+const p = ts.parseJsonConfigFileContent(c.config, ts.sys, path.resolve('apps/api'));
+const options = {...p.options, noEmit:true};
+if (!options.strict) throw new Error('strictness must be preserved');
+const roots = names.map(n=>path.resolve(n));
+const program = ts.createProgram(roots, options);
+const coverage = roots.map((n,i)=>({file:names[i],included:!!program.getSourceFile(n)}));
+const diagnostics = [c.error,...p.errors,...ts.getPreEmitDiagnostics(program)].filter(Boolean);
+const host = {getCanonicalFileName:n=>n,getCurrentDirectory:()=>process.cwd(),getNewLine:()=> '\n'};
+console.log(JSON.stringify({typescript:ts.version,noEmit:options.noEmit,strict:options.strict,config:'apps/api/tsconfig.build.json',coverage,diagnostics:diagnostics.length}));
+console.log(ts.formatDiagnostics(diagnostics,host)||'(no diagnostics)');
+process.exitCode=diagnostics.length||coverage.some(c=>!c.included)?1:0;
+
+{"typescript":"5.9.3","noEmit":true,"strict":true,"config":"apps/api/tsconfig.build.json","coverage":[{"file":"apps/api/src/routes/whatsappMeta.ts","included":true},{"file":"apps/api/src/services/whatsappMetaAdapter.ts","included":true},{"file":"apps/api/src/services/whatsappMetaOperationalConfig.ts","included":true},{"file":"apps/api/src/services/whatsappMetaPostgresStore.ts","included":true},{"file":"apps/api/src/tests/whatsapp.meta-operational.test.ts","included":true}],"diagnostics":0}
+(no diagnostics)
+
+EXIT 0

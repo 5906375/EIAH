@@ -1,4 +1,5 @@
 import console from "node:console";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -82,6 +83,47 @@ export function findVolatileEvidenceRefs(content: string): Array<{
   return refs;
 }
 
+/** Narrative proof text is not an artifact declaration. Explicit links remain checked everywhere. */
+export function collectEvidenceReferences(content: string): Set<string> {
+  const refs = new Set<string>();
+  const add = (token: string) => {
+    const normalized = normalizeRef(token).split("#")[0];
+    if (isLikelyRepoPath(normalized)) refs.add(normalized);
+  };
+  let proofColumn = -1;
+  for (const line of content.split("\n")) {
+    let source = line;
+    if (line.trim().startsWith("|")) {
+      // Split table cells only outside inline code and escaped pipes.
+      const cells: string[] = []; let cell = ""; let quoted = false; let escaped = false;
+      for (const char of line.trim()) {
+        if (escaped) { cell += char; escaped = false; continue; }
+        if (char === "\\") { cell += char; escaped = true; continue; }
+        if (char === "`") quoted = !quoted;
+        if (char === "|" && !quoted) { cells.push(cell); cell = ""; } else cell += char;
+      }
+      cells.push(cell);
+      const headerIndex = cells.findIndex(c => c.trim().toLowerCase() === "o que prova");
+      if (headerIndex >= 0) proofColumn = headerIndex;
+      if (proofColumn >= 0 && proofColumn < cells.length) source = cells.filter((_,i)=>i!==proofColumn).join("|");
+    } else { proofColumn = -1; }
+    for (const match of source.matchAll(/`([^`\n]+)`/g)) add(match[1]);
+    // Unlike backtick narrative mentions, an explicit Markdown link declares a reference.
+    for (const match of line.matchAll(/\[[^\]]*\]\(([^)\s]+)\)/g)) add(match[1]);
+    for (const match of line.matchAll(/evidenceRef\{[^}\n]*?\blocation:\s*([^,}\n]+)/g)) add(match[1].trim());
+  }
+  return refs;
+}
+
+export function historicalReferenceExists(root: string, ref: string): boolean | undefined {
+  const match = /^(.*?)@([a-f0-9]{40})$/.exec(ref);
+  if (!match) return undefined;
+  try {
+    execFileSync("git", ["cat-file", "-e", `${match[2]}:${match[1]}`], { cwd: root, stdio: "pipe" });
+    return true;
+  } catch { return false; }
+}
+
 function main(): void {
   if (!fs.existsSync(file)) fail("EVIDENCE_INDEX not found", { file });
 
@@ -130,15 +172,11 @@ function main(): void {
     fail("canonical roadmap file missing", { roadmap: roadmapRef });
   }
 
-  const refs = new Set<string>();
-  const regex = /`([^`\n]+)`/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content))) {
-    const normalized = normalizeRef(match[1]);
-    if (isLikelyRepoPath(normalized)) refs.add(normalized);
-  }
+  const refs = collectEvidenceReferences(content);
 
   const missingRefs = [...refs].filter((ref) => {
+    const historical = historicalReferenceExists(ROOT, ref);
+    if (historical !== undefined) return !historical;
     if (!hasRollingDateToken(ref)) {
       return !fs.existsSync(path.resolve(ROOT, ref));
     }

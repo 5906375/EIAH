@@ -1,0 +1,152 @@
+{
+  "sourceFolder": "ops/evidence/local/p11-case-binding-gate-2026-10-14",
+  "branch": "feat/p11-front-door-transversal-orchestration",
+  "headAtPackaging": "e4575b033d35ecdc7572ccd93107f671d0526e24",
+  "packagedOn": "2026-11-06",
+  "originalFileCount": 14,
+  "originalsUnmodifiedByPackaging": true,
+  "originalsCheckMethod": "size and mtime of every original compared before and after writing; no hash of the originals was recomputed (hashes come from the existing MANIFEST.sha256)",
+  "sanitizedFiles": {
+    "guards_review.md": {
+      "sha256": "8b7ebc32e80e7d3b88d1bfb4ad4b1ecb44869a1449d5bdbb70c32f29f468c204",
+      "bytes": 4173,
+      "lines": 22
+    },
+    "results.json": {
+      "sha256": "a74c010c951c81144b3089c5fff03f3ec80a0d4c9969e964b9bb65ee1961f821",
+      "bytes": 6152,
+      "lines": 157
+    },
+    "README.md": {
+      "sha256": "f4f89b62dc0fb8d984a87d622603f4d96e18c0b9b6eb2d380b4b0cf7b1d0fb8b",
+      "bytes": 9622,
+      "lines": 75
+    }
+  },
+  "derivedFrom": {
+    "guards_review.md": [
+      {
+        "original": "guards_review.md",
+        "sha256FromExistingManifest": "f3ea6bc4fbd6a9f97b5b25aa7f13b1f107fedaae2cb5c2bad08f4210bb31df51"
+      }
+    ],
+    "results.json": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "0503df9804c999ceebaca6fe0028c14683a5436a40cf20324f2f27ab07be09ff"
+      },
+      {
+        "original": "stage_permission_check.json",
+        "sha256FromExistingManifest": "464778280079f224b45f8eaf1ee6f9d4487b1bc7dfb8660616bc98e9deffa434"
+      },
+      {
+        "original": "MANIFEST.sha256",
+        "sha256FromExistingManifest": null
+      }
+    ],
+    "README.md": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "0503df9804c999ceebaca6fe0028c14683a5436a40cf20324f2f27ab07be09ff"
+      }
+    ]
+  },
+  "scrubbing": {
+    "rules": [
+      "p11_worktree_abs",
+      "builder_worktree_abs",
+      "other_worktree_abs",
+      "home_abs",
+      "tilde_p11",
+      "tilde_projects",
+      "mnt_path",
+      "tmp_path",
+      "windows_user_path",
+      "os_user",
+      "db_url",
+      "redis_url",
+      "bearer",
+      "test_token",
+      "cuid",
+      "email_nonsynthetic"
+    ],
+    "replacementsApplied": {}
+  },
+  "residualScan": {
+    "patterns": [
+      "abs_home",
+      "os_user",
+      "mnt",
+      "tmp",
+      "windows_path",
+      "db_url",
+      "email",
+      "bearer",
+      "token_literal",
+      "cuid_like",
+      "password_word",
+      "secret_word"
+    ],
+    "findings": [],
+    "totalFindings": 0,
+    "note": "scan over the generated sanitized files before writing; findings are listed for human review, not auto-removed"
+  },
+  "exclusionsAndRepresentation": {
+    "git-state-snapshots": {
+      "reason": "estado Git bruto omitido: caminhos locais e estado de branches",
+      "count": 2,
+      "originals": [
+        "git_state_0_before.txt",
+        "git_state_1_after.txt"
+      ]
+    },
+    "original-readme": {
+      "reason": "README original substituído pela cópia sanitizada embutida no README desta pasta",
+      "count": 1,
+      "originals": [
+        "README.md"
+      ]
+    },
+    "raw-manifest": {
+      "reason": "MANIFEST.sha256 bruto não copiado; seus hashes foram carregados em results.json",
+      "count": 1,
+      "originals": [
+        "MANIFEST.sha256"
+      ]
+    },
+    "scenario-and-browser-records": {
+      "reason": "registros brutos de cenários/navegador omitidos: identificadores de fixtures e URLs; resultados agregados na matriz",
+      "count": 2,
+      "originals": [
+        "api_scenarios.json",
+        "ui_scenarios.json"
+      ]
+    },
+    "screenshots": {
+      "reason": "capturas de tela omitidas: expõem nomes e contexto de sessão (padrão do 7bd1f060)",
+      "count": 6,
+      "originals": [
+        "ui-01-batel-sem-caseid.png",
+        "ui-02-ambiguo.png",
+        "ui-03-terceiro-turno.png",
+        "ui-04-self-service.png",
+        "ui-05-retorno.png",
+        "ui-06-turno-apos-retorno.png"
+      ]
+    },
+    "used-in-sanitized": {
+      "reason": "conteúdo agregado ou copiado (sanitizado) em arquivos desta pasta",
+      "count": 2,
+      "originals": [
+        "guards_review.md",
+        "stage_permission_check.json"
+      ]
+    }
+  },
+  "notDone": [
+    "no git add/commit/push",
+    "originals not removed, moved, edited or hidden",
+    "tests not re-executed",
+    "no hash of originals recomputed"
+  ]
+}

@@ -1,0 +1,28 @@
+TAP version 13
+# Subtest: IMOB knowledge search service returns metadata-scoped results
+ok 1 - IMOB knowledge search service returns metadata-scoped results
+  ---
+  duration_ms: 5.25253
+  type: 'test'
+  ...
+# Subtest: IMOB knowledge search service filters by document type and operation
+ok 2 - IMOB knowledge search service filters by document type and operation
+  ---
+  duration_ms: 2.382828
+  type: 'test'
+  ...
+# Subtest: IMOB knowledge search service filters by source types
+ok 3 - IMOB knowledge search service filters by source types
+  ---
+  duration_ms: 3.771108
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 20.472925

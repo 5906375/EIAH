@@ -30,7 +30,19 @@ test("action runner blocks job when trust score is below threshold", async () =>
         },
         $disconnect: async () => undefined,
       }) as any,
-    tenantActionResolver: () => ({ "tool.test": { name: "tool.test" } }),
+    tenantActionResolver: () => ({
+      "tool.test": {
+        name: "tool.test",
+        handler: async () => ({ status: "success", output: { ok: true } }),
+      },
+    }),
+    resolveScopeDecision: async () => ({
+      allowed: true,
+      reasonCode: "SCOPE_ALLOWED",
+      tenantId,
+      workspaceId,
+      scope: "tool.test",
+    }),
     executeWithMCP: async () => {
       executeCalls.push(true);
       return { result: { ok: true }, tool: { trustLevel: 1 }, hash: "hash" };
@@ -77,6 +89,90 @@ test("action runner blocks job when trust score is below threshold", async () =>
   assert.ok(auditEvents.some((event) => event.eventType === "trust.gate.blocked"));
 });
 
+test("action runner fails closed when tenant action is not authorized", async () => {
+  const tenantId = "tenant-test";
+  const workspaceId = "workspace-test";
+  const runId = "run-test";
+
+  let executeCalls = 0;
+
+  const handler = createActionRunnerHandler({
+    consumeActions: async () => undefined as any,
+    getPrismaForTenant: () =>
+      ({
+        toolContract: {
+          findFirst: async () => ({ id: "tc-1" }),
+        },
+        $disconnect: async () => undefined,
+      }) as any,
+    tenantActionResolver: () => ({
+      "tool.test": {
+        name: "tool.test",
+        handler: async () => ({ status: "success", output: { ok: true } }),
+      },
+    }),
+    resolveScopeDecision: async () => ({
+      allowed: false,
+      reasonCode: "POLICY_NOT_FOUND",
+      tenantId,
+      workspaceId,
+      scope: "tool.test",
+    }),
+    executeWithMCP: async () => {
+      executeCalls += 1;
+      throw new Error("executeWithMCP must not run when policy denies");
+    },
+    mcpEnforcementConfigFromEnv: () => ({
+      enabled: true,
+      defaultVersion: "1.0.0",
+    }),
+    resolveMcpToolVersion: () => "1.0.0",
+    evaluateTrustScore: async () => ({ score: 100, level: "high", reasons: [] }),
+    trustScoreAllowsExecution: () => true,
+    evaluateIntent: async () => ({
+      intent: null,
+      score: 0.9,
+      flags: [],
+      verdict: "observe",
+      signature: "sig",
+    }),
+    evaluateHallucination: async () => ({
+      confidence: 1,
+      reasons: [],
+      policyVersion: "judge-v1",
+    }),
+    rateLimit: () => ({ before: async () => undefined } as any),
+    createFixedWindowRateLimiter: () =>
+      ({
+        consume: async () => ({
+          allowed: true,
+          remaining: 1,
+          resetAt: Date.now(),
+        }),
+      }) as any,
+    tenantRateLimitKey: () => "rl",
+    recordGuardrailAudit: async () => undefined,
+    appendSignedHash: async () => undefined as any,
+  });
+
+  const result = await handler(
+    {
+      tenantId,
+      workspaceId,
+      runId,
+      action: "tool.test",
+      metadata: {},
+      input: {},
+      stepId: "step-1",
+    },
+    { id: "job-1" },
+  );
+
+  assert.equal(result.status, "error");
+  assert.equal((result as any).reasonCode, "POLICY_NOT_FOUND");
+  assert.equal(executeCalls, 0);
+});
+
 test("action runner denies missing ToolContract with active reasonCode before execution", async () => {
   const tenantId = "tenant-test";
   const workspaceId = "workspace-test";
@@ -108,7 +204,19 @@ test("action runner denies missing ToolContract with active reasonCode before ex
         },
         $disconnect: async () => undefined,
       }) as any,
-    tenantActionResolver: () => ({ "tool.test": { name: "tool.test" } }),
+    tenantActionResolver: () => ({
+      "tool.test": {
+        name: "tool.test",
+        handler: async () => ({ status: "success", output: { ok: true } }),
+      },
+    }),
+    resolveScopeDecision: async () => ({
+      allowed: true,
+      reasonCode: "SCOPE_ALLOWED",
+      tenantId,
+      workspaceId,
+      scope: "tool.test",
+    }),
     executeWithMCP: async () => {
       executeCalls += 1;
       return { result: { ok: true }, tool: { trustLevel: 1 }, hash: "hash" };
@@ -206,7 +314,19 @@ test("action runner preserves DB_INPUT_INVALID as nonRetryable with masked failu
         },
         $disconnect: async () => undefined,
       }) as any,
-    tenantActionResolver: () => ({ "tool.test": { name: "tool.test" } }),
+    tenantActionResolver: () => ({
+      "tool.test": {
+        name: "tool.test",
+        handler: async () => ({ status: "success", output: { ok: true } }),
+      },
+    }),
+    resolveScopeDecision: async () => ({
+      allowed: true,
+      reasonCode: "SCOPE_ALLOWED",
+      tenantId,
+      workspaceId,
+      scope: "tool.test",
+    }),
     executeWithMCP: async () => {
       throw Object.assign(new Error("DB where must be an object"), {
         reasonCode: "DB_INPUT_INVALID",

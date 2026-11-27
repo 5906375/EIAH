@@ -1,0 +1,24 @@
+{
+  "algorithm": "sha256",
+  "scope": "ProviderBoundary follow-up only; historical parent evidence unchanged",
+  "removedFiles": {
+    "apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json": "2ed341ba4cb248568f62fad53d1feffaf0a5efd9e3c70c5503cc5394cee8955b"
+  },
+  "files": {
+    "apps/api/src/tests/llm-provider-failure.test.ts": "c3b4a0bc449f3bcd75ccf4501873f7099666f7515224f4bebab325f15ba5649c",
+    "docs/EVIDENCE_INDEX.md": "3f1aaa46e30959c2ef46f48e7593ef8e2e2836eba8cee027fde63cbba2ed0e63",
+    "docs/architecture/agent-chat-runtime.md": "31cdfbdad5650a26d3bfe6be189b92a72d5bdb0e6feb85dec339ff0d7d088553",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/README.md": "d6086a72a374df79f8d1381350dbf4670f34b678b74263fd2a16d353a6e33645",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/boundary-outside.log": "1faec010047b740e39775cd7af7b425d6fee5a61bb58575bb06b31fedeecd66f",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/boundary.log": "a12674ef3ebc6310b7a3db98e632000b1d11ea155a121f6e2736a21a88fa82cf",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/executions.json": "42a1d2334fb45a3690520380eb119e0e4163e3c2500d9ed3da02160afc42fc1b",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/packaging-check.mjs": "5647a1daffea4bfdbd6f2ad7ebc9015a4b266224dc81f113d2330cdcf636aef8",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/packaging.log": "a699328e5db2fae0501825d0b618dd39031d347b5cd30d320468d58f40c9acf7",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/registration.log": "6f7ff638d2d1198eae3cf1b7df0f856fbc3cc9cbc201bae7ef87950b96ea2235",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/results.json": "d5fd758bcebe7056729db09aacd0b823f78c69176d75c5e1bd37964ea7b64396",
+    "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/tests.log": "341e8d068b0aa64b9c2c32fcdd7a0e6ce7c08b2a6bfeccadc9ac2ff4dfd87176",
+    "package.json": "bd853f2ebd9aa754e5753ebaae305d222a721eb3fd9f23e2b2401b4e3a712e22",
+    "packages/providers/tests/fixtures/openai-credit-balance-exhausted.json": "2ed341ba4cb248568f62fad53d1feffaf0a5efd9e3c70c5503cc5394cee8955b",
+    "packages/providers/tests/openai-provider-failure.test.ts": "5cb09eb073c00552948f2f5f5effc5ae2053af040889cd5a07c301a1fe8c93ca"
+  }
+}

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { buildRunEvidenceBundle } from "./evidenceBundle";
+import { projectRunGovernanceForRead } from "./runGovernanceMetadata";
 
 const DEFAULT_RETENTION_DAYS = Number(process.env.RUN_ARCHIVE_RETENTION_DAYS ?? 60);
 
@@ -164,6 +165,9 @@ export async function buildRunArchiveSnapshot(params: {
 
   const receiptPath = params.run.txId ? `/api/ledger/${encodeURIComponent(params.run.txId)}` : null;
   const bundlePath = `/api/runs/${encodeURIComponent(params.run.id)}/bundle`;
+  const projectionScope = { tenantIdPresent: true, workspaceIdPresent: true };
+  const projectedRequest = projectRunGovernanceForRead(params.run.request ?? null, projectionScope);
+  const projectedResponse = projectRunGovernanceForRead(params.run.response ?? null, projectionScope);
 
   return {
     schema: "run.archive.v1",
@@ -179,8 +183,8 @@ export async function buildRunArchiveSnapshot(params: {
       agentVersion: params.run.agentVersion ?? null,
       assignmentId: params.run.assignmentId ?? null,
       status: params.run.status,
-      request: params.run.request ?? null,
-      response: params.run.response ?? null,
+      request: projectedRequest,
+      response: projectedResponse,
       costCents: params.run.costCents ?? 0,
       traceId: params.run.traceId ?? null,
       startedAt: params.run.startedAt,
@@ -198,7 +202,7 @@ export async function buildRunArchiveSnapshot(params: {
     history: events.map((event) => ({
       id: event.id,
       type: event.type,
-      payload: event.payload ?? null,
+      payload: projectRunGovernanceForRead(event.payload ?? null, projectionScope),
       criticalHash: event.criticalHash ?? null,
       sclTxId: event.sclTxId ?? null,
       createdAt: event.createdAt,

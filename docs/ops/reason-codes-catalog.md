@@ -95,6 +95,33 @@ O código não substitui `AGENT_NOT_ENABLED_IN_WORKSPACE`, preservado para
 compatibilidade com o caso legado já existente. Aprovação formal, assinatura,
 identidade do aprovador e expiração permanecem `PENDING_PR1B`.
 
+<a id="ratificacao-rc-a0b-01-2026-08-24"></a>
+
+## Ratificação RC-A0b-01 — 2026-08-24
+
+Carlos Alberto Merlo ratificou em `2026-08-24 17:15 -03:00` os códigos
+`POLICY_NOT_FOUND`, `ACTION_POLICY_SCOPE_DENIED`, `ACTION_POLICY_DISABLED`,
+`ACTION_POLICY_STORE_UNAVAILABLE` e `RUN_SCOPE_NOT_RESOLVED` como `active` na
+fronteira observacional de Action Policy pré-execução. O owner é
+`Execution governance / Action Policy`.
+
+O mapper público preserva `POLICY_NOT_FOUND`, projeta `SCOPE_NOT_ALLOWED` e
+`WORKSPACE_SCOPE_MISMATCH` como `ACTION_POLICY_SCOPE_DENIED`, projeta
+`TENANT_POLICY_DISABLED` como `ACTION_POLICY_DISABLED` e projeta
+`POLICY_STORE_UNAVAILABLE` como `ACTION_POLICY_STORE_UNAVAILABLE`.
+`SCOPE_ALLOWED` produz `reasonCode:null`; os códigos internos do
+`TenantPolicyStore` não são renomeados.
+
+`RUN_SCOPE_NOT_RESOLVED` interrompe o worker quando `runId + tenantId +
+workspaceId` não resolvem um Run existente ou quando a transição para
+`running` não confirma o mesmo escopo. Esse caso não autoriza a criação de
+`RunEvent` baseada somente no envelope da fila.
+
+Runs genéricos sem ação declarada e `domain=imob, kind=conversation_audit`
+permanecem `not_applicable`, sem evento de avaliação. IMOB fora dessa exceção
+continua exigindo ação canônica. Esta ratificação não implementa RBAC,
+entitlement ou enforcement geral de Action Policy.
+
 ## Ratificacao RC-MCP-1A — 2026-07-28
 
 Carlos Alberto Merlo ratificou como `active` os códigos
@@ -122,7 +149,8 @@ Permanecem fora desta promoção:
 
 - `DB_SCOPE_VIOLATION` permanece `proposed` até separar input inválido de
   violação cross-tenant real;
-- `POLICY_NOT_FOUND` permanece `proposed` e fora do escopo MCP;
+- `POLICY_NOT_FOUND` permanece fora do escopo MCP; sua promoção a `active`
+  pertence exclusivamente à fronteira Action Policy ratificada no RC-A0b-01;
 - `MCP_POLICY_NOT_RESOLVED` não será criado enquanto suas causas não forem
   divididas;
 - `MCP_POLICY_DENIED` permanece `proposed` e não será ativado antes de existir
@@ -232,6 +260,11 @@ fonte canônica falham em `check:reason-code-canon`.
 | `VERTICAL_HANDOFF_ALLOWED` | active |
 | `VERTICAL_PREVIEW_ONLY` | active |
 | `AGENT_ASSIGNMENT_REQUIRED` | active |
+| `POLICY_NOT_FOUND` | active |
+| `ACTION_POLICY_SCOPE_DENIED` | active |
+| `ACTION_POLICY_DISABLED` | active |
+| `ACTION_POLICY_STORE_UNAVAILABLE` | active |
+| `RUN_SCOPE_NOT_RESOLVED` | active |
 | `APE_TELEMETRY_NOT_AVAILABLE` | active |
 | `invalid_txid_format` | proposed |
 | `txid_not_found` | proposed |
@@ -260,7 +293,6 @@ fonte canônica falham em `check:reason-code-canon`.
 | `MCP_POLICY_DENIED` | proposed |
 | `MCP_POLICY_CONTEXT_MISSING` | proposed |
 | `MCP_POLICY_CONTEXT_VIOLATION` | proposed |
-| `POLICY_NOT_FOUND` | proposed |
 | `RBAC_OWNER_DEFERRAL` | proposed |
 | `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |
 | `NOTIFICATION_NON_DELIVERY_ESCALATION` | proposed |
@@ -268,6 +300,57 @@ fonte canônica falham em `check:reason-code-canon`.
 | `NOTIFICATION_BLOCKED_SECRET_PROVENANCE` | proposed |
 | `NOTIFICATION_BLOCKED_REASON_CODE_MISSING` | proposed |
 | `NOTIFICATION_BLOCKED_RUN_MISSING` | proposed |
+| `ORACULO_CONTEXT_DENIED` | proposed |
+| `ORACULO_PREPARATION_WRITE_DENIED` | proposed |
+| `ORACULO_PREPARATION_REVISION_CONFLICT` | proposed |
+| `ORACULO_PREPARATION_INTEGRITY_VIOLATION` | proposed |
+| `ORACULO_PREPARATION_INPUT_INVALID` | proposed |
+| `PRE_DUIMP_ACTION_UNKNOWN` | proposed |
+| `PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED` | proposed |
+| `PRE_DUIMP_ISOLATION_VIOLATION` | proposed |
+| `PRE_DUIMP_SCOPE_DENIED` | proposed |
+| `PRE_DUIMP_ENTITLEMENT_DENIED` | proposed |
+| `PRE_DUIMP_HITL_REQUIRED` | proposed |
+| `PRE_DUIMP_REPLAY_REJECTED` | proposed |
+| `PRE_DUIMP_RUNTIME_DISABLED` | proposed |
+| `PRE_DUIMP_INSTALLATION_MISSING` | proposed |
+| `PRE_DUIMP_INSTALLATION_INACTIVE` | proposed |
+| `PRE_DUIMP_INSTALLATION_INVALID` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_MISSING` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_DISABLED` | proposed |
+| `PRE_DUIMP_ACTION_POLICY_DENIED` | proposed |
+| `PRE_DUIMP_ACCESS_UNAVAILABLE` | proposed |
+| `PRE_DUIMP_PILOT_ACCESS_DENIED` | proposed |
+| `ORACULO_INPUT_INVALID` | active |
+| `ORACULO_SCOPE_DENIED` | active |
+| `ORACULO_EXTERNAL_EFFECT_BLOCKED` | active |
+| `ORACULO_VISIT_NOT_RESOLVED` | active |
+| `ORACULO_CONTENT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_ARTIFACT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_INSPECTION_REJECTED` | active |
+| `ORACULO_VALIDITY_EXPIRED` | active |
+| `ORACULO_VALIDITY_NOT_STARTED` | active |
+| `ORACULO_TEMPORAL_POLICY_UNRESOLVED` | active |
+| `ORACULO_STATUS_REVOKED` | active |
+| `ORACULO_STATUS_SUSPENDED` | active |
+| `ORACULO_STATUS_UNKNOWN` | active |
+| `ORACULO_STATUS_STALE` | active |
+| `ORACULO_STATUS_CONFLICT` | active |
+| `ORACULO_SOURCE_AUTHORITY_UNRESOLVED` | active |
+| `ORACULO_HITL_REQUIRED` | active |
+| `ORACULO_APPROVAL_CONTEXT_MISMATCH` | active |
+| `ORACULO_APPROVAL_EXPIRED` | active |
+| `ORACULO_APPROVAL_REJECTED` | active |
+| `ORACULO_INTENT_PAYLOAD_CONFLICT` | active |
+| `ORACULO_VISIT_REVISION_CONFLICT` | active |
+| `ORACULO_VISIT_TRANSITION_DENIED` | active |
+| `ORACULO_EVIDENCE_REQUIRED` | active |
+| `ORACULO_SNAPSHOT_MISMATCH` | active |
+| `ORACULO_COMMIT_OUTCOME_UNKNOWN` | active |
+| `ORACULO_COMMIT_FAILED_NO_EFFECT` | active |
+| `ORACULO_EXECUTION_AUTHORITY_LOST` | active |
+| `ORACULO_VERIFICATION_NOT_SATISFIED` | active |
+| `ORACULO_TEMPORAL_INCOHERENCE` | active |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker
@@ -281,6 +364,7 @@ Os arquivos-alvo são explicitamente declarados em
 - `apps/api/src/routes/imobCrmSchemas.ts`;
 - `apps/api/src/types/chatVerticalHandoffV2Contract.ts`;
 - `contracts/chat/vertical.reason_codes.v1.json`;
+- `apps/api/src/services/runGovernanceMetadata.ts`;
 - `scripts/tests/checkReasonCodeCanon.test.ts`.
 
 O RC-0 não varre todo o runtime. Receipt Canon, ledger, execution evidence,
@@ -294,3 +378,44 @@ O checker nasce informativo: ele não está entre os required checks atuais.
 Após o merge do RC-0, torná-lo required no ruleset
 `main-protection-hard-gates` é decisão autenticada de Carlos Alberto Merlo.
 Este PR não altera ruleset, branch protection ou workflow.
+
+## Oráculo SC CI1 — histórico de propostas no commit d1f1024 (2026-09-23)
+
+| Finding | Token proposto | Destino | Resultado candidato |
+| --- | --- | --- | --- |
+| RV01 | ORACULO_INPUT_INVALID | REQUEST_ERROR | Sem C5 |
+| RV02 | ORACULO_SCOPE_DENIED | REQUEST_ERROR | Sem C5 |
+| RV03 | ORACULO_EXTERNAL_EFFECT_BLOCKED | REQUEST_ERROR | Sem C5 |
+| RV04 | ORACULO_VISIT_NOT_RESOLVED | REQUEST_ERROR | Sem C5 |
+| RV05 | ORACULO_CONTENT_INTEGRITY_MISMATCH | C5 | DENIED |
+| RV06 | ORACULO_ARTIFACT_INTEGRITY_MISMATCH | C5 | DENIED |
+| RV07 | ORACULO_INSPECTION_REJECTED | C5 | DENIED |
+| RV08 | ORACULO_VALIDITY_EXPIRED | C5 | DENIED |
+| RV09 | ORACULO_VALIDITY_NOT_STARTED | C5 | DENIED |
+| RV10 | ORACULO_TEMPORAL_POLICY_UNRESOLVED | C5 | REVIEW_REQUIRED |
+| RV11 | ORACULO_STATUS_REVOKED | C5 | DENIED |
+| RV12 | ORACULO_STATUS_SUSPENDED | C5 | DENIED |
+| RV13 | ORACULO_STATUS_UNKNOWN | C5 | REVIEW_REQUIRED |
+| RV14 | ORACULO_STATUS_STALE | C5 | REVIEW_REQUIRED |
+| RV15 | ORACULO_STATUS_CONFLICT | C5 | REVIEW_REQUIRED |
+| RV16 | ORACULO_SOURCE_AUTHORITY_UNRESOLVED | C5 | REVIEW_REQUIRED |
+| RV17 | ORACULO_HITL_REQUIRED | C5 | REVIEW_REQUIRED |
+| RV18 | ORACULO_APPROVAL_CONTEXT_MISMATCH | C5 | REVIEW_REQUIRED |
+| RV19 | ORACULO_APPROVAL_EXPIRED | C5 | REVIEW_REQUIRED |
+| RV20 | ORACULO_APPROVAL_REJECTED | C5 | DENIED |
+| RV21 | ORACULO_INTENT_PAYLOAD_CONFLICT | REQUEST_ERROR | Sem C5 |
+| RV22 | ORACULO_VISIT_REVISION_CONFLICT | C5 | CONFLICT |
+| RV23 | ORACULO_VISIT_TRANSITION_DENIED | C5 | DENIED |
+| RV24 | ORACULO_EVIDENCE_REQUIRED | C5 | DENIED |
+| RV25 | ORACULO_SNAPSHOT_MISMATCH | C5 | REVIEW_REQUIRED |
+| RV26 | ORACULO_COMMIT_OUTCOME_UNKNOWN | TRACKING | Sem C5 |
+| RV27 | ORACULO_COMMIT_FAILED_NO_EFFECT | C5 | FAILED |
+| RV28 | ORACULO_EXECUTION_AUTHORITY_LOST | REQUEST_ERROR | Sem C5 |
+| FT03_NOT_VERIFIED_MAPPING_PENDING | ORACULO_VERIFICATION_NOT_SATISFIED | C5 | DENIED |
+| FT03_TEMPORAL_MAPPING_PENDING | ORACULO_TEMPORAL_INCOHERENCE | C5 | REVIEW_REQUIRED |
+
+No commit d1f1024, todos os tokens desta seção tinham status `proposed`. Owner: Carlos Alberto Merlo / Oráculo SC. Naquele commit não havia approver/evidenceRef de ativação preenchidos. A [matriz para ratificação](oraculo-negative-mapper-proposal.md) descreve escopo e limites. Naquela proposta, nenhuma entrada active foi alterada.
+
+## Oráculo CI1 — candidato local de ativação para PR dedicado
+
+A matriz foi ratificada na sessão; owner/approver: Carlos Alberto Merlo. A promoção local a active é restrita à simulação e está preparada para PR dedicado, ainda não publicado/mesclado. A fonte e os limites da aprovação estão em [registro da ratificação](oraculo-negative-ratification.md). A seção de propostas anterior descreve o estado histórico do commit d1f1024.

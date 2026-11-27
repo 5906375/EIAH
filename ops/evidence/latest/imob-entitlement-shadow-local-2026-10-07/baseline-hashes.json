@@ -1,0 +1,20 @@
+{
+  "apps/api/src/services/products/verticalAccessResolver.ts": "a697e7350dc2f9e06605bfd6f1fc58d4e0f8ca3dbbae806f44db0acbddcc79cc",
+  "apps/api/src/types/verticalEntitlementGateContract.ts": "ebd0ee99caffd5305a8be6a1d0ec80d9abf7d3b831654e400efcaeb9fa4b9e16",
+  "apps/api/src/services/chat/verticalRegistryComposition.ts": "68b17e32a159030dd0b55def085a40549f6bcd38de9469b183b11d7387f7932f",
+  "apps/api/src/tests/vertical-access-resolver.test.ts": "e1546a16fafcfb8e397437e1aabc23b3d94f4cd083d37823ecf7a63a5c5f6528",
+  "docs/architecture/vertical-access-contract-v1.md": "54a122cbf549ba6e4caa5d3f9cad26df7d699ec78e40a7c9b988f73973062f82",
+  "apps/web/src/components/agents/ChatAgentLauncher.tsx": "e30d111aa1fb88cdf8acd4fdaacdb6d1acaddfffe643be0cb37c9bad19fbdf5e",
+  "apps/api/src/services/imob/imobEntitlements.ts": "08ba85e000972a86bdcdcfa06370708a1c37b0f74d56e51ccfd3e08496ed239d",
+  "apps/api/src/services/imob/imobAccessGate.ts": "5787737842f953b617263b9177e239a0a5693895ccb8a661b2f06730d08ea597",
+  "apps/api/src/services/products/productActivation.ts": "51c2c0bf4eaae5152ad17ccb228c06d9905aedd0343a24d429a2712077d44ccd",
+  "apps/api/src/services/products/verticalAccessApproval.ts": "ff6aff4b9e78fe60eb2ef92e63938f6094d2678017a11f5779700476d2609a30",
+  "packages/core/src/catalog/workspaceActionPolicyProvisioning.ts": "8553632117d881b946c395154281ab9d7eb90530c9a1dd3cfca5af7bce63f8f7",
+  "packages/db/prisma/schema.prisma": "3e55c1541bf444afe852ca3afe584d2e9395cecb1781c25821346bf7f20f17e0",
+  "packages/core/src/logging/logger.ts": "30ec0fece80e1902a7aa5fb572d54a3d3a8c5b9ef145ec8418df7f7607a4a9fe",
+  "apps/api/src/middlewares/requestLogger.ts": "a2daa7b39331ccb3560e79e7e7b4e9fdebc1bd2a70a14c122682bd1ab27b27f4",
+  "docs/EVIDENCE_INDEX.md": "71621608f088d80477ce491d0a9c08b63ff0664143420ddaee585c8a00c767c8",
+  "apps/api/src/routes/session.ts": "a3c2567b5a27af0ae018df248d977db323ab16b4b94b41d17aed187dff486b1a",
+  "package.json": "a1ccd667114787bd670eb9035b2cf26a6748e5804e7650cbf1786ac815302f2c",
+  "scripts/unit-tests-manifest.txt": "e61968941d2384bb376093cd35131ba59ad2e73a58172d0b7524af32b26a4a4a"
+}

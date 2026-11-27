@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Imobiliária Modelo — compra, venda e locação</title>
+<meta name="description" content="Modelo de site de imobiliária para a era da IA: busca em linguagem natural, custo mensal transparente, simulador de financiamento, comparação de imóveis e atendimento direto com o corretor.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0b1f33">
+<link rel="canonical" href="https://www.eiah.ia.br/imobiliarias/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Imobiliária Modelo — compra, venda e locação">
+<meta property="og:description" content="Encontre, compare e feche negócio com transparência.">
+<style>
+/*
+  MODELO DE SITE DE IMOBILIÁRIA (estático, um arquivo só).
+  Para personalizar:
+  - Nome, CRECI, telefone, WhatsApp e cores: bloco CONFIG no <script> e variáveis :root abaixo.
+  - Imóveis: lista IMOVEIS no <script>. Cada imóvel aceita fotos (URLs), descrição, valores e características.
+    Sem foto, aparece um espaço reservado "Foto do imóvel".
+  - Endereço público: só bairro e cidade (rua e número são passados depois do contato).
+  - Formulários: neste modelo o envio está desativado e isso é dito na tela; na vitrine do EIAH
+    o interesse vai para o CRM da imobiliária como lead.
+*/
+:root{
+  --brand:#0e7c66; --brand-2:#14a37f; --brand-soft:#e6f6f1;
+  --navy:#0b1f33; --ink:#18293b; --muted:#5f6f80; --line:#dfe6ec; --bg:#f6f8fa; --card:#ffffff;
+  --gold:#c89b3c; --warn-bg:#fff6e5; --warn:#8a5a00;
+  --radius:16px; --shadow:0 12px 32px rgba(11,31,51,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+a{color:inherit}
+img{max-width:100%;display:block}
+button,input,select,textarea{font:inherit}
+.wrap{max-width:1200px;margin:0 auto;padding:0 24px}
+@media(max-width:640px){.wrap{padding:0 16px}}
+
+/* topo */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--brand),var(--brand-2));display:grid;place-items:center;color:#fff;font-weight:900}
+.brand-name{font-weight:850;letter-spacing:-.3px;color:var(--navy)}
+.brand-sub{display:block;font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.2px}
+.nav{display:flex;gap:6px;align-items:center}
+.nav a{text-decoration:none;padding:8px 12px;border-radius:10px;font-weight:650;font-size:14px;color:var(--ink)}
+.nav a:hover{background:var(--bg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 16px;font-weight:750;cursor:pointer;text-decoration:none;font-size:14px}
+.btn-primary{background:var(--brand);color:#fff}.btn-primary:hover{background:#0b6955}
+.btn-ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}.btn-ghost:hover{background:#fff}
+.btn-light{background:#fff;color:var(--navy)}
+.menu-toggle{display:none}
+@media(max-width:860px){
+  .nav{display:none;position:absolute;left:0;right:0;top:68px;background:#fff;flex-direction:column;align-items:stretch;padding:10px 16px 16px;border-bottom:1px solid var(--line)}
+  .nav.open{display:flex}
+  .menu-toggle{display:inline-flex}
+}
+
+/* hero */
+.hero{background:radial-gradient(1200px 500px at 85% -10%,rgba(20,163,127,.35),transparent 60%),linear-gradient(160deg,var(--navy),#123a52);color:#fff;padding:56px 0 64px}
+.hero h1{font-size:clamp(32px,4.6vw,56px);line-height:1.05;letter-spacing:-1.5px;margin:12px 0 12px;max-width:800px}
+.hero p.lead{font-size:clamp(16px,1.6vw,20px);color:#cfe0ea;max-width:720px;margin:0 0 26px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#9ff0d6}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:#2fe0a8;box-shadow:0 0 0 5px rgba(47,224,168,.18)}
+.search-card{background:#fff;color:var(--ink);border-radius:20px;padding:16px;box-shadow:0 24px 60px rgba(0,0,0,.25);max-width:980px}
+.mode-tabs{display:flex;gap:6px;margin-bottom:12px}
+.mode-tabs button{border:0;background:var(--bg);padding:9px 14px;border-radius:10px;font-weight:750;cursor:pointer;color:var(--muted)}
+.mode-tabs button.active{background:var(--navy);color:#fff}
+.ai-search{display:flex;gap:10px}
+.ai-search input{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:15px}
+.ai-hint{font-size:12.5px;color:var(--muted);margin:10px 2px 0}
+.ai-hint button{border:0;background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:4px 10px;margin:4px 4px 0 0;cursor:pointer;font-size:12px;font-weight:700}
+.ai-understood{display:none;margin-top:12px;padding:10px 12px;border-radius:12px;background:var(--brand-soft);color:#0b5c4c;font-size:13px}
+.ai-understood.show{display:block}
+.trust-row{display:flex;flex-wrap:wrap;gap:18px;margin-top:26px;color:#cfe0ea;font-size:13.5px}
+.trust-row b{color:#fff}
+@media(max-width:640px){.ai-search{flex-direction:column}.hero{padding:40px 0 48px}}
+
+/* seções */
+section.block{padding:56px 0}
+.block h2{font-size:clamp(26px,3vw,38px);letter-spacing:-.8px;margin:0 0 8px;color:var(--navy)}
+.block .sub{color:var(--muted);margin:0 0 24px;max-width:760px}
+
+/* filtros */
+.filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:18px}
+.filters label{font-size:11.5px;font-weight:750;color:var(--muted);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.filters select,.filters input{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff}
+.results-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0 14px;flex-wrap:wrap}
+.results-bar .count{font-weight:750}
+@media(max-width:980px){.filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:560px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* cards */
+.grid-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media(max-width:980px){.grid-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.grid-cards{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.media{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,#e9f1f6,#eef7f3);overflow:hidden}
+.media img{width:100%;height:100%;object-fit:cover}
+.photo-slot{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#7b8b9b;font-size:13px;font-weight:700;border:2px dashed #c9d6e0;margin:10px;border-radius:12px}
+.photo-slot svg{width:34px;height:34px;margin:0 auto 6px;display:block;opacity:.7}
+.tags{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.tag{background:rgba(11,31,51,.86);color:#fff;font-size:11px;font-weight:800;padding:5px 9px;border-radius:999px;letter-spacing:.3px}
+.tag.sale{background:var(--brand)}.tag.rent{background:#2563eb}.tag.season{background:#a855f7}.tag.verified{background:#fff;color:var(--brand)}
+.fav{position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:50%;border:0;background:#fff;cursor:pointer;font-size:17px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.fav.on{color:#e11d48}
+.card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.place{font-size:12.5px;color:var(--muted);font-weight:650}
+.card-title{font-weight:800;color:var(--navy);font-size:16.5px;line-height:1.3;margin:0}
+.specs{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--muted);margin-top:2px}
+.price{font-size:21px;font-weight:850;color:var(--navy);margin-top:6px}
+.price small{font-size:12px;font-weight:650;color:var(--muted)}
+.monthly{font-size:12.5px;color:var(--muted)}
+.card-actions{display:flex;gap:8px;margin-top:auto;padding-top:10px}
+.card-actions .btn{flex:1;padding:9px 10px;font-size:13px}
+.compare-check{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-top:4px;cursor:pointer}
+.empty{background:#fff;border:1px dashed var(--line);border-radius:var(--radius);padding:30px;text-align:center;color:var(--muted)}
+
+/* comparar */
+.compare-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:50;background:var(--navy);color:#fff;border-radius:14px;padding:10px 12px 10px 16px;display:none;align-items:center;gap:12px;box-shadow:0 18px 40px rgba(0,0,0,.25);max-width:calc(100% - 32px)}
+.compare-bar.show{display:flex}
+
+/* diferenciais */
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:900px){.features{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.features{grid-template-columns:1fr}}
+.feature{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.feature .ico{width:40px;height:40px;border-radius:12px;background:var(--brand-soft);display:grid;place-items:center;font-size:20px;margin-bottom:10px}
+.feature h3{margin:0 0 6px;font-size:16.5px;color:var(--navy)}
+.feature p{margin:0;color:var(--muted);font-size:14px}
+
+/* anunciar */
+.owner{background:linear-gradient(160deg,#0f2f45,var(--navy));color:#fff;border-radius:24px;padding:32px;display:grid;grid-template-columns:1.1fr .9fr;gap:28px}
+.owner h2{color:#fff}
+.owner .sub{color:#cfe0ea}
+.owner ul{margin:0;padding-left:18px;color:#d9e6ee}
+.owner li{margin:6px 0}
+.form{display:grid;gap:10px}
+.form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form input,.form select,.form textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;color:var(--ink)}
+.form textarea{min-height:90px;resize:vertical}
+.form .note{font-size:12px;color:var(--muted)}
+.owner .form .note{color:#b9cbd8}
+.demo-msg{display:none;padding:10px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-size:13px;font-weight:650}
+.demo-msg.show{display:block}
+@media(max-width:860px){.owner{grid-template-columns:1fr;padding:22px}.form .row{grid-template-columns:1fr}}
+
+/* depoimentos */
+.testimonials{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:900px){.testimonials{grid-template-columns:1fr}}
+.quote-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;color:var(--muted);font-size:14.5px}
+.quote-card b{display:block;color:var(--navy);margin-top:10px;font-size:13.5px}
+.placeholder-note{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(6,16,28,.6);display:none;z-index:60;padding:24px;overflow:auto}
+.modal.show{display:block}
+.modal-box{background:#fff;border-radius:20px;max-width:1080px;margin:0 auto;overflow:hidden;position:relative}
+.modal-close{position:absolute;right:14px;top:14px;z-index:3;width:40px;height:40px;border-radius:50%;border:0;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.18);cursor:pointer;font-size:18px}
+.gallery{display:grid;grid-template-columns:2fr 1fr;gap:6px;background:#eef3f6}
+.gallery .main{aspect-ratio:16/10;position:relative}
+.gallery .side{display:grid;grid-template-rows:1fr 1fr;gap:6px}
+.gallery .side>div{position:relative}
+.detail{display:grid;grid-template-columns:1.4fr .9fr;gap:26px;padding:24px}
+.detail h2{margin:4px 0 6px;font-size:26px;color:var(--navy);letter-spacing:-.5px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:650}
+.amenities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px;margin:10px 0 0;padding:0;list-style:none;font-size:14px;color:var(--muted)}
+.amenities li:before{content:"✓ ";color:var(--brand);font-weight:900}
+.side-panel{border:1px solid var(--line);border-radius:16px;padding:16px;height:fit-content;position:sticky;top:12px;background:#fff}
+.costs{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0 12px}
+.costs td{padding:6px 0;border-bottom:1px solid var(--line)}
+.costs td:last-child{text-align:right;font-weight:750}
+.costs tr.total td{border-bottom:0;font-size:16px;color:var(--navy)}
+.sim{background:var(--bg);border-radius:12px;padding:12px;margin-top:12px;font-size:13.5px}
+.sim .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.sim input{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px}
+.sim .out{font-weight:800;color:var(--navy)}
+.video-slot{margin-top:16px;aspect-ratio:16/7;border-radius:14px;background:linear-gradient(135deg,#e9f1f6,#eef7f3);display:grid;place-items:center;color:#7b8b9b;font-weight:700;border:2px dashed #c9d6e0;text-align:center;padding:10px}
+@media(max-width:860px){.detail{grid-template-columns:1fr}.gallery{grid-template-columns:1fr}.gallery .side{display:none}.modal{padding:0}.modal-box{border-radius:0}.side-panel{position:static}}
+
+/* tabela comparação */
+.compare-table{width:100%;border-collapse:collapse;font-size:14px}
+.compare-table th,.compare-table td{padding:10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.compare-table th{color:var(--muted);font-weight:700;width:170px}
+.table-scroll{overflow-x:auto;padding:24px}
+
+/* rodapé */
+footer{background:var(--navy);color:#b9cbd8;padding:40px 0 28px;margin-top:40px;font-size:14px}
+footer .cols{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:24px}
+footer h4{color:#fff;margin:0 0 10px;font-size:14px}
+footer a{display:block;text-decoration:none;margin:5px 0;color:#b9cbd8}
+footer a:hover{color:#fff}
+.legal{border-top:1px solid rgba(255,255,255,.12);margin-top:24px;padding-top:16px;font-size:12px;color:#8aa0b2}
+@media(max-width:860px){footer .cols{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){footer .cols{grid-template-columns:1fr}}
+.wa-float{position:fixed;right:18px;bottom:18px;z-index:45;width:56px;height:56px;border-radius:50%;background:#25d366;color:#fff;display:grid;place-items:center;box-shadow:0 12px 28px rgba(0,0,0,.25);text-decoration:none;font-size:26px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#inicio" aria-label="Página inicial">
+      <span class="brand-mark" id="brandMark">IM</span>
+      <span><span class="brand-name" id="brandName">Imobiliária Modelo</span><span class="brand-sub" id="brandCreci">CRECI 00000-J</span></span>
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#imoveis" data-mode="venda">Comprar</a>
+      <a href="#imoveis" data-mode="locacao">Alugar</a>
+      <a href="#imoveis" data-mode="temporada">Temporada</a>
+      <a href="#anunciar">Anunciar meu imóvel</a>
+      <a href="#como">Como trabalhamos</a>
+      <a href="#contato" class="btn btn-primary" style="color:#fff">Fale com um corretor</a>
+    </nav>
+    <button class="btn btn-ghost menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="nav">Menu</button>
+  </div>
+</header>
+
+<section class="hero" id="inicio">
+  <div class="wrap">
+    <span class="eyebrow"><span class="dot"></span> Imóveis para comprar, alugar e anunciar</span>
+    <h1>Diga o que você procura. A gente encontra — com transparência.</h1>
+    <p class="lead">Busca em linguagem natural, custo mensal real de cada imóvel, simulação de financiamento e um corretor de verdade do outro lado.</p>
+    <div class="search-card" role="search">
+      <div class="mode-tabs" role="tablist">
+        <button class="active" data-mode="venda" role="tab" aria-selected="true">Comprar</button>
+        <button data-mode="locacao" role="tab" aria-selected="false">Alugar</button>
+        <button data-mode="temporada" role="tab" aria-selected="false">Temporada</button>
+      </div>
+      <form class="ai-search" id="aiForm">
+        <label class="sr-only" for="aiInput">Descreva o imóvel que você procura</label>
+        <input id="aiInput" placeholder="Ex.: apartamento 2 quartos com vaga no Centro até R$ 3.000" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+      </form>
+      <div class="ai-hint">Experimente:
+        <button type="button" data-example="casa 3 quartos em Itapema até 900 mil">casa 3 quartos em Itapema até 900 mil</button>
+        <button type="button" data-example="alugar kitnet mobiliada até 1.800">alugar kitnet mobiliada até 1.800</button>
+        <button type="button" data-example="sala comercial no Centro com vaga">sala comercial no Centro com vaga</button>
+      </div>
+      <div class="ai-understood" id="aiUnderstood" aria-live="polite"></div>
+    </div>
+    <div class="trust-row">
+      <span><b>Custo mensal</b> somado (aluguel + condomínio + IPTU)</span>
+      <span><b>Documentação</b> conferida antes de anunciar</span>
+      <span><b>Contrato digital</b> revisado por profissional</span>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="imoveis">
+  <div class="wrap">
+    <h2 id="listTitle">Imóveis à venda</h2>
+    <p class="sub">Endereço completo e visita são combinados com o corretor. Aqui você vê bairro, cidade, valores e características.</p>
+
+    <div class="filters" aria-label="Filtros">
+      <div><label for="fMode">Finalidade</label><select id="fMode"><option value="venda">Comprar</option><option value="locacao">Alugar</option><option value="temporada">Temporada</option></select></div>
+      <div><label for="fType">Tipo</label><select id="fType"><option value="">Todos</option></select></div>
+      <div><label for="fCity">Cidade / bairro</label><select id="fCity"><option value="">Todas</option></select></div>
+      <div><label for="fBeds">Quartos</label><select id="fBeds"><option value="0">Qualquer</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></div>
+      <div><label for="fMax">Valor até (R$)</label><input id="fMax" inputmode="numeric" placeholder="Sem limite"></div>
+      <div><label for="fSort">Ordenar</label><select id="fSort"><option value="rel">Mais relevantes</option><option value="asc">Menor valor</option><option value="desc">Maior valor</option><option value="area">Maior área</option></select></div>
+    </div>
+
+    <div class="results-bar">
+      <span class="count" id="count" aria-live="polite"></span>
+      <span>
+        <button class="btn btn-ghost" id="onlyFav" type="button" aria-pressed="false">♡ Favoritos</button>
+        <button class="btn btn-ghost" id="clearFilters" type="button">Limpar filtros</button>
+      </span>
+    </div>
+
+    <div class="grid-cards" id="cards"></div>
+  </div>
+</section>
+
+<section class="block" id="como" style="background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+  <div class="wrap">
+    <h2>Uma imobiliária pensada para os tempos de IA</h2>
+    <p class="sub">Tecnologia para tirar o atrito do caminho — e gente de verdade para as decisões que importam.</p>
+    <div class="features">
+      <div class="feature"><div class="ico">💬</div><h3>Busca do jeito que você fala</h3><p>Escreva “2 quartos perto do Centro até R$ 3 mil” e veja só o que faz sentido para você.</p></div>
+      <div class="feature"><div class="ico">🧾</div><h3>Custo real, sem surpresa</h3><p>Aluguel, condomínio e IPTU somados no anúncio. Na compra, simulação de parcela antes da visita.</p></div>
+      <div class="feature"><div class="ico">⚖️</div><h3>Compare lado a lado</h3><p>Escolha até 3 imóveis e compare valores, área, quartos, vagas e custos mensais.</p></div>
+      <div class="feature"><div class="ico">📄</div><h3>Contrato digital, revisado</h3><p>Minuta gerada a partir dos dados conferidos e revisada por profissional antes da assinatura.</p></div>
+      <div class="feature"><div class="ico">🔒</div><h3>Seus dados protegidos</h3><p>Documentos pessoais guardados com acesso restrito. Nada de CPF circulando em conversa.</p></div>
+      <div class="feature"><div class="ico">🤝</div><h3>Um corretor responsável</h3><p>Cada atendimento tem um corretor nomeado do primeiro contato até a entrega das chaves.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="block" id="anunciar">
+  <div class="wrap">
+    <div class="owner">
+      <div>
+        <h2>Quer vender ou alugar o seu imóvel?</h2>
+        <p class="sub">Anuncie com quem cuida de tudo: avaliação, fotos, anúncio, visitas, contrato e documentação.</p>
+        <ul>
+          <li>Avaliação com base em imóveis comparáveis da região</li>
+          <li>Anúncio com custo mensal transparente para atrair o interessado certo</li>
+          <li>Interessados qualificados antes da visita</li>
+          <li>Contrato e documentos organizados em um só lugar</li>
+          <li>Na locação: acompanhamento de vencimento, reajuste e garantia</li>
+        </ul>
+      </div>
+      <form class="form" id="ownerForm" novalidate>
+        <div class="row">
+          <input name="nome" placeholder="Seu nome" required aria-label="Seu nome">
+          <input name="telefone" placeholder="Telefone / WhatsApp" required aria-label="Telefone ou WhatsApp" inputmode="tel">
+        </div>
+        <div class="row">
+          <select name="objetivo" aria-label="Objetivo"><option>Quero vender</option><option>Quero alugar</option><option>Aluguel por temporada</option></select>
+          <select name="tipo" aria-label="Tipo do imóvel"><option>Apartamento</option><option>Casa</option><option>Kitnet / studio</option><option>Sala comercial</option><option>Terreno</option><option>Outro</option></select>
+        </div>
+        <input name="local" placeholder="Bairro e cidade do imóvel" aria-label="Bairro e cidade do imóvel">
+        <textarea name="mensagem" placeholder="Conte um pouco sobre o imóvel (área, quartos, se está ocupado…)" aria-label="Sobre o imóvel"></textarea>
+        <button class="btn btn-light" type="submit">Quero uma avaliação</button>
+        <div class="demo-msg" role="status">Este é um modelo de demonstração: o envio está desativado. No site da imobiliária, o pedido chega direto ao corretor responsável.</div>
+        <p class="note">Usamos seus dados só para responder este pedido (LGPD).</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap">
+    <h2>Quem já fez negócio com a gente</h2>
+    <div class="testimonials">
+      <div class="quote-card">“Espaço para o depoimento de um cliente que comprou o imóvel.”<b>Nome do cliente • Compra</b></div>
+      <div class="quote-card">“Espaço para o depoimento de um inquilino ou proprietário de locação.”<b>Nome do cliente • Locação</b></div>
+      <div class="quote-card">“Espaço para o depoimento de um proprietário que anunciou com a imobiliária.”<b>Nome do cliente • Anúncio</b></div>
+    </div>
+    <p class="placeholder-note">Substitua por depoimentos reais, com autorização dos clientes.</p>
+  </div>
+</section>
+
+<footer id="contato">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h4 id="footName">Imobiliária Modelo</h4>
+        <p style="margin:0 0 8px">Compra, venda e locação de imóveis.</p>
+        <p style="margin:0" id="footAddress">Endereço do escritório • Cidade/UF</p>
+      </div>
+      <div>
+        <h4>Imóveis</h4>
+        <a href="#imoveis" data-mode="venda">Comprar</a>
+        <a href="#imoveis" data-mode="locacao">Alugar</a>
+        <a href="#imoveis" data-mode="temporada">Temporada</a>
+      </div>
+      <div>
+        <h4>Proprietários</h4>
+        <a href="#anunciar">Anunciar imóvel</a>
+        <a href="#anunciar">Avaliação gratuita</a>
+        <a href="#como">Administração de locação</a>
+      </div>
+      <div>
+        <h4>Contato</h4>
+        <a id="footPhone" href="tel:+550000000000">(00) 0000-0000</a>
+        <a id="footWhats" href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <a id="footEmail" href="mailto:contato@imobiliaria.com.br">contato@imobiliaria.com.br</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span id="legalLine">Imobiliária Modelo • CRECI 00000-J • CNPJ 00.000.000/0001-00</span><br>
+      Imagens e valores ilustrativos neste modelo. Valores sujeitos a alteração; confirme disponibilidade com o corretor. Tratamos dados pessoais conforme a LGPD.
+    </div>
+  </div>
+</footer>
+
+<a class="wa-float" id="waFloat" href="#" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">✆</a>
+
+<div class="compare-bar" id="compareBar" role="region" aria-label="Comparação">
+  <span id="compareCount"></span>
+  <button class="btn btn-light" id="compareOpen" type="button">Comparar</button>
+  <button class="btn btn-ghost" id="compareClear" type="button" style="color:#fff;border-color:rgba(255,255,255,.3)">Limpar</button>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script>
+/* ===== CONFIG: dados da imobiliária ===== */
+const CONFIG = {
+  nome: "Imobiliária Modelo",
+  sigla: "IM",
+  creci: "CRECI 00000-J",
+  cnpj: "00.000.000/0001-00",
+  endereco: "Endereço do escritório • Cidade/UF",
+  telefone: "(00) 0000-0000",
+  whatsapp: "5500000000000", // só números, com DDI e DDD
+  email: "contato@imobiliaria.com.br",
+};
+
+/* ===== IMÓVEIS (exemplos fictícios — troque pelos reais) =====
+   finalidade: "venda" | "locacao" | "temporada"
+   fotos: lista de URLs; vazia = espaço reservado "Foto do imóvel"
+   Valores em reais. Endereço público: só bairro e cidade. */
+const IMOVEIS = [
+  { id:"AP-101", finalidade:"venda", tipo:"Apartamento", titulo:"Apartamento com vista e sacada gourmet", bairro:"Centro", cidade:"Balneário Camboriú",
+    preco:980000, condominio:950, iptu:2400, area:92, quartos:3, suites:1, banheiros:2, vagas:2, fotos:[], verificado:true, destaque:true,
+    descricao:"Apartamento amplo e iluminado, sacada com churrasqueira, a poucas quadras da praia. Prédio com portaria 24h, piscina e academia.",
+    caracteristicas:["Sacada gourmet","Piscina","Academia","Portaria 24h","Elevador","Aceita financiamento"] },
+  { id:"CA-202", finalidade:"venda", tipo:"Casa", titulo:"Casa térrea com quintal e piscina", bairro:"Morretes", cidade:"Itapema",
+    preco:870000, condominio:0, iptu:1800, area:160, quartos:3, suites:1, banheiros:3, vagas:2, fotos:[], verificado:true,
+    descricao:"Casa térrea em rua tranquila, quintal com piscina e área de festas. Ótima para família.",
+    caracteristicas:["Piscina","Quintal","Área de festas","Churrasqueira","Aceita financiamento"] },
+  { id:"KI-303", finalidade:"locacao", tipo:"Kitnet", titulo:"Kitnet mobiliada pronta para morar", bairro:"Centro", cidade:"Balneário Camboriú",
+    preco:1600, condominio:180, iptu:40, area:28, quartos:1, suites:0, banheiros:1, vagas:0, fotos:[], verificado:true, destaque:true,
+    descricao:"Kitnet mobiliada, com cozinha equipada e internet inclusa. Perto de comércio e transporte.",
+    caracteristicas:["Mobiliada","Internet inclusa","Perto do comércio","Garantia: caução ou seguro-fiança"] },
+  { id:"AP-404", finalidade:"locacao", tipo:"Apartamento", titulo:"Apartamento 2 quartos com vaga", bairro:"Nações", cidade:"Balneário Camboriú",
+    preco:2900, condominio:520, iptu:110, area:68, quartos:2, suites:1, banheiros:2, vagas:1, fotos:[], verificado:false,
+    descricao:"Apartamento bem localizado, semimobiliado, com sacada e vaga coberta.",
+    caracteristicas:["Semimobiliado","Sacada","Vaga coberta","Aceita pet"] },
+  { id:"SA-505", finalidade:"locacao", tipo:"Sala comercial", titulo:"Sala comercial com recepção", bairro:"Centro", cidade:"Itajaí",
+    preco:2300, condominio:430, iptu:150, area:45, quartos:0, suites:0, banheiros:1, vagas:1, fotos:[], verificado:true,
+    descricao:"Sala pronta para escritório ou consultório, com recepção, ar-condicionado e vaga.",
+    caracteristicas:["Ar-condicionado","Recepção","Vaga","Elevador"] },
+  { id:"CO-606", finalidade:"venda", tipo:"Cobertura", titulo:"Cobertura duplex com terraço", bairro:"Meia Praia", cidade:"Itapema",
+    preco:2450000, condominio:1800, iptu:5200, area:240, quartos:4, suites:3, banheiros:5, vagas:3, fotos:[], verificado:true,
+    descricao:"Cobertura duplex com terraço, piscina privativa e vista para o mar.",
+    caracteristicas:["Piscina privativa","Terraço","Vista para o mar","Hidromassagem","Aceita permuta"] },
+  { id:"TE-707", finalidade:"venda", tipo:"Terreno", titulo:"Terreno residencial plano", bairro:"Tabuleiro", cidade:"Camboriú",
+    preco:320000, condominio:0, iptu:600, area:360, quartos:0, suites:0, banheiros:0, vagas:0, fotos:[], verificado:false,
+    descricao:"Terreno plano em loteamento com infraestrutura completa.",
+    caracteristicas:["Plano","Água e luz","Rua pavimentada"] },
+  { id:"ST-808", finalidade:"temporada", tipo:"Studio", titulo:"Studio a 200 m da praia", bairro:"Centro", cidade:"Balneário Camboriú",
+    preco:350, condominio:0, iptu:0, area:32, quartos:1, suites:0, banheiros:1, vagas:1, fotos:[], verificado:true, unidadePreco:"diária",
+    descricao:"Studio completo para temporada, ar-condicionado, roupa de cama e vaga.",
+    caracteristicas:["Ar-condicionado","Roupa de cama","Wi-Fi","Vaga"] },
+  { id:"AP-909", finalidade:"locacao", tipo:"Apartamento", titulo:"Apartamento 3 quartos perto da escola", bairro:"Vila Real", cidade:"Balneário Camboriú",
+    preco:4200, condominio:780, iptu:190, area:110, quartos:3, suites:1, banheiros:2, vagas:2, fotos:[], verificado:true,
+    descricao:"Apartamento espaçoso, perto de escolas e mercado, com duas vagas.",
+    caracteristicas:["Duas vagas","Churrasqueira","Playground","Salão de festas"] },
+];
+
+/* ===== util ===== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const brl = (v) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: v % 1 ? 2 : 0 });
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const norm = (s) => s.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+const store = {
+  get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const PHOTO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>';
+const photoSlot = (label = "Foto do imóvel") => `<div class="photo-slot"><div>${PHOTO_SVG}${label}</div></div>`;
+const monthlyTotal = (p) => p.finalidade === "locacao" ? p.preco + p.condominio + Math.round(p.iptu) : null;
+const priceLabel = (p) => p.finalidade === "venda" ? brl(p.preco) : `${brl(p.preco)} <small>/${p.unidadePreco || "mês"}</small>`;
+const waLink = (text) => `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(text)}`;
+
+/* ===== marca ===== */
+function applyConfig() {
+  $("#brandName").textContent = CONFIG.nome; $("#brandMark").textContent = CONFIG.sigla; $("#brandCreci").textContent = CONFIG.creci;
+  $("#footName").textContent = CONFIG.nome; $("#footAddress").textContent = CONFIG.endereco;
+  $("#footPhone").textContent = CONFIG.telefone; $("#footPhone").href = `tel:+${CONFIG.whatsapp}`;
+  $("#footEmail").textContent = CONFIG.email; $("#footEmail").href = `mailto:${CONFIG.email}`;
+  $("#footWhats").href = waLink(`Olá! Vim pelo site da ${CONFIG.nome}.`); $("#waFloat").href = $("#footWhats").href;
+  $("#legalLine").textContent = `${CONFIG.nome} • ${CONFIG.creci} • CNPJ ${CONFIG.cnpj}`;
+  document.title = `${CONFIG.nome} — compra, venda e locação`;
+}
+
+/* ===== estado e filtros ===== */
+const state = { mode: "venda", type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] };
+let favorites = new Set(store.get("im_favs", []));
+let compare = new Set();
+
+function fillSelects() {
+  const types = [...new Set(IMOVEIS.map((p) => p.tipo))].sort();
+  $("#fType").innerHTML = '<option value="">Todos</option>' + types.map((t) => `<option>${esc(t)}</option>`).join("");
+  const places = [...new Set(IMOVEIS.flatMap((p) => [p.cidade, `${p.bairro}, ${p.cidade}`]))].sort();
+  $("#fCity").innerHTML = '<option value="">Todas</option>' + places.map((t) => `<option>${esc(t)}</option>`).join("");
+}
+
+function syncInputs() {
+  $("#fMode").value = state.mode; $("#fType").value = state.type; $("#fCity").value = state.place;
+  $("#fBeds").value = String(state.beds); $("#fMax").value = state.max ? state.max.toLocaleString("pt-BR") : ""; $("#fSort").value = state.sort;
+  $$(".mode-tabs button").forEach((b) => { const on = b.dataset.mode === state.mode; b.classList.toggle("active", on); b.setAttribute("aria-selected", on); });
+  $("#listTitle").textContent = { venda: "Imóveis à venda", locacao: "Imóveis para alugar", temporada: "Imóveis para temporada" }[state.mode];
+  $("#onlyFav").setAttribute("aria-pressed", state.onlyFav); $("#onlyFav").textContent = state.onlyFav ? "♥ Favoritos" : "♡ Favoritos";
+}
+
+function filtered() {
+  let list = IMOVEIS.filter((p) => p.finalidade === state.mode);
+  if (state.type) list = list.filter((p) => p.tipo === state.type);
+  if (state.place) list = list.filter((p) => p.cidade === state.place || `${p.bairro}, ${p.cidade}` === state.place);
+  if (state.beds) list = list.filter((p) => p.quartos >= state.beds);
+  if (state.max) list = list.filter((p) => (monthlyTotal(p) ?? p.preco) <= state.max || p.preco <= state.max);
+  if (state.onlyFav) list = list.filter((p) => favorites.has(p.id));
+  if (state.keywords.length) {
+    list = list.map((p) => {
+      const hay = norm([p.titulo, p.descricao, ...p.caracteristicas].join(" "));
+      return { p, score: state.keywords.filter((k) => hay.includes(k)).length };
+    }).sort((a, b) => b.score - a.score).map((x) => x.p);
+  }
+  if (state.sort === "asc") list = [...list].sort((a, b) => a.preco - b.preco);
+  if (state.sort === "desc") list = [...list].sort((a, b) => b.preco - a.preco);
+  if (state.sort === "area") list = [...list].sort((a, b) => b.area - a.area);
+  if (state.sort === "rel" && !state.keywords.length) list = [...list].sort((a, b) => (b.destaque ? 1 : 0) - (a.destaque ? 1 : 0));
+  return list;
+}
+
+function specs(p) {
+  return [
+    p.area ? `${p.area} m²` : null,
+    p.quartos ? `${p.quartos} quarto${p.quartos > 1 ? "s" : ""}${p.suites ? ` (${p.suites} suíte${p.suites > 1 ? "s" : ""})` : ""}` : null,
+    p.banheiros ? `${p.banheiros} banh.` : null,
+    p.vagas ? `${p.vagas} vaga${p.vagas > 1 ? "s" : ""}` : null,
+  ].filter(Boolean).map((s) => `<span>${s}</span>`).join("");
+}
+
+function media(p, i = 0) {
+  return p.fotos && p.fotos[i] ? `<img src="${esc(p.fotos[i])}" alt="${esc(p.titulo)}" loading="lazy">` : photoSlot();
+}
+
+function render() {
+  syncInputs();
+  const list = filtered();
+  $("#count").textContent = `${list.length} imóve${list.length === 1 ? "l" : "is"} encontrado${list.length === 1 ? "" : "s"}`;
+  if (!list.length) {
+    $("#cards").innerHTML = `<div class="empty" style="grid-column:1/-1">Nenhum imóvel com esses critérios agora.<br><br><a class="btn btn-primary" href="${waLink("Olá! Procuro um imóvel e não encontrei no site. Podem me avisar quando surgir?")}" target="_blank" rel="noopener">Avise-me quando surgir</a></div>`;
+  } else {
+    $("#cards").innerHTML = list.map((p) => {
+      const total = monthlyTotal(p);
+      const tag = { venda: '<span class="tag sale">Venda</span>', locacao: '<span class="tag rent">Locação</span>', temporada: '<span class="tag season">Temporada</span>' }[p.finalidade];
+      return `<article class="card">
+        <div class="media">${media(p)}
+          <div class="tags">${tag}${p.verificado ? '<span class="tag verified">✓ Doc. conferida</span>' : ""}${p.destaque ? '<span class="tag">Destaque</span>' : ""}</div>
+          <button class="fav ${favorites.has(p.id) ? "on" : ""}" data-fav="${p.id}" aria-label="${favorites.has(p.id) ? "Remover dos" : "Adicionar aos"} favoritos">${favorites.has(p.id) ? "♥" : "♡"}</button>
+        </div>
+        <div class="card-body">
+          <span class="place">${esc(p.tipo)} • ${esc(p.bairro)}, ${esc(p.cidade)}</span>
+          <h3 class="card-title">${esc(p.titulo)}</h3>
+          <div class="specs">${specs(p)}</div>
+          <div class="price">${priceLabel(p)}</div>
+          ${total ? `<div class="monthly">Total mensal estimado: <b>${brl(total)}</b> (com condomínio e IPTU)</div>` : p.finalidade === "venda" && p.condominio ? `<div class="monthly">Condomínio ${brl(p.condominio)}/mês</div>` : ""}
+          <label class="compare-check"><input type="checkbox" data-compare="${p.id}" ${compare.has(p.id) ? "checked" : ""}> Comparar</label>
+          <div class="card-actions">
+            <button class="btn btn-primary" data-open="${p.id}">Ver detalhes</button>
+            <a class="btn btn-ghost" href="${waLink(`Olá! Tenho interesse no imóvel ${p.id} — ${p.titulo} (${p.bairro}, ${p.cidade}).`)}" target="_blank" rel="noopener">WhatsApp</a>
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+  }
+  updateCompareBar();
+}
+
+/* ===== busca em linguagem natural (interpretação local, sem enviar dados) ===== */
+const TYPE_WORDS = { apartamento:"Apartamento", apto:"Apartamento", casa:"Casa", kitnet:"Kitnet", quitinete:"Kitnet", studio:"Studio", estudio:"Studio", cobertura:"Cobertura", terreno:"Terreno", lote:"Terreno", sala:"Sala comercial" };
+const STOP = new Set(["com","de","da","do","em","no","na","ate","e","um","uma","para","perto","quero","procuro","mil","reais","r$","quartos","quarto","alugar","comprar","aluguel","venda","temporada","mes","por","o","a","os","as"]);
+function parseQuery(raw) {
+  const q = norm(raw);
+  const out = { understood: [] };
+  if (/\b(alugar|aluguel|locacao|locar)\b/.test(q)) out.mode = "locacao";
+  else if (/\b(temporada|diaria|ferias)\b/.test(q)) out.mode = "temporada";
+  else if (/\b(comprar|compra|venda|financiar)\b/.test(q)) out.mode = "venda";
+  for (const [w, t] of Object.entries(TYPE_WORDS)) if (new RegExp(`\\b${w}s?\\b`).test(q)) { out.type = t; break; }
+  const beds = q.match(/(\d+)\s*(quartos?|dorm|dormitorios?)/); if (beds) out.beds = Math.min(4, Number(beds[1]));
+  const money = q.match(/ate\s*r?\$?\s*([\d.,]+)\s*(mil|k|milhao|milhoes)?/);
+  if (money) {
+    let v = Number(money[1].replace(/\./g, "").replace(",", "."));
+    if (money[2] === "mil" || money[2] === "k") v *= 1000;
+    if (money[2] && money[2].startsWith("milh")) v *= 1000000;
+    if (v > 0) out.max = Math.round(v);
+  }
+  const places = [...new Set(IMOVEIS.flatMap((p) => [p.cidade, p.bairro]))];
+  for (const place of places) if (q.includes(norm(place))) {
+    const asCity = IMOVEIS.find((p) => p.cidade === place);
+    out.place = asCity ? place : (() => { const p = IMOVEIS.find((x) => x.bairro === place); return `${p.bairro}, ${p.cidade}`; })();
+    break;
+  }
+  // Sem "comprar/alugar" na frase, a faixa de valor indica a finalidade.
+  if (!out.mode && out.max) out.mode = out.max >= 100000 ? "venda" : out.max <= 30000 && state.mode === "venda" ? "locacao" : undefined;
+  out.keywords = q.split(/[^a-z0-9]+/).filter((w) => w.length > 3 && !STOP.has(w) && !TYPE_WORDS[w] && !places.some((p) => norm(p).includes(w)));
+  return out;
+}
+
+function applyQuery(raw) {
+  const r = parseQuery(raw);
+  if (r.mode) state.mode = r.mode;
+  state.type = r.type || ""; state.beds = r.beds || 0; state.max = r.max || null; state.place = r.place || ""; state.keywords = r.keywords; state.onlyFav = false;
+  const bits = [
+    { venda: "comprar", locacao: "alugar", temporada: "temporada" }[state.mode],
+    state.type && state.type.toLowerCase(),
+    state.beds && `${state.beds}+ quartos`,
+    state.place && `em ${state.place}`,
+    state.max && `até ${brl(state.max)}`,
+    state.keywords.length && `priorizando: ${state.keywords.join(", ")}`,
+  ].filter(Boolean);
+  const box = $("#aiUnderstood");
+  box.innerHTML = `<b>Entendi:</b> ${esc(bits.join(" • "))}. <a href="#imoveis">Ver resultados ↓</a>`;
+  box.classList.add("show");
+  render();
+}
+
+/* ===== detalhes ===== */
+function openDetail(id) {
+  const p = IMOVEIS.find((x) => x.id === id); if (!p) return;
+  const total = monthlyTotal(p);
+  const costs = p.finalidade === "locacao"
+    ? `<table class="costs"><tr><td>Aluguel</td><td>${brl(p.preco)}</td></tr><tr><td>Condomínio</td><td>${p.condominio ? brl(p.condominio) : "—"}</td></tr><tr><td>IPTU (mensal)</td><td>${p.iptu ? brl(p.iptu) : "—"}</td></tr><tr class="total"><td>Total mensal</td><td>${brl(total)}</td></tr></table>`
+    : p.finalidade === "venda"
+      ? `<table class="costs"><tr><td>Valor de venda</td><td>${brl(p.preco)}</td></tr><tr><td>Condomínio</td><td>${p.condominio ? brl(p.condominio) + "/mês" : "—"}</td></tr><tr><td>IPTU (anual)</td><td>${p.iptu ? brl(p.iptu) : "—"}</td></tr></table>
+         <div class="sim"><b>Simule o financiamento (Price)</b>
+           <div class="row"><label>Entrada (R$)<input id="simDown" inputmode="numeric" value="${Math.round(p.preco * 0.2).toLocaleString("pt-BR")}"></label><label>Prazo (anos)<input id="simYears" inputmode="numeric" value="30"></label></div>
+           <div class="row"><label>Juros (% ao ano)<input id="simRate" inputmode="decimal" value="11,5"></label><div>Parcela estimada<div class="out" id="simOut">—</div></div></div>
+           <div class="placeholder-note">Estimativa sem seguros e taxas; a aprovação e as condições são do banco.</div>
+         </div>`
+      : `<table class="costs"><tr><td>Diária</td><td>${brl(p.preco)}</td></tr></table>`;
+  const ctaText = { venda: "Quero agendar uma visita", locacao: "Quero alugar este imóvel", temporada: "Consultar datas" }[p.finalidade];
+  $("#modalBox").innerHTML = `
+    <button class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
+    <div class="gallery">
+      <div class="main">${media(p, 0)}</div>
+      <div class="side"><div>${p.fotos && p.fotos[1] ? media(p, 1) : photoSlot("Foto 2")}</div><div>${p.fotos && p.fotos[2] ? media(p, 2) : photoSlot("Foto 3")}</div></div>
+    </div>
+    <div class="detail">
+      <div>
+        <span class="place">${esc(p.tipo)} • ${esc(p.bairro)}, ${esc(p.cidade)} • Cód. ${esc(p.id)}</span>
+        <h2 id="modalTitle">${esc(p.titulo)}</h2>
+        <div class="price">${priceLabel(p)}</div>
+        <div class="chips">${p.area ? `<span class="chip">${p.area} m²</span>` : ""}${p.quartos ? `<span class="chip">${p.quartos} quartos</span>` : ""}${p.suites ? `<span class="chip">${p.suites} suíte(s)</span>` : ""}${p.banheiros ? `<span class="chip">${p.banheiros} banheiro(s)</span>` : ""}${p.vagas ? `<span class="chip">${p.vagas} vaga(s)</span>` : ""}${p.verificado ? '<span class="chip" style="color:var(--brand)">✓ Documentação conferida</span>' : ""}</div>
+        <h3 style="margin:16px 0 6px;color:var(--navy)">Sobre o imóvel</h3>
+        <p style="margin:0;color:var(--muted)">${esc(p.descricao)}</p>
+        <h3 style="margin:18px 0 6px;color:var(--navy)">Características</h3>
+        <ul class="amenities">${p.caracteristicas.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
+        <div class="video-slot">▶ Espaço para vídeo ou tour virtual 360°</div>
+        <p class="placeholder-note">Endereço completo informado pelo corretor no agendamento da visita.</p>
+      </div>
+      <aside class="side-panel">
+        <b>Valores</b>
+        ${costs}
+        <form class="form" id="leadForm" novalidate>
+          <input name="nome" placeholder="Seu nome" aria-label="Seu nome" required>
+          <input name="telefone" placeholder="Telefone / WhatsApp" aria-label="Telefone ou WhatsApp" inputmode="tel" required>
+          <select name="quando" aria-label="Melhor horário"><option>Melhor horário: manhã</option><option>Melhor horário: tarde</option><option>Melhor horário: noite</option></select>
+          <button class="btn btn-primary" type="submit">${ctaText}</button>
+          <div class="demo-msg" role="status">Modelo de demonstração: o envio está desativado. No site da imobiliária, este pedido vira um atendimento para o corretor, ligado a este imóvel.</div>
+          <a class="btn btn-ghost" href="${waLink(`Olá! Tenho interesse no imóvel ${p.id} — ${p.titulo} (${p.bairro}, ${p.cidade}).`)}" target="_blank" rel="noopener">Falar no WhatsApp</a>
+          <p class="note">Usamos seus dados só para este atendimento (LGPD).</p>
+        </form>
+      </aside>
+    </div>`;
+  $("#modal").classList.add("show"); document.body.style.overflow = "hidden";
+  $("#modalClose").focus();
+  if (p.finalidade === "venda") {
+    const calc = () => {
+      const down = Number(($("#simDown").value || "0").replace(/\./g, "").replace(",", ".")) || 0;
+      const years = Number($("#simYears").value) || 0;
+      const rate = Number(($("#simRate").value || "0").replace(",", ".")) / 100;
+      const pv = Math.max(0, p.preco - down), n = years * 12, i = Math.pow(1 + rate, 1 / 12) - 1;
+      $("#simOut").textContent = pv && n ? brl(i ? (pv * i) / (1 - Math.pow(1 + i, -n)) : pv / n) : "—";
+    };
+    ["#simDown", "#simYears", "#simRate"].forEach((s) => $(s).addEventListener("input", calc)); calc();
+  }
+}
+function closeModal() { $("#modal").classList.remove("show"); document.body.style.overflow = ""; }
+
+/* ===== comparar ===== */
+function updateCompareBar() {
+  $("#compareBar").classList.toggle("show", compare.size > 0);
+  $("#compareCount").textContent = `${compare.size} de 3 selecionado${compare.size > 1 ? "s" : ""}`;
+}
+function openCompare() {
+  const items = IMOVEIS.filter((p) => compare.has(p.id));
+  const row = (label, fn) => `<tr><th>${label}</th>${items.map((p) => `<td>${fn(p)}</td>`).join("")}</tr>`;
+  $("#modalBox").innerHTML = `<button class="modal-close" id="modalClose" aria-label="Fechar">✕</button>
+    <div class="table-scroll"><h2 id="modalTitle" style="margin:0 0 14px;color:var(--navy)">Comparar imóveis</h2>
+    <table class="compare-table">
+      ${row("Imóvel", (p) => `<b>${esc(p.titulo)}</b><br><span class="place">${esc(p.bairro)}, ${esc(p.cidade)}</span>`)}
+      ${row("Finalidade", (p) => ({ venda: "Venda", locacao: "Locação", temporada: "Temporada" }[p.finalidade]))}
+      ${row("Valor", (p) => priceLabel(p))}
+      ${row("Total mensal", (p) => monthlyTotal(p) ? brl(monthlyTotal(p)) : p.condominio ? `Cond. ${brl(p.condominio)}` : "—")}
+      ${row("Área", (p) => p.area ? `${p.area} m²` : "—")}
+      ${row("Valor por m²", (p) => p.area && p.finalidade === "venda" ? brl(Math.round(p.preco / p.area)) : "—")}
+      ${row("Quartos / suítes", (p) => `${p.quartos} / ${p.suites}`)}
+      ${row("Vagas", (p) => p.vagas)}
+      ${row("Documentação", (p) => p.verificado ? "✓ Conferida" : "Em conferência")}
+      ${row("", (p) => `<button class="btn btn-primary" data-open="${p.id}">Ver detalhes</button>`)}
+    </table></div>`;
+  $("#modal").classList.add("show"); document.body.style.overflow = "hidden"; $("#modalClose").focus();
+}
+
+/* ===== eventos ===== */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-open],[data-fav],[data-mode],[data-example],#modalClose,#compareOpen,#compareClear,#onlyFav,#clearFilters,#menuToggle");
+  if (e.target === $("#modal")) return closeModal();
+  if (!t) return;
+  if (t.dataset.open) { e.preventDefault(); return openDetail(t.dataset.open); }
+  if (t.dataset.fav) {
+    favorites.has(t.dataset.fav) ? favorites.delete(t.dataset.fav) : favorites.add(t.dataset.fav);
+    store.set("im_favs", [...favorites]); return render();
+  }
+  if (t.dataset.example) { $("#aiInput").value = t.dataset.example; return applyQuery(t.dataset.example); }
+  if (t.dataset.mode) {
+    state.mode = t.dataset.mode; state.type = ""; state.place = ""; state.keywords = []; render();
+    $("#nav").classList.remove("open"); return;
+  }
+  if (t.id === "modalClose") return closeModal();
+  if (t.id === "compareOpen") return openCompare();
+  if (t.id === "compareClear") { compare.clear(); return render(); }
+  if (t.id === "onlyFav") { state.onlyFav = !state.onlyFav; return render(); }
+  if (t.id === "clearFilters") { Object.assign(state, { type: "", place: "", beds: 0, max: null, sort: "rel", onlyFav: false, keywords: [] }); $("#aiUnderstood").classList.remove("show"); return render(); }
+  if (t.id === "menuToggle") { const open = $("#nav").classList.toggle("open"); t.setAttribute("aria-expanded", open); }
+});
+document.addEventListener("change", (e) => {
+  const c = e.target.closest("[data-compare]");
+  if (c) {
+    if (c.checked && compare.size >= 3) { c.checked = false; alert("Compare até 3 imóveis por vez."); return; }
+    c.checked ? compare.add(c.dataset.compare) : compare.delete(c.dataset.compare); return updateCompareBar();
+  }
+  if (e.target.id === "fMode") state.mode = e.target.value;
+  if (e.target.id === "fType") state.type = e.target.value;
+  if (e.target.id === "fCity") state.place = e.target.value;
+  if (e.target.id === "fBeds") state.beds = Number(e.target.value);
+  if (e.target.id === "fSort") state.sort = e.target.value;
+  if (["fMode", "fType", "fCity", "fBeds", "fSort"].includes(e.target.id)) render();
+});
+$("#fMax").addEventListener("change", (e) => { const v = Number(e.target.value.replace(/\D/g, "")); state.max = v || null; render(); });
+$("#aiForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#aiInput").value.trim(); if (v) { applyQuery(v); location.hash = "#imoveis"; } });
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "ownerForm" || e.target.id === "leadForm") { e.preventDefault(); $(".demo-msg", e.target).classList.add("show"); }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#modal").classList.contains("show")) closeModal(); });
+
+applyConfig(); fillSelects(); render();
+</script>
+</body>
+</html>

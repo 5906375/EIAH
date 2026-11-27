@@ -1,0 +1,89 @@
+[
+  {
+    "name": "core-build",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/core",
+      "build"
+    ],
+    "startedAt": "2026-11-16T18:07:10.100848+00:00",
+    "finishedAt": "2026-11-16T18:07:16.609906+00:00",
+    "exitCode": 0,
+    "log": "core-build.log"
+  },
+  {
+    "name": "providers-build",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/providers",
+      "build"
+    ],
+    "startedAt": "2026-11-16T18:07:16.614105+00:00",
+    "finishedAt": "2026-11-16T18:07:17.930616+00:00",
+    "exitCode": 0,
+    "log": "providers-build.log"
+  },
+  {
+    "name": "packaged-smoke",
+    "command": [
+      "node",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-preparation.mjs"
+    ],
+    "startedAt": "2026-11-16T18:11:40.469574+00:00",
+    "finishedAt": "2026-11-16T18:11:40.672891+00:00",
+    "exitCode": 1,
+    "log": "packaging-smoke.log"
+  },
+  {
+    "name": "packaged-smoke-final",
+    "command": [
+      "node",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/packaging-preparation.mjs"
+    ],
+    "startedAt": "2026-11-16T18:12:04.831740+00:00",
+    "finishedAt": "2026-11-16T18:12:04.976682+00:00",
+    "exitCode": 0,
+    "log": "packaging-smoke-final.log"
+  },
+  {
+    "name": "api-build",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/api",
+      "build"
+    ],
+    "startedAt": "2026-11-16T18:12:29.556039+00:00",
+    "finishedAt": "2026-11-16T18:12:39.952854+00:00",
+    "exitCode": 2,
+    "log": "api-build.log"
+  },
+  {
+    "name": "contracts-build",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/contracts",
+      "build"
+    ],
+    "startedAt": "2026-11-16T18:24:32.340352+00:00",
+    "finishedAt": "2026-11-16T18:24:36.547054+00:00",
+    "exitCode": 0,
+    "log": "contracts-build.log"
+  },
+  {
+    "name": "api-build-after-contracts",
+    "command": [
+      "pnpm",
+      "--filter",
+      "@eiah/api",
+      "build"
+    ],
+    "startedAt": "2026-11-16T18:24:36.555442+00:00",
+    "finishedAt": "2026-11-16T18:24:47.525545+00:00",
+    "exitCode": 0,
+    "log": "api-build-after-contracts.log"
+  }
+]

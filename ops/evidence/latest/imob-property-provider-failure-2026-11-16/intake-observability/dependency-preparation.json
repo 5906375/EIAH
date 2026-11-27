@@ -1,0 +1,31 @@
+{
+  "contractsBuildExit": 0,
+  "apiBuildExit": 0,
+  "outputExports": [
+    "imobPropertyCaptureRequestSchema",
+    "IMOB_PROPERTY_CAPTURE_FIELDS",
+    "IMOB_PROPERTY_CAPTURE_POLICY",
+    "ImobPropertyCaptureRequest",
+    "ImobPropertyCaptureResult",
+    "ImobPropertyCaptureDraft",
+    "ImobPropertyCaptureProposal"
+  ],
+  "outputFiles": [
+    "packages/contracts/dist/index.js",
+    "packages/contracts/dist/index.d.ts",
+    "packages/contracts/dist/imobPropertyCapture.js",
+    "packages/contracts/dist/imobPropertyCapture.d.ts"
+  ],
+  "outputFilesIgnored": true,
+  "outputHashes": {
+    "packages/contracts/dist/index.js": "44bd8d488e6a2bb09d4820426d133f90f516930ce201cf42c541d5c4ade9c588",
+    "packages/contracts/dist/index.d.ts": "c0d2ccb16122499fccb70b6979765887d13ea1a735629a2f4c29292fd95d8125",
+    "packages/contracts/dist/imobPropertyCapture.js": "ed2f1200b8de93674203af615ee0442468d25dafb2df4c40e478423fd55d788a",
+    "packages/contracts/dist/imobPropertyCapture.d.ts": "3d9f084672ba93f6c2b57afd1eec93597254387a4727384511f1db00f4af65fc"
+  },
+  "trackedDiffSha256Before": "f96ec2fc44940885133eebc88465967921c6086c077c4b2193b4437e93437526",
+  "trackedDiffSha256After": "f96ec2fc44940885133eebc88465967921c6086c077c4b2193b4437e93437526",
+  "trackedDiffUnchangedByBuilds": true,
+  "remainingApiDiagnostics": [],
+  "scope": "Only documented contracts build, static output declaration/barrel check and API build; no other build/test/smoke/provider/Render call"
+}

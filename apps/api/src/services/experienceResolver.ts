@@ -8,7 +8,7 @@ import {
   type ResolvedExperience,
 } from "../types/experienceResolverContract";
 
-type SessionDomain = "core" | "imob";
+type SessionDomain = "core" | "imob" | "logistica";
 
 type SessionEntitlements = {
   REAL_ESTATE_CORE: boolean;
@@ -64,18 +64,18 @@ function resolveImobLanding(input: ResolverInput) {
   if (!imobInstalled) return null;
 
   return {
-    landingSurface: "imob_chat",
-    landingPath: "/app/imob/chat",
+    landingSurface: "chat",
+    landingPath: "/app/chat",
     primaryNavigation: [
-      buildResolvedNavigationItem({ surfaceId: "imob_chat", path: "/app/imob/chat", label: "IMOB" }),
+      buildResolvedNavigationItem({ surfaceId: "chat", path: "/app/chat", label: "Chat" }),
       buildResolvedNavigationItem({ surfaceId: "imob_dashboard", path: "/app/imob/dashboard", label: "Dashboard IMOB" }),
       buildResolvedNavigationItem({ surfaceId: "runs", path: "/app/runs", label: "Runs" }),
     ],
     recommendedActions: [
       buildRecommendedAction({
         actionId: "continue_imob_chat",
-        surfaceId: "imob_chat",
-        path: "/app/imob/chat",
+        surfaceId: "chat",
+        path: "/app/chat?vertical=imob",
         label: "Abrir atendimento IMOB",
         priority: "primary",
       }),
@@ -90,7 +90,40 @@ function resolveImobLanding(input: ResolverInput) {
   };
 }
 
+/**
+ * ADR-010: o EIAH em /app/chat é a porta de entrada única. Toda sessão começa no front door;
+ * a superfície que antes era a entrada do perfil continua no menu e como ação secundária.
+ */
+export const FRONT_DOOR_PATH = "/app/chat";
+
+function withFrontDoorLanding(experience: ResolvedExperience): ResolvedExperience {
+  const frontDoorAction = buildRecommendedAction({
+    actionId: "open_front_door",
+    surfaceId: "chat",
+    path: FRONT_DOOR_PATH,
+    label: "Conversar com o EIAH",
+    priority: "primary",
+  });
+  return {
+    ...experience,
+    landingSurface: "chat",
+    landingPath: FRONT_DOOR_PATH,
+    primaryNavigation: [
+      buildResolvedNavigationItem({ surfaceId: "chat", path: FRONT_DOOR_PATH, label: "Chat" }),
+      ...experience.primaryNavigation.filter((item) => item.path !== FRONT_DOOR_PATH),
+    ],
+    recommendedActions: [
+      frontDoorAction,
+      ...experience.recommendedActions.map((action) => ({ ...action, priority: "secondary" as const })),
+    ],
+  };
+}
+
 export function resolvePlatformExperience(input: ResolverInput): ResolvedExperience {
+  return withFrontDoorLanding(resolveSurfaceExperience(input));
+}
+
+function resolveSurfaceExperience(input: ResolverInput): ResolvedExperience {
   const roleProfile = resolveRoleProfile(input.roles);
   const imobDomain = input.activeDomain === "imob";
   const imobResolution = imobDomain ? resolveImobLanding(input) : null;
@@ -135,7 +168,7 @@ export function resolvePlatformExperience(input: ResolverInput): ResolvedExperie
     return {
       resolverVersion: "v0",
       roleProfile,
-      landingSurface: imobResolution.landingSurface as "runs" | "marketplace" | "agents" | "billing" | "economy" | "self_service" | "profile" | "imob_chat" | "imob_dashboard",
+      landingSurface: imobResolution.landingSurface as ResolvedExperience["landingSurface"],
       landingPath: imobResolution.landingPath,
       primaryNavigation: imobResolution.primaryNavigation,
       recommendedActions: imobResolution.recommendedActions,

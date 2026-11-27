@@ -1,0 +1,218 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_91320dd4 pg_porta=55432 redis_porta=56379 redis_pid=69558
+
+> eiah-builder@ test:vertical-evaluation:integration /home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test STORAGE_PROVIDER=local UPLOADS_DIR=$(mktemp -d /tmp/eiah-vertical-evaluation-XXXXXX) BILLING_P0_FAULT_INJECTION=disposable node --import tsx --test --test-concurrency=1 apps/api/src/tests/vertical-evaluation.integration.test.ts apps/api/src/tests/vertical-evaluation.concurrency.integration.test.ts
+
+TAP version 13
+# Subtest: duas ativações simultâneas: ambas bloqueadas no lock; efeito único (um início, uma instalação, um evento, políticas sem duplicata)
+ok 1 - duas ativações simultâneas: ambas bloqueadas no lock; efeito único (um início, uma instalação, um evento, políticas sem duplicata)
+  ---
+  duration_ms: 260.414548
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (aceite limpo e novo hash): a versão antiga NÃO ativa
+ok 2 - versão alterada por outra transação antes da ativação (aceite limpo e novo hash): a versão antiga NÃO ativa
+  ---
+  duration_ms: 48.902028
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (novo hash com aceite antigo): a versão antiga NÃO ativa
+ok 3 - versão alterada por outra transação antes da ativação (novo hash com aceite antigo): a versão antiga NÃO ativa
+  ---
+  duration_ms: 85.93917
+  type: 'test'
+  ...
+# Subtest: versão alterada por outra transação antes da ativação (aceite apontando para hash antigo): a versão antiga NÃO ativa
+ok 4 - versão alterada por outra transação antes da ativação (aceite apontando para hash antigo): a versão antiga NÃO ativa
+  ---
+  duration_ms: 90.703373
+  type: 'test'
+  ...
+# Subtest: reproposta (antes do aceite) concorrente ao aceite da versão antiga: o aceite antigo é recusado; só a versão nova, depois de aceita, ativa
+ok 5 - reproposta (antes do aceite) concorrente ao aceite da versão antiga: o aceite antigo é recusado; só a versão nova, depois de aceita, ativa
+  ---
+  duration_ms: 77.438198
+  type: 'test'
+  ...
+# Subtest: recusa do solicitante concorrente à ativação: a ativação enfileirada depois é negada; nada ativado
+ok 6 - recusa do solicitante concorrente à ativação: a ativação enfileirada depois é negada; nada ativado
+  ---
+  duration_ms: 49.747737
+  type: 'test'
+  ...
+# Subtest: ordem inversa: ativação primeiro e reproposta depois — a reproposta é negada (grant já ativo) e não reescreve o grant
+ok 7 - ordem inversa: ativação primeiro e reproposta depois — a reproposta é negada (grant já ativo) e não reescreve o grant
+  ---
+  duration_ms: 67.596764
+  type: 'test'
+  ...
+# Subtest: grant renovado entre a leitura (encerrado) e o UPDATE do pedido: a nova versão NÃO é sobrescrita
+ok 8 - grant renovado entre a leitura (encerrado) e o UPDATE do pedido: a nova versão NÃO é sobrescrita
+  ---
+  duration_ms: 66.248028
+  type: 'test'
+  ...
+# Subtest: controle: sem renovação, o mesmo pedido padrão sobre grant encerrado reescreve a linha normalmente (o guard não bloqueia o caso legítimo)
+ok 9 - controle: sem renovação, o mesmo pedido padrão sobre grant encerrado reescreve a linha normalmente (o guard não bloqueia o caso legítimo)
+  ---
+  duration_ms: 52.89205
+  type: 'test'
+  ...
+# Subtest: fechamentos simultâneos: 4 leituras vencidas ao mesmo tempo ⇒ uma transição, um evento e um aviso
+ok 10 - fechamentos simultâneos: 4 leituras vencidas ao mesmo tempo ⇒ uma transição, um evento e um aviso
+  ---
+  duration_ms: 63.837644
+  type: 'test'
+  ...
+# Subtest: pedidos concorrentes sobre acesso aprovado e sobre pedido aberto: ninguém reescreve a linha
+ok 11 - pedidos concorrentes sobre acesso aprovado e sobre pedido aberto: ninguém reescreve a linha
+  ---
+  duration_ms: 59.480204
+  type: 'test'
+  ...
+# Subtest: pedidos concorrentes sobre pedido recusado: exatamente uma reescrita; as demais veem o pedido aberto
+ok 12 - pedidos concorrentes sobre pedido recusado: exatamente uma reescrita; as demais veem o pedido aberto
+  ---
+  duration_ms: 46.026092
+  type: 'test'
+  ...
+# Subtest: primeiros pedidos simultâneos (sem linha prévia): um grava, os demais releem e recebem already_requested; sem 23505 ao solicitante
+ok 13 - primeiros pedidos simultâneos (sem linha prévia): um grava, os demais releem e recebem already_requested; sem 23505 ao solicitante
+  ---
+  duration_ms: 49.684973
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `23505`. Message: `duplicate key value violates unique constraint "vertical_access_approvals_pkey"`
+# Subtest: outras violações de unicidade NÃO são suprimidas: colisão da chave primária (escopo diferente) continua falhando com 23505
+ok 14 - outras violações de unicidade NÃO são suprimidas: colisão da chave primária (escopo diferente) continua falhando com 23505
+  ---
+  duration_ms: 25.449101
+  type: 'test'
+  ...
+# Subtest: mecanismo: o segurador do lock é uma sessão distinta das do pool e o monitor enxerga o bloqueio no servidor
+ok 15 - mecanismo: o segurador do lock é uma sessão distinta das do pool e o monitor enxerga o bloqueio no servidor
+  ---
+  duration_ms: 38.759417
+  type: 'test'
+  ...
+# Subtest: oferta desligada: pedido de avaliação (composição de produção) não grava nada; pedido padrão segue
+ok 16 - oferta desligada: pedido de avaliação (composição de produção) não grava nada; pedido padrão segue
+  ---
+  duration_ms: 140.384967
+  type: 'test'
+  ...
+# Subtest: legado sem grant: pedido → decisão → ativação (produção) → uso pleno; nunca encerra por tempo; colunas do grant ficam nulas
+ok 17 - legado sem grant: pedido → decisão → ativação (produção) → uso pleno; nunca encerra por tempo; colunas do grant ficam nulas
+  ---
+  duration_ms: 70.579129
+  type: 'test'
+  ...
+# Subtest: ciclo: pedido → decisão → aceite → ativação → uso → fim; nenhum uso/autorização antes da ativação nem depois do fim
+ok 18 - ciclo: pedido → decisão → aceite → ativação → uso → fim; nenhum uso/autorização antes da ativação nem depois do fim
+  ---
+  duration_ms: 147.293709
+  type: 'test'
+  ...
+# Subtest: modo bloqueio_total nos termos: ao fim o uso é bloqueado
+ok 19 - modo bloqueio_total nos termos: ao fim o uso é bloqueado
+  ---
+  duration_ms: 63.492384
+  type: 'test'
+  ...
+# Subtest: termos inconsistentes (adulterados no banco): bloqueio total mesmo com modo somente_leitura nos termos; fechamento persistido uma vez
+ok 20 - termos inconsistentes (adulterados no banco): bloqueio total mesmo com modo somente_leitura nos termos; fechamento persistido uma vez
+  ---
+  duration_ms: 58.504129
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_status_check"`
+# Subtest: restrições reais do PostgreSQL: grant sem termos/aceite/validade e status/kind fora do domínio são rejeitados
+ok 21 - restrições reais do PostgreSQL: grant sem termos/aceite/validade e status/kind fora do domínio são rejeitados
+  ---
+  duration_ms: 16.817233
+  type: 'test'
+  ...
+# Subtest: pedido aberto (inclusive pre_ativacao) e aprovado não são reescritos por novo pedido; recusado pode pedir de novo
+ok 22 - pedido aberto (inclusive pre_ativacao) e aprovado não são reescritos por novo pedido; recusado pode pedir de novo
+  ---
+  duration_ms: 110.084523
+  type: 'test'
+  ...
+# Subtest: recusa pelo solicitante antes da ativação: volta a recusado, nada ativado, avaliação não marcada como usada
+ok 23 - recusa pelo solicitante antes da ativação: volta a recusado, nada ativado, avaliação não marcada como usada
+  ---
+  duration_ms: 30.281427
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `P0001`. Message: `synthetic installation failure`
+# Subtest: atomicidade: falha real na gravação da instalação não deixa o grant ativado (rollback completo)
+ok 24 - atomicidade: falha real na gravação da instalação não deixa o grant ativado (rollback completo)
+  ---
+  duration_ms: 68.931205
+  type: 'test'
+  ...
+# Subtest: datas: valores gravados em hora UTC (timestamp sem fuso), idênticos ao instante injetado, independentes do fuso do processo e do servidor
+ok 25 - datas: valores gravados em hora UTC (timestamp sem fuso), idênticos ao instante injetado, independentes do fuso do processo e do servidor
+  ---
+  duration_ms: 49.00831
+  type: 'test'
+  ...
+# Subtest: rotas: com a oferta de PRODUÇÃO desligada, pedido de avaliação e decisão/ativação de grant não concedem nada
+ok 26 - rotas: com a oferta de PRODUÇÃO desligada, pedido de avaliação e decisão/ativação de grant não concedem nada
+  ---
+  duration_ms: 113.951908
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-86481663-15/ev-w-routes-legacy-86481663-15
+# {"level":30,"time":"2026-11-14T15:16:01.133Z","service":"eiah","env":"test","component":"imob-intake-observability","event":"storage_provider_mode","mode":"local","msg":"imob-intake.storage_provider_mode"}
+# Subtest: rotas: legado aprovado sem grant — ativação pelo Marketplace e acesso às APIs preservados
+ok 27 - rotas: legado aprovado sem grant — ativação pelo Marketplace e acesso às APIs preservados
+  ---
+  duration_ms: 191.833201
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-86481663-16/ev-w-routes-somente_leitura-86481663-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-86481663-16/ev-w-routes-somente_leitura-86481663-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-86481663-16/ev-w-routes-somente_leitura-86481663-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-86481663-16/ev-w-routes-somente_leitura-86481663-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-86481663-16/ev-w-routes-somente_leitura-86481663-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-86481663-17/ev-w-routes-bloqueio_total-86481663-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-86481663-17/ev-w-routes-bloqueio_total-86481663-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-86481663-17/ev-w-routes-bloqueio_total-86481663-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-86481663-17/ev-w-routes-bloqueio_total-86481663-17
+# Subtest: rotas: grant — nada antes da ativação; leitura e escrita conforme o modo ao fim; front door acompanha a validade (cast ::timestamp, fuso do servidor ≠ UTC)
+ok 28 - rotas: grant — nada antes da ativação; leitura e escrita conforme o modo ao fim; front door acompanha a validade (cast ::timestamp, fuso do servidor ≠ UTC)
+  ---
+  duration_ms: 474.13202
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4671.821137

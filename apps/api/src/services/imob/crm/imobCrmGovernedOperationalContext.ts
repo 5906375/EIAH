@@ -9,9 +9,22 @@ const UPDATE_VERBS = ["editar", "atualizar", "alterar"];
 const DELETE_VERBS = ["excluir", "deletar", "remover", "apagar", "arquivar"];
 const CASE_RECENT_TERMS = ["caso mais recente", "caso recente", "ultimo caso", "último caso"];
 const SHOW_TERMS = ["mostrar", "ver", "consultar", "quais", "abrir"];
+// Particípio/pretérito ("arquivados", "arquivei"): leitura. O infinitivo "arquivar" segue em DELETE_VERBS (escrita) e nunca vira leitura.
+const ARCHIVED_TERMS = ["arquivado", "arquivada", "arquivei"];
 
 function includesAny(text: string, candidates: string[]) {
   return candidates.some((candidate) => text.includes(candidate));
+}
+
+/**
+ * Consulta explícita, somente leitura, de imóveis arquivados. Vocabulário único: é o mesmo critério do contexto de consulta e do
+ * guard do turno (leitura de negócio), sem classificador paralelo. Recebe o texto já normalizado (minúsculas, sem acentos ou não).
+ */
+export function isArchivedPropertyConsultText(normalized: string) {
+  return includesAny(normalized, ["imovel", "imóvel", "imoveis", "imóveis"])
+    && includesAny(normalized, ARCHIVED_TERMS)
+    && !includesAny(normalized, DELETE_VERBS)
+    && (includesAny(normalized, SHOW_TERMS) || normalized.includes("listar"));
 }
 
 function collectConsultSignals(normalized: string) {
@@ -24,6 +37,7 @@ function collectConsultSignals(normalized: string) {
   if (normalized.includes("listar leads") || normalized.includes("quais leads estao cadastrados") || normalized.includes("quais leads estão cadastrados") || normalized.includes("leads cadastrados")) signals.push("lead_list");
   if (normalized.includes("listar proprietarios") || normalized.includes("listar proprietários") || normalized.includes("quais proprietarios estao cadastrados") || normalized.includes("quais proprietários estão cadastrados") || normalized.includes("proprietarios cadastrados") || normalized.includes("proprietários cadastrados")) signals.push("owner_list");
   if (normalized.includes("listar imoveis") || normalized.includes("listar imóveis") || normalized.includes("quais imoveis estao cadastrados") || normalized.includes("quais imóveis estão cadastrados") || normalized.includes("imoveis cadastrados") || normalized.includes("imóveis cadastrados")) signals.push("property_list");
+  if (includesAny(normalized, ARCHIVED_TERMS)) signals.push("archived_only");
   if (normalized.includes("com pendencias") || normalized.includes("com pendências")) signals.push("pending_only");
   if (normalized.includes("qualificados") || normalized.includes("qualificado")) signals.push("qualified_only");
   if (normalized.includes("prontos para revisao") || normalized.includes("prontos para revisão") || normalized.includes("pronto para revisao") || normalized.includes("pronto para revisão")) signals.push("ready_for_review");
@@ -103,6 +117,9 @@ export function buildGovernedImobOperationalConsultContext(
     || Boolean(addressHint);
   const asksCurrentCase = intentSignals.includes("current_case") || asksRecentCase;
   const asksShow = intentSignals.includes("show_records") || asksRecentCase;
+  const asksDelete = intentSignals.includes("delete");
+  // Qualificador de leitura: "arquivados" só vale sem verbo de escrita; com mostrar/listar/quais pede a listagem de arquivados.
+  const asksArchived = wantsProperty && intentSignals.includes("archived_only") && !asksDelete;
 
   return {
     intentVersion: "imob.crm.operational.v1",
@@ -122,12 +139,13 @@ export function buildGovernedImobOperationalConsultContext(
     asksShow,
     asksLeadList: wantsLead && intentSignals.includes("lead_list"),
     asksOwnerList: wantsOwner && intentSignals.includes("owner_list"),
-    asksPropertyList: wantsProperty && intentSignals.includes("property_list"),
+    asksPropertyList: wantsProperty && (intentSignals.includes("property_list") || (asksArchived && asksShow)),
     asksPendingOnly: intentSignals.includes("pending_only"),
     asksQualifiedOnly: intentSignals.includes("qualified_only"),
     asksReadyForReview: intentSignals.includes("ready_for_review"),
+    asksArchived,
     asksEdit: intentSignals.includes("edit"),
-    asksDelete: intentSignals.includes("delete"),
+    asksDelete,
     ownerCrudId: helpers.extractOwnerCrudIdFromMessage(params.message),
     propertyCrudId: helpers.extractPropertyCrudIdFromMessage(params.message),
     asksGoalRent: intentSignals.includes("goal_rent"),

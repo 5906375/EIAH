@@ -1,0 +1,99 @@
+{
+  "passed": true,
+  "classification": null,
+  "failureCode": null,
+  "credentialId": "<synthetic-credential-id>",
+  "recordId": "record-preduimp-ui-e2e-20260828-000003",
+  "request": {
+    "topLevelKeys": [
+      "action",
+      "context"
+    ],
+    "actionMatches": true,
+    "contextScopeMatches": true
+  },
+  "response": {
+    "httpStatus": 200,
+    "decision": "authorized_shadow",
+    "mode": "shadow",
+    "externalTransmissionAllowed": false,
+    "reasonCode": null
+  },
+  "ui": {
+    "finalPath": "/app/logistica/pre-duimp",
+    "heading": true,
+    "shadowBadge": true,
+    "noExternalNotice": true,
+    "hitlUnavailable": true,
+    "replayUnavailable": true,
+    "successVisible": true
+  },
+  "network": {
+    "hitlReplayReadCount": 2,
+    "hitlReplayReadAfterClickCount": 0,
+    "hitlReplayMutationCount": 0,
+    "endpointPostCount": 1,
+    "totalPostCount": 1,
+    "externalMutationCount": 0,
+    "submitClickCount": 1
+  },
+  "countsBefore": {
+    "capturedAt": "2026-08-28T12:19:26.917Z",
+    "guardrailLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "recordId": 0
+    }
+  },
+  "countsAfter": {
+    "capturedAt": "2026-08-28T12:19:28.629Z",
+    "guardrailLedger": {
+      "allow": 3,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 3,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "recordId": 0
+    }
+  },
+  "cleanup": {
+    "restoreDefaultOff": {
+      "ok": true,
+      "composeExitCode": 0,
+      "healthy": true
+    },
+    "defaultOffSmoke": {
+      "ok": true,
+      "passed": true
+    },
+    "revokeCredential": {
+      "ok": true,
+      "applicable": true,
+      "credentialId": "<synthetic-credential-id>",
+      "revoked": true,
+      "tombstoned": true
+    },
+    "removeTemporaryOverride": {
+      "ok": true,
+      "resolvedPath": "<temporary-path>",
+      "removed": true
+    },
+    "closeBrowser": {
+      "ok": true,
+      "closed": true
+    }
+  },
+  "startedAt": "2026-08-28T12:19:23.145Z",
+  "finishedAt": "2026-08-28T12:20:16.636Z"
+}

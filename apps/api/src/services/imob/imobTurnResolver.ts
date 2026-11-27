@@ -41,7 +41,10 @@ import {
   hasMeaningfulSearchFilters,
   normalizeImobText,
 } from "./imobConversationState";
-import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./crm/imobCrmPropertyGoals";
+import {
+  IMOB_CRM_PROPERTY_DESTINATION_OPTIONS,
+  normalizeImobCrmPropertyDestination,
+} from "./crm/imobCrmPropertyGoals";
 import { IMOB_CRM_PROPERTY_TYPE_OPTIONS, normalizeImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import { mapLeadNextActionToNextStep } from "./crm/imobLeadQualifyRuntime";
 import { judgeMarketScanPolicy } from "./marketScan/marketScanPolicyJudge";
@@ -331,6 +334,14 @@ function resolveImobTurnDecision(params: {
 
   if (collecting && shouldBreakOwnerCaptureContinuation(active, params.baseIntent, params.message)) {
     return { stage: "explicit_route_change" as const, intent: params.baseIntent };
+  }
+
+  // O contrato proposal.create consome respostas curtas enquanto faltam campos.
+  // Jornadas explícitas continuam passando pelos critérios existentes acima.
+  if (collecting && active?.flow === "proposal.create" && active.pendingFields.length > 0
+    && !params.hasExplicitCatalogTarget && params.baseIntent === "adjustment"
+    && !isOperationalFlowGuidanceRequest(params.message)) {
+    return { stage: "explicit_continuity" as const, intent: "proposal" as const };
   }
 
   if (isOperationalFlowGuidanceRequest(params.message)) {
@@ -1073,43 +1084,52 @@ function buildOwnerCreateForm(ownerDraft?: {
   return {
     entity: ownerCopy.entity,
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/owners (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.owners.create" as const,
     label: ownerCopy.label,
-    description: ownerCopy.description,
+    description: "Só o nome é obrigatório; o que ficar em branco vira pendência do cadastro.",
     fields: [
+      {
+        name: "personType",
+        label: "Tipo de pessoa",
+        type: "select" as const,
+        value: "person",
+        options: [
+          { value: "person", label: "Pessoa física (CPF)" },
+          { value: "company", label: "Pessoa jurídica (CNPJ)" },
+        ],
+      },
       {
         name: "ownerName",
         label: ownerCopy.nameLabel,
         type: "text" as const,
         required: true,
-        placeholder: "Ex.: João da Silva",
+        placeholder: "Nome completo ou razão social",
         value: ownerDraft?.ownerName ?? "",
+      },
+      {
+        name: "ownerDocument",
+        label: "CPF ou CNPJ",
+        type: "text" as const,
+        placeholder: "000.000.000-00 ou 00.000.000/0000-00",
+        inputMode: "numeric" as const,
+        maxLength: 18,
+        value: ownerDraft?.ownerDocument ?? "",
       },
       {
         name: "ownerPhone",
         label: ownerCopy.phoneLabel,
         type: "tel" as const,
-        required: true,
-        placeholder: "Ex.: (11) 99999-9999",
+        placeholder: "Ex.: (47) 99999-9999",
         value: ownerDraft?.ownerPhone ?? "",
       },
       {
         name: "ownerEmail",
         label: ownerCopy.emailLabel,
         type: "email" as const,
-        required: true,
         placeholder: "Ex.: joao@email.com",
         value: ownerDraft?.ownerEmail ?? "",
-      },
-      {
-        name: "ownerDocument",
-        label: ownerCopy.documentLabel,
-        type: "text" as const,
-        required: true,
-        placeholder: "Ex.: CPF ou CNPJ",
-        value: ownerDraft?.ownerDocument ?? "",
-        helperText: "Informe CPF/CNPJ ou anexe o documento.",
-        allowAttachment: true,
-        attachmentLabel: "Anexar documento",
       },
     ],
     actions: [
@@ -1127,16 +1147,20 @@ function buildOwnerCreateForm(ownerDraft?: {
   };
 }
 
-function buildPropertyCreateForm(propertyDraft?: {
+export function buildPropertyCreateForm(propertyDraft?: {
   propertyType?: string | null;
   goal?: "locacao" | "venda" | "aluguel_por_temporada" | null;
   cep?: string | null;
   city?: string | null;
   address?: string | null;
+  ownerNameHint?: string | null;
+  unitLabels?: string[] | null;
 } | null) {
   const normalizedPropertyType = normalizeImobCrmPropertyType(propertyDraft?.propertyType ?? null) ?? null;
-  const normalizedGoal = normalizeImobCrmPropertyGoal(propertyDraft?.goal ?? null) ?? null;
-  const goalLabel = IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === normalizedGoal)?.label ?? null;
+  const normalizedGoal = normalizeImobCrmPropertyDestination(propertyDraft?.goal ?? null) ?? null;
+  const goalLabel = IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.find((option) => option.value === normalizedGoal)?.label ?? null;
+  const draftUnitLabels = (propertyDraft?.unitLabels ?? []).filter((label) => typeof label === "string" && label.trim());
+  const hasMultipleUnits = draftUnitLabels.length >= 2;
   const inheritedContext = [
     goalLabel ? goalLabel.toLowerCase() : null,
     propertyDraft?.city?.trim() ? propertyDraft.city.trim() : null,
@@ -1144,6 +1168,9 @@ function buildPropertyCreateForm(propertyDraft?: {
   return {
     entity: "imovel",
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/properties (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.properties.create" as const,
     label: "Cadastrar imóvel",
     description: inheritedContext
       ? `A captação já foi aberta com contexto de ${inheritedContext}. Confirme ou ajuste os campos abaixo e complete só o que faltar.`
@@ -1163,31 +1190,51 @@ function buildPropertyCreateForm(propertyDraft?: {
         })),
       },
       {
+        // Destinação inicial do ativo: orienta a próxima etapa, não é estado permanente.
+        // Vazio = ainda não informada; "Sem destinação definida" é escolha explícita.
         name: "goal",
-        label: "Finalidade",
+        label: hasMultipleUnits ? "Destinação inicial (para todas as unidades)" : "Destinação inicial",
         type: "select" as const,
-        required: true,
-        placeholder: "",
+        required: false,
+        placeholder: "Definir depois",
         value: normalizedGoal ?? "",
-        options: IMOB_CRM_PROPERTY_GOAL_OPTIONS.map((option) => ({
+        options: IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.map((option) => ({
           value: option.value,
           label: option.label,
         })),
+        ...(hasMultipleUnits ? { helperText: "Você pode aplicar uma destinação a todas as unidades ou ajustar individualmente antes de confirmar." } : {}),
       },
       {
-        name: "cep",
-        label: "CEP",
+        name: "unitLabel",
+        label: hasMultipleUnits ? "Unidades deste endereço" : "Identificação da unidade",
         type: "text" as const,
-        inputMode: "numeric" as const,
-        maxLength: 9,
-        value: propertyDraft?.cep ?? "",
-        lookup: {
-          kind: "cep" as const,
-          autoFillTargets: {
-            city: "city",
-            address: "address",
-          },
-        },
+        placeholder: "Descreva a unidade ou as unidades deste endereço",
+        value: draftUnitLabels.join(", "),
+        helperText: hasMultipleUnits
+          ? `Identifiquei ${draftUnitLabels.length} unidades; você confirma, edita ou remove antes de gravar.`
+          : "Conte quais unidades deseja cadastrar, com suas identificações. Você poderá conferir antes de gravar.",
+      },
+      {
+        name: "ownerId",
+        label: "Proprietário",
+        type: "select" as const,
+        placeholder: "Sem proprietário vinculado",
+        value: "",
+        optionsSource: "imob_owners" as const,
+        options: [],
+        ...(propertyDraft?.ownerNameHint ? { preferredOptionLabel: propertyDraft.ownerNameHint } : {}),
+      },
+      {
+        name: "occupancy",
+        label: "Situação",
+        type: "select" as const,
+        placeholder: "Não informada",
+        value: "",
+        options: [
+          { value: "locado", label: "Locado" },
+          { value: "vago", label: "Vago" },
+          { value: "em_obra", label: "Em obra / construção" },
+        ],
       },
       {
         name: "city",
@@ -1203,6 +1250,34 @@ function buildPropertyCreateForm(propertyDraft?: {
         required: true,
         value: propertyDraft?.address ?? "",
       },
+      {
+        name: "neighborhood",
+        label: "Bairro",
+        type: "text" as const,
+        value: "",
+      },
+      {
+        // CEP é só um atalho: cidade e endereço bastam. A consulta segue interna (rota do IMOB), sem sair do EIAH.
+        name: "cep",
+        label: "CEP (opcional)",
+        type: "text" as const,
+        inputMode: "numeric" as const,
+        maxLength: 9,
+        value: propertyDraft?.cep ?? "",
+        helperText: "Se souber, informe o CEP para completar ou confirmar o endereço automaticamente. Se não souber, continue com cidade e endereço.",
+        lookup: {
+          kind: "cep" as const,
+          autoFillTargets: {
+            city: "city",
+            address: "address",
+            neighborhood: "neighborhood",
+          },
+        },
+      },
+      { name: "areaM2", label: "Área (m²)", type: "text" as const, inputMode: "numeric" as const, maxLength: 6, placeholder: "Ex.: 25", value: "" },
+      { name: "bedrooms", label: "Quartos", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "bathrooms", label: "Banheiros", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "garageSpots", label: "Vagas de garagem", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
     ],
     actions: [
       {
@@ -1243,6 +1318,9 @@ function buildLeadCreateForm(leadDraft?: {
   desiredCity?: string | null;
   budgetMax?: number | null;
 } | null) {
+  if (leadDraft?.leadPersona === "locatario") {
+    return buildRentalLeaseCreateForm(leadDraft);
+  }
   const leadCopy = getLeadPersonaCopy(leadDraft);
   return {
     entity: leadCopy.entity,
@@ -1309,6 +1387,128 @@ function buildLeadCreateForm(leadDraft?: {
         label: "Salvar cadastro",
         kind: "primary" as const,
       },
+    ],
+  };
+}
+
+const RENTAL_CHARGE_PAYER_OPTIONS = [
+  { value: "inquilino", label: "Inquilino paga" },
+  { value: "proprietario", label: "Proprietário paga" },
+  { value: "dispensado", label: "Dispensado" },
+  { value: "nao_existe", label: "Não existe" },
+  { value: "desconhecido", label: "Não sei" },
+];
+
+const RENTAL_MONTH_OPTIONS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+].map((label, index) => ({ value: String(index + 1), label }));
+
+/**
+ * "Cadastrar locatário" = locação vigente (inquilino com contrato assinado ou
+ * acordo verbal). Enviado pelo cliente direto para POST /imob/rentals, sem
+ * virar texto de conversa; o inquilino não entra no funil de leads.
+ */
+export function buildRentalLeaseCreateForm(leadDraft?: {
+  leadName?: string | null;
+  leadPhone?: string | null;
+  leadEmail?: string | null;
+} | null) {
+  return {
+    entity: "locacao",
+    action: "create",
+    submitTarget: "imob.rentals.create" as const,
+    label: "Cadastrar locação",
+    description: "Locação vigente ou já encerrada: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios (e, se encerrada, a data de saída e o motivo); o que ficar em branco vira pendência.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel locado",
+        type: "select" as const,
+        required: true,
+        placeholder: "Selecione o imóvel",
+        value: "",
+        optionsSource: "imob_properties" as const,
+        options: [],
+        helperText: "Só aparecem imóveis já cadastrados neste workspace.",
+      },
+      {
+        name: "leaseState",
+        label: "Situação da locação",
+        type: "select" as const,
+        value: "vigente",
+        options: [
+          { value: "vigente", label: "Vigente (o inquilino está no imóvel)" },
+          { value: "encerrada", label: "Encerrada (já terminou — vai direto para o histórico)" },
+        ],
+        helperText: "Locação encerrada não ocupa o imóvel e exige a data de saída e o motivo abaixo.",
+      },
+      { name: "tenantName", label: "Nome do inquilino", type: "text" as const, required: true, placeholder: "Nome completo ou razão social", value: leadDraft?.leadName ?? "" },
+      { name: "tenantDocument", label: "CPF ou CNPJ do inquilino", type: "text" as const, placeholder: "000.000.000-00", inputMode: "numeric" as const, maxLength: 18, value: "" },
+      { name: "tenantPhone", label: "Telefone do inquilino", type: "tel" as const, placeholder: "(47) 99999-9999", value: leadDraft?.leadPhone ?? "" },
+      { name: "tenantEmail", label: "E-mail do inquilino", type: "email" as const, placeholder: "inquilino@email.com", value: leadDraft?.leadEmail ?? "" },
+      {
+        name: "agreementType",
+        label: "Contrato",
+        type: "select" as const,
+        value: "escrito",
+        options: [
+          { value: "escrito", label: "Escrito (assinado)" },
+          { value: "verbal", label: "Verbal" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "startDate", label: "Início da locação", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "endDate", label: "Fim do contrato", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "rent", label: "Aluguel mensal (R$)", type: "text" as const, placeholder: "1.200,00", inputMode: "numeric" as const, value: "" },
+      { name: "dueDay", label: "Dia do vencimento", type: "text" as const, placeholder: "10", inputMode: "numeric" as const, maxLength: 2, value: "" },
+      {
+        name: "adjustmentIndex",
+        label: "Índice de reajuste",
+        type: "select" as const,
+        placeholder: "Não informado",
+        value: "",
+        options: ["IGPM", "IPCA", "INPC", "IVAR"].map((value) => ({ value, label: value })),
+      },
+      { name: "adjustmentMonth", label: "Mês do reajuste", type: "select" as const, placeholder: "Não informado", value: "", options: RENTAL_MONTH_OPTIONS },
+      {
+        name: "guaranteeType",
+        label: "Garantia",
+        type: "select" as const,
+        value: "desconhecido",
+        options: [
+          { value: "caucao", label: "Caução" },
+          { value: "fiador", label: "Fiador" },
+          { value: "seguro_fianca", label: "Seguro-fiança" },
+          { value: "titulo_capitalizacao", label: "Título de capitalização" },
+          { value: "nenhuma", label: "Sem garantia" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "guaranteeAmount", label: "Valor da caução prevista (R$)", type: "text" as const, placeholder: "2.400,00", inputMode: "numeric" as const, value: "" },
+      { name: "iptu", label: "IPTU", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominio", label: "Condomínio", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominioAmount", label: "Valor do condomínio (R$/mês)", type: "text" as const, placeholder: "350,00", inputMode: "numeric" as const, value: "" },
+      { name: "endedOn", label: "Data de saída (só se encerrada)", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      {
+        name: "closeReason",
+        label: "Motivo do encerramento (só se encerrada)",
+        type: "select" as const,
+        placeholder: "Selecione",
+        value: "",
+        options: [
+          { value: "fim_contrato", label: "Fim do contrato" },
+          { value: "rescisao_locatario", label: "Rescisão pelo inquilino" },
+          { value: "rescisao_locador", label: "Rescisão pelo proprietário" },
+          { value: "inadimplencia", label: "Inadimplência" },
+          { value: "venda_imovel", label: "Venda do imóvel" },
+          { value: "outro", label: "Outro" },
+        ],
+      },
+    ],
+    actions: [
+      { id: "cancel" as const, label: "Cancelar", kind: "secondary" as const },
+      { id: "submit" as const, label: "Salvar locação", kind: "primary" as const },
     ],
   };
 }
@@ -1988,7 +2188,7 @@ function buildOperationalCollectingText(params: {
       if (!hasPending) return "Posso iniciar o cadastro do imóvel agora.";
       const contextParts = [
         operationalState.propertyDraft?.goal
-          ? (IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === operationalState.propertyDraft?.goal)?.label ?? null)
+          ? (IMOB_CRM_PROPERTY_DESTINATION_OPTIONS.find((option) => option.value === operationalState.propertyDraft?.goal)?.label ?? null)
           : null,
         operationalState.propertyDraft?.city ?? null,
       ].filter(Boolean);
@@ -3255,12 +3455,14 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "proposal": {
-      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
+      const propertyId = operationalState?.flow === "proposal.create"
+        ? (operationalState.proposalDraft?.propertyId ?? null)
+        : null;
       return {
         intent,
         operation: "proposal.create",
         action: "realestate.create_contract",
-        prompt: `Preparar proposta operacional para ${propertyId}.`,
+        prompt: `Preparar proposta operacional${propertyId ? ` para ${propertyId}` : ""}.`,
         input: {
           propertyId,
           ownerRef: "owner-pending",
@@ -3399,7 +3601,10 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 }
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
-  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(response);
+  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(
+    // A locação vigente não é lead: o fio da conversa leva o rótulo certo.
+    response.presentation?.form?.entity === "locacao" ? { ...response, threadLabel: "Locação" } : response,
+  );
   const message = request.message.trim();
   const normalizedMessage = normalizeImobText(message);
   const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);
@@ -3664,7 +3869,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     );
 
   if (explicitMarketScanContinuation) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots, request.propertyUnitIntake);
     const availableMarketScanResult =
       request.marketScanResult
       ?? request.threadState?.operational?.marketScanSnapshot
@@ -3788,7 +3993,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     || normalizedMessage.includes("scan de mercado");
 
   if (explicitMarketScanRequest) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots, request.propertyUnitIntake);
     if (operationalState?.flow === "property.market_scan") {
       const baseText = buildExplicitMarketScanBaseText(operationalState);
       const availableMarketScanResult =
@@ -3972,7 +4177,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   if (wantsDocumentValidation) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     return finalize({
       mode: "execute",
       action: "realestate.collect_documents",
@@ -3989,7 +4194,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   if (intent === "documents" && isDocumentationStageRequest) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
@@ -4040,7 +4245,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     }
   }
   if (intent === "documents" && isDocumentUploadOnlyRequest(message)) {
-    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
     const presentationMeta = buildVisibleOperationalPresentationMeta(operationalState);
     return finalize({
       mode: "consult",
@@ -4095,7 +4300,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     });
   }
 
-  const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+  const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots, request.propertyUnitIntake);
   const operationalPendingLabels = operationalState
     ? operationalState.pendingFields.map((field) =>
         mapOperationalPendingFieldLabel(operationalState.flow, field, {

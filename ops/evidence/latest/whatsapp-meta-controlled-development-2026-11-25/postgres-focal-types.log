@@ -1,0 +1,14 @@
+timeout 120s node --input-type=module, stdin:
+import ts from 'typescript'; import path from 'node:path';
+const config = ts.readConfigFile('apps/api/tsconfig.build.json', ts.sys.readFile);
+const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.resolve('apps/api'));
+const options = {...parsed.options,noEmit:true}; if (!options.strict) throw new Error('strict required');
+const root=path.resolve('apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts');
+const program=ts.createProgram([root],options);
+const diagnostics=[config.error,...parsed.errors,...ts.getPreEmitDiagnostics(program)].filter(Boolean);
+console.log(JSON.stringify({strict:options.strict,noEmit:options.noEmit,rootIncluded:!!program.getSourceFile(root),diagnostics:diagnostics.length}));
+console.log(ts.formatDiagnostics(diagnostics,{getCanonicalFileName:p=>p,getCurrentDirectory:()=>process.cwd(),getNewLine:()=> '\n'})||'(no diagnostics)'); process.exitCode=diagnostics.length?1:0;
+{"strict":true,"noEmit":true,"rootIncluded":true,"diagnostics":0}
+(no diagnostics)
+
+EXIT 0

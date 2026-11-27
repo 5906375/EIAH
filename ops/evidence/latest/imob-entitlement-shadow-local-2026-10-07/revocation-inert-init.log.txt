@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: uso pela liberação: aprovado ou sem registro não restringe; revogado segue o modo
+ok 1 - uso pela liberação: aprovado ou sem registro não restringe; revogado segue o modo
+  ---
+  duration_ms: 4.084891
+  type: 'test'
+  ...
+# Subtest: novo pedido ou recusa depois da revogação mantém o modo até a EIAH aprovar de novo
+ok 2 - novo pedido ou recusa depois da revogação mantém o modo até a EIAH aprovar de novo
+  ---
+  duration_ms: 0.177628
+  type: 'test'
+  ...
+# Subtest: rotas do IMOB: somente leitura só consulta; bloqueio total nega tudo
+ok 3 - rotas do IMOB: somente leitura só consulta; bloqueio total nega tudo
+  ---
+  duration_ms: 0.121778
+  type: 'test'
+  ...
+# Subtest: observação obrigatória ao revogar e ao trocar o modo; restaurar não exige
+ok 4 - observação obrigatória ao revogar e ao trocar o modo; restaurar não exige
+  ---
+  duration_ms: 0.08281
+  type: 'test'
+  ...
+# Subtest: front door: bloqueio total desliga o IMOB; somente leitura só oferece consulta
+ok 5 - front door: bloqueio total desliga o IMOB; somente leitura só oferece consulta
+  ---
+  duration_ms: 2.705023
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13.460523

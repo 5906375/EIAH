@@ -1,5 +1,24 @@
 # P3 Economy Hardening — Evidence Generation & Recency
 
+## Nota de contenção pós-auditoria
+
+> **Data:** 2026-08-03. **Status desta nota:** `Proposta`.
+>
+> Este documento é histórico e anterior à auditoria de integridade da evidência de 2026-08-03. Ele não descreve o estado verificado do processo de geração. As expressões "recent, auditable evidence", "Generates fresh P3 economy evidence artifacts dated with today's date.", "Settlement provider modes explicit by environment (stripe/crypto/bank)", "Receipt → Ledger → Settlement flow is end-to-end consistent", "Webhook replay/idempotency without duplicate side effects", "Disputes and reputation lifecycle working together", "PoU/SCL gate enforced on payment release", "Evidence is always fresh", "Recency gate prevents stale evidence from passing validation", "Asserts all P3 hardening gates pass." e "If any gate fails, the PR/merge is blocked until fixed." devem ser lidas como registro do que se pretendia no momento da redação, não como propriedades verificadas. O próprio corpo registra "Replace static evidence with actual test output" como expansão futura.
+>
+> A auditoria constatou:
+>
+> - `scripts/generateP3EconomyEvidence.ts:40-227,229-301` constrói afirmações e resultados estáticos e grava sete payloads JSON; o script apenas cita caminhos de testes e não executa esses testes;
+> - `scripts/checkP3EconomyHardening.ts:96-113` aceita `full` e `simulated` indistintamente entre os modos válidos do gate bloqueante;
+> - `.github/workflows/ci.yml:973-1003,1005-1043` regenera os payloads antes dos checks de recência, de modo que a data observada mede a geração no job, não a idade de uma execução real;
+> - `.github/workflows/ci.yml:973-1003,1005-1013` mantém `P3EconomyHardening` bloqueante enquanto `P3SettlementSupportByEnv`, o check discriminante por ambiente, usa `continue-on-error`.
+>
+> Portanto, o procedimento descrito neste documento produz artefato declarativo, não captura de execução. A frente `DISCRIMINATE-P3-EVIDENCE-MODE` permanece `pendente` em [Frentes abertas do PR-01](./open-fronts.md). Esta nota não resolve a frente e não promove nem rebaixa o status de qualquer item.
+>
+> Esta nota não corrige nem reescreve o corpo abaixo, não altera o gerador e não altera gate. A revisão integral dos claims pertence ao PR-12 e a substituição da geração estática por captura mecânica pertence ao PR-05 do [plano de PRs versionado](./plano-prs-environment-settlement-pou-2026-07-31.md), subordinado por [ADR-003](../adr/ADR-003-work-registry-hierarchy.md). Conforme a decisão vigente, ambos são elegíveis, mas não são iniciados por esta nota; o plano permanece subordinado e pausado quanto aos demais itens não ressalvados.
+>
+> A contenção equivalente do documento de fechamento está na [nota irmã de P3 Economy Hardening](../architecture/p3-economy-hardening-closure.md), aplicada em `7d8fbfe`.
+
 ## Overview
 
 P3 economy hardening requires **recent, auditable evidence** that demonstrates:

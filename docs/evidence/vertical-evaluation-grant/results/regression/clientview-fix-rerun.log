@@ -1,0 +1,303 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+TAP version 13
+# Subtest: migração: quem já usava fica 'aprovado na migração' e quem ativou recebe a chave, uma única vez
+ok 1 - migração: quem já usava fica 'aprovado na migração' e quem ativou recebe a chave, uma única vez
+  ---
+  duration_ms: 2213.333215
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:42.671Z","service":"eiah","env":"test","traceId":"a397eec2-1a72-4c98-ac1e-4b6c65205d2d","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"171","durationMs":81.570152,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:42.840Z","service":"eiah","env":"test","traceId":"657f01ac-2348-4b0b-8fbc-3ac301dfdc62","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"296","durationMs":157.935424,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:42.946Z","service":"eiah","env":"test","traceId":"d1776d71-fda5-4044-9f3e-7f41e09da396","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"297","durationMs":100.532705,"msg":"http.request.completed"}
+# Subtest: sem liberação, nada é ativado (Marketplace e chat) — primeiro a liberação, depois a permissão
+ok 2 - sem liberação, nada é ativado (Marketplace e chat) — primeiro a liberação, depois a permissão
+  ---
+  duration_ms: 379.903647
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:43.037Z","service":"eiah","env":"test","traceId":"12237a37-803b-4f8c-9c3b-7b6cbc496ce5","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":403,"contentLength":"177","durationMs":84.469634,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.152Z","service":"eiah","env":"test","traceId":"76a051c7-5a64-4eac-a835-515504185e4a","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":201,"contentLength":"184","durationMs":110.392239,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:43.247Z","service":"eiah","env":"test","traceId":"d2f6820d-a84a-417e-a247-adb418dc6ac4","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"283","durationMs":89.021983,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.334Z","service":"eiah","env":"test","traceId":"b2bf445e-9a90-4b02-9033-23165b320f2c","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":200,"contentLength":"192","durationMs":83.38414,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.384Z","service":"eiah","env":"test","traceId":"712a1912-2fe3-4c4c-beed-2a676821b58f","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"157","durationMs":43.475857,"msg":"http.request.completed"}
+# Subtest: pedido: corretor não pede; Founder pede e o agente pontua sem aprovar
+ok 3 - pedido: corretor não pede; Founder pede e o agente pontua sem aprovar
+  ---
+  duration_ms: 436.107181
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:43.440Z","service":"eiah","env":"test","traceId":"8197dd7c-40b8-4688-9c42-2eb15d35a57c","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":404,"contentLength":"41","durationMs":48.421181,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.534Z","service":"eiah","env":"test","traceId":"596df44d-89f5-475f-8b07-11b0df9025b4","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"368448","durationMs":88.85455,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.597Z","service":"eiah","env":"test","traceId":"e5983333-7599-4d19-b2e4-ef3dcebc9aab","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/decision","statusCode":400,"contentLength":"178","durationMs":54.131079,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.646Z","service":"eiah","env":"test","traceId":"e3c073c5-4705-4168-b140-081298a88c73","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/decision","statusCode":404,"contentLength":"41","durationMs":46.91081,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.796Z","service":"eiah","env":"test","traceId":"c815c27c-33fe-468e-bf09-e0f799b7787d","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/decision","statusCode":200,"contentLength":"1737","durationMs":146.305418,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:43.853Z","service":"eiah","env":"test","traceId":"5761ddc9-e8ce-402c-85d0-f83c5d4eaf4e","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/decision","statusCode":409,"contentLength":"125","durationMs":51.745093,"msg":"http.request.completed"}
+# Subtest: fila do administrador EIAH: invisível para os demais; decisão humana com observação quando exigida
+ok 4 - fila do administrador EIAH: invisível para os demais; decisão humana com observação quando exigida
+  ---
+  duration_ms: 470.535926
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:43.928Z","service":"eiah","env":"test","traceId":"ba712874-db3d-47ec-bb95-9111e133bacc","component":"api","httpMethod":"GET","path":"/api/vertical-access?vertical=IMOB","statusCode":200,"contentLength":"175","durationMs":64.257239,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:44.029Z","service":"eiah","env":"test","traceId":"3470a6a5-758c-4259-9ed2-838f5dfb6e5e","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"359","durationMs":96.817013,"msg":"http.request.completed"}
+# Subtest: com liberação aprovada, o Founder ativa; o cliente vê só o estado
+ok 5 - com liberação aprovada, o Founder ativa; o cliente vê só o estado
+  ---
+  duration_ms: 172.484947
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:44.098Z","service":"eiah","env":"test","traceId":"c808456f-10b2-4807-ba9a-4c2dafe7e08a","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"368503","durationMs":65.515114,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.159Z","service":"eiah","env":"test","traceId":"6bed37a1-28b5-4234-bb17-40774130ee66","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"368503","durationMs":51.467117,"msg":"http.request.completed"}
+# Subtest: aprovados na migração: o agente calcula o score para revisão sem mudar o estado
+ok 6 - aprovados na migração: o agente calcula o score para revisão sem mudar o estado
+  ---
+  duration_ms: 135.873245
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:44.215Z","service":"eiah","env":"test","traceId":"12009991-659f-4101-96a3-9635621a2cc5","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":404,"contentLength":"41","durationMs":44.371899,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.259Z","service":"eiah","env":"test","traceId":"24744e1a-7850-402c-9d48-c0093e79be50","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":400,"contentLength":"150","durationMs":42.635811,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.305Z","service":"eiah","env":"test","traceId":"f9f9d221-bea8-4eb1-bab7-fb202339d5ec","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":409,"contentLength":"188","durationMs":42.663242,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.367Z","service":"eiah","env":"test","traceId":"e08003d0-c141-430c-a4d5-89592deda621","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":200,"contentLength":"1767","durationMs":58.906392,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:44.440Z","service":"eiah","env":"test","traceId":"5d3b38dc-d724-4a43-8a50-34e9d4a09620","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":71.09464,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.496Z","service":"eiah","env":"test","traceId":"943408a6-6bd9-4307-9476-8f6b82e81442","component":"api","httpMethod":"POST","path":"/api/imob/owners","statusCode":403,"contentLength":"303","durationMs":52.405863,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.558Z","service":"eiah","env":"test","traceId":"39ea9fd5-b6b7-4219-93ad-e842e0a62df8","component":"api","httpMethod":"GET","path":"/api/vertical-access?vertical=IMOB","statusCode":200,"contentLength":"193","durationMs":59.826358,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.596Z","service":"eiah","env":"test","traceId":"90c2e678-1755-4cdd-9cd0-41a4b68aa6c6","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"148","durationMs":36.083417,"msg":"http.request.completed"}
+# Subtest: revogação: só o administrador, com observação; padrão somente leitura bloqueia escrita e mantém consulta
+ok 7 - revogação: só o administrador, com observação; padrão somente leitura bloqueia escrita e mantém consulta
+  ---
+  duration_ms: 433.066701
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:44.656Z","service":"eiah","env":"test","traceId":"458b264d-741a-4b0c-8486-eb8be3fce445","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":409,"contentLength":"119","durationMs":50.543658,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.702Z","service":"eiah","env":"test","traceId":"264121e8-d54c-4206-ae73-c4105593454a","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":400,"contentLength":"119","durationMs":43.053528,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.773Z","service":"eiah","env":"test","traceId":"ee404c39-0a26-4a6b-86dd-7094f72f096b","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":200,"contentLength":"1761","durationMs":60.823378,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.843Z","service":"eiah","env":"test","traceId":"53116f08-b01b-404d-937c-1b1d191ed8a8","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":403,"contentLength":"266","durationMs":67.776947,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:44.896Z","service":"eiah","env":"test","traceId":"477180e6-bdbd-4390-a77d-8e0d60f16e71","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":200,"contentLength":"1756","durationMs":50.319074,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:44.966Z","service":"eiah","env":"test","traceId":"a5a186ef-dcb7-417d-90f0-042228ddf30f","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":68.168388,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:45.038Z","service":"eiah","env":"test","traceId":"74f1014b-61b8-4e07-9bb7-57ebac1bbff7","component":"api","httpMethod":"POST","path":"/api/imob/owners","statusCode":400,"contentLength":"111","durationMs":68.436267,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.072Z","service":"eiah","env":"test","traceId":"f347b300-cdff-4bc3-b6f8-9ecf29053221","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"148","durationMs":31.303302,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.130Z","service":"eiah","env":"test","traceId":"80abbdaf-93ff-427a-b9e6-7d96777931d8","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":200,"contentLength":"1737","durationMs":52.911827,"msg":"http.request.completed"}
+# Subtest: troca de modo: bloqueio total nega tudo; sem nova ativação mantém o uso; restaurar volta ao normal
+ok 8 - troca de modo: bloqueio total nega tudo; sem nova ativação mantém o uso; restaurar volta ao normal
+  ---
+  duration_ms: 532.950866
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:45.180Z","service":"eiah","env":"test","traceId":"cb249ff5-2813-4f6d-911b-f9e8f750ebb7","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/revocation","statusCode":200,"contentLength":"1762","durationMs":43.712506,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.263Z","service":"eiah","env":"test","traceId":"6ee7f3ca-3b99-4eca-a48c-e7fdec746d3d","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":201,"contentLength":"199","durationMs":81.792429,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.325Z","service":"eiah","env":"test","traceId":"29343ef1-b9ba-49aa-ba0a-3979441940f4","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":403,"contentLength":"266","durationMs":58.737893,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.379Z","service":"eiah","env":"test","traceId":"63489737-e8a5-4c8c-b359-d3d121c2c3a1","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/4466671c-6ef1-4ac0-ac0d-af1014e1e602/decision","statusCode":200,"contentLength":"1764","durationMs":50.825766,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwggps3b-ys2row/workspace-vaccess-mwggps3b-ys2row
+# {"level":30,"time":"2026-11-14T13:49:45.457Z","service":"eiah","env":"test","traceId":"4eb678ac-37bb-410f-b4e6-54cd6d513eb4","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":75.891198,"msg":"http.request.completed"}
+# Subtest: novo pedido depois da revogação mantém o modo até a EIAH aprovar de novo
+ok 9 - novo pedido depois da revogação mantém o modo até a EIAH aprovar de novo
+  ---
+  duration_ms: 330.026263
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T13:49:45.543Z","service":"eiah","env":"test","traceId":"2487ef00-28dc-4339-8b55-331690cedc54","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1734","durationMs":77.237524,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.608Z","service":"eiah","env":"test","traceId":"d9ef0c66-de9d-4fc6-9bcb-248a4d82b0c9","component":"api","httpMethod":"POST","path":"/api/vertical-access/notices/89a31899-e452-49e5-a780-956be3308e19/read","statusCode":200,"contentLength":"11","durationMs":62.081932,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.663Z","service":"eiah","env":"test","traceId":"2a7ee30e-f9bc-4427-ba55-f70402354dd7","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1509","durationMs":52.414895,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.728Z","service":"eiah","env":"test","traceId":"74214af7-8beb-4e95-9e19-0eb7cd58544b","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1734","durationMs":62.584832,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T13:49:45.793Z","service":"eiah","env":"test","traceId":"a12d81e1-d146-4fbb-9c46-e14299dda055","component":"api","httpMethod":"POST","path":"/api/vertical-access/notices/89a31899-e452-49e5-a780-956be3308e19/read","statusCode":404,"contentLength":"48","durationMs":54.356384,"msg":"http.request.completed"}
+# Subtest: avisos no app: cada decisão vira aviso sem score nem observação; leitura por pessoa e por workspace
+ok 10 - avisos no app: cada decisão vira aviso sem score nem observação; leitura por pessoa e por workspace
+  ---
+  duration_ms: 331.554437
+  type: 'test'
+  ...
+# Subtest: rotas e routers não recebem nem importam o núcleo com dependências injetáveis (oferta/decisões vêm só da produção)
+ok 11 - rotas e routers não recebem nem importam o núcleo com dependências injetáveis (oferta/decisões vêm só da produção)
+  ---
+  duration_ms: 2.832884
+  type: 'test'
+  ...
+# Subtest: o único código que ratifica decisões obrigatórias é a constante versionada (nenhum setter, nenhum estado global mutável)
+ok 12 - o único código que ratifica decisões obrigatórias é a constante versionada (nenhum setter, nenhum estado global mutável)
+  ---
+  duration_ms: 5.115024
+  type: 'test'
+  ...
+# Subtest: leitores do status 'aprovado' e SQL cru sobre a tabela de liberação: conjunto conhecido (leitor novo exige revisão)
+ok 13 - leitores do status 'aprovado' e SQL cru sobre a tabela de liberação: conjunto conhecido (leitor novo exige revisão)
+  ---
+  duration_ms: 8.673509
+  type: 'test'
+  ...
+# Subtest: migration e DDL de runtime não divergem (mesmas restrições e colunas)
+ok 14 - migration e DDL de runtime não divergem (mesmas restrições e colunas)
+  ---
+  duration_ms: 1.389854
+  type: 'test'
+  ...
+# Subtest: proteções novas só atuam com grant de avaliação: os caminhos diferidos usam o gate e o filtro, não regras próprias
+ok 15 - proteções novas só atuam com grant de avaliação: os caminhos diferidos usam o gate e o filtro, não regras próprias
+  ---
+  duration_ms: 1.944122
+  type: 'test'
+  ...
+# Subtest: a ativação relê e trava a concessão DENTRO da transação e captura o início do prazo depois da trava
+ok 16 - a ativação relê e trava a concessão DENTRO da transação e captura o início do prazo depois da trava
+  ---
+  duration_ms: 0.482719
+  type: 'test'
+  ...
+# Subtest: o fechamento regular relê com trava, reavalia e só altera a versão avaliada do grant
+ok 17 - o fechamento regular relê com trava, reavalia e só altera a versão avaliada do grant
+  ---
+  duration_ms: 1.477555
+  type: 'test'
+  ...
+# Subtest: novo pedido preserva a restrição do encerramento e o histórico (modo efetivo gravado, grant arquivado no evento)
+ok 18 - novo pedido preserva a restrição do encerramento e o histórico (modo efetivo gravado, grant arquivado no evento)
+  ---
+  duration_ms: 0.713812
+  type: 'test'
+  ...
+# Subtest: sem ciclo de imports novo: contrato e planejadores puros só dependem um do outro em uma direção
+ok 19 - sem ciclo de imports novo: contrato e planejadores puros só dependem um do outro em uma direção
+  ---
+  duration_ms: 0.781548
+  type: 'test'
+  ...
+# Subtest: textos ao usuário não prometem preservação nem acesso a dados depois do término (política não definida)
+ok 20 - textos ao usuário não prometem preservação nem acesso a dados depois do término (política não definida)
+  ---
+  duration_ms: 0.787511
+  type: 'test'
+  ...
+# Subtest: a avaliação não escreve ledger, fatura, pagamento nem permissões de membro
+ok 21 - a avaliação não escreve ledger, fatura, pagamento nem permissões de membro
+  ---
+  duration_ms: 1.03515
+  type: 'test'
+  ...
+# Subtest: oferta desligada: pedido de avaliação (composição de produção) não grava nada; pedido padrão segue
+ok 22 - oferta desligada: pedido de avaliação (composição de produção) não grava nada; pedido padrão segue
+  ---
+  duration_ms: 300.688737
+  type: 'test'
+  ...
+# Subtest: legado sem grant: pedido → decisão → ativação (produção) → uso pleno; nunca encerra por tempo; colunas do grant ficam nulas
+ok 23 - legado sem grant: pedido → decisão → ativação (produção) → uso pleno; nunca encerra por tempo; colunas do grant ficam nulas
+  ---
+  duration_ms: 213.862193
+  type: 'test'
+  ...
+# Subtest: ciclo: pedido → decisão → aceite → ativação → uso → fim; nenhum uso/autorização antes da ativação nem depois do fim
+ok 24 - ciclo: pedido → decisão → aceite → ativação → uso → fim; nenhum uso/autorização antes da ativação nem depois do fim
+  ---
+  duration_ms: 222.609825
+  type: 'test'
+  ...
+# Subtest: modo bloqueio_total nos termos: ao fim o uso é bloqueado
+ok 25 - modo bloqueio_total nos termos: ao fim o uso é bloqueado
+  ---
+  duration_ms: 169.646239
+  type: 'test'
+  ...
+# Subtest: termos inconsistentes (adulterados no banco): bloqueio total mesmo com modo somente_leitura nos termos; fechamento persistido uma vez
+ok 26 - termos inconsistentes (adulterados no banco): bloqueio total mesmo com modo somente_leitura nos termos; fechamento persistido uma vez
+  ---
+  duration_ms: 132.844403
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_grant_integrity_check"`
+# prisma:error 
+# Invalid `prisma.$executeRawUnsafe()` invocation:
+# Raw query failed. Code: `23514`. Message: `new row for relation "vertical_access_approvals" violates check constraint "vertical_access_approvals_status_check"`
+# Subtest: restrições reais do PostgreSQL: grant sem termos/aceite/validade e status/kind fora do domínio são rejeitados
+ok 27 - restrições reais do PostgreSQL: grant sem termos/aceite/validade e status/kind fora do domínio são rejeitados
+  ---
+  duration_ms: 29.536489
+  type: 'test'
+  ...
+# Subtest: pedido aberto (inclusive pre_ativacao) e aprovado não são reescritos por novo pedido; recusado pode pedir de novo
+ok 28 - pedido aberto (inclusive pre_ativacao) e aprovado não são reescritos por novo pedido; recusado pode pedir de novo
+  ---
+  duration_ms: 229.628188
+  type: 'test'
+  ...
+# Subtest: recusa pelo solicitante antes da ativação: volta a recusado, nada ativado, avaliação não marcada como usada
+ok 29 - recusa pelo solicitante antes da ativação: volta a recusado, nada ativado, avaliação não marcada como usada
+  ---
+  duration_ms: 61.541974
+  type: 'test'
+  ...
+# prisma:error 
+# Invalid `prisma.$executeRaw()` invocation:
+# Raw query failed. Code: `P0001`. Message: `synthetic installation failure`
+# Subtest: atomicidade: falha real na gravação da instalação não deixa o grant ativado (rollback completo)
+ok 30 - atomicidade: falha real na gravação da instalação não deixa o grant ativado (rollback completo)
+  ---
+  duration_ms: 137.50198
+  type: 'test'
+  ...
+# Subtest: datas: valores gravados em hora UTC (timestamp sem fuso), idênticos ao instante injetado, independentes do fuso do processo e do servidor
+ok 31 - datas: valores gravados em hora UTC (timestamp sem fuso), idênticos ao instante injetado, independentes do fuso do processo e do servidor
+  ---
+  duration_ms: 141.310524
+  type: 'test'
+  ...
+# Subtest: rotas: com a oferta de PRODUÇÃO desligada, pedido de avaliação e decisão/ativação de grant não concedem nada
+ok 32 - rotas: com a oferta de PRODUÇÃO desligada, pedido de avaliação e decisão/ativação de grant não concedem nada
+  ---
+  duration_ms: 236.422757
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:create enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-legacy-a7644928-15/ev-w-routes-legacy-a7644928-15
+# {"level":30,"time":"2026-11-14T13:49:50.489Z","service":"eiah","env":"test","component":"imob-intake-observability","event":"storage_provider_mode","mode":"local","msg":"imob-intake.storage_provider_mode"}
+# Subtest: rotas: legado aprovado sem grant — ativação pelo Marketplace e acesso às APIs preservados
+ok 33 - rotas: legado aprovado sem grant — ativação pelo Marketplace e acesso às APIs preservados
+  ---
+  duration_ms: 422.557145
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-a7644928-16/ev-w-routes-somente_leitura-a7644928-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-a7644928-16/ev-w-routes-somente_leitura-a7644928-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-a7644928-16/ev-w-routes-somente_leitura-a7644928-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-a7644928-16/ev-w-routes-somente_leitura-a7644928-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-somente_leitura-a7644928-16/ev-w-routes-somente_leitura-a7644928-16
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-a7644928-17/ev-w-routes-bloqueio_total-a7644928-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-a7644928-17/ev-w-routes-bloqueio_total-a7644928-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-a7644928-17/ev-w-routes-bloqueio_total-a7644928-17
+# [tenantGuard] TenantActionPolicy:findMany enforced for ev-t-routes-bloqueio_total-a7644928-17/ev-w-routes-bloqueio_total-a7644928-17
+# Subtest: rotas: grant — nada antes da ativação; leitura e escrita conforme o modo ao fim; front door acompanha a validade (cast ::timestamp, fuso do servidor ≠ UTC)
+ok 34 - rotas: grant — nada antes da ativação; leitura e escrita conforme o modo ao fim; front door acompanha a validade (cast ::timestamp, fuso do servidor ≠ UTC)
+  ---
+  duration_ms: 990.761084
+  type: 'test'
+  ...
+1..34
+# tests 34
+# suites 0
+# pass 34
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12671.654611

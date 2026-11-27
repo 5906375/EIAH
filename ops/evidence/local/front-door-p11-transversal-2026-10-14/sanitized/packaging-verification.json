@@ -1,0 +1,309 @@
+{
+  "sourceFolder": "ops/evidence/local/front-door-p11-transversal-2026-10-14",
+  "branch": "feat/p11-front-door-transversal-orchestration",
+  "headAtPackaging": "e4575b033d35ecdc7572ccd93107f671d0526e24",
+  "packagedOn": "2026-11-06",
+  "originalFileCount": 70,
+  "originalsUnmodifiedByPackaging": true,
+  "originalsCheckMethod": "size and mtime of every original compared before and after writing; no hash of the originals was recomputed (hashes come from the existing MANIFEST.sha256)",
+  "sanitizedFiles": {
+    "selected-tests.tap": {
+      "sha256": "198062a3769fc4dbc9205129e27988075296bba345c5a2a58672969acaef41d4",
+      "bytes": 215843,
+      "lines": 3622
+    },
+    "results.json": {
+      "sha256": "89b3fe76c98412e3b41485e1f71797a2e588a9f36a0bb4564b25f66592c1ee94",
+      "bytes": 13645,
+      "lines": 290
+    },
+    "README.md": {
+      "sha256": "02e261ffb2460f6bc2d4c413f170699537a32580df6e9cd5b4316e2244dd159c",
+      "bytes": 10410,
+      "lines": 80
+    }
+  },
+  "derivedFrom": {
+    "selected-tests.tap": [
+      {
+        "original": "logs/FrontDoorSessionHeader.test.tsx.tap",
+        "sha256FromExistingManifest": "dbbcb2047b0633d151e4ddcdcbd8feff62a31b1277da5bec8bc2d8619c138998"
+      },
+      {
+        "original": "logs/ImobChatWidgets.test.tsx.tap",
+        "sha256FromExistingManifest": "c9975ddafaaf5aa5fd970669c7c32e5643eb0d62e2b9a9df750ad57097e6beb3"
+      },
+      {
+        "original": "logs/agents-public-view.contract.test.ts.tap",
+        "sha256FromExistingManifest": "fc1fb6da7bc27f4e237d691fec0890511e0f97d5a26aa1ac534f6966629c012a"
+      },
+      {
+        "original": "logs/chat-vertical-imob-handoff.test.ts.tap",
+        "sha256FromExistingManifest": "bc6b2552a72ca79bf634848d53dba011b2ff2b38c9a2754d5f6e76858a4cb1d2"
+      },
+      {
+        "original": "logs/chat-vertical-registry.test.ts.tap",
+        "sha256FromExistingManifest": "7bbbb0d63c0c8a00a7d270c2f46de2486248522172066ac45eb62dea070a40db"
+      },
+      {
+        "original": "logs/chatLauncherEngine.test.ts.tap",
+        "sha256FromExistingManifest": "7f2ec4b7bd16305b1568e5c5156b655a7c0c128b63994ad5132ce6046336c58f"
+      },
+      {
+        "original": "logs/createImobStructuredForms.test.ts.tap",
+        "sha256FromExistingManifest": "dfd32032665f6e7add3074ee0e51bcadb4965083e88cf39bc4a57108e6958412"
+      },
+      {
+        "original": "logs/frontDoorAccessEngine.test.ts.tap",
+        "sha256FromExistingManifest": "0f4eb9f449c704fe60df9ebcfb5865fb58bc972e1da673b005989922d18f4ee7"
+      },
+      {
+        "original": "logs/frontDoorBillingEngine.test.ts.tap",
+        "sha256FromExistingManifest": "5b8e26f90dbca76829f2719f865dcec714d422d9fb32c1109f6249d373d8cbd9"
+      },
+      {
+        "original": "logs/imob-specialist-bridge.test.ts.tap",
+        "sha256FromExistingManifest": "3bc305de1e963c8a24934b3abc34732651ce0676a73d6445138791c810310f0a"
+      },
+      {
+        "original": "logs/imobCommandCenterHelper.test.ts.tap",
+        "sha256FromExistingManifest": "3cec3c94d0f8111a40be55a694a816453ec1464c4e4934c9d66adb49178e26ae"
+      },
+      {
+        "original": "logs/marketplace.installations.activate.test.integration.tap",
+        "sha256FromExistingManifest": "e4ccf18e9b43875ab6997402ca686ca05a3ad254799bd0d8f0917408ee3d163c"
+      },
+      {
+        "original": "logs/vertical-access-resolver.test.ts.tap",
+        "sha256FromExistingManifest": "a542dc23ea4a74bcbcb51fc968aebd14166453e1e1c2f9fad1c3bb968004aed1"
+      },
+      {
+        "original": "logs/vertical-access-revocation.test.ts.tap",
+        "sha256FromExistingManifest": "256805fc6ffbe52432522a6a44941a7d8b924572b45ee377ef01df2c44c64207"
+      },
+      {
+        "original": "logs/verticalActivationEngine.test.ts.tap",
+        "sha256FromExistingManifest": "2140c6d3a218f12f974a30dcbe05293debd458092c08bdb63b6dedb2b121a8c4"
+      },
+      {
+        "original": "logs/verticalHandoffEngine.test.ts.tap",
+        "sha256FromExistingManifest": "0612cf10efa9728ce51b172ef5a1639b35f7d8d48c9415e09e0649ad7dffcc86"
+      }
+    ],
+    "results.json": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "26438e71b76930d037280283b05763186c880f4c31c9efc21ca429e119c8ad46"
+      },
+      {
+        "original": "tests_summary.txt",
+        "sha256FromExistingManifest": "cf742e439ca9c97d2c9aeee5f45bf3d88f98759c983207d19632d891a73a203d"
+      },
+      {
+        "original": "MANIFEST.sha256",
+        "sha256FromExistingManifest": null
+      }
+    ],
+    "README.md": [
+      {
+        "original": "README.md",
+        "sha256FromExistingManifest": "26438e71b76930d037280283b05763186c880f4c31c9efc21ca429e119c8ad46"
+      },
+      {
+        "original": "tests_summary.txt",
+        "sha256FromExistingManifest": "cf742e439ca9c97d2c9aeee5f45bf3d88f98759c983207d19632d891a73a203d"
+      }
+    ]
+  },
+  "scrubbing": {
+    "rules": [
+      "p11_worktree_abs",
+      "builder_worktree_abs",
+      "other_worktree_abs",
+      "home_abs",
+      "tilde_p11",
+      "tilde_projects",
+      "mnt_path",
+      "tmp_path",
+      "windows_user_path",
+      "os_user",
+      "db_url",
+      "redis_url",
+      "bearer",
+      "test_token",
+      "cuid",
+      "email_nonsynthetic"
+    ],
+    "replacementsApplied": {
+      "builder_worktree_abs": 14,
+      "cuid": 35,
+      "tilde_p11": 1
+    }
+  },
+  "residualScan": {
+    "patterns": [
+      "abs_home",
+      "os_user",
+      "mnt",
+      "tmp",
+      "windows_path",
+      "db_url",
+      "email",
+      "bearer",
+      "token_literal",
+      "cuid_like",
+      "password_word",
+      "secret_word"
+    ],
+    "findings": [],
+    "totalFindings": 0,
+    "note": "scan over the generated sanitized files before writing; findings are listed for human review, not auto-removed"
+  },
+  "exclusionsAndRepresentation": {
+    "database-snapshots": {
+      "reason": "snapshots do banco descartável omitidos: registros de banco",
+      "count": 3,
+      "originals": [
+        "db_snapshot_0_before.txt",
+        "db_snapshot_after_A.txt",
+        "db_snapshot_after_B.txt"
+      ]
+    },
+    "git-state-snapshots": {
+      "reason": "estado Git bruto omitido: caminhos locais e estado de branches",
+      "count": 3,
+      "originals": [
+        "git_state_main_0.txt",
+        "git_state_main_1.txt",
+        "git_state_p11_final.txt"
+      ]
+    },
+    "isolation-and-cleanliness-proofs": {
+      "reason": "provas de isolamento/limpeza omitidas: dados de infraestrutura local",
+      "count": 1,
+      "originals": [
+        "isolation_proof.txt"
+      ]
+    },
+    "original-readme": {
+      "reason": "README original substituído pela cópia sanitizada embutida no README desta pasta",
+      "count": 1,
+      "originals": [
+        "README.md"
+      ]
+    },
+    "raw-manifest": {
+      "reason": "MANIFEST.sha256 bruto não copiado; seus hashes foram carregados em results.json",
+      "count": 1,
+      "originals": [
+        "MANIFEST.sha256"
+      ]
+    },
+    "scenario-and-browser-records": {
+      "reason": "registros brutos de cenários/navegador omitidos: identificadores de fixtures e URLs; resultados agregados na matriz",
+      "count": 4,
+      "originals": [
+        "A-console.txt",
+        "A-result.json",
+        "B-console.txt",
+        "B-result.json"
+      ]
+    },
+    "screenshots": {
+      "reason": "capturas de tela omitidas: expõem nomes e contexto de sessão (padrão do 7bd1f060)",
+      "count": 38,
+      "originals": [
+        "A-01-front-door-entry.png",
+        "A-02-agent-eiah.png",
+        "A-03-divulgacao.png",
+        "A-03b-card-mkt.png",
+        "A-04-marketing-ajuda.png",
+        "A-05-ja-contratou.png",
+        "A-05b-conversa-completa.png",
+        "A-06-protegido-billing.png",
+        "A-06-protegido-bomdia.png",
+        "A-06-protegido-cadastrar.png",
+        "A-06-protegido-contrato.png",
+        "A-06-protegido-convidar.png",
+        "A-07-self-service-mkt.png",
+        "A-08-retorno-a-conversa.png",
+        "A-09-continua-apos-retorno.png",
+        "A-10-mobile-front-door.png",
+        "A-11-mobile-cartao.png",
+        "A-12-mobile-self-service.png",
+        "A-13-mobile-retorno.png",
+        "B-01-front-door-entry.png",
+        "B-02-agent-eiah.png",
+        "B-03-divulgacao.png",
+        "B-03b-card-mkt.png",
+        "B-04-marketing-ajuda.png",
+        "B-05-ja-contratou.png",
+        "B-05b-conversa-completa.png",
+        "B-06-protegido-billing.png",
+        "B-06-protegido-bomdia.png",
+        "B-06-protegido-cadastrar.png",
+        "B-06-protegido-contrato.png",
+        "B-06-protegido-convidar.png",
+        "B-07-self-service-mkt.png",
+        "B-08-retorno-a-conversa.png",
+        "B-09-continua-apos-retorno.png",
+        "B-10-mobile-front-door.png",
+        "B-11-mobile-cartao.png",
+        "B-12-mobile-self-service.png",
+        "B-13-mobile-retorno.png"
+      ]
+    },
+    "tap-logs": {
+      "reason": "representados pelas cópias sanitizadas concatenadas",
+      "count": 16,
+      "originals": [
+        "logs/FrontDoorSessionHeader.test.tsx.tap",
+        "logs/ImobChatWidgets.test.tsx.tap",
+        "logs/agents-public-view.contract.test.ts.tap",
+        "logs/chat-vertical-imob-handoff.test.ts.tap",
+        "logs/chat-vertical-registry.test.ts.tap",
+        "logs/chatLauncherEngine.test.ts.tap",
+        "logs/createImobStructuredForms.test.ts.tap",
+        "logs/frontDoorAccessEngine.test.ts.tap",
+        "logs/frontDoorBillingEngine.test.ts.tap",
+        "logs/imob-specialist-bridge.test.ts.tap",
+        "logs/imobCommandCenterHelper.test.ts.tap",
+        "logs/marketplace.installations.activate.test.integration.tap",
+        "logs/vertical-access-resolver.test.ts.tap",
+        "logs/vertical-access-revocation.test.ts.tap",
+        "logs/verticalActivationEngine.test.ts.tap",
+        "logs/verticalHandoffEngine.test.ts.tap"
+      ]
+    },
+    "typecheck-raw-output": {
+      "reason": "saída bruta de typecheck omitida: caminhos locais; contagens agregadas em results.json quando existiam",
+      "count": 2,
+      "originals": [
+        "logs/tsc_api_p11_normalizado.txt",
+        "logs/tsc_web_p11_normalizado.txt"
+      ]
+    },
+    "used-in-sanitized": {
+      "reason": "conteúdo agregado ou copiado (sanitizado) em arquivos desta pasta",
+      "count": 1,
+      "originals": [
+        "tests_summary.txt"
+      ]
+    }
+  },
+  "notDone": [
+    "no git add/commit/push",
+    "originals not removed, moved, edited or hidden",
+    "tests not re-executed",
+    "no hash of originals recomputed"
+  ],
+  "postProcessing": [
+    {
+      "file": "selected-tests.tap",
+      "operation": "removed trailing spaces/tabs from line ends (mechanical; text, order, verdicts and counts unchanged)",
+      "linesChanged": 36,
+      "date": "2026-11-06",
+      "reason": "git diff --cached --check (trailing whitespace)"
+    }
+  ]
+}

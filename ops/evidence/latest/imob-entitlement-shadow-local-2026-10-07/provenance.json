@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-07T16:38:49.342877+00:00",
+  "head": "0a0869249cefaecaeaf3abe171a088aa5857e611",
+  "node": "v22.17.1",
+  "scope": "Local Express/Supertest with synthetic dependency overrides; canonical TypeScript source loaded via TypeScript transpileModule; no DB queries or production traffic",
+  "httpExecution": "require_escalated approved because sandbox listen EPERM",
+  "preexistingStep1": "Preserved byte-for-byte for contract, pure resolver, descriptor, tests and architectural document; package and manifest only additive registration",
+  "checklists": [
+    "docs/ops/imob-data-pr-execution-checklist.md",
+    "docs/ops/imob-data-trilha-b-runtime-minimo-execution-checklist.md"
+  ],
+  "unaffectedFronts": [
+    "Run Archive",
+    "Funil + Equipe",
+    "IMOB Cost"
+  ]
+}

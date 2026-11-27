@@ -1,0 +1,154 @@
+{
+  "date": "2026-10-12",
+  "status": "parcial",
+  "publication": "local_only_not_published",
+  "selectedTests": {
+    "status": "PASS",
+    "files": [
+      "apps/web/src/components/agents/verticalHandoffEngine.test.ts",
+      "apps/web/src/components/agents/frontDoorAccessEngine.test.ts",
+      "apps/web/src/pages/app/imob/chat.formSubmission.test.ts",
+      "apps/web/src/pages/app/imob/chat.slotCollectionHistory.test.ts",
+      "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "apps/api/src/tests/agents-public-view.contract.test.ts",
+      "apps/api/src/tests/imob-specialist-bridge.test.ts",
+      "apps/web/src/features/imob/ImobChatWidgets.test.tsx",
+      "apps/api/src/tests/imob-specialist-runtime.test.ts",
+      "apps/api/src/tests/imob-crm-continuity-regression-phase1.test.ts"
+    ],
+    "tests": 246,
+    "passed": 246,
+    "failed": 0,
+    "runtime": "Node 22.17.1; TSX; temporary mirror without dotenv; fixture-only database URL"
+  },
+  "gateSyntheticTests": {
+    "status": "PASS",
+    "tests": 221,
+    "passed": 221,
+    "failed": 0,
+    "source": "check_orphan_unit_isolated.out",
+    "sourceSha256": "e3c5d6fca11bc9498bb35724f410c8325ca7233ff0158fd5cca87d68fa83266e",
+    "execution": "prior execution, reused without rerun"
+  },
+  "handoffPackProbe": {
+    "status": "PASS",
+    "tests": 1,
+    "states": [
+      "available",
+      "unavailable",
+      "unverified"
+    ],
+    "scope": "J_360 documentary case; card, supportingAgents, pendingHandoffs, handoffPack and specialistSupportAgentId; no real database",
+    "command": "node --import tsx --test --test-name-pattern=operational-probe apps/api/src/tests/imob-availability-functional.probe.test.ts"
+  },
+  "browserFixtures": {
+    "status": "PASS",
+    "states": {
+      "available": {
+        "specialists": 5,
+        "suggestedActions": 5,
+        "continuityButtonWorked": true
+      },
+      "unavailable": {
+        "specialists": 5,
+        "suggestedActions": 0,
+        "continuityButtonWorked": true
+      },
+      "unverified": {
+        "specialists": 5,
+        "suggestedActions": 0,
+        "continuityButtonWorked": true
+      }
+    },
+    "pageErrors": [],
+    "scope": "synthetic component fixtures; not human manual acceptance"
+  },
+  "historicalFailures": [
+    {
+      "status": "FAIL",
+      "step": "initial token login",
+      "http": 401
+    },
+    {
+      "status": "FAIL",
+      "step": "password login against read-only local PostgreSQL",
+      "http": 500,
+      "prismaCode": "P2010",
+      "postgresCode": "25006",
+      "cause": "CREATE TABLE in read-only transaction"
+    }
+  ],
+  "disposableAuthentication": {
+    "status": "PASS",
+    "onboardingHttp": 201,
+    "passwordLoginHttp": 200,
+    "authenticatedPath": "/app/chat",
+    "pageErrors": [],
+    "authNegativeChecks": [
+      {
+        "name": "wrong-password",
+        "http": 401,
+        "expected": 401,
+        "passed": true,
+        "errorCode": "INVALID_CREDENTIALS"
+      },
+      {
+        "name": "unauthenticated-agents",
+        "http": 401,
+        "expected": 401,
+        "passed": true,
+        "errorCode": "UNAUTHORIZED"
+      },
+      {
+        "name": "authenticated-session",
+        "http": 200,
+        "expected": 200,
+        "passed": true,
+        "errorCode": null
+      }
+    ],
+    "localIsolationProbe": "PASS",
+    "workers": "disabled",
+    "externalConnections": "blocked",
+    "databaseMigrations": 34
+  },
+  "localAdmin": {
+    "status": "PASS",
+    "onboardingHttp": 201,
+    "loginHttp": 200,
+    "queueHttp": 200,
+    "testIdentityOnlyInAllowlist": true,
+    "requesterHasAdminAuthority": false,
+    "ordinaryIdentityQueueHttp": 404,
+    "requestVisible": true,
+    "requestStateAtObservation": "aguardando_humano",
+    "decisionOrActivationRequests": [],
+    "pageErrors": []
+  },
+  "notDemonstrated": [
+    "complete manually accepted IMOB journey",
+    "executed specialist handoff with persisted work output",
+    "production or staging deployment of this increment",
+    "GitHub runner containment and workflow execution",
+    "real full 213-file unit suite",
+    "later human administrative decision and activation"
+  ],
+  "originalEvidenceSha256": {
+    "disposable-environment-results.json": "1589da95cd4781d462c3ca4a15aca98e1d03d5698c70be922c9bbba83640c604",
+    "specialist-states.png": "4bbbaf61ac8b0c69c2e73aaa395e8b9f5b14484579a1cfd86ee5bef6f08964eb",
+    "selected-tests.tap": "192378464dae68bc54a5ebfcf87a330496dad9b96707428a69e1c6509ad9edc0",
+    "handoff-pack-probe-source.txt": "8be700e19524a00bfd2f4377d65ae13df21bc8cc7c6c511dd6c6a9f9bb73b175",
+    "authenticated-frontdoor.png": "59e90f3f32c3f50d8ee10772797dd1f8116a5187d9f384896fb1312aeeebb72b",
+    "browser-check-source.txt": "1f03b1b7bd1af23b61654bc02ec5918f1cfa4ab1f6c0735a5662e7286fd0189a",
+    "local-access.png": "d35351561a2ab46931d4801e3fc9fbeacd9d1a945343a7ff8172643ad8465b3b",
+    "admin-review-queue.png": "5457775c62ae9e3aaf1df6fdb5a6b49f2dc18d693bd004146b72bc3e69fe1ae6",
+    "fixture-source.txt": "d9c45e7ef8cee7cabdaba7f7fd8cab729ba65891d81a1bf9bde84ff6f769a2a5",
+    "local-admin-results.json": "f5bc123f1c5f3f464dd755a238e8d20f4546a70223fb2cfff9c1a47ef05c77e5",
+    "login-diagnosis.md": "cb4e52a6f66ec70ebe7cc05bf98358d149ca7f73baf9ca89841d8d19ba0eaf59",
+    "disposable-environment.md": "2d58a5c729ce17af4ddb74693c3e04ff8916f5cfd58374f8aa2c127517563302",
+    "results.json": "7e67cfe099fa425b8690a8d3f0dcf20e2f7d197497b346acb510e022dd945efa",
+    "report.md": "67bc51a3f13a4082b3a178b71ff1e42d3ac07fc01b29683ed5cf8b7e14ca2ec5",
+    "local-admin.md": "d0342fdc1532d8715fb979de3c1ff1f24df54e5c2791e0cc29a57de4094fee72"
+  },
+  "redaction": "allowlisted aggregate results only; no user, tenant, workspace, request or event records copied"
+}

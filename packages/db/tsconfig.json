@@ -31,6 +31,7 @@
     "src/generated/client/*.js",
     "node_modules",
     "src/__tests__/**/*",
-    "src/middleware/**/*test.ts"
+    "src/middleware/**/*test.ts",
+    "src/p1RunTransitionPersistence.integration.test.ts"
   ]
 }

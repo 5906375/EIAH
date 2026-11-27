@@ -1,0 +1,51 @@
+{
+  "step": "8.7.2",
+  "note": "Read-only isolation observations after the sole acceptance/typecheck round. This log is subsequently materialized from these observations; no tests are rerun. Acceptance/typecheck logs are Git-ignored; this isolation log is likewise an evidence artifact, without staging.",
+  "observations": [
+    {
+      "command": "git status --short --untracked-files=all",
+      "exitCode": 0,
+      "output": " M apps/api/src/routes/whatsapp.ts\n M docs/EVIDENCE_INDEX.md\n?? apps/api/src/services/whatsappMetaAdapter.ts\n?? apps/api/src/services/whatsappReadOnlyIngress.ts\n?? apps/api/src/tests/support/whatsappMetaFileStore.ts\n?? apps/api/src/tests/support/whatsappMetaFixtures.ts\n?? apps/api/src/tests/support/whatsappMetaHarness.ts\n?? apps/api/src/tests/whatsapp.meta-adapter.test.ts\n?? docs/ops/whatsapp-provider-meta-controlled-development-decision-record.md\n?? docs/ops/whatsapp-provider-meta-f2-24-phase-transition-decision-record.md\n?? ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/README.md\n?? ops/evidence/latest/whatsapp-meta-f2-24-formalization-2026-11-25.md\n"
+    },
+    {
+      "command": "git diff --name-status",
+      "exitCode": 0,
+      "output": "M\tapps/api/src/routes/whatsapp.ts\nM\tdocs/EVIDENCE_INDEX.md\n"
+    },
+    {
+      "command": "git diff --cached --name-status",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git ls-files --others --exclude-standard",
+      "exitCode": 0,
+      "output": "apps/api/src/services/whatsappMetaAdapter.ts\napps/api/src/services/whatsappReadOnlyIngress.ts\napps/api/src/tests/support/whatsappMetaFileStore.ts\napps/api/src/tests/support/whatsappMetaFixtures.ts\napps/api/src/tests/support/whatsappMetaHarness.ts\napps/api/src/tests/whatsapp.meta-adapter.test.ts\ndocs/ops/whatsapp-provider-meta-controlled-development-decision-record.md\ndocs/ops/whatsapp-provider-meta-f2-24-phase-transition-decision-record.md\nops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/README.md\nops/evidence/latest/whatsapp-meta-f2-24-formalization-2026-11-25.md\n"
+    },
+    {
+      "command": "git diff -- .github/workflows release.yml apps/api/src/index.ts packages scripts contracts",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git branch --show-current",
+      "exitCode": 0,
+      "output": "docs/whatsapp-meta-candidate-assessment\n"
+    },
+    {
+      "command": "git rev-parse HEAD",
+      "exitCode": 0,
+      "output": "3046f7251e3cb3d0d66bb0a47fe5f4e5ee3f7e8e\n"
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "git ls-files --others --ignored --exclude-standard -- ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25",
+      "exitCode": 0,
+      "output": "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/acceptance.log\nops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/typecheck.log\n"
+    }
+  ]
+}

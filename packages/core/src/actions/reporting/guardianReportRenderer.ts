@@ -3,6 +3,8 @@ import { GuardianReportSchema, type GuardianReport } from "./guardianReportSchem
 import { renderRecipeOrchestrationHtmlSection } from "./recipeOrchestrationRenderer";
 
 type PlainObject = Record<string, unknown>;
+const LEGACY_GOVERNANCE_UNVERIFIED_BANNER = "LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO";
+const GOVERNANCE_NOT_EVALUATED_REASON = "VERTICAL_GOVERNANCE_NOT_EVALUATED";
 
 function isPlainObject(value: unknown): value is PlainObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -16,8 +18,30 @@ export function shouldUseGuardianRenderer(payload: RunAtivoReportingInput) {
 
 export function extractGuardianReport(payload: RunAtivoReportingInput): GuardianReport | null {
   const raw = isPlainObject(payload.metadata) ? payload.metadata.guardianReport : null;
-  const parsed = GuardianReportSchema.safeParse(raw);
+  const normalized = normalizeLegacyGuardianReport(raw);
+  const parsed = GuardianReportSchema.safeParse(normalized);
   return parsed.success ? parsed.data : null;
+}
+
+function normalizeLegacyGuardianReport(raw: unknown): unknown {
+  if (!isPlainObject(raw) || !isPlainObject(raw.governance)) return raw;
+  const governance = raw.governance;
+  const legacyDetected =
+    governance.rbacEvaluated === true ||
+    governance.entitlementEvaluated === true ||
+    governance.policyDecision === "allowed";
+  if (!legacyDetected) return raw;
+  return {
+    ...raw,
+    legacyGovernanceUnverified: true,
+    governance: {
+      ...governance,
+      rbacEvaluated: false,
+      entitlementEvaluated: false,
+      policyDecision: "needs_review",
+      reasonCode: GOVERNANCE_NOT_EVALUATED_REASON,
+    },
+  };
 }
 
 export function buildGuardianTemplateMismatchReport(payload: RunAtivoReportingInput): GuardianReport {
@@ -252,6 +276,11 @@ export function buildGuardianReportBaseHtml(params: {
         </div>
       </header>
       <main>
+        ${
+          report.legacyGovernanceUnverified
+            ? `<section class="card decision"><strong>${escapeHtml(LEGACY_GOVERNANCE_UNVERIFIED_BANNER)}</strong></section>`
+            : ""
+        }
         <section class="card decision">
           <h2>Decisão executiva</h2>
           <div class="summary-grid">
@@ -315,7 +344,7 @@ export function buildGuardianReportBaseHtml(params: {
         ${
           report.governance
             ? `<section class="card">
-          <h2>Governança aplicada</h2>
+          <h2>Estado de governança</h2>
           <div class="summary-grid">
             <div><small class="muted">tenant/workspace</small><p>${report.governance.tenantIdPresent && report.governance.workspaceIdPresent ? "ok" : "ausente"}</p></div>
             <div><small class="muted">RBAC</small><p>${report.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</p></div>

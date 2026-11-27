@@ -498,6 +498,8 @@ export function resolveImobHelpIntent(input: string): ImobHelpIntent | null {
   if (
     normalized.includes("instalar o imob") ||
     normalized.includes("quero instalar o imob") ||
+    normalized.includes("ativar o imob") ||
+    normalized.includes("liberar o imob") ||
     normalized.includes("instalacao do imob") ||
     normalized.includes("instalação do imob") ||
     normalized.includes("marketplace/imob")
@@ -716,11 +718,11 @@ function buildImobOverviewReply() {
     "",
     "Ele ajuda o time a transformar conversa em movimento de negócio: captar imóvel, qualificar lead, gerar proposta, cobrar documentos, negociar e seguir até contrato ou fechamento.",
     "",
-    "**Como usar**",
-    "1. Abra o dashboard do IMOB para visualizar pipeline e prioridades do dia.",
-    "2. Use o chat IMOB para pedir a próxima ação útil com base no caso atual.",
-    "3. Avance lead, compra, venda, locação, cadastro e documentação sem sair da jornada.",
-    "4. Acompanhe a evolução das etapas com rastreabilidade e governança.",
+    "**Como começar**",
+    "1. Peça a liberação à EIAH: escreva `ativar o imob` aqui na conversa e confirme. Um administrador da EIAH decide e o aviso chega aqui.",
+    "2. Com a liberação, escreva `ativar o imob` de novo e confirme a ativação.",
+    "3. Peça a próxima ação aqui mesmo: lead, compra, venda, locação, cadastro e documentação seguem na mesma conversa.",
+    "4. Acompanhe pipeline e prioridades no dashboard do IMOB.",
     "",
     "**Pedidos rápidos que funcionam bem**",
     "- `qualificar lead comprador e sugerir próximos passos`",
@@ -730,7 +732,7 @@ function buildImobOverviewReply() {
     "",
     "**Atalhos**",
     "- [Instalação do IMOB](/app/marketplace/imob)",
-    "- [Chat IMOB](/app/imob/chat)",
+    "- [Chat EIAH](/app/chat)",
     "- [Dashboard IMOB](/app/imob/dashboard)",
   ].join("\n");
 }
@@ -760,7 +762,7 @@ function buildImobNavigationReply() {
     "**Onde acompanhar pipeline e etapas no IMOB**",
     "",
     "- Use [Dashboard IMOB](/app/imob/dashboard) para ver pipeline, contexto operacional, prioridades do dia e gargalos.",
-    "- Use [Chat IMOB](/app/imob/chat) quando quiser orientação do próximo passo com base no caso atual.",
+    "- Use o [Chat EIAH](/app/chat) quando quiser orientação do próximo passo com base no caso atual.",
     "",
     "**Regra prática**",
     "- dashboard para visão de jornada, prioridade e acompanhamento",
@@ -785,13 +787,12 @@ function buildImobShortcutsReply() {
 
 function buildImobInstallReply() {
   return [
-    "**Como instalar o IMOB no workspace**",
+    "**Como ativar o IMOB no workspace**",
     "",
-    "1. Abra o Marketplace do workspace.",
-    "2. Procure por `IMOB`.",
-    "3. Revise descrição, escopo e disponibilidade do módulo.",
-    "4. Ative a vertical no workspace.",
-    "5. Depois disso, siga por [Dashboard IMOB](/app/imob/dashboard) ou [Chat IMOB](/app/imob/chat).",
+    "1. Peça a liberação à EIAH: escreva `ativar o imob` aqui na conversa e confirme \"Pedir liberação do IMOB\" (ou use o Marketplace). Só o Founder ou quem tem a permissão de ativar produtos pode pedir.",
+    "2. Um administrador da EIAH analisa e decide. O aviso da decisão chega aqui na conversa.",
+    "3. Com a liberação, escreva `ativar o imob` e confirme \"Confirmar ativação do IMOB\".",
+    "4. Depois disso, siga aqui no [Chat EIAH](/app/chat) ou pelo [Dashboard IMOB](/app/imob/dashboard).",
     "",
     "**Atalho**",
     "- [Marketplace IMOB](/app/marketplace/imob)",
@@ -804,15 +805,15 @@ function buildImobWorkspaceOnboardingReply() {
     "",
     "Se você acabou de cadastrar um cliente ou abriu um workspace novo, a sequência prática é esta:",
     "",
-    "1. Abra [Marketplace IMOB](/app/marketplace/imob).",
-    "2. Verifique se o status está `não instalado` ou `inativo`.",
-    "3. Clique em `Ativar módulo` para habilitar o IMOB neste workspace.",
-    "4. Depois da ativação, siga por [Chat IMOB](/app/imob/chat) para começar a operação.",
+    "1. Peça a liberação à EIAH: escreva `ativar o imob` no [Chat EIAH](/app/chat) ou use [Marketplace IMOB](/app/marketplace/imob).",
+    "2. Quando o aviso de liberação chegar, ative o IMOB: na conversa (\"Confirmar ativação do IMOB\") ou em `Ativar módulo` no Marketplace.",
+    "3. Depois da ativação, siga pelo [Chat EIAH](/app/chat) para começar a operação.",
+    "4. O status no Marketplace mostra se o IMOB está liberado, instalado ou ativo.",
     "5. Use [Dashboard IMOB](/app/imob/dashboard) quando quiser acompanhar pipeline, etapas e gargalos.",
     "",
     "**Quando usar cada superfície**",
     "- `Marketplace IMOB`: ativar a vertical no workspace",
-    "- `Chat IMOB`: começar captação, lead, proposta, contrato ou próximo passo",
+    "- `Chat EIAH`: começar captação, lead, proposta, contrato ou próximo passo",
     "- `Dashboard IMOB`: acompanhar jornada, prioridades e bloqueios",
     "",
     "**Primeiros pedidos que fazem sentido no chat**",

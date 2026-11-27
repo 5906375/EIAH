@@ -1,36 +1,20 @@
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
-import { resolveChannelBinding } from "../services/channelBinding";
 import {
   createReplayGuardStore,
-  evaluateReplayGuard,
   resetReplayGuardStore,
 } from "../services/replayGuard";
-import { buildWhatsappBundleExport } from "../services/whatsappBundleExport";
-import { buildWhatsappEvidenceBundle } from "../services/whatsappEvidenceBundle";
+import {
+  buildWhatsappFailure, classifyRequestedAction, evaluateWhatsappReadOnlyIngress,
+  parseNonEmptyString, validatePayload,
+} from "../services/whatsappReadOnlyIngress";
 
 export const whatsappRouter = createGovernedRouter();
 
 const WHATSAPP_PROVIDER = "whatsapp";
-const WHATSAPP_EVENT_VERSION = "whatsapp.adapter.event.v1";
 const WHATSAPP_SIGNATURE_VERSION = "v1";
-const REQUIRED_SCOPE = "whatsapp:inbound:read_only";
-const REQUIRED_ENTITLEMENT = "channel.whatsapp.inbound.read_only";
 
 const whatsappReplayGuardStore = createReplayGuardStore();
-
-function parseNonEmptyString(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function parseIsoDate(value: unknown): string | null {
-  const parsed = parseNonEmptyString(value);
-  if (!parsed) return null;
-  const asMs = Date.parse(parsed);
-  return Number.isFinite(asMs) ? new Date(asMs).toISOString() : null;
-}
 
 function parseTimestampToMs(value: string | null) {
   if (!value) return Number.NaN;
@@ -67,52 +51,12 @@ function getSignatureSecret() {
   return process.env.WHATSAPP_WEBHOOK_STUB_SECRET?.trim() || "whatsapp-read-only-stub-secret";
 }
 
-function maskPhoneMasked(value: string) {
-  const trimmed = value.trim();
-  if (trimmed.length <= 4) return "[redacted]";
-  return `${trimmed.slice(0, 2)}***${trimmed.slice(-2)}`;
-}
-
 function failResponse(
   res: { status: (code: number) => { json: (body: unknown) => unknown } },
-  status: number,
-  code: string,
-  message: string,
-  context: {
-    eventId?: unknown;
-    provider?: unknown;
-    messageType?: unknown;
-    tenantId?: unknown;
-    workspaceId?: unknown;
-    scope?: unknown;
-    receivedAt?: unknown;
-    providerTimestamp?: unknown;
-  } = {}
+  ...args: Parameters<typeof buildWhatsappFailure>
 ) {
-  const evidenceBundle = buildWhatsappEvidenceBundle({
-    reasonCode: code,
-    httpStatus: status,
-    eventId: context.eventId,
-    provider: context.provider,
-    messageType: context.messageType,
-    tenantId: context.tenantId,
-    workspaceId: context.workspaceId,
-    scope: context.scope,
-    decisionClass: "blocked",
-  });
-  return res.status(status).json({
-    ok: false,
-    error: {
-      code,
-      message,
-    },
-    evidenceBundle,
-    bundleExport: buildWhatsappBundleExport({
-      evidenceBundle,
-      receivedAt: context.receivedAt,
-      providerTimestamp: context.providerTimestamp,
-    }),
-  });
+  const result = buildWhatsappFailure(...args);
+  return res.status(result.status).json(result.body);
 }
 
 function buildPayloadDigest(body: Record<string, unknown>) {
@@ -188,75 +132,6 @@ export function verifyWhatsappSignature(params: {
     normalized,
     matches: crypto.timingSafeEqual(providedBuffer, expectedBuffer),
   };
-}
-
-function classifyRequestedAction(body: Record<string, unknown>) {
-  const rawAction = parseNonEmptyString(body.action)
-    ?? parseNonEmptyString(body.requestedAction)
-    ?? parseNonEmptyString(body.intent)
-    ?? parseNonEmptyString(body.operation);
-  if (!rawAction) return null;
-
-  const normalized = rawAction.toLowerCase();
-  const criticalActions = [
-    "lead.create",
-    "lead.discard",
-    "create",
-    "update",
-    "delete",
-    "publish",
-    "settle",
-    "approve",
-    "mutate",
-  ];
-  if (criticalActions.some((token) => normalized.includes(token))) {
-    return "CRITICAL_ACTION_BLOCKED";
-  }
-  return "READ_ONLY_MODE";
-}
-
-function validatePayload(body: unknown) {
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return { ok: false as const, code: "WHATSAPP_PAYLOAD_INVALID", message: "Payload must be an object" };
-  }
-
-  const record = body as Record<string, unknown>;
-  const eventId = parseNonEmptyString(record.eventId);
-  if (!eventId) {
-    return { ok: false as const, code: "WHATSAPP_EVENT_ID_MISSING", message: "eventId is required" };
-  }
-
-  if (parseNonEmptyString(record.version) !== WHATSAPP_EVENT_VERSION) {
-    return { ok: false as const, code: "WHATSAPP_PAYLOAD_INVALID", message: "Unsupported event version" };
-  }
-  if (parseNonEmptyString(record.provider) !== WHATSAPP_PROVIDER) {
-    return { ok: false as const, code: "WHATSAPP_PROVIDER_UNSUPPORTED", message: "Unsupported provider" };
-  }
-
-  if (!parseIsoDate(record.receivedAt) || !parseIsoDate(record.providerTimestamp)) {
-    return { ok: false as const, code: "WHATSAPP_PAYLOAD_INVALID", message: "Invalid timestamp fields" };
-  }
-
-  const fromPhoneHash = parseNonEmptyString(record.fromPhoneHash);
-  const fromPhoneMasked = parseNonEmptyString(record.fromPhoneMasked);
-  const rawPayloadRef = parseNonEmptyString(record.rawPayloadRef);
-  if (!fromPhoneHash || !fromPhoneMasked || !rawPayloadRef) {
-    return { ok: false as const, code: "WHATSAPP_PAYLOAD_INVALID", message: "Safe phone identity and rawPayloadRef are required" };
-  }
-
-  const messageType = parseNonEmptyString(record.messageType);
-  if (!messageType || !["text", "interactive", "unknown"].includes(messageType)) {
-    return { ok: false as const, code: "WHATSAPP_MESSAGE_TYPE_UNSUPPORTED", message: "Unsupported message type" };
-  }
-  if (messageType === "text" && !parseNonEmptyString(record.text)) {
-    return { ok: false as const, code: "WHATSAPP_PAYLOAD_INVALID", message: "text is required for text messages" };
-  }
-
-  if (record.readOnly !== true) {
-    return { ok: false as const, code: "READ_ONLY_MODE", message: "Inbound WhatsApp handler only accepts read-only events" };
-  }
-
-  return { ok: true as const, record };
 }
 
 export function resetWhatsappWebhookGuards() {
@@ -407,125 +282,18 @@ export async function handleWhatsappInboundWebhook(
     });
   }
 
-  const bindingDecision = resolveChannelBinding({
-    fromPhoneHash: body.fromPhoneHash,
+  const eventKey = `${providerHeader}:${eventIdHeader}`;
+  const result = evaluateWhatsappReadOnlyIngress({
+    body, eventId: eventIdHeader, provider: providerHeader,
     bindingsJson: process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON,
     nowMs: Date.now(),
-    requiredScope: REQUIRED_SCOPE,
-    requiredEntitlement: REQUIRED_ENTITLEMENT,
-  });
-  if (!bindingDecision.allowed) {
-    return failResponse(res, 403, bindingDecision.reasonCode!, "WhatsApp binding or entitlement resolution failed", {
-      eventId: eventIdHeader,
-      provider: providerHeader,
-      messageType: body.messageType,
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-      receivedAt: body.receivedAt,
-      providerTimestamp: body.providerTimestamp,
-    });
-  }
-
-  if (body.tenantId != null && body.tenantId !== bindingDecision.tenantId) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "tenantId does not match the bound scope", {
-      eventId: eventIdHeader,
-      provider: providerHeader,
-      messageType: body.messageType,
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-      receivedAt: body.receivedAt,
-      providerTimestamp: body.providerTimestamp,
-    });
-  }
-  if (body.workspaceId != null && body.workspaceId !== bindingDecision.workspaceId) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "workspaceId does not match the bound scope", {
-      eventId: eventIdHeader,
-      provider: providerHeader,
-      messageType: body.messageType,
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-      receivedAt: body.receivedAt,
-      providerTimestamp: body.providerTimestamp,
-    });
-  }
-  if (body.scope != null && body.scope !== bindingDecision.scope) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "scope does not match the bound scope", {
-      eventId: eventIdHeader,
-      provider: providerHeader,
-      messageType: body.messageType,
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-    });
-  }
-
-  const nowMs = Date.now();
-  const eventKey = `${providerHeader}:${eventIdHeader}`;
-  const replayKey = `${eventKey}:${timestampHeader}:${signatureCheck.normalized}`;
-  const replayDecision = evaluateReplayGuard({
-    store: whatsappReplayGuardStore,
-    eventKey,
-    replayKey,
-    payloadDigest,
-    nowMs,
-    maxAgeMs,
-  });
-  if (!replayDecision.accepted) {
-    return failResponse(
-      res,
-      409,
-      replayDecision.reasonCode!,
-      replayDecision.replay
-        ? "Replay detected for WhatsApp inbound event"
-        : "Duplicate WhatsApp event detected",
-      {
-        eventId: eventIdHeader,
-        provider: providerHeader,
-        messageType: body.messageType,
-        tenantId: bindingDecision.tenantId,
-        workspaceId: bindingDecision.workspaceId,
-        scope: bindingDecision.scope,
-        receivedAt: body.receivedAt,
-        providerTimestamp: body.providerTimestamp,
-      }
-    );
-  }
-
-  const evidenceBundle = buildWhatsappEvidenceBundle({
-    reasonCode: "ACCEPTED_READ_ONLY",
-    httpStatus: 202,
-    eventId: eventIdHeader,
-    provider: WHATSAPP_PROVIDER,
-    messageType: body.messageType,
-    tenantId: bindingDecision.tenantId,
-    workspaceId: bindingDecision.workspaceId,
-    scope: bindingDecision.scope,
-    decisionClass: "accepted_read_only",
-  });
-  return res.status(202).json({
-    ok: true,
-    reasonCode: "ACCEPTED_READ_ONLY",
-    evidenceBundle,
-    bundleExport: buildWhatsappBundleExport({
-      evidenceBundle,
-      receivedAt: body.receivedAt,
-      providerTimestamp: body.providerTimestamp,
-    }),
-    data: {
-      eventId: eventIdHeader,
-      provider: WHATSAPP_PROVIDER,
-      readOnly: true,
-      messageType: body.messageType,
-      fromPhoneMasked: maskPhoneMasked(String(body.fromPhoneMasked)),
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-      fallbackUsed: false,
+    replay: {
+      store: whatsappReplayGuardStore, eventKey,
+      replayKey: `${eventKey}:${timestampHeader}:${signatureCheck.normalized}`,
+      payloadDigest, maxAgeMs,
     },
   });
+  return res.status(result.status).json(result.body);
 }
 
 whatsappRouter.post("/webhooks/whatsapp/inbound", handleWhatsappInboundWebhook);

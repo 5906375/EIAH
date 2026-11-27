@@ -7,7 +7,12 @@ import type { ImobCase } from "@/lib/api";
 import {
   buildImobCasePriority,
   buildImobCaseFallbackActions,
+  DEFAULT_COMMAND_CENTER_STATUS_FILTER,
+  formatImobCaseStatusLabel,
+  formatImobStageLabel,
+  normalizeCommandCenterStatusFilter,
 } from "./imobCommandCenterHelper";
+import { describeChatTurnFailure } from "../../pages/app/imob/chatFailureCopy";
 
 function makeCase(overrides: Partial<ImobCase>): ImobCase {
   return {
@@ -129,4 +134,56 @@ test("dashboard.tsx does not define buildCasePriority or buildCaseFallbackAction
     !source.includes("function buildCaseFallbackActions("),
     "dashboard.tsx must not define buildCaseFallbackActions — move to domain layer",
   );
+});
+
+// P10-E: a Central Operacional não esconde casos em andamento por padrão e não mostra identificadores técnicos.
+test("Central Operacional: filtro padrão é TODOS; valor desconhecido volta ao padrão; estados do filtro continuam válidos", () => {
+  assert.equal(DEFAULT_COMMAND_CENTER_STATUS_FILTER, "all");
+  assert.equal(normalizeCommandCenterStatusFilter(undefined), "all");
+  assert.equal(normalizeCommandCenterStatusFilter(null), "all");
+  assert.equal(normalizeCommandCenterStatusFilter("running"), "all", "estado fora do filtro não vira filtro (e não esconde casos)");
+  assert.equal(normalizeCommandCenterStatusFilter("<script>"), "all");
+  for (const value of ["pending_data", "ready_for_review", "blocked", "done", "all"]) {
+    assert.equal(normalizeCommandCenterStatusFilter(` ${value.toUpperCase()} `), value);
+  }
+});
+
+test("Central Operacional: estados do caso têm texto de leitura; desconhecido não é inventado", () => {
+  assert.equal(formatImobCaseStatusLabel("running"), "em andamento");
+  assert.equal(formatImobCaseStatusLabel("pending_data"), "pendente de dados");
+  assert.equal(formatImobCaseStatusLabel("ready_for_review"), "pronto para revisão");
+  assert.equal(formatImobCaseStatusLabel("estado_novo"), "estado_novo", "sem tradução conhecida, mostra o dado real em vez de inventar");
+  assert.equal(formatImobCaseStatusLabel(""), "—");
+});
+
+// P10-F: falha de turno descreve a causa provável sem inventar motivo; o detalhe técnico fica em `reason`.
+test("falha de turno do chat: cada causa tem explicação própria e nenhuma vira 'restrição de segurança'", () => {
+  const withStatus = (status: number) => Object.assign(new Error("HTTP " + status), { status });
+  const cases: Array<[unknown, RegExp]> = [
+    [withStatus(401), /sessão expirou/],
+    [withStatus(403), /não tem permissão/],
+    [withStatus(422), /não aceitou os dados/],
+    [withStatus(500), /falha temporária/],
+    [new Error("Failed to fetch"), /falha temporária/],
+    [undefined, /falha temporária/],
+  ];
+  for (const [error, expected] of cases) {
+    for (const kind of ["turn", "directed"] as const) {
+      const copy = describeChatTurnFailure(error, kind, "CHAT_TURN_FAILED");
+      assert.match(`${copy.text} ${copy.lines.join(" ")}`, expected);
+      assert.doesNotMatch(`${copy.text} ${copy.lines.join(" ")}`, /restrição de segurança|reason|CHAT_TURN_FAILED/i);
+      assert.ok(copy.reason.length > 0, "o detalhe técnico é preservado para diagnóstico");
+    }
+  }
+  assert.equal(describeChatTurnFailure(undefined, "turn", "CHAT_TURN_FAILED").reason, "CHAT_TURN_FAILED");
+  assert.match(describeChatTurnFailure(withStatus(403), "directed", "x").text, /preparar esta ação/);
+  assert.match(describeChatTurnFailure(withStatus(403), "turn", "x").text, /continuar essa solicitação/);
+});
+
+test("etapa do caso: identificadores conhecidos ganham texto de leitura; desconhecido segue visível; vazio vira traço", () => {
+  assert.equal(formatImobStageLabel("listing"), "Anúncio");
+  assert.equal(formatImobStageLabel(" Collecting "), "Coleta de dados");
+  assert.equal(formatImobStageLabel("etapa_nova_sem_traducao"), "etapa_nova_sem_traducao");
+  assert.equal(formatImobStageLabel(undefined), "—");
+  assert.equal(formatImobStageLabel(""), "—");
 });

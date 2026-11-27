@@ -27,10 +27,11 @@ export const imobPropertyCreateSchema = z.object({
   address: optionalShortString(240),
   city: optionalShortString(120),
   neighborhood: optionalShortString(120),
-  bedrooms: z.number().int().min(0).max(50).optional(),
-  bathrooms: z.number().int().min(0).max(50).optional(),
-  areaM2: z.number().int().min(0).max(100000).optional(),
-  garageSpots: z.number().int().min(0).max(100).optional(),
+  // null = apagar o valor na edição.
+  bedrooms: z.union([z.number().int().min(0).max(50), z.null()]).optional(),
+  bathrooms: z.union([z.number().int().min(0).max(50), z.null()]).optional(),
+  areaM2: z.union([z.number().int().min(0).max(100000), z.null()]).optional(),
+  garageSpots: z.union([z.number().int().min(0).max(100), z.null()]).optional(),
   askingPriceCents: z.number().int().min(0).max(1_000_000_000).optional(),
   description: optionalShortString(4000),
   status: optionalShortString(80),
@@ -61,6 +62,81 @@ export const imobLeadUpdateSchema = imobLeadCreateSchema.partial().refine((value
   message: "At least one field is required",
 });
 
+const isoDateSchema = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => !Number.isNaN(Date.parse(value)), {
+  message: "Invalid date",
+});
+const rentalChargePayerSchema = z.enum(["inquilino", "proprietario", "dispensado", "nao_existe", "desconhecido"]);
+
+export const imobRentalLeaseCreateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  tenantName: z.string().trim().min(1).max(160),
+  tenantDocument: z.union([z.string().trim().regex(/^(\d{11}|\d{14})$/), z.null()]).optional(),
+  tenantPhone: z.union([z.string().trim().regex(/^\d{10,13}$/), z.null()]).optional(),
+  tenantEmail: z.union([z.string().trim().email().max(160), z.null()]).optional(),
+  agreementType: z.enum(["escrito", "verbal", "desconhecido"]).default("desconhecido"),
+  startDate: z.union([isoDateSchema, z.null()]).optional(),
+  endDate: z.union([isoDateSchema, z.null()]).optional(),
+  rentCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
+  dueDay: z.union([z.number().int().min(1).max(31), z.null()]).optional(),
+  adjustmentIndex: optionalShortString(20),
+  adjustmentMonth: z.union([z.number().int().min(1).max(12), z.null()]).optional(),
+  guaranteeType: z.enum(["caucao", "fiador", "seguro_fianca", "titulo_capitalizacao", "nenhuma", "desconhecido"]).default("desconhecido"),
+  guaranteeAmountCents: z.union([z.number().int().min(0).max(1_000_000_000), z.null()]).optional(),
+  iptu: rentalChargePayerSchema.default("desconhecido"),
+  condominio: rentalChargePayerSchema.default("desconhecido"),
+  condominioAmountCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
+  notes: optionalShortString(1000),
+  // Presente = locação histórica (já encerrada): registrada direto como encerrada, sem ocupar o imóvel.
+  closure: z.object({
+    endedOn: isoDateSchema,
+    reason: z.enum(["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"]),
+    notes: optionalShortString(500),
+  }).optional(),
+}).superRefine((value, ctx) => {
+  if (value.closure && value.startDate && value.closure.endedOn < value.startDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["closure", "endedOn"], message: "endedOn must not be before startDate" });
+  }
+  if (value.startDate && value.endDate && value.endDate < value.startDate) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "endDate must not be before startDate" });
+  }
+  if (value.condominio === "nao_existe" && value.condominioAmountCents) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["condominioAmountCents"], message: "condominio amount given but condominio does not exist" });
+  }
+});
+
+export const imobRentalLeaseCloseSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  endedOn: isoDateSchema,
+  reason: z.enum(["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"]),
+  notes: optionalShortString(500),
+});
+
+const assetDealStateSchema = z.enum(["em_andamento", "concluida"]);
+// Sem teto comercial novo: os valores do negócio ficam em `metadata` (JSON) do caso,
+// então basta inteiro não negativo seguro. Só a escrita em `ImobProperty.askingPriceCents`
+// (coluna Int) respeita o limite técnico do banco, no serviço.
+const assetDealMoneySchema = z.union([z.number().int().nonnegative().safe(), z.null()]).optional();
+
+/** Venda (`sale.deal`) e permuta (`exchange.deal`) de um imóvel/unidade. */
+export const imobAssetDealCreateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  kind: z.enum(["venda", "permuta"]),
+  state: assetDealStateSchema.default("em_andamento"),
+  // Venda: valor pretendido. Permuta: valor atribuído ao imóvel oferecido.
+  askingPriceCents: assetDealMoneySchema,
+  counterpartyName: optionalShortString(160),
+  // Permuta: bem recebido, valor atribuído e eventual torna.
+  receivedAssetDescription: optionalShortString(400),
+  receivedValueCents: assetDealMoneySchema,
+  tornaCents: assetDealMoneySchema,
+  notes: optionalShortString(1000),
+});
+
+export const imobAssetDealCompleteSchema = z.object({
+  caseId: z.string().trim().min(1).max(80),
+  notes: optionalShortString(500),
+});
+
 export const imobCaseEventInputSchema = z.object({
   type: z.string().trim().min(1).max(120),
   actorType: z.string().trim().min(1).max(80),
@@ -86,6 +162,64 @@ export const imobCaseCreateSchema = z.object({
   externalDealId: optionalShortString(120),
   metadata: z.unknown().optional(),
   initialEvent: imobCaseEventInputSchema.optional(),
+});
+
+const contractPayerSchema = z.enum(["inquilino", "proprietario", "dispensado", "nao_existe", "desconhecido"]);
+
+export const imobRentalContractGenerateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  landlordName: z.string().trim().min(1).max(160),
+  landlordDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  tenantName: z.string().trim().min(1).max(160),
+  tenantDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  propertyAddress: z.string().trim().min(1).max(400),
+  purpose: z.enum(["residencial", "comercial"]),
+  registryNumber: z.union([z.string().trim().max(60), z.null()]).optional(),
+  startDate: isoDateSchema,
+  durationMonths: z.number().int().min(1).max(600),
+  rentCents: z.number().int().min(1).max(1_000_000_000),
+  dueDay: z.number().int().min(1).max(31),
+  adjustmentIndex: z.union([z.enum(["IPCA", "IGP-M", "INPC"]), z.null()]).optional(),
+  adjustmentMonth: z.union([z.number().int().min(1).max(12), z.null()]).optional(),
+  guaranteeType: z.enum(["caucao", "fiador", "seguro_fianca", "titulo_capitalizacao", "nenhuma", "desconhecido"]),
+  guaranteeAmountCents: z.union([z.number().int().min(0).max(1_000_000_000), z.null()]).optional(),
+  guarantorName: z.union([z.string().trim().max(160), z.null()]).optional(),
+  iptu: contractPayerSchema,
+  condominio: contractPayerSchema,
+  condominioAmountCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
+  forumCity: z.string().trim().min(1).max(120),
+  extraClause: z.union([z.string().trim().max(2000), z.null()]).optional(),
+}).superRefine((value, ctx) => {
+  if (value.guaranteeType === "fiador" && !value.guarantorName?.trim()) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["guarantorName"], message: "guarantor name required" });
+  }
+});
+
+export const imobSaleContractGenerateSchema = z.object({
+  propertyId: z.string().trim().min(1).max(80),
+  sellerName: z.string().trim().min(1).max(160),
+  sellerDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  buyerName: z.string().trim().min(1).max(160),
+  buyerDocument: z.string().trim().regex(/^(\d{11}|\d{14})$/),
+  propertyAddress: z.string().trim().min(1).max(400),
+  registryNumber: z.union([z.string().trim().max(60), z.null()]).optional(),
+  priceCents: z.number().int().min(1).max(100_000_000_000),
+  downPaymentCents: z.union([z.number().int().min(1).max(100_000_000_000), z.null()]).optional(),
+  paymentMethod: z.enum(["a_vista", "financiamento", "parcelado"]),
+  balanceTerms: z.union([z.string().trim().max(1000), z.null()]).optional(),
+  deedDeadlineDays: z.number().int().min(1).max(3650),
+  possession: z.enum(["assinatura", "escritura", "quitacao"]),
+  commissionPercent: z.union([z.number().min(0.1).max(20), z.null()]).optional(),
+  forumCity: z.string().trim().min(1).max(120),
+  extraClause: z.union([z.string().trim().max(2000), z.null()]).optional(),
+});
+
+export const imobDocumentLinkSchema = z.object({
+  subjectType: z.enum(["owner", "property", "rental"]),
+  subjectId: z.string().trim().min(1).max(80),
+  category: z.string().trim().min(1).max(60),
+  documentIds: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
+  notes: z.union([z.string().trim().max(300), z.null()]).optional(),
 });
 
 export const imobAttachmentResolveSchema = z.object({

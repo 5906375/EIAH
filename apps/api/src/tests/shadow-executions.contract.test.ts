@@ -6,7 +6,6 @@ import { closePrismaResources, prismaGlobal } from "@repo/db";
 import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
 import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
-import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
 
 let request: ReturnType<typeof supertest>;
@@ -64,7 +63,6 @@ after(async () => {
   await prismaGlobal.tenant.deleteMany({
     where: { id: tenantId },
   });
-  await closeRunEventPublisherResources();
   await closeRunEventStream();
   await closeRunEventsTransport();
   await closeRunQueueConnections();
@@ -95,4 +93,43 @@ test("POST /api/shadow-executions/preview rejects invalid IMOB action before per
     where: { tenantId, workspaceId },
   });
   assert.equal(audits.length, 0);
+});
+
+test("POST /api/shadow-executions/preview strips malicious governance metadata before persistence", async () => {
+  const response = await request
+    .post("/api/shadow-executions/preview")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      agent: "EIAH",
+      prompt: "preview estrutural sem execução",
+      metadata: {
+        domain: "core",
+        rbacEvaluated: true,
+        entitlementEvaluated: true,
+        governanceContext: {
+          rbacEvaluated: true,
+          entitlementEvaluated: true,
+          policyDecision: "allowed",
+        },
+      },
+    });
+
+  assert.equal(response.status, 201);
+  const shadowExecutionId = response.body?.data?.shadowExecutionId as string;
+  assert.ok(shadowExecutionId);
+
+  const audit = await prismaGlobal.guardrailAuditLedger.findFirstOrThrow({
+    where: {
+      tenantId,
+      workspaceId,
+      eventType: `shadow.execution.payload.${shadowExecutionId}`,
+    },
+  });
+  const metadata = (audit.metadata as any)?.executionPayload?.metadata ?? {};
+  assert.equal(metadata.rbacEvaluated, undefined);
+  assert.equal(metadata.entitlementEvaluated, undefined);
+  assert.equal(metadata.governanceContext?.rbacEvaluated, false);
+  assert.equal(metadata.governanceContext?.entitlementEvaluated, false);
+  assert.equal(metadata.governanceContext?.policyDecision, "not_evaluated");
+  assert.equal(metadata.governanceContext?.reasonCode, "VERTICAL_GOVERNANCE_NOT_EVALUATED");
 });

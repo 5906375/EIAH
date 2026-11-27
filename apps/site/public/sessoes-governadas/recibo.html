@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recibo de Evidência — EIAH</title>
+  <link rel="stylesheet" href="./recibo.css">
+</head>
+<body>
+  <header class="app-header no-print">
+    <a href="./index.html" class="brand"><img src="../eiah-symbol.svg" alt="Logo EIAH"><span><strong>EIAH</strong><small>Recibo de Evidência</small></span></a>
+    <a href="./index.html" class="back">Voltar às sessões</a>
+  </header>
+
+  <main>
+    <section class="loader no-print">
+      <div>
+        <p class="eyebrow">GOV-EIAH-MTG-001</p>
+        <h1>Gerar recibo em PDF</h1>
+        <p>Selecione o JSON exportado ao final da sessão. O arquivo é processado somente neste navegador.</p>
+      </div>
+      <label class="upload"><span>Selecionar evidência JSON</span><input id="evidenceFile" type="file" accept="application/json,.json"></label>
+      <div class="reason" id="receiptReason" role="alert"></div>
+    </section>
+
+    <section class="receipt hidden" id="receipt" aria-live="polite">
+      <header class="receipt-header">
+        <div class="receipt-brand"><img src="../eiah-symbol.svg" alt="Logo EIAH"><div><strong>EIAH</strong><span>Enterprise AI Hub</span></div></div>
+        <div class="receipt-label"><span>RECIBO DE EVIDÊNCIA</span><strong id="receiptId">—</strong></div>
+      </header>
+
+      <div class="boundary"><strong>Natureza do documento:</strong> recibo local derivado de bundle de protótipo. Não constitui assinatura digital, atestação de servidor, prova de imutabilidade ou registro em ledger.</div>
+
+      <section class="receipt-section">
+        <h2>Identificação da sessão</h2>
+        <dl class="details">
+          <div><dt>sessionId</dt><dd id="sessionId">—</dd></div>
+          <div><dt>Vertical</dt><dd id="vertical">—</dd></div>
+          <div class="wide"><dt>Título</dt><dd id="sessionTitle">—</dd></div>
+          <div><dt>tenantId</dt><dd id="tenantId">—</dd></div>
+          <div><dt>workspaceId</dt><dd id="workspaceId">—</dd></div>
+          <div><dt>Início - horário de Brasília</dt><dd id="startedAt">—</dd></div>
+          <div><dt>Finalização - horário de Brasília</dt><dd id="finalizedAt">—</dd></div>
+          <div><dt>Roteiro</dt><dd id="agendaVersion">—</dd></div>
+          <div><dt>Risco</dt><dd id="riskTier">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="receipt-section">
+        <h2>Participação e validação</h2>
+        <div class="metrics">
+          <div><strong id="participantCount">0</strong><span>participantes</span></div>
+          <div><strong id="consentCount">0</strong><span>consentimentos</span></div>
+          <div><strong id="segmentCount">0</strong><span>segmentos</span></div>
+          <div><strong id="coveragePercent">0%</strong><span>cobertura</span></div>
+          <div><strong id="eventCount">0</strong><span>eventos</span></div>
+          <div><strong id="humanValidation">Não</strong><span>validação humana</span></div>
+        </div>
+        <div class="participants" id="participants"></div>
+      </section>
+
+      <section class="receipt-section">
+        <h2>Integridade declarada no bundle</h2>
+        <div class="hash-block"><span>Bundle SHA-256</span><code id="bundleHash">—</code></div>
+        <div class="hash-block"><span>Último evento SHA-256</span><code id="lastEventHash">—</code></div>
+      </section>
+
+      <section class="receipt-section">
+        <h2>Resumo confirmado</h2>
+        <p class="summary" id="confirmedSummary">—</p>
+      </section>
+
+      <footer class="receipt-footer">
+        <div><span>Schema</span><strong id="schemaVersion">—</strong></div>
+        <div><span>Protocolo</span><strong id="protocolVersion">—</strong></div>
+        <div><span>Recibo gerado em</span><strong id="generatedAt">—</strong></div>
+      </footer>
+    </section>
+
+    <div class="print-actions no-print hidden" id="printActions">
+      <button id="printBtn" type="button">Imprimir / Salvar como PDF</button>
+      <p>Na janela de impressão, selecione <strong>Salvar como PDF</strong>.</p>
+    </div>
+  </main>
+  <script src="./recibo.js"></script>
+</body>
+</html>

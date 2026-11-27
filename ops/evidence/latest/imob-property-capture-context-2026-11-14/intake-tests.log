@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: reprodução e variações: provider recebe contexto atual e propõe quartos/vagas; engine é consultivo
+ok 1 - reprodução e variações: provider recebe contexto atual e propõe quartos/vagas; engine é consultivo
+  ---
+  duration_ms: 5.248332
+  type: 'test'
+  ...
+# Subtest: perguntas intermediárias preservam o rascunho; dados distribuídos e correção mudam só o campo solicitado
+ok 2 - perguntas intermediárias preservam o rascunho; dados distribuídos e correção mudam só o campo solicitado
+  ---
+  duration_ms: 1.508618
+  type: 'test'
+  ...
+# Subtest: ambiguidade, conflito, baixa confiança e saída explícita nunca aplicam parte do patch
+ok 3 - ambiguidade, conflito, baixa confiança e saída explícita nunca aplicam parte do patch
+  ---
+  duration_ms: 1.453608
+  type: 'test'
+  ...
+# Subtest: retorno inválido, campo sem suporte, evidência inventada, enum e quantidades inválidas falham sem alteração
+ok 4 - retorno inválido, campo sem suporte, evidência inventada, enum e quantidades inválidas falham sem alteração
+  ---
+  duration_ms: 2.612909
+  type: 'test'
+  ...
+# Subtest: indisponibilidade, policy negada e timeout têm desfecho explícito; nenhum fallback de domínio
+ok 5 - indisponibilidade, policy negada e timeout têm desfecho explícito; nenhum fallback de domínio
+  ---
+  duration_ms: 6.673232
+  type: 'test'
+  ...
+# Subtest: rascunho completo orienta confirmação no botão; características ausentes do modelo são declaradas
+ok 6 - rascunho completo orienta confirmação no botão; características ausentes do modelo são declaradas
+  ---
+  duration_ms: 0.6659
+  type: 'test'
+  ...
+# Subtest: contrato de transporte limita contexto e rejeita escopo/autorização e identificadores livres
+ok 7 - contrato de transporte limita contexto e rejeita escopo/autorização e identificadores livres
+  ---
+  duration_ms: 0.892419
+  type: 'test'
+  ...
+# Subtest: rota real com dublês usa sessão e executor central, ignora escopo externo e retorna antes de efeitos operacionais
+ok 8 - rota real com dublês usa sessão e executor central, ignora escopo externo e retorna antes de efeitos operacionais
+  ---
+  duration_ms: 173.645296
+  type: 'test'
+  ...
+# Subtest: rota real com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível antes do provider
+ok 9 - rota real com dublês bloqueia acesso, entitlement, contexto inválido e agente indisponível antes do provider
+  ---
+  duration_ms: 194.222436
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 399.150122

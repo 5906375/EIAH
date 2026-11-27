@@ -1,0 +1,17 @@
+# Códigos de saída lidos dos logs ORIGINAIS e conferidos automaticamente (20/20 OK) antes da criação do pacote.
+# Candidato: base main ba79d7063c929592209320e04c26903bed255ce7 (árvore idêntica à de c5607c8d) + alterações locais descritas no README.
+
+[VERSÃO FINAL]
+chromium ANTES, código intacto (defeito reproduzido em A,B,D)                   QA_EXIT_CODE=0   results/before-code-intact.json
+chromium ANTES, efeito novo neutralizado (defeito em A,B,D,F,G)                 QA_EXIT_CODE=0   results/before-effect-neutralized.json
+chromium DEPOIS, sem instrumentação, 10 execuções seguidas                      QA_EXIT_CODE=0 x10   results/after-final.json (última das 10)
+testes unitários direcionados (31 executados, 31 aprovados, 0 falhas)           TEST_EXIT_CODE=0   results/unit-tests.log
+check:chat-launcher-render-only                                                 GATE_EXIT_CODE=0   results/gate-chat-launcher-render-only.log
+check:chat-runtime-entrypoint-debt                                              GATE_EXIT_CODE=0   results/gate-chat-runtime-entrypoint-debt.log
+check:presentation-snapshot-contract                                            GATE_EXIT_CODE=0   results/gate-presentation-snapshot-contract.log
+typecheck do web (NÃO passou: 64 diagnósticos, nenhum nos arquivos alterados)   TSC_EXIT_CODE=2    results/web-typecheck.log
+
+[VERSÃO INTERMEDIÁRIA, SUPERADA: generalizada, ainda sem a ref de intenção do leitor, sem instrumentação]
+1a execução                                                                     QA_EXIT_CODE=0
+2a execução (G em 320 px fora da área visível)                                  QA_EXIT_CODE=1   results/intermittency-intermediate-version-run8.log
+3a execução (A em 320 px fora da área visível)                                  QA_EXIT_CODE=1   results/intermittency-intermediate-version-run9.log

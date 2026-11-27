@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="canonical" href="https://www.eiah.ia.br/sessoes-governadas/">
+  <meta name="description" content="Protótipo de Sessões Governadas EIAH para reuniões, entrevistas e validações com consentimento, revisão humana e evidências.">
+  <title>Sessões Governadas · EIAH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../index.html" aria-label="Voltar para EIAH">
+      <img src="../eiah-symbol.svg" alt="Logo oficial EIAH">
+      <div><strong>EIAH</strong><span>Sessões Governadas</span></div>
+    </a>
+    <div class="top-actions">
+      <span class="badge">V7.2 · protótipo local experimental</span>
+      <span class="status-pill" id="sessionStatus" data-state="blocked">Não iniciada</span>
+      <a class="btn" href="../index.html" style="display:inline-flex;align-items:center;text-decoration:none">Voltar ao site</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>GOV-EIAH-MTG-001</h2>
+      <p>Fluxo transversal para reuniões de qualquer vertical.</p>
+      <nav class="steps" aria-label="Etapas da sessão">
+        <div class="step active" id="step-prepare"><span>1</span><span>Preparar</span></div>
+        <div class="step" id="step-participants"><span>2</span><span>Participantes</span></div>
+        <div class="step" id="step-consent"><span>3</span><span>Consentimento</span></div>
+        <div class="step" id="step-live"><span>4</span><span>Mídia / ao vivo</span></div>
+        <div class="step" id="step-close"><span>5</span><span>Validação</span></div>
+        <div class="step" id="step-decision"><span>6</span><span>Decisão</span></div>
+        <div class="step" id="step-pilot"><span>7</span><span>Piloto</span></div>
+        <div class="step" id="step-review"><span>8</span><span>Bancada</span></div>
+        <div class="step" id="step-evidence"><span>9</span><span>Evidências</span></div>
+      </nav>
+    </aside>
+
+    <div class="content">
+      <section class="hero">
+        <h1>Sessão Governada EIAH</h1>
+        <p>Prepare, acompanhe e encerre entrevistas com gates explícitos; registre a decisão e, quando houver aceite, converta a descoberta em piloto controlado e revisão profissional. O espaço pertence ao Core EIAH e pode ser usado por qualquer vertical.</p>
+      </section>
+
+      <div class="prototype-note"><strong>Boundary operacional V7.2:</strong> este corte funciona somente no navegador. A captura pelo microfone/câmera depende de permissão local e permanece em memória; Zoom, Meet e Teams exigem conectores autorizados ainda não configurados. Nenhuma informação é enviada ou persistida em servidor; recarregar a página apaga a sessão e o piloto.</div>
+
+      <section class="card" id="prepareCard">
+        <div class="card-head">
+          <div><h2>1. Preparar a sessão</h2><p>Contexto obrigatório antes de qualquer captura.</p></div>
+          <span class="status-pill" data-state="blocked" id="prepareStatus">Pendente</span>
+        </div>
+        <form id="prepareForm" class="grid-3" novalidate>
+          <div class="field"><label for="tenantId">tenantId *</label><input id="tenantId" value="eiah-demo" autocomplete="off"></div>
+          <div class="field"><label for="workspaceId">workspaceId *</label><input id="workspaceId" value="sessoes-governadas" autocomplete="off"></div>
+          <div class="field"><label for="userId">userId do anfitrião *</label><input id="userId" value="host-demo" autocomplete="off"></div>
+          <div class="field"><label for="vertical">Vertical *</label>
+            <select id="vertical">
+              <option value="legal">Legal</option><option value="logistica">Logística</option><option value="imob">Imóveis</option><option value="marketing">Marketing</option><option value="finance">BPO Financeiro</option><option value="guardian">Guardian / Evidências</option><option value="legacy">Legacy</option><option value="urban">Urban</option><option value="core">Core EIAH</option>
+            </select>
+          </div>
+          <div class="field"><label for="sessionTitle">Título *</label><input id="sessionTitle" value="Conversa inicial com possível revisor especialista" autocomplete="off"></div>
+          <div class="field"><label for="meetingMode">Modalidade *</label><select id="meetingMode"><option value="individual">Individual</option><option value="group">Grupo — até 10 participantes</option></select></div>
+          <div class="field full"><label for="purpose">Finalidade determinada *</label><textarea id="purpose">Avaliar aderência, riscos, disponibilidade e possível participação em piloto controlado da vertical.</textarea></div>
+          <div class="field"><label for="retention">Retenção proposta *</label><select id="retention"><option value="30">30 dias</option><option value="90" selected>90 dias</option><option value="180">180 dias</option><option value="policy">Conforme policy aprovada</option></select></div>
+          <div class="field"><label for="riskTier">Risco</label><select id="riskTier"><option value="MEDIUM" selected>MEDIUM</option><option value="LOW">LOW</option><option value="HIGH">HIGH</option></select></div>
+          <div class="field"><label for="agendaVersion">Versão do roteiro</label><input id="agendaVersion" value="legal-reviewer.v1" autocomplete="off"></div>
+        </form>
+        <div class="panel" id="verticalContextPanel" style="margin-top:16px">
+          <h3 id="verticalContextTitle">Contexto Legal</h3>
+          <p class="helper" id="verticalContextDesc"></p>
+          <p class="helper"><strong style="color:#cbd5e1">Gates sensíveis:</strong> <span id="verticalContextGates"></span></p>
+        </div>
+        <div class="actions"><button class="btn primary" id="prepareBtn" type="button">Validar contexto</button><button class="btn hidden" id="editContextBtn" type="button">Editar contexto</button></div>
+        <div class="reason" id="prepareReason" role="alert"></div>
+      </section>
+
+      <section class="card" id="participantsCard">
+        <div class="card-head">
+          <div><h2>2. Pré-cadastrar participantes</h2><p>De 1 a 10 convidados associados à sessão e à vertical selecionada.</p></div>
+          <span class="status-pill" data-state="blocked" id="participantsStatus">Aguardando contexto</span>
+        </div>
+        <div class="prototype-note"><strong>Privacidade no protótipo:</strong> nome e e-mail existem apenas na memória desta página. A evidência exportada recebe profileRef, alias e hash do contato. Um cadastro operacional exigirá PII criptografada e referenciada por <code>piiRef</code>.</div>
+        <form id="participantForm" class="grid-3" novalidate style="margin-top:16px">
+          <div class="field"><label for="participantName">Nome do convidado *</label><input id="participantName" autocomplete="off" placeholder="Ex.: Convidado 1" disabled></div>
+          <div class="field"><label for="participantEmail">E-mail para convite *</label><input id="participantEmail" type="email" autocomplete="off" placeholder="convidado@exemplo.com" disabled></div>
+          <div class="field"><label for="participantRole">Papel na conversa *</label><select id="participantRole" disabled><option value="specialist">Especialista / revisor</option><option value="observer">Observador</option><option value="client">Cliente / operação</option><option value="partner">Possível parceiro</option><option value="other">Outro</option></select></div>
+        </form>
+        <div class="actions"><button class="btn primary" id="addParticipantBtn" type="button" disabled>Gerar pré-cadastro EIAH</button></div>
+        <div class="reason" id="participantReason" role="alert"></div>
+        <div class="participant-list" id="participantList"></div>
+      </section>
+
+      <section class="card" id="consentCard">
+        <div class="card-head">
+          <div><h2>3. Gate de consentimento</h2><p>A sessão permanece bloqueada até a manifestação individual de todos.</p></div>
+          <span class="status-pill" data-state="blocked" id="consentStatus">Bloqueado</span>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h3>Consentimentos individuais</h3>
+          <p class="helper">Cada convidado deve confirmar separadamente. Uma pendência bloqueia o início para todo o grupo.</p>
+          <div class="participant-consents" id="participantConsentList"></div>
+        </div>
+        <div class="checklist">
+          <label class="check"><input type="checkbox" id="consentPurpose"><span><strong>Finalidade informada</strong><small>O participante recebeu a finalidade, os responsáveis e o uso previsto.</small></span></label>
+          <label class="check"><input type="checkbox" id="consentTranscript"><span><strong>Transcrição autorizada</strong><small>A autorização foi expressa antes da captura.</small></span></label>
+          <label class="check"><input type="checkbox" id="consentMedia"><span><strong>Captura de mídia autorizada</strong><small>O escopo selecionado abaixo foi apresentado antes da captura.</small></span></label>
+          <label class="check"><input type="checkbox" id="consentRights"><span><strong>Direitos e retenção informados</strong><small>Foram explicados acesso, correção, revogação e prazo proposto.</small></span></label>
+        </div>
+        <div class="grid-2 consent-media-config">
+          <div class="field"><label for="mediaAdapter">Origem da captura *</label><select id="mediaAdapter"><option value="browser_media">Navegador · microfone/câmera</option><option value="zoom">Zoom · conector pendente</option><option value="google_meet">Google Meet · conector pendente</option><option value="teams">Microsoft Teams · conector pendente</option></select></div>
+          <div class="field"><label for="mediaScope">Escopo autorizado *</label><select id="mediaScope"><option value="transcript_only">Somente transcrição automática</option><option value="audio_transcript">Áudio + transcrição</option><option value="audio_video_transcript">Áudio, vídeo + transcrição</option></select></div>
+        </div>
+        <div class="actions"><button class="btn success" id="consentBtn" type="button" disabled>Registrar consentimento e iniciar</button></div>
+        <div class="reason" id="consentReason" role="alert"></div>
+      </section>
+
+      <section class="card" id="liveCard">
+        <div class="card-head">
+          <div><h2>4. Captura automática de mídia</h2><p>Gravação local consentida e transcrição automática quando o navegador oferecer suporte.</p></div>
+          <span class="status-pill" data-state="blocked" id="liveStatus">Aguardando gate</span>
+        </div>
+        <div class="media-console">
+          <div class="media-state"><span class="record-dot" id="recordDot"></span><div><strong id="mediaStateLabel">Captura inativa</strong><small id="mediaStateDetail">Aguardando consentimento.</small></div></div>
+          <video id="mediaPreview" class="media-preview hidden" muted playsinline></video>
+          <div class="actions"><button class="btn success" id="startMediaBtn" type="button" disabled>Iniciar captura automática</button><button class="btn" id="stopMediaBtn" type="button" disabled>Encerrar captura</button><button class="btn hidden" id="downloadMediaBtn" type="button">Baixar mídia local</button></div>
+          <div class="reason" id="mediaReason" role="alert"></div>
+        </div>
+        <div class="live-grid" style="margin-top:18px">
+          <div class="panel">
+            <h3>Transcrição automática e fallback manual</h3>
+            <p class="helper">Quando Speech Recognition estiver disponível, os trechos entram automaticamente. O formulário abaixo permanece apenas como fallback explícito.</p>
+            <div class="grid-2">
+              <div class="field"><label for="speaker">Falante</label><select id="speaker"><option value="host">Anfitrião</option></select></div>
+              <div class="field"><label for="confidence">Confiança da origem</label><select id="confidence"><option value="1">Manual · 100%</option><option value="0.9">Transcrição · 90%</option><option value="0.75">Transcrição · 75%</option></select></div>
+              <div class="field full"><label for="utterance">Trecho manual de contingência</label><textarea id="utterance" placeholder="Use somente se a transcrição automática estiver indisponível. Não utilize dados reais neste protótipo."></textarea></div>
+            </div>
+            <div class="actions"><button class="btn primary" id="addSegmentBtn" type="button" disabled>Adicionar trecho</button></div>
+            <div class="reason" id="liveReason" role="alert"></div>
+            <div class="segment-list" id="segmentList" aria-live="polite" style="margin-top:16px"><div class="helper">Nenhum trecho registrado.</div></div>
+          </div>
+          <div class="panel">
+            <h3 id="coverageTitle">Cobertura do roteiro</h3>
+            <p class="helper" id="coverageSummary">0 de 10 perguntas validadas.</p>
+            <div class="coverage" id="coverageList"></div>
+            <div class="suggestion"><span>Próxima pergunta sugerida</span><p id="nextQuestion">Aguardando início governado.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="closeCard">
+        <div class="card-head">
+          <div><h2>5. Validação humana</h2><p>Nenhuma síntese se torna definitiva sem confirmação.</p></div>
+          <span class="status-pill" data-state="blocked" id="closeStatus">Pendente</span>
+        </div>
+        <div class="field"><label for="humanSummary">Resumo preparado pelo anfitrião</label><textarea id="humanSummary" placeholder="Registre somente declarações confirmadas, decisões e pendências."></textarea></div>
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="humanConfirmation"><span><strong>Confirmação humana registrada</strong><small>Os participantes confirmaram o resumo ou suas correções foram incorporadas.</small></span></label>
+        <div class="decision-box">
+          <h3>Decisão da sessão</h3>
+          <div class="grid-2">
+            <div class="field"><label for="sessionDecision">Resultado confirmado *</label><select id="sessionDecision"><option value="">Selecione</option><option value="PILOT_ACCEPTED">Concordou com piloto</option><option value="DECLINED">Não concordou</option><option value="MORE_INFORMATION_REQUIRED">Precisa de mais informações</option><option value="DECISION_POSTPONED">Decisão postergada</option></select></div>
+            <div class="field"><label for="decisionReason">Justificativa / condição</label><input id="decisionReason" autocomplete="off" placeholder="Sem PII ou dados de processos reais"></div>
+          </div>
+          <label class="check" style="margin-top:12px"><input type="checkbox" id="futureContactAllowed"><span><strong>Contato futuro autorizado</strong><small>Registra somente a manifestação; não dispara comunicação.</small></span></label>
+        </div>
+        <div class="actions"><button class="btn success" id="finalizeBtn" type="button" disabled>Confirmar decisão e encerrar</button></div>
+        <div class="reason" id="closeReason" role="alert"></div>
+      </section>
+
+      <section class="card" id="decisionCard">
+        <div class="card-head">
+          <div><h2>6. Decisão registrada</h2><p>A sessão encerrada permanece imutável; a continuidade ocorre por entidade vinculada.</p></div>
+          <span class="status-pill" data-state="blocked" id="decisionStatus">Pendente</span>
+        </div>
+        <div class="decision-summary" id="decisionSummary">Finalize a sessão com uma decisão estruturada.</div>
+      </section>
+
+      <section class="card" id="pilotCard">
+        <div class="card-head">
+          <div><h2>7. Plano de piloto controlado</h2><p>Habilitado somente após aceite. Dados reais e efeitos externos permanecem bloqueados.</p></div>
+          <span class="status-pill" data-state="blocked" id="pilotStatus">Bloqueado</span>
+        </div>
+        <form class="grid-2" id="pilotForm">
+          <div class="field"><label for="pilotTitle">Título do piloto *</label><input id="pilotTitle" disabled></div>
+          <div class="field"><label for="pilotScenario">Cenário fictício *</label><select id="pilotScenario" disabled></select></div>
+          <div class="field full"><label for="pilotObjective">Objetivo e critério de sucesso *</label><textarea id="pilotObjective" disabled></textarea></div>
+        </form>
+        <div class="checklist pilot-gates">
+          <label class="check"><input type="checkbox" id="pilotSynthetic" disabled><span><strong>Base integralmente fictícia</strong><small>Sem clientes, números processuais ou documentos reais.</small></span></label>
+          <label class="check"><input type="checkbox" id="pilotHumanGate" disabled><span><strong>Revisão humana obrigatória</strong><small>Nenhuma minuta será tratada como aprovada pela IA.</small></span></label>
+          <label class="check"><input type="checkbox" id="pilotNoExternalEffect" disabled><span><strong>Sem efeito externo</strong><small>Sem protocolo, envio, assinatura ou comunicação automática.</small></span></label>
+        </div>
+        <div class="actions"><button class="btn primary" id="createPilotBtn" type="button" disabled>Criar plano de piloto</button></div>
+        <div class="reason" id="pilotReason" role="alert"></div>
+        <div class="pilot-result hidden" id="pilotResult"></div>
+      </section>
+
+      <section class="card" id="reviewCard">
+        <div class="card-head">
+          <div><h2 id="reviewCardTitle">8. Bancada especializada</h2><p id="reviewCardDescription">Workbench contextual da vertical para artefato simulado e manifestação do especialista.</p></div>
+          <span class="status-pill" data-state="blocked" id="reviewStatus">Bloqueada</span>
+        </div>
+        <div class="prototype-note"><strong>Conteúdo sintético obrigatório:</strong> <span id="reviewSafetyText">não insira dados reais, sigilosos ou identificáveis.</span></div>
+        <div class="grid-2" style="margin-top:16px">
+          <div class="field full"><label for="fictionalCase" id="fictionalCaseLabel">Descrição do cenário fictício *</label><textarea id="fictionalCase" disabled></textarea></div>
+          <div class="field full"><label for="simulatedDraft" id="simulatedDraftLabel">Artefato preliminar simulado *</label><textarea id="simulatedDraft" disabled></textarea></div>
+          <div class="field"><label for="reviewDecision">Decisão do revisor *</label><select id="reviewDecision" disabled><option value="">Selecione</option><option value="APPROVED_FOR_PILOT_ONLY">Aprovado somente para o piloto</option><option value="ADJUSTMENTS_REQUIRED">Exige ajustes</option><option value="REJECTED">Rejeitado</option></select></div>
+          <div class="field"><label for="reviewNotes">Fundamentos e ajustes *</label><textarea id="reviewNotes" disabled></textarea></div>
+        </div>
+        <label class="check" style="margin-top:12px"><input type="checkbox" id="reviewHumanConfirmed" disabled><span><strong>Manifestação humana confirmada</strong><small>A decisão pertence ao revisor, não ao gerador da minuta.</small></span></label>
+        <div class="actions"><button class="btn" id="generateSyntheticCaseBtn" type="button" disabled>Carregar cenário e artefato fictícios</button><button class="btn success" id="recordReviewBtn" type="button" disabled>Registrar revisão</button></div>
+        <div class="reason" id="reviewReason" role="alert"></div>
+        <div class="review-history" id="reviewHistory"></div>
+      </section>
+
+      <section class="card" id="evidenceCard">
+        <div class="card-head">
+          <div><h2>9. Pacote de evidências</h2><p>Sessão, decisão, mídia, piloto, revisão humana e cadeia de hashes append-only.</p></div>
+          <span class="status-pill" data-state="blocked" id="evidenceStatus">Indisponível</span>
+        </div>
+        <div class="metric-row">
+          <div class="metric"><strong id="segmentMetric">0</strong><span>segmentos</span></div>
+          <div class="metric"><strong id="coverageMetric">0%</strong><span>cobertura</span></div>
+          <div class="metric"><strong id="eventMetric">0</strong><span>eventos</span></div>
+          <div class="metric"><strong id="validationMetric">Não</strong><span>validação humana</span></div>
+          <div class="metric"><strong id="decisionMetric">Pendente</strong><span>decisão</span></div>
+          <div class="metric"><strong id="pilotMetric">Não</strong><span>piloto criado</span></div>
+          <div class="metric"><strong id="mediaMetric">0</strong><span>artefatos de mídia</span></div>
+          <div class="metric"><strong id="reviewMetric">0</strong><span>revisões</span></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <h3>Último hash da cadeia</h3>
+          <div class="hash" id="lastHash">Ainda não gerado.</div>
+        </div>
+        <div class="actions"><button class="btn primary" id="exportBtn" type="button" disabled>Baixar evidência JSON</button><a class="btn link-btn" href="./recibo.html" target="_blank" rel="noopener">Gerar recibo em PDF</a><button class="btn" id="newSessionBtn" type="button">Nova sessão</button></div>
+        <div class="event-list" id="eventList" style="margin-top:16px"><div class="helper">Os eventos governados aparecerão aqui.</div></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

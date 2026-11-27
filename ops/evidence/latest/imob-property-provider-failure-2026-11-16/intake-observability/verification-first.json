@@ -1,0 +1,8 @@
+{
+  "result": "REPROVADO",
+  "exitCode": 1,
+  "scope": "auxiliary evidence/reference preparation, not test execution",
+  "cause": "KeyError: 'test:unit'",
+  "correction": "Read existing package.json: actual registered script is test:ci-unit-suite; scripts/workflows unchanged",
+  "source": "tool command chunk e0ab4d"
+}

@@ -1,7 +1,29 @@
+import { activatableProductSchema } from "@eiah/contracts";
 import crypto from "node:crypto";
 import { z } from "zod";
+import { isReservedAuthorityScopeName } from "@eiah/core";
+import { ensureAgentEnablementStore, recordAgentEnablement } from "../services/agentEnablement";
+import { isCommerciallyGovernedAgent } from "../services/agents";
+import { commercialLimitViolation } from "../services/commercialAuthority";
+import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import {
+  activateProductInstallation,
+  canUserActivateProducts,
+  ensureTenantProductInstallationTable,
+  PRODUCT_ACTIVATION_DENIED,
+  verticalNotApprovedError,
+} from "../services/products/productActivation";
+import { readVerticalAccess } from "../services/products/verticalAccessApproval";
+import {
+  COMMERCIAL_LIMIT_ERROR,
+  evaluateSubscriptionAuthority,
+  recordSubscriptionDecision,
+  SUBSCRIBE_FORBIDDEN_ERROR,
+  subscriptionAuthorityDeps,
+  subscriptionLimitViolation,
+} from "../services/marketplaceSubscriptionAuthority";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -40,90 +62,10 @@ const MarketplaceSubscribeSchema = z.object({
 const MarketplaceActivateInstallationSchema = z.object({
   product: z.preprocess(
     (value) => (typeof value === "string" ? value.trim().toUpperCase() : value),
-    z.enum(["IMOB"])
+    activatableProductSchema
   ),
 });
 
-let tenantProductInstallationTableReady = false;
-
-async function ensureTenantProductInstallationTable(request: TenantAwareRequest) {
-  if (tenantProductInstallationTableReady) return;
-  if (!request.prisma) return;
-
-  await request.prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "tenant_product_installations" (
-      "id" TEXT NOT NULL,
-      "tenant_id" TEXT NOT NULL,
-      "workspace_id" TEXT NOT NULL,
-      "product" TEXT NOT NULL,
-      "status" TEXT NOT NULL DEFAULT 'active',
-      "activated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "activated_by_user_id" TEXT,
-      "metadata" JSONB,
-      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "tenant_product_installations_pkey" PRIMARY KEY ("id")
-    );
-  `);
-
-  await request.prisma.$executeRawUnsafe(`
-    CREATE UNIQUE INDEX IF NOT EXISTS "tenant_product_installations_tenant_workspace_product_key"
-      ON "tenant_product_installations"("tenant_id", "workspace_id", "product");
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS "tenant_product_installations_tenant_status_idx"
-      ON "tenant_product_installations"("tenant_id", "status");
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS "tenant_product_installations_workspace_product_status_idx"
-      ON "tenant_product_installations"("workspace_id", "product", "status");
-  `);
-
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_tenant_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_tenant_id_fkey"
-          FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_workspace_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_workspace_id_fkey"
-          FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-  await request.prisma.$executeRawUnsafe(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1 FROM information_schema.table_constraints
-        WHERE constraint_name = 'tenant_product_installations_activated_by_user_id_fkey'
-          AND table_name = 'tenant_product_installations'
-      ) THEN
-        ALTER TABLE "tenant_product_installations"
-          ADD CONSTRAINT "tenant_product_installations_activated_by_user_id_fkey"
-          FOREIGN KEY ("activated_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-      END IF;
-    END $$;
-  `);
-
-  tenantProductInstallationTableReady = true;
-}
 
 function normalizeMarketplaceName(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -173,6 +115,11 @@ function scopePriority(scope: string) {
   if (normalized === "read") return 1;
   return 0;
 }
+
+const RESERVED_ITEM_NAME_ERROR = {
+  code: "MARKETPLACE_ITEM_NAME_RESERVED",
+  message: "Este nome é reservado a um escopo de autorização canônico e não pode ser usado por itens do Marketplace.",
+} as const;
 
 marketplaceRouter.get("/marketplace", async (req, res) => {
   const request = req as TenantAwareRequest;
@@ -239,7 +186,7 @@ marketplaceRouter.get("/marketplace/installations", async (req, res) => {
     });
   }
 
-  await ensureTenantProductInstallationTable(request);
+  await ensureTenantProductInstallationTable(request.prisma as unknown as PrismaClient);
 
   type InstallationRow = {
     tenantId: string;
@@ -331,6 +278,10 @@ marketplaceRouter.post("/marketplace", async (req, res) => {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
+  if (isReservedAuthorityScopeName(parsed.data.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
+  }
+
   const item = await request.prisma.marketplaceItem.create({
     data: {
       type: parsed.data.type,
@@ -374,6 +325,10 @@ marketplaceRouter.patch("/marketplace/:id", async (req, res) => {
 
   if (!existing || existing.publisherId !== request.authContext.tenantId) {
     return res.status(404).json({ ok: false, error: { code: "MARKETPLACE_NOT_FOUND" } });
+  }
+
+  if (parsed.data.name !== undefined && isReservedAuthorityScopeName(parsed.data.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
   }
 
   const item = await request.prisma.marketplaceItem.update({
@@ -429,6 +384,29 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     });
   }
 
+  // AUTHZ-SCOPE-1: a autoridade humana é verificada ANTES de qualquer leitura ou efeito, inclusive de validação do corpo.
+  const actor = {
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+    tokenId: request.authContext.tokenId ?? null,
+  };
+  const authority = await evaluateSubscriptionAuthority(actor, subscriptionAuthorityDeps.forClient(request.prisma));
+  if (!authority.allowed) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma,
+      actor,
+      outcome: "denied",
+      reasonCode: authority.reasonCode,
+      action: "marketplace.subscribe",
+      target: { marketplaceItemId: req.params.id },
+    });
+    return res.status(403).json({
+      ok: false,
+      error: { ...SUBSCRIBE_FORBIDDEN_ERROR, reasonCode: authority.reasonCode },
+    });
+  }
+
   const parsed = MarketplaceSubscribeSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
@@ -445,6 +423,34 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
 
   if (!item.isPublic && item.publisherId !== request.authContext.tenantId) {
     return res.status(403).json({ ok: false, error: { code: "MARKETPLACE_FORBIDDEN" } });
+  }
+
+  // O nome do item vira TenantActionPolicy.actionName: nomes de scopes canônicos não podem cunhar concessões.
+  if (isReservedAuthorityScopeName(item.name)) {
+    return res.status(422).json({ ok: false, error: RESERVED_ITEM_NAME_ERROR });
+  }
+
+  // Identificação inequívoca do agente: o mesmo nome publicado por outro publicador visível é ambíguo.
+  if (item.type === "agent") {
+    const homonyms = await request.prisma.marketplaceItem.findMany({
+      where: {
+        type: "agent",
+        name: { equals: item.name, mode: "insensitive" },
+        publisherId: { not: item.publisherId },
+        OR: [{ isPublic: true }, { publisherId: request.authContext.tenantId }],
+      },
+      select: { id: true },
+      take: 1,
+    });
+    if (homonyms.length > 0) {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: "AGENT_IDENTITY_AMBIGUOUS",
+          message: "Há mais de um agente visível com este nome. A contratação exige identificar o agente sem ambiguidade.",
+        },
+      });
+    }
   }
 
   const scope = parsed.data.scope ?? "execute";
@@ -467,6 +473,61 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
   const signatureHash =
     parsed.data.signatureHash ??
     crypto.createHash("sha256").update(`${policyHash}:${item.publisherId}`).digest("hex");
+
+  // Os limites da designação (escopo de delegação e prazo) valem para esta contratação concreta.
+  const limitViolation = subscriptionLimitViolation(authority, { scope, validUntil });
+  if (limitViolation) {
+    await recordSubscriptionDecision({
+      prisma: request.prisma,
+      actor,
+      outcome: "denied",
+      reasonCode: limitViolation,
+      action: "marketplace.subscribe",
+      target: { marketplaceItemId: item.id, agentName: item.name, scope, trustMin, validUntil: validUntil.toISOString(), designationId: authority.designationId ?? null },
+    });
+    return res.status(403).json({ ok: false, error: { ...COMMERCIAL_LIMIT_ERROR, reasonCode: limitViolation } });
+  }
+
+  // Agente governado (capacidade transversal): a habilitação é um registro verificável criado SÓ aqui, após a decisão.
+  // O registro precisa existir antes de qualquer efeito; sem ele, nada é contratado.
+  const governed = item.type === "agent" && isCommerciallyGovernedAgent(item.name);
+  if (governed) {
+    try {
+      await ensureAgentEnablementStore(request.prisma);
+    } catch {
+      return res.status(503).json({
+        ok: false,
+        error: { code: "ENABLEMENT_STORE_UNAVAILABLE", message: "O registro de habilitações está indisponível. Nada foi contratado." },
+      });
+    }
+  }
+
+  // Evidência da decisão ANTES de qualquer efeito; sem registro, não há contratação.
+  const decisionRecorded = await recordSubscriptionDecision({
+    prisma: request.prisma,
+    actor,
+    outcome: "authorized",
+    reasonCode: authority.reasonCode,
+    action: "marketplace.subscribe",
+    target: {
+      marketplaceItemId: item.id,
+      agentName: item.name,
+      publisherId: item.publisherId,
+      scope,
+      trustMin,
+      validUntil: validUntil.toISOString(),
+      designationId: authority.designationId ?? null,
+    },
+  });
+  if (!decisionRecorded) {
+    return res.status(503).json({
+      ok: false,
+      error: {
+        code: "SUBSCRIBE_DECISION_RECORD_UNAVAILABLE",
+        message: "Não foi possível registrar a decisão de contratação. Nada foi contratado.",
+      },
+    });
+  }
 
   const now = new Date();
   let delegation = null as Awaited<ReturnType<typeof request.prisma.delegationPolicy.create>> | null;
@@ -512,6 +573,12 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     if (existingByMarketplace) {
       delegation = existingByMarketplace;
     }
+  }
+
+  // Delegação reaproveitada é termo do PUBLICADOR: se excede os limites da autoridade que decidiu, não serve de base.
+  if (delegation && governed && authority.limits
+    && commercialLimitViolation(authority.limits, { scope: delegation.scope, validUntil: delegation.validUntil, now })) {
+    delegation = null;
   }
 
   if (!delegation) {
@@ -575,9 +642,36 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     }
   }
 
+  let enablementId: string | null = null;
+  if (governed) {
+    // Vínculo verificável: decisão (evento de auditoria), designação, tenant/workspace, item, delegação e condições aceitas.
+    try {
+      enablementId = await recordAgentEnablement(request.prisma, {
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        agentKey: item.name.trim().toLowerCase().replace(/[^a-z0-9]/g, ""),
+        marketplaceItemId: delegation.marketplaceId ?? item.id,
+        delegationId: delegation.id,
+        scope: delegation.scope,
+        trustMin: Number(delegation.trustMin),
+        validUntil: delegation.validUntil,
+        designationId: authority.designationId ?? "",
+        decidedByUserId: String(request.authContext.userId),
+        decisionAuditEventId: decisionRecorded,
+      }, now);
+    } catch {
+      // Política e delegação ficam inertes sem a habilitação: o agente governado não é habilitado.
+      return res.status(503).json({
+        ok: false,
+        error: { code: "ENABLEMENT_RECORD_UNAVAILABLE", message: "Não foi possível registrar a habilitação. O agente não foi habilitado." },
+      });
+    }
+  }
+
   return res.json({
     ok: true,
     delegationId: delegation.id,
+    enablementId,
     publisherName: item.publisher?.name ?? null,
   });
 });
@@ -596,78 +690,54 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
     return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
   }
 
-  await ensureTenantProductInstallationTable(request);
+  // ADR-011 §2.4: primeiro a liberação da EIAH, depois a permissão de ativar.
+  const access = await readVerticalAccess({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    vertical: parsed.data.product,
+  });
+  if (access?.status !== "aprovado") {
+    return res.status(403).json({ ok: false, error: verticalNotApprovedError(access?.status) });
+  }
 
-  const now = new Date();
-  const activatedByUserId = request.authContext.userId ?? null;
+  const allowedToActivate = await canUserActivateProducts({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+  });
+  if (!allowedToActivate) {
+    return res.status(403).json({ ok: false, error: PRODUCT_ACTIVATION_DENIED });
+  }
 
-  await request.prisma.$executeRaw`
-    INSERT INTO tenant_product_installations (
-      id,
-      tenant_id,
-      workspace_id,
-      product,
-      status,
-      activated_at,
-      activated_by_user_id,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      ${crypto.randomUUID()},
-      ${request.authContext.tenantId},
-      ${request.authContext.workspaceId},
-      ${parsed.data.product},
-      'active',
-      ${now},
-      ${activatedByUserId},
-      ${now},
-      ${now}
-    )
-    ON CONFLICT (tenant_id, workspace_id, product)
-    DO UPDATE SET
-      status = 'active',
-      activated_at = EXCLUDED.activated_at,
-      activated_by_user_id = EXCLUDED.activated_by_user_id,
-      updated_at = EXCLUDED.updated_at;
-  `;
-
-  type InstallationRow = {
-    tenantId: string;
-    workspaceId: string;
-    product: string;
-    status: string;
-    activatedAt: Date;
-    activatedByUserId: string | null;
-  };
-
-  const rows = await request.prisma.$queryRaw<InstallationRow[]>`
-    SELECT
-      tenant_id AS "tenantId",
-      workspace_id AS "workspaceId",
-      product,
-      status,
-      activated_at AS "activatedAt",
-      activated_by_user_id AS "activatedByUserId"
-    FROM tenant_product_installations
-    WHERE tenant_id = ${request.authContext.tenantId}
-      AND workspace_id = ${request.authContext.workspaceId}
-      AND product = ${parsed.data.product}
-    LIMIT 1;
-  `;
-
-  const installation = rows[0];
-  if (!installation) {
+  const activation = await activateProductInstallation({
+    prisma: request.prisma as unknown as PrismaClient,
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    userId: request.authContext.userId ?? null,
+    product: parsed.data.product,
+  });
+  if (!activation.ok && activation.code === "WORKSPACE_AGENT_PROVISIONING_FAILED") {
+    request.logger?.error({ error: activation.error, product: parsed.data.product }, "marketplace.activation_provisioning_failed");
+    return res.status(500).json({
+      ok: false,
+      error: {
+        code: "WORKSPACE_AGENT_PROVISIONING_FAILED",
+        message: "Unable to provision workspace agents for this product; activation was not applied",
+      },
+    });
+  }
+  if (!activation.ok && activation.code === "VERTICAL_NOT_APPROVED") {
+    return res.status(403).json({ ok: false, error: verticalNotApprovedError(activation.accessStatus) });
+  }
+  if (!activation.ok) {
     return res.status(500).json({
       ok: false,
       error: { code: "INSTALLATION_WRITE_FAILED", message: "Unable to persist installation" },
     });
   }
-
-  const releasedRoutes =
-    parsed.data.product === "IMOB"
-      ? ["/app/imob/chat", "/app/imob/properties", "/app/imob/processes", "/app/imob/partners"]
-      : [];
+  const { installation, releasedRoutes } = activation;
 
   return res.json({
     ok: true,

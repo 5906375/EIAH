@@ -1,0 +1,202 @@
+{
+  "schemaVersion": "ci-evidence-manifest.v1",
+  "freezeDate": "2026-08-03",
+  "declaredStatus": "Proposta",
+  "repository": "5906375/EIAH",
+  "workflow": "CI Monorepo",
+  "ciExecution": true,
+  "evidenceScope": "two-github-actions-runs-and-ruleset-get-captured-on-2026-08-03",
+  "collection": {
+    "method": "gh-cli-by-authenticated-human-operator",
+    "operatorAuthenticated": true,
+    "agentCollectedDirectly": false,
+    "agentBoundary": "Commands were executed outside the agent sandbox only with operator authorization.",
+    "tokenScopes": [
+      "gist",
+      "read:org",
+      "repo",
+      "workflow"
+    ],
+    "administrativeScope": false,
+    "githubApiWriteCalls": 0,
+    "collectionDate": "2026-08-03"
+  },
+  "runs": [
+    {
+      "runId": 30713272468,
+      "url": "https://github.com/5906375/EIAH/actions/runs/30713272468",
+      "headSha": "de228d3f7f0c7a430e6e933ce824947bde0d322c",
+      "headBranch": "fix/settlement-matrix-honesty",
+      "event": "pull_request",
+      "attempt": 1,
+      "number": 943,
+      "createdAt": "2026-08-01T18:46:00Z",
+      "startedAt": "2026-08-01T18:46:00Z",
+      "updatedAt": "2026-08-01T18:47:13Z",
+      "conclusion": "success",
+      "job": {
+        "name": "P3SettlementSupportByEnv",
+        "databaseId": 91404418214,
+        "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418214",
+        "conclusion": "failure"
+      },
+      "step": {
+        "number": 8,
+        "name": "Check P3 settlement support matrix by env",
+        "conclusion": "failure",
+        "exitCode": 1
+      }
+    },
+    {
+      "runId": 30710850816,
+      "url": "https://github.com/5906375/EIAH/actions/runs/30710850816",
+      "headSha": "d5efce85f6939f2a80580b14f1807c166cbb456f",
+      "headBranch": "fix/settlement-matrix-honesty",
+      "event": "pull_request",
+      "attempt": 1,
+      "number": 942,
+      "createdAt": "2026-08-01T17:40:45Z",
+      "startedAt": "2026-08-01T17:40:45Z",
+      "updatedAt": "2026-08-01T17:42:16Z",
+      "conclusion": "success",
+      "job": {
+        "name": "P3SettlementSupportByEnv",
+        "databaseId": 91397927961,
+        "url": "https://github.com/5906375/EIAH/actions/runs/30710850816/job/91397927961",
+        "conclusion": "failure"
+      },
+      "step": {
+        "number": 8,
+        "name": "Check P3 settlement support matrix by env",
+        "conclusion": "failure",
+        "exitCode": 1
+      }
+    }
+  ],
+  "observedCheckOutput": {
+    "ok": false,
+    "check": "check:p3-settlement-support-by-env",
+    "message": "provider_mode_not_allowed_for_environment",
+    "environment": "staging",
+    "violations": [
+      {
+        "provider": "stripe",
+        "mode": "full",
+        "allowedModes": [
+          "simulated"
+        ]
+      }
+    ]
+  },
+  "rulesetQuery": {
+    "queryDate": "2026-08-03",
+    "id": 13498700,
+    "name": "main-protection-hard-gates",
+    "enforcement": "active",
+    "target": "branch",
+    "requiredStatusChecksCount": 20,
+    "requiredStatusChecks": [
+      "build_validate",
+      "lint",
+      "CiUnitSuite",
+      "EvidenceIndex",
+      "ReceiptCanonCompat",
+      "P0CriticalityAudit",
+      "P1CriticalChain",
+      "P1ReconciliationRecurring",
+      "RbacGuardrailRegression",
+      "AgentsPolicyFailClosed",
+      "AgentProtocolCompat",
+      "P2AuditInterop",
+      "P2HighGlobalCoverage",
+      "ProviderBoundary",
+      "P3EconomyHardening",
+      "P3SettlementSupportByEnv",
+      "SettlementContractDrift",
+      "W4NonRegression",
+      "DbPreviewPostgresValidate",
+      "PublicHealthContract"
+    ]
+  },
+  "classicBranchProtectionQuery": {
+    "queryDate": "2026-08-03",
+    "httpStatus": 404,
+    "message": "Branch not protected"
+  },
+  "artifacts": [
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30713272468-meta.json",
+      "bytes": 506,
+      "sha256": "3dd25f59351dedf36562d871f6e58deb9c41a51627f1c971f922570649f18eee",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30713272468-jobs.json",
+      "bytes": 41926,
+      "sha256": "00ebf00abd04aa5efeef05dfb91ff75ff4eab03c902588fb6de5e6ef05437d4e",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30713272468-step-excerpt.log",
+      "bytes": 7095,
+      "sha256": "be707c90bbec34ec83fb337c172d484cbf595506904372b43e66e18477bdb0e3",
+      "versioned": true
+    },
+    {
+      "path": "/tmp/p3-env-run-30713272468-full.log",
+      "bytes": 2439705,
+      "sha256": "b27e6cb9e07993d5e8e9e3397ba997661665ddd031a12dbd28521847b4d570d4",
+      "versioned": false,
+      "repositoryPath": null,
+      "recoveryCommand": "gh run view 30713272468 -R 5906375/EIAH --log",
+      "recoverabilityLimit": "Available only while provider retention permits."
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30710850816-meta.json",
+      "bytes": 506,
+      "sha256": "c458b4067b78d93e1d8927ed45b5af037c58b4446daca5e4f105befed308227d",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30710850816-jobs.json",
+      "bytes": 41926,
+      "sha256": "4a966b0e0c7c6c03dec12be8bb17bc8da0789cf63f3f111f860f1184ebaa6908",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30710850816-step-excerpt.log",
+      "bytes": 7095,
+      "sha256": "c54c986f626cb65d6973efe98ad355089fb9ac3895b517bb936e5e544d9d90de",
+      "versioned": true
+    },
+    {
+      "path": "/tmp/p3-env-run-30710850816-full.log",
+      "bytes": 2437223,
+      "sha256": "d4d4796024d3f3321f474c894dbdd7c33d50ddcf3230161027244d24b122b2d2",
+      "versioned": false,
+      "repositoryPath": null,
+      "recoveryCommand": "gh run view 30710850816 -R 5906375/EIAH --log",
+      "recoverabilityLimit": "Available only while provider retention permits."
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-branch-protection-required-status-checks.txt",
+      "bytes": 192,
+      "sha256": "2f86529968303feaa0d01290c943ae56f9a3d82a92f38b338cbb7b8a8625dbfd",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-rulesets.txt",
+      "bytes": 437,
+      "sha256": "5840dafc73409f7a07b50a448a89535135f6ac1bf3f2c441fb3264781ca3a615",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-ruleset-13498700.json",
+      "bytes": 627,
+      "sha256": "32c1ccdab4a31a774756f47394f0511d38b03525d296f34e79ad980210710f4e",
+      "versioned": true
+    }
+  ],
+  "freezeCommitSha": "",
+  "freezeCommitReference": "HEAD at indexing time; no commit SHA was invented before commit creation."
+}

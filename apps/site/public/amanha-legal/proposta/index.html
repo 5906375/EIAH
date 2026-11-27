@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="canonical" href="https://www.eiah.ia.br/amanha-legal/proposta/">
+<title>Proposta Fase 1 · Amanhã Legal + EIAH</title>
+<meta name="description" content="Proposta da Fase 1: ambiente de minutas com revisão humana para o Amanhã Legal, com a EIAH como base tecnológica.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  /*
+   * Proposta Amanhã Legal + EIAH — Fase 1.
+   * Para editar o texto: abra esta página com ?editar=1 no endereço, altere direto na tela e use
+   * "Baixar HTML editado". Ou edite este arquivo: cada seção está marcada com um comentário.
+   * Cores da marca Amanhã Legal (documento de alinhamento de 30/09/2026).
+   */
+  :root {
+    --laranja: #FE6B13;
+    --grafite: #363435;
+    --preto: #0D0C0C;
+    --ambar: #F1873B;
+    --offwhite: #F7F4F1;
+    --branco: #FFFFFF;
+    --linha: #E4DDD6;
+    --texto: #363435;
+    --suave: #6B6664;
+    --raio: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    font-weight: 400;
+    color: var(--texto);
+    background: var(--offwhite);
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+  }
+  a { color: var(--laranja); }
+  .wrap { width: min(1080px, 100% - 32px); margin-inline: auto; }
+
+  /* Barra superior */
+  .topo { position: sticky; top: 0; z-index: 10; background: rgba(13, 12, 12, .92); backdrop-filter: blur(8px); }
+  .topo .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; }
+  .marca { display: flex; align-items: center; gap: 10px; color: var(--branco); text-decoration: none; }
+  .simbolo { font-weight: 700; font-size: 22px; letter-spacing: -1px; line-height: 1; }
+  .simbolo .a { color: #BDB8B5; }
+  .simbolo .m { color: var(--laranja); }
+  .marca .nome { font-weight: 300; font-size: 17px; letter-spacing: .2px; }
+  .topo nav { display: flex; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+  .topo nav a { color: #E9E4E0; text-decoration: none; font-size: 13px; }
+  .topo nav a:hover { color: var(--ambar); }
+
+  /* Capa */
+  .capa { background: radial-gradient(1200px 500px at 85% -10%, rgba(241, 135, 59, .35), transparent 60%), var(--preto); color: var(--branco); padding: 72px 0 64px; }
+  .etiqueta { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--ambar); }
+  h1 { font-size: clamp(32px, 5.2vw, 56px); line-height: 1.08; letter-spacing: -1.5px; margin: 14px 0 18px; font-weight: 700; }
+  h1 em, h2 em { font-style: normal; color: var(--laranja); }
+  .capa p.lead { font-size: clamp(16px, 2vw, 19px); color: #D8D2CD; max-width: 720px; margin: 0 0 32px; font-weight: 300; }
+  .ficha { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; max-width: 860px; }
+  .ficha div { border: 1px solid rgba(255, 255, 255, .14); border-radius: 14px; padding: 12px 14px; }
+  .ficha dt { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #A8A19C; }
+  .ficha dd { margin: 4px 0 0; font-weight: 500; font-size: 15px; }
+  .lema { margin-top: 36px; font-weight: 300; color: #BDB8B5; }
+
+  /* Seções */
+  section.bloco { padding: 64px 0; border-bottom: 1px solid var(--linha); }
+  section.bloco.alt { background: var(--branco); }
+  .num { font-size: 12px; font-weight: 600; letter-spacing: 2px; color: var(--laranja); text-transform: uppercase; }
+  h2 { font-size: clamp(26px, 3.4vw, 38px); line-height: 1.15; letter-spacing: -.8px; margin: 8px 0 14px; color: var(--preto); font-weight: 700; }
+  h3 { font-size: 18px; margin: 0 0 6px; color: var(--preto); font-weight: 600; }
+  p { margin: 0 0 14px; }
+  .intro { max-width: 760px; color: var(--suave); font-size: 16.5px; }
+
+  .grade-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+  .grade-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+  .cartao { background: var(--branco); border: 1px solid var(--linha); border-radius: var(--raio); padding: 22px; }
+  section.alt .cartao { background: var(--offwhite); }
+  .cartao .rotulo { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--laranja); margin-bottom: 6px; }
+  .cartao p:last-child { margin-bottom: 0; }
+
+  /* Fluxo */
+  .fluxo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; counter-reset: passo; }
+  .passo { position: relative; background: var(--branco); border: 1px solid var(--linha); border-radius: var(--raio); padding: 20px 18px 18px; }
+  .passo::before { counter-increment: passo; content: counter(passo); display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--laranja); color: var(--branco); font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+  .passo.chave { border-color: var(--laranja); box-shadow: 0 10px 30px rgba(254, 107, 19, .12); }
+  .passo p { font-size: 14.5px; color: var(--suave); margin: 0; }
+
+  /* Listas */
+  ul.check { list-style: none; padding: 0; margin: 18px 0 0; display: grid; gap: 12px; }
+  ul.check li { position: relative; padding-left: 32px; }
+  ul.check li::before { content: ""; position: absolute; left: 0; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--laranja) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 10.5l3 3 7-7' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/16px no-repeat; }
+  ul.fora { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+  ul.fora li { position: relative; padding-left: 26px; color: var(--suave); }
+  ul.fora li::before { content: "—"; position: absolute; left: 0; color: var(--laranja); font-weight: 600; }
+
+  /* Tabelas */
+  .tabela { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 22px; background: var(--branco); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; font-size: 15px; }
+  .tabela th, .tabela td { text-align: left; padding: 14px 16px; vertical-align: top; border-bottom: 1px solid var(--linha); }
+  .tabela tr:last-child td { border-bottom: 0; }
+  .tabela th { background: var(--grafite); color: var(--branco); font-weight: 500; font-size: 13px; letter-spacing: .5px; }
+  .tabela td.valor { font-weight: 600; color: var(--preto); white-space: nowrap; }
+  .tabela tr.destaque td { background: #FFF4EC; }
+
+  /* Exemplo de minuta */
+  .minuta { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; background: var(--branco); border: 1px solid var(--linha); border-left: 4px solid var(--laranja); border-radius: 12px; padding: 22px 24px; font-size: 16px; line-height: 1.7; color: #2A2828; }
+  .minuta .selo { font-family: "Poppins", sans-serif; display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #0B7A4B; background: #E6F5EE; border-radius: 999px; padding: 4px 10px; margin-bottom: 10px; }
+
+  .aviso { background: #FFF4EC; border: 1px solid #F8D3BA; border-radius: var(--raio); padding: 18px 20px; margin-top: 24px; font-size: 15px; }
+  .aviso strong { color: var(--preto); }
+
+  .total { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: baseline; margin-top: 18px; color: var(--suave); }
+  .total strong { color: var(--preto); font-size: 20px; }
+
+  /* De acordo */
+  .acordo { background: var(--preto); color: var(--branco); }
+  .acordo h2 { color: var(--branco); }
+  .acordo .intro { color: #D8D2CD; }
+  .assinaturas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin-top: 36px; }
+  .assinatura { border-top: 1px solid rgba(255, 255, 255, .4); padding-top: 10px; font-size: 14px; color: #D8D2CD; }
+  .assinatura strong { display: block; color: var(--branco); font-weight: 500; }
+  .botoes { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .botao { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 12px; padding: 13px 20px; font: inherit; font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; background: var(--laranja); color: var(--branco); }
+  .botao.secundario { background: transparent; color: var(--branco); border: 1px solid rgba(255, 255, 255, .35); }
+  .botao:focus-visible, a:focus-visible { outline: 3px solid var(--ambar); outline-offset: 3px; }
+
+  footer { padding: 28px 0 40px; font-size: 13px; color: var(--suave); }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+
+  /* Modo de edição (?editar=1) */
+  .barra-edicao { display: none; position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 20; background: var(--preto); color: var(--branco); border-radius: 14px; padding: 10px 12px; gap: 10px; align-items: center; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); font-size: 13px; max-width: calc(100% - 24px); flex-wrap: wrap; }
+  body.editando .barra-edicao { display: flex; }
+  body.editando [data-editavel]:hover { outline: 1px dashed var(--ambar); outline-offset: 4px; }
+  body.editando [data-editavel]:focus { outline: 2px solid var(--laranja); outline-offset: 4px; }
+
+  /* Responsivo */
+  @media (max-width: 900px) {
+    .fluxo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ficha { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .topo nav { display: none; }
+    .grade-3, .grade-2, .assinaturas { grid-template-columns: 1fr; }
+    .capa { padding: 48px 0 44px; }
+    section.bloco { padding: 44px 0; }
+    /* Tabelas viram cartões no celular */
+    .tabela thead { display: none; }
+    .tabela, .tabela tbody, .tabela tr, .tabela td { display: block; width: 100%; }
+    .tabela tr { border-bottom: 1px solid var(--linha); padding: 8px 0; }
+    .tabela tr:last-child { border-bottom: 0; }
+    .tabela td { border: 0; padding: 6px 16px; }
+    .tabela td[data-r]::before { content: attr(data-r); display: block; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--suave); }
+    .tabela td.valor { white-space: normal; }
+  }
+  @media (max-width: 420px) {
+    .fluxo, .ficha { grid-template-columns: 1fr; }
+  }
+
+  /* Impressão / PDF */
+  @media print {
+    .topo, .botoes, .barra-edicao { display: none !important; }
+    body { background: #fff; }
+    .capa, .acordo { background: #fff !important; color: var(--preto); }
+    .capa p.lead, .acordo .intro, .lema, .ficha dt, .assinatura { color: var(--suave) !important; }
+    .ficha div { border-color: var(--linha); }
+    .acordo h2, .assinatura strong { color: var(--preto) !important; }
+    .assinatura { border-top-color: var(--grafite); }
+    section.bloco { break-inside: avoid-page; padding: 28px 0; }
+    .tabela, .cartao, .passo, .minuta { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ BARRA SUPERIOR ============ -->
+<header class="topo">
+  <div class="wrap">
+    <a class="marca" href="#inicio" aria-label="Amanhã Legal — início">
+      <span class="simbolo" aria-hidden="true"><span class="a">A</span><span class="m">m</span></span>
+      <span class="nome">Amanhã legal</span>
+    </a>
+    <nav aria-label="Seções da proposta">
+      <a href="#fase1">Fase 1</a>
+      <a href="#entrega">Entrega</a>
+      <a href="#cronograma">Cronograma</a>
+      <a href="#investimento">Investimento</a>
+      <a href="#acordo">De acordo</a>
+    </nav>
+  </div>
+</header>
+
+<main id="conteudo">
+
+<!-- ============ CAPA ============ -->
+<section class="capa" id="inicio">
+  <div class="wrap" data-editavel>
+    <span class="etiqueta">Proposta Amanhã Legal + EIAH · Fase 1</span>
+    <h1>Seu ambiente de minutas com <em>revisão humana.</em></h1>
+    <p class="lead">Um ambiente próprio do Amanhã Legal, com a sua marca, para redigir, revisar e aprovar minutas com controle de versão — e para demonstrar aos seus clientes como o jurídico vem à frente e a tecnologia fica na base.</p>
+    <dl class="ficha">
+      <div><dt>Para</dt><dd>Amine Abib — Amanhã Legal</dd></div>
+      <div><dt>De</dt><dd>Carlos — EIAH</dd></div>
+      <div><dt>Data</dt><dd>9 de outubro de 2026</dd></div>
+      <div><dt>Validade</dt><dd>30 dias</dd></div>
+    </dl>
+    <p class="lema">Direito do amanhã, para todos.</p>
+  </div>
+</section>
+
+<!-- ============ 1 · O QUE É A FASE 1 ============ -->
+<section class="bloco" id="fase1">
+  <div class="wrap" data-editavel>
+    <span class="num">1 · O que é a Fase 1</span>
+    <h2>O Amanhã Legal usando a solução <em>no próprio trabalho.</em></h2>
+    <p class="intro">Na Fase 1, o Amanhã Legal passa a ter o seu ambiente no EIAH: as minutas saem dos seus modelos, passam pela revisão de quem tem autoridade e só viram versão aprovada depois disso. O mesmo ambiente serve para apresentar a solução aos seus clientes.</p>
+    <div class="grade-3">
+      <div class="cartao"><div class="rotulo">Amanhã Legal</div><h3>O jurídico à frente</h3><p>Diagnóstico, desenho jurídico e governança: modelos, regras de revisão, funções e critérios de aprovação.</p></div>
+      <div class="cartao"><div class="rotulo">EIAH</div><h3>A tecnologia como base</h3><p>Transforma as regras em etapas, controles, versões e registros. Aparece de forma discreta.</p></div>
+      <div class="cartao"><div class="rotulo">A decisão é humana</div><h3>Aprovação da versão exata</h3><p>A aprovação vale para o texto revisado. Mudou o texto, precisa aprovar de novo.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2 · COMO FUNCIONA ============ -->
+<section class="bloco alt" id="fluxo">
+  <div class="wrap" data-editavel>
+    <span class="num">2 · Como funciona</span>
+    <h2>Do atendimento à <em>versão aprovada.</em></h2>
+    <div class="fluxo">
+      <div class="passo"><h3>Atendimento</h3><p>As informações do caso são coletadas de forma guiada.</p></div>
+      <div class="passo"><h3>Minuta</h3><p>A minuta é montada a partir dos seus modelos e cláusulas.</p></div>
+      <div class="passo chave"><h3>Revisão humana</h3><p>Quem tem permissão revisa. Sem revisão, não há aprovação.</p></div>
+      <div class="passo"><h3>Versão aprovada</h3><p>Fica registrado quem aprovou, quando e qual versão.</p></div>
+    </div>
+    <div class="minuta" style="margin-top:28px">
+      <span class="selo">Versão aprovada · exemplo fictício</span>
+      <p><strong>CLÁUSULA 1ª — DO OBJETO.</strong> O presente contrato tem por objeto a prestação de serviços de consultoria pela CONTRATADA à CONTRATANTE, nos termos e condições aqui estabelecidos.</p>
+      <p style="margin:0;font-size:14px;color:#6B6664">Aprovada por <em>Revisora (exemplo)</em> · versão 3 · qualquer alteração exige nova aprovação.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 · O QUE ENTREGAMOS ============ -->
+<section class="bloco" id="entrega">
+  <div class="wrap" data-editavel>
+    <span class="num">3 · O que entregamos</span>
+    <h2>Tudo pronto para <em>usar e demonstrar.</em></h2>
+    <ul class="check">
+      <li><strong>Fluxo completo</strong> — atendimento → minuta → revisão humana → versão aprovada.</li>
+      <li><strong>Até 5 tipos de documento</strong>, cada um com todas as variações de que você precisar.</li>
+      <li><strong>Funções e permissões jurídicas</strong> — redigir, revisar, aprovar versão e ver registro. Você mesma convida a sua equipe pelo Perfil.</li>
+      <li><strong>Registro de aprovações</strong> — quem aprovou, quando e qual versão.</li>
+      <li><strong>Sua marca aplicada</strong> e a página <strong>eiah.ia.br/amanha-legal</strong> publicada, com acesso por link e fora de buscadores.</li>
+      <li><strong>Treinamento</strong> em 2 sessões on-line e <strong>30 dias de acompanhamento</strong> após a entrega.</li>
+    </ul>
+
+    <h3 style="margin-top:40px">Como contamos os tipos de documento</h3>
+    <p class="intro">Conta-se o <strong>tipo de contrato</strong>, não cada arquivo. As variações de um mesmo tipo vêm junto, sem custo. Exemplo:</p>
+    <table class="tabela">
+      <thead><tr><th>#</th><th>Tipo de documento</th><th>Variações (todas incluídas)</th></tr></thead>
+      <tbody>
+        <tr><td data-r="#">1</td><td data-r="Tipo">Prestação de serviços</td><td data-r="Variações">Pessoa física, pessoa jurídica, com multa, sem multa</td></tr>
+        <tr><td data-r="#">2</td><td data-r="Tipo">Acordo de confidencialidade (NDA)</td><td data-r="Variações">Unilateral, bilateral</td></tr>
+        <tr><td data-r="#">3</td><td data-r="Tipo">Termo de uso</td><td data-r="Variações">Site, aplicativo</td></tr>
+        <tr><td data-r="#">4</td><td data-r="Tipo">Política de privacidade</td><td data-r="Variações">—</td></tr>
+        <tr><td data-r="#">5</td><td data-r="Tipo">Contrato de licença</td><td data-r="Variações">Exclusiva, não exclusiva</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px;color:#6B6664;font-size:14px">Os tipos são escolhidos por você no diagnóstico; a lista acima é apenas um exemplo.</p>
+  </div>
+</section>
+
+<!-- ============ 4 · CRONOGRAMA ============ -->
+<section class="bloco alt" id="cronograma">
+  <div class="wrap" data-editavel>
+    <span class="num">4 · Cronograma</span>
+    <h2>Entrega na <em>segunda quinzena de janeiro de 2027.</em></h2>
+    <table class="tabela">
+      <thead><tr><th>Período</th><th>Etapa</th><th>O que precisamos de você</th></tr></thead>
+      <tbody>
+        <tr><td data-r="Período" class="valor">Out./nov. 2026</td><td data-r="Etapa">Assinatura e diagnóstico: tipos de documento, regras de revisão e funções</td><td data-r="O que precisamos de você">Logo oficial, modelos de minuta e regras de revisão</td></tr>
+        <tr><td data-r="Período" class="valor">Dez. 2026</td><td data-r="Etapa">Configuração do fluxo, dos modelos e das permissões</td><td data-r="O que precisamos de você">Validação das regras</td></tr>
+        <tr><td data-r="Período" class="valor">Jan. 2027 · 1ª quinzena</td><td data-r="Etapa">Testes com dados fictícios e ajustes</td><td data-r="O que precisamos de você">Uma rodada de revisão</td></tr>
+        <tr class="destaque"><td data-r="Período" class="valor">Jan. 2027 · 2ª quinzena</td><td data-r="Etapa"><strong>Entrega</strong> e treinamento</td><td data-r="O que precisamos de você">—</td></tr>
+        <tr><td data-r="Período" class="valor">Fev. 2027</td><td data-r="Etapa">30 dias de acompanhamento</td><td data-r="O que precisamos de você">—</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:12px;color:#6B6664;font-size:14px">Atrasos no envio de materiais deslocam o cronograma na mesma medida.</p>
+  </div>
+</section>
+
+<!-- ============ 5 · INVESTIMENTO ============ -->
+<section class="bloco" id="investimento">
+  <div class="wrap" data-editavel>
+    <span class="num">5 · Investimento</span>
+    <h2>Simples e <em>previsível.</em></h2>
+    <table class="tabela">
+      <thead><tr><th>Item</th><th>Valor</th><th>Como é pago</th></tr></thead>
+      <tbody>
+        <tr><td data-r="Item"><strong>Personalização</strong><br><span style="color:#6B6664;font-size:14px">Diagnóstico, configuração, marca, treinamento e acompanhamento</span></td><td data-r="Valor" class="valor">R$ 7.500</td><td data-r="Como é pago">3 × R$ 2.500 — na assinatura, no início dos testes (janeiro) e no aceite</td></tr>
+        <tr><td data-r="Item"><strong>Mensalidade · plano Solo</strong><br><span style="color:#6B6664;font-size:14px">Até 3 usuários e 1.500 execuções por mês</span></td><td data-r="Valor" class="valor">R$ 490/mês</td><td data-r="Como é pago">A partir de fevereiro de 2027 · fidelidade de 6 meses</td></tr>
+        <tr><td data-r="Item"><strong>Tipo de documento extra</strong><br><span style="color:#6B6664;font-size:14px">A partir do 6º tipo</span></td><td data-r="Valor" class="valor">R$ 1.200 por tipo</td><td data-r="Como é pago">Uma vez, por pedido</td></tr>
+      </tbody>
+    </table>
+    <div class="total"><span>Investimento inicial:</span><strong>R$ 7.500</strong><span>· depois, R$ 490 por mês a partir de fevereiro de 2027.</span></div>
+    <p style="margin-top:14px;color:#6B6664;font-size:14px">Após a fidelidade de 6 meses, a mensalidade pode ser cancelada com 30 dias de aviso. Mais usuários: mudança de plano.</p>
+  </div>
+</section>
+
+<!-- ============ 6 · O QUE FICA CLARO ============ -->
+<section class="bloco alt" id="limites">
+  <div class="wrap" data-editavel>
+    <span class="num">6 · O que fica claro, de propósito</span>
+    <h2>O que <em>não</em> está nesta fase.</h2>
+    <div class="grade-2">
+      <div class="cartao">
+        <h3>Fora da Fase 1</h3>
+        <ul class="fora">
+          <li>Uso com dados reais de clientes — somente após a validação do ambiente e a adequação à LGPD.</li>
+          <li>Integrações (CRM, WhatsApp, assinatura eletrônica).</li>
+          <li>Exclusividade ou cessão de tecnologia. A tecnologia é da EIAH; os modelos e o desenho jurídico são do Amanhã Legal.</li>
+        </ul>
+      </div>
+      <div class="cartao">
+        <h3>Uso responsável de IA</h3>
+        <p>O fluxo foi pensado para apoiar o que a Recomendação nº 001/2024 do Conselho Federal da OAB orienta: supervisão humana sobre o que a IA produz, verificação das minutas e transparência com o cliente.</p>
+        <p style="color:#6B6664;font-size:14px">A responsabilidade profissional pelo conteúdo continua sendo de quem aprova.</p>
+      </div>
+    </div>
+    <div class="aviso"><strong>Próximo passo depois da entrega — Fase 2.</strong> Com o ambiente funcionando, propomos uma parceria para os novos clientes que o Amanhã Legal trouxer, com a sua marca à frente. Os termos serão apresentados em proposta específica.</div>
+  </div>
+</section>
+
+<!-- ============ 7 · DE ACORDO ============ -->
+<section class="bloco acordo" id="acordo">
+  <div class="wrap" data-editavel>
+    <span class="num">7 · De acordo</span>
+    <h2>Vamos começar?</h2>
+    <p class="intro">Com o seu de acordo, agendamos o diagnóstico e seguimos com a Fase 1 nos termos desta proposta. A resposta pode ser pelo WhatsApp ou por e-mail.</p>
+    <div class="assinaturas">
+      <div class="assinatura"><strong>Amine Abib — Amanhã Legal</strong>Assinatura e data</div>
+      <div class="assinatura"><strong>Carlos — EIAH</strong>Assinatura e data</div>
+    </div>
+    <div class="botoes">
+      <a class="botao" href="mailto:contato@eiah.ia.br?subject=De%20acordo%20%E2%80%94%20Proposta%20Fase%201%20Amanh%C3%A3%20Legal%20%2B%20EIAH">Responder por e-mail</a>
+      <button class="botao secundario" type="button" onclick="window.print()">Salvar em PDF / imprimir</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Amanhã Legal + EIAH · Proposta Fase 1 · 9 de outubro de 2026</span>
+    <span>Exemplos com dados fictícios · acesso por link</span>
+  </div>
+</footer>
+
+<!-- Barra do modo de edição (aparece só com ?editar=1) -->
+<div class="barra-edicao" role="toolbar" aria-label="Edição da proposta">
+  <span>Modo de edição: clique no texto para alterar.</span>
+  <button class="botao" type="button" id="baixar">Baixar HTML editado</button>
+  <button class="botao secundario" type="button" onclick="window.print()">PDF</button>
+</div>
+
+<script>
+  // Modo de edição: abra a página com ?editar=1 para alterar os textos direto na tela
+  // e baixar o arquivo atualizado (substitua este index.html por ele e publique de novo).
+  (function () {
+    if (!new URLSearchParams(location.search).has('editar')) return;
+    document.body.classList.add('editando');
+    document.querySelectorAll('[data-editavel]').forEach(function (el) { el.contentEditable = 'true'; });
+    document.getElementById('baixar').addEventListener('click', function () {
+      var copia = document.documentElement.cloneNode(true);
+      copia.querySelector('body').classList.remove('editando');
+      copia.querySelectorAll('[contenteditable]').forEach(function (el) { el.removeAttribute('contenteditable'); });
+      var html = '<!doctype html>\n' + copia.outerHTML;
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+      link.download = 'index.html';
+      link.click();
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+    });
+  })();
+</script>
+</body>
+</html>

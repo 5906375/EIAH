@@ -1,3 +1,5 @@
+import { parseCanonicalImobUnits, type ImobPropertyUnitIntake } from "@eiah/contracts";
+import { parseProposalContinuity } from "./crm/imobProposalReviewContinuity";
 import {
   createEmptyImobSlots,
   type ImobLeadBudgetFlexibility,
@@ -38,6 +40,8 @@ import {
   canonicalizeImobCityName,
 } from "./imobGeoCanonicalizer";
 import { validateImobInput } from "./validation/imobValidationEngine";
+import { isImobPendingActionConfirmationMessage } from "./crm/imobPendingActionRuntime";
+import { parseImobIntent } from "./imobIntentCatalog";
 
 export function normalizeImobText(value: string) {
   return value
@@ -383,7 +387,9 @@ export function createNextImobThreadState(previous: ImobThreadConversationState 
     mode: previous?.mode ?? "consult",
     pendingSlot: explicitPendingSlot ?? (fulfilledPendingSlot ? "none" : previous?.pendingSlot ?? "none"),
     resultOffset: continuesSearch ? (previous?.resultOffset ?? 0) + 2 : 0,
-    operational: previous?.operational ?? null,
+    operational: previous?.operational && Object.hasOwn(previous.operational, "continuity")
+      ? { ...previous.operational, continuity: parseProposalContinuity(previous.operational) }
+      : previous?.operational ?? null,
   } satisfies ImobThreadConversationState;
 }
 
@@ -501,10 +507,20 @@ function inferContractType(raw: string): ImobProposalDraft["contractType"] {
   return null;
 }
 
-function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
+function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string, collecting = false): ImobProposalDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
   const normalized = normalizeImobText(message);
   const extractedAmount = extractOfferAmount(message);
+  // Resposta isolada só preenche um campo ausente durante coleta. "sim" mantém
+  // o draft; confirmação nunca vira nome nem autorização de execução.
+  const bare = message.trim();
+  const barePhone = extractPhone(bare);
+  const bareNumber = collecting && !barePhone && /^\d+$/.test(bare) ? bare : null;
+  const catalogIntent = collecting ? parseImobIntent(bare) : null;
+  const bareName = collecting && !previous?.buyerName && !isImobPendingActionConfirmationMessage(bare)
+    && !catalogIntent?.entity && !catalogIntent?.action
+    && /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s']{2,}$/.test(bare) && bare.split(/\s+/).length <= 4
+    ? validateImobInput({ rawInput: bare, scope: "generic" }).normalized.name ?? null : null;
   const negotiationStatus = normalized.includes("contraproposta") || normalized.includes("contra proposta")
     ? "counteroffer_required"
     : normalized.includes("aguardando resposta")
@@ -549,11 +565,11 @@ function buildProposalDraft(previous: ImobProposalDraft | undefined, message: st
     : previous?.approvalRequired ?? false;
 
   return {
-    buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? null,
+    buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? bareName,
     buyerEmail: extractEmail(message) ?? previous?.buyerEmail ?? null,
     buyerPhone: extractPhone(message) ?? previous?.buyerPhone ?? null,
-    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
-    offerAmount: extractedAmount ?? previous?.offerAmount ?? null,
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? bareNumber,
+    offerAmount: extractedAmount ?? previous?.offerAmount ?? (bareNumber && previous?.propertyId && Number(bareNumber) > 0 && Number.isSafeInteger(Number(bareNumber)) ? Number(bareNumber) : null),
     counterofferAmount: negotiationStatus === "counteroffer_required"
       ? extractedAmount ?? previous?.counterofferAmount ?? null
       : previous?.counterofferAmount ?? null,
@@ -613,8 +629,20 @@ function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
   return Boolean(explicitPropertySignal || slots.goal);
 }
 
+const PROPERTY_AS_CREATE_OBJECT = /(?:cadastrar|cadastro|incluir|registrar)\s+(?:de\s+)?(?:(?:mais|novos?|novas?|um|uma|outros?|outras?|os|as|o|a|meus?|minhas?|\d+)\s+)*(?:imove|imovei|apartament|aptos?\b|casas?\b|kitnets?|salas?\b|terrenos?|studios?|galpo|galpa|coberturas?|lojas?)/;
+
+/** "proprietário Carlos A Merlo" → "Carlos A Merlo" (até vírgula/ponto, no máximo 6 palavras). */
+export function extractOwnerNameHint(message: string) {
+  const match = message.match(/propriet[aá]ri[oa]s?\s+(?:(?:de|do|da|o|a)\s+)?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.]*(?:\s+[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'.]*){0,5})/i);
+  if (!match) return null;
+  const name = match[1].replace(/[.']+$/g, "").trim();
+  return name.length >= 2 ? name : null;
+}
+
 function hasExplicitOwnerCreateRequest(message: string) {
   const normalized = normalizeImobText(message);
+  // "cadastrar mais imóveis no proprietário X": o que se cadastra é o imóvel.
+  if (PROPERTY_AS_CREATE_OBJECT.test(normalized)) return false;
   const wantsCreate = normalized.includes("cadastrar")
     || normalized.includes("cadastro")
     || normalized.includes("incluir")
@@ -627,7 +655,15 @@ function hasExplicitOwnerCreateRequest(message: string) {
   return wantsCreate && hasOwner;
 }
 
-function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
+/** Frase livre vem do intake; aqui só se normaliza uma expressão canônica completa. */
+function extractMultiUnitLabels(message: string, intake?: ImobPropertyUnitIntake) {
+  if (intake?.status === "resolved") return intake.unitLabels;
+  const canonical = parseCanonicalImobUnits(message);
+  return canonical && !canonical.invalidRanges.length && canonical.units.length
+    ? canonical.units.map((unit) => unit.label) : null;
+}
+
+function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots, intake?: ImobPropertyUnitIntake): ImobPropertyDraft {
   const validation = validateImobInput({ rawInput: message, scope: "property.create" });
   const normalizedAddress = validation.normalized.address
     ? [
@@ -660,6 +696,8 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
     address: normalizedAddress ?? extractAddress(message) ?? previous?.address ?? null,
+    ownerNameHint: extractOwnerNameHint(message) ?? previous?.ownerNameHint ?? null,
+    unitLabels: extractMultiUnitLabels(message, intake) ?? previous?.unitLabels ?? null,
     origin: previous?.origin ?? null,
   };
 }
@@ -1607,7 +1645,8 @@ export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
   message: string,
-  slots: ImobSearchSlots
+  slots: ImobSearchSlots,
+  propertyUnitIntake?: ImobPropertyUnitIntake,
 ): ImobOperationalState | null {
   const missionContext = buildMissionContext(previous, message, slots);
   if (intent === "capture") {
@@ -1702,6 +1741,7 @@ export function createNextImobOperationalState(
         previous?.flow === "property.create" ? previous.propertyDraft : undefined,
         message,
         inheritedSlots,
+        propertyUnitIntake,
       );
       const preserveResolvedMarketScanSelection = Boolean(
         previous?.flow === "property.create"
@@ -1830,13 +1870,18 @@ export function createNextImobOperationalState(
     };
   }
   if (intent === "proposal") {
-    const draft = buildProposalDraft(previous?.flow === "proposal.create" ? previous.proposalDraft : undefined, message);
+    const draft = buildProposalDraft(previous?.flow === "proposal.create" ? previous.proposalDraft : undefined, message,
+      previous?.flow === "proposal.create" && previous.status === "collecting" && previous.pendingFields.length > 0);
     const pendingFields = buildProposalPendingFields(draft);
     return {
       flow: "proposal.create",
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       proposalDraft: draft,
+      ...(previous && Object.hasOwn(previous, "continuity") ? { continuity: parseProposalContinuity({
+        ...previous, status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+        pendingFields, proposalDraft: draft,
+      }) } : {}),
     };
   }
   return previous ?? null;

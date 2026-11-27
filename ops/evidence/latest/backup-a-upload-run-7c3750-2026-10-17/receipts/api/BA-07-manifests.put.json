@@ -1,0 +1,7 @@
+{
+    "ETag": "\"<ETAG_MASKED_03>\"",
+    "ChecksumSHA256": "<SHA256_B64_MASKED_10>",
+    "ChecksumType": "FULL_OBJECT",
+    "ServerSideEncryption": "AES256",
+    "VersionId": "<S3_VERSION_ID>"
+}

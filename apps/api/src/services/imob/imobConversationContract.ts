@@ -51,7 +51,14 @@ export type ImobBackingSpecialistOutputType =
 
 export type ImobBackingSpecialistReasonCode = ImobReasonCode;
 
+/**
+ * Disponibilidade REAL do especialista candidato no workspace (verificação canônica de agents.ts).
+ * Ausente = candidato ainda não avaliado. Qualquer valor diferente de "available" nunca é apresentado como acionável.
+ */
+export type ImobBackingSpecialistAvailability = "available" | "unavailable" | "unverified";
+
 export type ImobResolvedBackingSpecialist = ImobBackingSpecialistContract & {
+  availability?: ImobBackingSpecialistAvailability;
   rationale: string;
   reasonCode?: ImobBackingSpecialistReasonCode;
   suggestedAction?: string | null;
@@ -244,6 +251,10 @@ export type ImobPropertyDraft = {
   bedrooms: number | null;
   bathrooms: number | null;
   address: string | null;
+  /** Nome do proprietário citado na frase ("… no proprietário Carlos"); o cliente escolhe o cadastro existente. */
+  ownerNameHint?: string | null;
+  /** Identificações estruturadas pelo intake IMOB, singulares ou múltiplas, ainda sem autorização de cadastro. */
+  unitLabels?: string[] | null;
   origin?: {
     source: string;
     sourceId: string;
@@ -557,12 +568,31 @@ export type ImobMissionContext = {
   lockedUntilExplicitChange: boolean;
 };
 
+/** Conversational question only: never an approval or an execution credential. */
+export type ImobProposalContinuityV1 = {
+  version: "v1";
+  phase: "review" | "clarification";
+  pending: {
+    ref: string;
+    subject: "proposalDraft";
+    purpose: "review_data" | "identify_correction";
+    expectedResponse: "affirmation_or_correction" | "correction_details";
+    caseId: string;
+    threadId: string;
+    draftRef: string;
+    /** Correlation to the live interaction; never an authorization credential. */
+    contextRef: string;
+    expiresAt: string | null;
+  } | null;
+};
+
 export type ImobOperationalState = {
   flow: ImobOperationalFlow;
   status: "collecting" | "ready_for_review";
   outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
   pendingAction?: ImobPendingAction | null;
+  continuity?: ImobProposalContinuityV1 | null;
   leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
   nextAction?:
     | "ask_missing_lead_field"
@@ -611,8 +641,10 @@ export type ImobAccessContext = {
 };
 
 import type { ParsedImobIntent } from "./imobIntentCatalog";
+import type { ImobPropertyUnitIntake } from "@eiah/contracts";
 
 export type ImobResolveTurnRequest = {
+  propertyUnitIntake?: ImobPropertyUnitIntake;
   message: string;
   semanticIntent?: ParsedImobIntent | null;
   semanticIntentSource?: "openai" | "parser_fallback" | null;
@@ -812,6 +844,10 @@ export type ImobPresentationFormField = {
   inputMode?: "text" | "numeric";
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
+  /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
+  optionsSource?: "imob_properties" | "imob_owners";
+  /** Nome a procurar entre as opções carregadas (só seleciona quando há um único cadastro compatível). */
+  preferredOptionLabel?: string;
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -827,6 +863,11 @@ export type ImobPresentationForm = {
   label: string;
   description?: string;
   subjectId?: string;
+  /**
+   * Formulário estruturado: o cliente envia os campos direto para a rota
+   * indicada, sem execução de agente e sem transformar em texto de conversa.
+   */
+  submitTarget?: "imob.owners.create" | "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -1520,6 +1561,7 @@ export const IMOB_IDENTITY_ATTACHMENT_VALIDATION_CONTRACT = {
 } as const;
 
 export type ImobResolveTurnResponse = {
+  propertyUnitIntake?: ImobPropertyUnitIntake;
   mode: ImobConversationMode;
   action: string;
   threadLabel: string;

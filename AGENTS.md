@@ -26,6 +26,15 @@ Objetivo:
 
 ## Resumo de UX
 
+Princípio transversal para entradas semânticas em agentes e verticais atuais e futuros:
+
+- **Usuário se expressa naturalmente; agente/vertical interpreta; intake/engine estrutura; validadores determinísticos protegem invariantes; launcher renderiza.**
+- Distinguir entradas semânticas, canônicas e híbridas conforme a [especificação arquitetural](./docs/architecture/agent-chat-runtime.md#entrada-agêntica-linguagem-natural-e-validação-determinística).
+- Entradas canônicas permanecem verificáveis e não podem ser inventadas pela IA.
+- Ambiguidade material antes de mutação exige clarificação/HITL no Front Door, sem persistência silenciosa nem fallback para outra operação.
+
+Anti-padrão: transformar parser, regex, formulário, placeholder ou sintaxe interna em gramática obrigatória para o usuário quando a interpretação pertence ao runtime agêntico.
+
 Na experiência do usuário:
 - o `EIAH` funciona como front door da conversa;
 - especialistas entram como continuidade natural, sem parecer troca brusca de bot;

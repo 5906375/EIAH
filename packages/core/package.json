@@ -50,6 +50,14 @@
       "import": "./dist/catalog/*.js",
       "types": "./dist/catalog/*.d.ts"
     },
+    "./billing/*": {
+      "import": "./dist/billing/*.js",
+      "types": "./dist/billing/*.d.ts"
+    },
+    "./reasons/*": {
+      "import": "./dist/reasons/*.js",
+      "types": "./dist/reasons/*.d.ts"
+    },
     "./utils/*": {
       "import": "./dist/utils/*.js",
       "types": "./dist/utils/*.d.ts"

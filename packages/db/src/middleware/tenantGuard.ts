@@ -12,6 +12,8 @@ type ExtensionQueryParams = {
 const MODEL_GUARD_MODE: Record<string, GuardMode> = {
   Run: "tenant+workspace",
   RunEvent: "tenant+workspace",
+  GovernedCase: "tenant+workspace",
+  GovernedCaseRevision: "tenant+workspace",
   PlanStepRecord: "tenant+workspace",
   TenantActionPolicy: "tenant+workspace",
   GuardrailAuditLedger: "tenant+workspace",
@@ -129,7 +131,18 @@ export function tenantGuard(tenantId: string, workspaceId: string) {
 
           const args = params.args ?? {};
 
-          if (["findUnique", "findFirst", "findMany"].includes(params.operation)) {
+          if (
+            [
+              "findUnique",
+              "findUniqueOrThrow",
+              "findFirst",
+              "findFirstOrThrow",
+              "findMany",
+              "count",
+              "aggregate",
+              "groupBy",
+            ].includes(params.operation)
+          ) {
             args.where = injectWhere({ tenantId, workspaceId, model, where: args.where });
           }
 

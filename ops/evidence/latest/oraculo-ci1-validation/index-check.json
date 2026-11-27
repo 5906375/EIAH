@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "--import",
+    "tsx",
+    "scripts/checkEvidenceIndex.ts"
+  ],
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "{\n  \"ok\": false,\n  \"check\": \"check:evidence-index\",\n  \"message\": \"EVIDENCE_INDEX has missing file references\",\n  \"details\": {\n    \"missingCount\": 1,\n    \"missingRefs\": [\n      \"packages/core/node_modules/@eiah\"\n    ]\n  }\n}\n",
+  "baselineReferencePresent": true,
+  "note": "Historical narrative path is checked as a live reference; new worktree does not contain this unrelated dependency directory. No baseline execution comparison is claimed."
+}

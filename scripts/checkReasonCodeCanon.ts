@@ -10,6 +10,8 @@ import {
 export const CANONICAL_REASON_CODE_SOURCE =
   "packages/core/src/reasons/reasonCatalog.ts";
 export const REASON_CODE_DOCUMENTATION = "docs/ops/reason-codes-catalog.md";
+export const ACTION_POLICY_REASON_CODE_SOURCE =
+  "apps/api/src/services/runGovernanceMetadata.ts";
 
 export const REASON_CODE_CANON_TARGETS = [
   CANONICAL_REASON_CODE_SOURCE,
@@ -18,8 +20,18 @@ export const REASON_CODE_CANON_TARGETS = [
   "apps/api/src/routes/imobCrmSchemas.ts",
   "apps/api/src/types/chatVerticalHandoffV2Contract.ts",
   "contracts/chat/vertical.reason_codes.v1.json",
+  ACTION_POLICY_REASON_CODE_SOURCE,
   "scripts/tests/checkReasonCodeCanon.test.ts",
 ] as const;
+
+export const EXPECTED_ACTION_POLICY_REASON_CODE_MAP = {
+  SCOPE_ALLOWED: null,
+  POLICY_NOT_FOUND: "POLICY_NOT_FOUND",
+  SCOPE_NOT_ALLOWED: "ACTION_POLICY_SCOPE_DENIED",
+  WORKSPACE_SCOPE_MISMATCH: "ACTION_POLICY_SCOPE_DENIED",
+  TENANT_POLICY_DISABLED: "ACTION_POLICY_DISABLED",
+  POLICY_STORE_UNAVAILABLE: "ACTION_POLICY_STORE_UNAVAILABLE",
+} as const;
 
 const BOOTSTRAP_ACTIVE_CODES = new Set<string>([
   "COMMERCIAL_PRIORITY",
@@ -284,6 +296,70 @@ function sameSet(left: readonly string[], right: readonly string[]): boolean {
   );
 }
 
+export function validateActionPolicyReasonCodeBoundary(
+  source: string,
+  catalog: readonly ReasonCodeDefinition[],
+): ReasonCodeCanonViolation[] {
+  const violations: ReasonCodeCanonViolation[] = [];
+  const eventCodes = extractStringArrayConstant(source, "ACTION_POLICY_EVENT_REASON_CODES");
+  const scopeCodes = extractStringArrayConstant(source, "RUN_WORKER_SCOPE_REASON_CODES");
+  const expectedEventCodes = [
+    ...new Set(
+      Object.values(EXPECTED_ACTION_POLICY_REASON_CODE_MAP).filter(
+        (value): value is string => typeof value === "string",
+      ),
+    ),
+    "INVALID_ACTION_TYPE",
+  ];
+
+  if (!sameSet(eventCodes, expectedEventCodes)) {
+    violations.push(
+      violation(
+        "ACTION_POLICY_EVENT_REASON_CODE_DRIFT",
+        ACTION_POLICY_REASON_CODE_SOURCE,
+        "Action Policy event reasonCode set differs from the ratified public mapper",
+      ),
+    );
+  }
+  if (!sameSet(scopeCodes, ["RUN_SCOPE_NOT_RESOLVED"])) {
+    violations.push(
+      violation(
+        "RUN_SCOPE_REASON_CODE_DRIFT",
+        ACTION_POLICY_REASON_CODE_SOURCE,
+        "worker scope reasonCode set differs from the ratified boundary",
+      ),
+    );
+  }
+
+  for (const [internalCode, publicCode] of Object.entries(
+    EXPECTED_ACTION_POLICY_REASON_CODE_MAP,
+  )) {
+    const expectedValue = publicCode === null ? "null" : `"${publicCode}"`;
+    const mappingPattern = new RegExp(
+      `(?:"${internalCode}"|${internalCode})\\s*:\\s*${expectedValue}`,
+    );
+    if (!mappingPattern.test(source)) {
+      violations.push(
+        violation(
+          "ACTION_POLICY_REASON_CODE_MAPPING_DRIFT",
+          ACTION_POLICY_REASON_CODE_SOURCE,
+          `ratified mapping is absent or divergent: ${internalCode} -> ${String(publicCode)}`,
+        ),
+      );
+    }
+  }
+
+  violations.push(
+    ...validateReasonCodeReferences(
+      [...eventCodes, ...scopeCodes],
+      catalog,
+      ACTION_POLICY_REASON_CODE_SOURCE,
+      true,
+    ),
+  );
+  return violations;
+}
+
 function validateDomainCatalog(
   codes: readonly string[],
   domain: "imob" | "chat_vertical",
@@ -322,6 +398,7 @@ export function runReasonCodeCanonCheck(root = process.cwd()): ReasonCodeCanonVi
   const chatCatalog = JSON.parse(
     read("contracts/chat/vertical.reason_codes.v1.json"),
   ) as { codes?: unknown };
+  const actionPolicySource = read(ACTION_POLICY_REASON_CODE_SOURCE);
 
   const imobCodes = extractStringArrayConstant(imobSource, "IMOB_REASON_CODE_VALUES");
   const chatCodes = extractStringArrayConstant(
@@ -357,6 +434,7 @@ export function runReasonCodeCanonCheck(root = process.cwd()): ReasonCodeCanonVi
       "chat_vertical",
       REASON_CODE_CANON_TARGETS[5],
     ),
+    ...validateActionPolicyReasonCodeBoundary(actionPolicySource, REASON_CODE_CATALOG),
   );
 
   if (!imobSchemaSource.includes("z.enum(IMOB_REASON_CODE_VALUES)")) {
