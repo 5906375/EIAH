@@ -55,7 +55,8 @@ let selection = 0;
 const contactFields = ['contact', ...footerFields];
 const profileFields = ['name', 'introduction', 'accent', ...contactFields];
 const savedAtOpen = readSavedBrand();
-for (const field of contactFields) {
+logo = savedAtOpen.logo ?? '';
+for (const field of profileFields) {
   form.elements.namedItem(field).value = savedAtOpen[field] ?? '';
 }
 loadSaved.hidden = Object.keys(savedAtOpen).length === 0;

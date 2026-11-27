@@ -1,5 +1,6 @@
 import { readSavedBrand } from './client-brand.mjs';
 import { readClientProperties } from './client-properties.mjs';
+import { MAX_DRAFT_BYTES, restoreDraftText } from './draft-restore.mjs';
 import { readSetup, updateSetup } from './site-setup-store.mjs';
 import { bindCarouselNavigation } from './carousel-navigation.mjs';
 import { imobSpecialists } from './imob-specialists.mjs';
@@ -254,20 +255,62 @@ profileForm.addEventListener('submit', event => {
   void save(current => ({ ...current, profile }), 'Perfil salvo. Você já pode enviar o cadastro e importar a personalização.', 'import-draft');
 });
 
-get('import-draft').addEventListener('click', () => {
+// Monta o rascunho a partir do que está salvo neste navegador (marca e imóveis editados).
+function draftFromPersonalization(current) {
+  requireCondition(current.profile, 'Salve o perfil antes de criar o rascunho.');
   const edited = readSavedBrand();
   const properties = readClientProperties({ onlyEdited: true });
-  void save(current => {
-    requireCondition(current.profile, 'Salve o perfil antes de criar o rascunho.');
-    const brand = {
-      ...edited,
-      name: edited.name || current.profile.business,
-      introduction: edited.introduction || 'Conheça nossos imóveis e fale com nossa equipe.'
-    };
-    const revision = (current.draft?.revision ?? 0) + 1;
-    return { ...current, draft: { brand, properties, revision } };
-  }, 'Rascunho atualizado com a personalização disponível neste navegador.',
-  'publish-site');
+  const brand = {
+    ...edited,
+    name: edited.name || current.profile.business,
+    introduction: edited.introduction || 'Conheça nossos imóveis e fale com nossa equipe.'
+  };
+  const revision = (current.draft?.revision ?? 0) + 1;
+  return { ...current, draft: { brand, properties, revision } };
+}
+
+function importDraft(success) {
+  return save(draftFromPersonalization, success, 'publish-site');
+}
+
+get('import-draft').addEventListener('click', () => {
+  void importDraft('Rascunho atualizado com a personalização disponível neste navegador.');
+});
+
+// Reabrir um rascunho baixado antes: confere o arquivo, pede confirmação e refaz a marca e os imóveis do editor.
+get('open-draft').addEventListener('click', () => get('open-draft-file').click());
+get('open-draft-file').addEventListener('change', async event => {
+  const input = event.target;
+  const [file] = input.files;
+  input.value = '';
+  if (!file) return;
+  if (file.size > MAX_DRAFT_BYTES) {
+    showMessage('O arquivo é grande demais (o limite é ' + Math.round(MAX_DRAFT_BYTES / 1048576) + ' MB).', true);
+    return;
+  }
+  if (busy) return;
+  busy = true;
+  document.querySelector('.setup-panels').setAttribute('aria-busy', 'true');
+  try {
+    const result = await restoreDraftText(await file.text(), {
+      confirm: message => confirm(message),
+      persist: () => updateSetup(draftFromPersonalization)
+    });
+    if (!result.ok) {
+      if (!result.cancelled) showMessage(result.message, true);
+      return;
+    }
+    state = result.setup;
+    render();
+    const note = result.rejected ? ' ' + result.rejected + (result.rejected === 1 ? ' imóvel ficou de fora' : ' imóveis ficaram de fora') + ' por dados incompletos.' : '';
+    showMessage('Rascunho aberto: a marca e ' + (result.saved === 1 ? '1 imóvel' : result.saved + ' imóveis') + ' voltaram ao editor.' + note);
+    get('publish-site').focus();
+  } catch {
+    showMessage('Não foi possível concluir a abertura do rascunho. Confira os dados antes de tentar novamente.', true);
+  } finally {
+    busy = false;
+    document.querySelector('.setup-panels').removeAttribute('aria-busy');
+  }
 });
 
 get('download-draft').addEventListener('click', () => {
@@ -281,6 +324,7 @@ get('download-draft').addEventListener('click', () => {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showMessage('Rascunho baixado. Guarde o arquivo vitrine-imob.json: você pode reabri-lo aqui, em "Abrir rascunho salvo".');
 });
 
 get('publish-site').addEventListener('click', () => {

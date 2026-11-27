@@ -1,10 +1,11 @@
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { contactNumber } from '../public/imob/client-footer.mjs';
+import { validateDraft } from '../public/imob/draft-rules.mjs';
 import { PILOT_LIMIT, PILOT_ORIGIN, reservedSlugs, slugProblem } from '../public/imob/pilot-site.mjs';
 import { rentalCosts, unknownChargesNotice } from '../public/imob/rental-costs.mjs';
 
-export { reservedSlugs };
+export { reservedSlugs, validateDraft };
 
 const defaultRoot = new URL('../public/imob/', import.meta.url);
 const limit = PILOT_LIMIT;
@@ -20,9 +21,6 @@ const entities = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '
 const escape = (value) => String(value ?? '').replace(/[&<>"']/g, character => entities[character]);
 const maxImageBytes = 5 * 1024 * 1024;
 const maxFeatures = 20;
-const maxProperties = 50;
-const maxPhotos = 20;
-const textLimits = { titulo: 100, tipo: 40, cidade: 60, bairro: 60, descricao: 800 };
 
 
 // Confere o conteúdo real do arquivo, não só o prefixo data: informado no rascunho.
@@ -121,48 +119,6 @@ function renderProperty(property, index, context) {
     ${features.length ? '<p>Características: ' + escape(features.join(', ')) + '</p>' : ''}
     ${images ? '<div class="property-context-photos" tabindex="0" aria-label="Fotos do imóvel">' + images + '</div>' : ''}
   </article>`;
-}
-
-const isAmount = value => value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value) && value >= 0);
-const isOptionalText = (value, max) => value === undefined || value === null || (typeof value === 'string' && value.length <= max);
-
-// Confere o rascunho inteiro e lista todos os problemas de uma vez, em português, antes de gravar qualquer arquivo.
-export function validateDraft(draft) {
-  const { brand, properties } = draft ?? {};
-  if (!brand || typeof brand !== 'object' || Array.isArray(brand) || !Array.isArray(properties)) {
-    throw new Error('Exporte um rascunho válido pelo editor IMOB.');
-  }
-  const problems = [];
-  if (typeof brand.name !== 'string' || !brand.name.trim()) problems.push('Informe o nome da imobiliária.');
-  else if (brand.name.length > 80) problems.push('O nome da imobiliária passa de 80 caracteres.');
-  if (!isOptionalText(brand.introduction, 500)) problems.push('A apresentação deve ser um texto de até 500 caracteres.');
-  if (properties.length > maxProperties) problems.push('O rascunho tem ' + properties.length + ' imóveis; o limite é ' + maxProperties + '.');
-  properties.slice(0, maxProperties).forEach((property, index) => {
-    const label = 'Imóvel ' + (index + 1) + ': ';
-    if (!property || typeof property !== 'object' || Array.isArray(property)) {
-      problems.push(label + 'dados inválidos.');
-      return;
-    }
-    if (typeof property.titulo !== 'string' || !property.titulo.trim()) problems.push(label + 'informe o título.');
-    if (!Object.hasOwn(units, property.finalidade)) problems.push(label + 'a finalidade deve ser venda, locação ou temporada.');
-    if (typeof property.preco !== 'number' || !Number.isFinite(property.preco) || property.preco < 0) problems.push(label + 'o preço é inválido.');
-    for (const [field, max] of Object.entries(textLimits)) {
-      if (!isOptionalText(property[field], max)) problems.push(label + 'o campo ' + field + ' deve ser um texto de até ' + max + ' caracteres.');
-    }
-    for (const field of ['area', 'quartos', 'suites', 'banheiros', 'vagas', 'condominio', 'iptu']) {
-      if (!isAmount(property[field])) problems.push(label + 'o campo ' + field + ' deve ser um número maior ou igual a zero.');
-    }
-    if (property.caracteristicas !== undefined && !(Array.isArray(property.caracteristicas) && property.caracteristicas.every(item => typeof item === 'string'))) {
-      problems.push(label + 'as características devem ser uma lista de textos.');
-    }
-    if (property.fotos !== undefined && !(Array.isArray(property.fotos) && property.fotos.length <= maxPhotos)) {
-      problems.push(label + 'as fotos devem ser uma lista de até ' + maxPhotos + '.');
-    }
-    if (property.stay !== undefined && (!property.stay || !isAmount(property.stay.maxGuests) || !isAmount(property.stay.cleaning))) {
-      problems.push(label + 'os dados de temporada são inválidos.');
-    }
-  });
-  if (problems.length) throw new Error('Corrija o rascunho antes de publicar:\n- ' + problems.join('\n- '));
 }
 
 export function renderSite(draft, slug, { example = false } = {}) {

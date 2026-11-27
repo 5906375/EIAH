@@ -10,7 +10,7 @@ const introduction = 'Esta prévia usa imóveis fictícios e funciona sem IA. Co
 
 section.innerHTML = `
   <div class="wrap">
-    <a class="quiet-link" href="#vitrine" id="interest-back">Voltar à vitrine</a>
+    <a class="btn btn-ghost" href="#vitrine" id="interest-back">Voltar à vitrine</a>
     <h2 id="interest-title" data-demo-guide-topic="conversa" tabindex="-1">Quer conhecer o IMOB com IA?</h2>
     <p class="interest-intro" id="interest-intro">${introduction}</p>
     <aside id="interest-property" aria-label="Imóvel de exemplo" hidden></aside>

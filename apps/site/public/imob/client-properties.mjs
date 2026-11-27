@@ -92,6 +92,19 @@ export function resetClientProperty(id) {
   return writeEdits(edits);
 }
 
+/** Substitui todas as edições de uma vez (reabrir rascunho). Cada registro passa pela mesma validação do editor. */
+export function replaceClientProperties(editsById) {
+  const next = {};
+  let rejected = 0;
+  for (const [id, record] of Object.entries(editsById ?? {})) {
+    const edit = normalizeEdit(id, record);
+    if (edit) next[id] = edit;
+    else rejected += 1;
+  }
+  const ok = writeEdits(next);
+  return { ok, saved: ok ? Object.keys(next).length : 0, rejected };
+}
+
 export const storefrontProperties = typeof document !== 'undefined' && document.body.dataset.product === 'ia-cliente'
   ? readClientProperties()
   : examples;

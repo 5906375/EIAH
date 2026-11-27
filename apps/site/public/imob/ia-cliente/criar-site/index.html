@@ -62,10 +62,13 @@
           <h3 data-demo-guide-topic="rascunho">Rascunho da vitrine</h3>
           <p id="draft-status">Recupere as edições feitas na Prévia 02 neste navegador.</p>
           <p class="setup-note">O rodapé usa os dados que você salva em Contatos. Após editar, importe a personalização novamente.</p>
+          <p class="setup-warning" id="draft-warning" role="note"><strong>Atenção:</strong> o rascunho fica só neste navegador. Se você limpar os dados ou trocar de computador, perde o trabalho. Baixe o arquivo em "Publicação gratuita" e guarde-o: você pode reabri-lo aqui, em "Abrir rascunho salvo".</p>
           <div class="next-actions">
             <button class="btn btn-ghost" type="button" id="import-draft">Importar personalização da demo</button>
-            <a class="quiet-link" href="../personalizar/">Revisar no editor</a>
-            <a class="quiet-link" href="../personalizar/#editorContact">Editar dados do rodapé</a>
+            <button class="btn btn-ghost" type="button" id="open-draft">Abrir rascunho salvo</button>
+            <input type="file" id="open-draft-file" accept="application/json,.json" hidden>
+            <a class="btn btn-ghost" href="../personalizar/">Revisar no editor</a>
+            <a class="btn btn-ghost" href="../personalizar/#editorContact">Editar dados do rodapé</a>
           </div>
         </div>
       </section>
