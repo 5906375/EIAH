@@ -1,0 +1,3 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_92581871 pg_porta=55432 redis_porta=56379 redis_pid=34060
+Loaded Prisma config from prisma.config.ts.
+

@@ -1,0 +1,100 @@
+TAP version 13
+# Subtest: cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+ok 1 - cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+  ---
+  duration_ms: 29.916622
+  type: 'test'
+  ...
+# Subtest: cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+ok 2 - cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+  ---
+  duration_ms: 14.915031
+  type: 'test'
+  ...
+# Subtest: cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+ok 3 - cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+  ---
+  duration_ms: 5.913224
+  type: 'test'
+  ...
+# Subtest: cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+ok 4 - cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+  ---
+  duration_ms: 3.965106
+  type: 'test'
+  ...
+# Subtest: cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+ok 5 - cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+  ---
+  duration_ms: 9.935229
+  type: 'test'
+  ...
+# Subtest: cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+ok 6 - cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+  ---
+  duration_ms: 24.782971
+  type: 'test'
+  ...
+# Subtest: cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+ok 7 - cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+  ---
+  duration_ms: 11.337767
+  type: 'test'
+  ...
+# Subtest: cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita
+ok 8 - cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita
+  ---
+  duration_ms: 5.067091
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+ok 9 - cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+  ---
+  duration_ms: 5.610189
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+ok 10 - cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+  ---
+  duration_ms: 5.069546
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+ok 11 - cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+  ---
+  duration_ms: 3.741338
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+ok 12 - cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+  ---
+  duration_ms: 5.144831
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída
+ok 13 - cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída
+  ---
+  duration_ms: 8.596498
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição
+ok 14 - cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição
+  ---
+  duration_ms: 7.392564
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior
+ok 15 - cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior
+  ---
+  duration_ms: 3.43298
+  type: 'test'
+  ...
+1..15
+# tests 15
+# suites 0
+# pass 15
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 255.465934

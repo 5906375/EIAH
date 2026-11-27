@@ -1,0 +1,162 @@
+EARLIER_PREFLIGHT_DIAGNOSTIC {"readOnlyDockerInspect": "optional Tmpfs field absent on legacy containers; query adjusted to tolerate missing map keys", "resourcesCreated": 0, "PostgreSQLTestsExecuted": 0}
+INTERRUPTED "unsupported operand type(s) for |: 'dict' and 'dict'"
+PREFLIGHT_COMPATIBILITY {"python": "legacy Python dict merge adjusted; prior preflight exceptions preserved", "resourcesCreatedPreviously": 0, "PostgreSQLTestsExecutedPreviously": 0}
+PREFLIGHT {"nameFree": true, "loopbackPortFree": 55434, "image": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7", "operationalNetworks": ["eiah-dev"], "existing": {"8239398ab0fd17b88914b8f36b2f3ea27d70d7e4c336cd7fa36aa59f2e2fe5fe": {"name": "/pf77-sigterm-b", "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e", "startedAt": "2026-10-27T10:48:03.622417574Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-iso", "composeProject": null, "networks": ["pf77-iso"]}, "71221d74314952acefe070b3c4be023c8564834884f2dcca1a887200e1a533ef": {"name": "/pf77-sigterm-a", "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e", "startedAt": "2026-10-27T10:47:29.588373762Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-iso", "composeProject": null, "networks": ["pf77-iso"]}, "94d32cbaadb0176e40c6aefd0dbdbc154f2318c0056aa16fb2f2d5b89ced16a5": {"name": "/pf77-suite-r2", "image": "sha256:177e8051ee1a65d22c52db66c943eb84238dcac7f7ea84ef24f5ea1466af3b87", "startedAt": "2026-10-27T10:42:49.795500935Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-iso", "composeProject": null, "networks": ["pf77-iso"]}, "20eff3185555b03ca3afdf4692f99e473edaf989c9a5aea7bbd38074ffe9bcf5": {"name": "/pf77-api-smoke3", "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e", "startedAt": "2026-10-27T10:18:17.132162655Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-net", "composeProject": null, "networks": ["pf77-net"]}, "b32cfb343cc033c52985c9d8a1493ef05c06ae37a56a1ce5bf41f3473da65ce1": {"name": "/pf77-api-smoke2", "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e", "startedAt": "2026-10-27T10:16:47.877781286Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-net", "composeProject": null, "networks": ["pf77-net"]}, "5f9c315304b8844aace2216920e5b6ef01a28de82d45120c35c815041a12aa76": {"name": "/pf77-api-smoke", "image": "sha256:943466e904acced1d61060af2ebbc21b3602c9b37ce5cfa87293873a8714548e", "startedAt": "2026-10-27T10:15:32.321912146Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-net", "composeProject": null, "networks": ["pf77-net"]}, "840fb9c61678859131e5edbe15f5d7acf1a03f6c0816ecf8f77921c4ce889b36": {"name": "/pf77-redis", "image": "sha256:07a03ad21d6a480ccdc52071d141c1311225c7547d198338b5e1daeb009e2f4e", "startedAt": "2026-10-27T10:08:26.839443793Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-net", "composeProject": null, "networks": ["pf77-iso", "pf77-net"]}, "851c6cbbd598356b67a957b58fb8f39b6c03056b5b4def6f7afd409473148230": {"name": "/pf77-pg", "image": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7", "startedAt": "2026-10-27T10:08:26.48941752Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "pf77-net", "composeProject": null, "networks": ["pf77-iso", "pf77-net"]}, "3a1075759612da1f47a23510579447b9b77b35da53c2b6591daf586df3d0ef5d": {"name": "/eiah-maintenance-worker", "image": "sha256:c07ac7d6dbedae7e726ea8286914090dbeaf657bf0a1e154f812909c46c58693", "startedAt": "2026-10-27T17:57:23.270018596Z", "status": "exited", "restartCount": 0, "restartPolicy": "unless-stopped", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "e6abebbaf9aa05efa88205124e0c22202510c3c81cd93ed9746a038c42b426c9": {"name": "/eiah-action-runner", "image": "sha256:c07ac7d6dbedae7e726ea8286914090dbeaf657bf0a1e154f812909c46c58693", "startedAt": "2026-10-27T17:57:22.84603851Z", "status": "exited", "restartCount": 0, "restartPolicy": "unless-stopped", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "9c4e10091ea6f85d36b5a97a78e9eb1ed8977db8d0b8b46034468dfe25ecaffd": {"name": "/eiah-redis", "image": "sha256:07a03ad21d6a480ccdc52071d141c1311225c7547d198338b5e1daeb009e2f4e", "startedAt": "2026-11-03T19:44:58.211257077Z", "status": "exited", "restartCount": 0, "restartPolicy": "unless-stopped", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "3409d971b04c59f292c6561bc20d0252db2c7dde3fe5c8e9087c42404a426801": {"name": "/eiah-parity-fix-redis", "image": "sha256:07a03ad21d6a480ccdc52071d141c1311225c7547d198338b5e1daeb009e2f4e", "startedAt": "2026-10-08T21:03:33.513886107Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "default", "composeProject": null, "networks": ["bridge"]}, "17e6cd099e1faf4a90b432769240f07916ef202765a02fc3bba2543812e31d65": {"name": "/eiah-parity-fix-pg", "image": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7", "startedAt": "2026-10-08T21:03:24.661521127Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "default", "composeProject": null, "networks": ["bridge"]}, "8a53021dc8116167572052ab0ab28cf3d3384ad091c6fbcd5f4648893065da44": {"name": "/eiah-web", "image": "sha256:c07ac7d6dbedae7e726ea8286914090dbeaf657bf0a1e154f812909c46c58693", "startedAt": "2026-10-01T10:47:24.069679839Z", "status": "exited", "restartCount": 0, "restartPolicy": "", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "e80846f9607b78731ebc4e8c91cc718aa31484f577acda6efaec7c3bd4fcdc9f": {"name": "/eiah-api", "image": "sha256:c07ac7d6dbedae7e726ea8286914090dbeaf657bf0a1e154f812909c46c58693", "startedAt": "2026-10-01T10:47:24.118401282Z", "status": "exited", "restartCount": 0, "restartPolicy": "", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "3a35f642f716c19dfb0bc8b13239e2edfbf2eacc1ea08802766fb03f5611bc7c": {"name": "/eiah-postgres", "image": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7", "startedAt": "2026-11-25T15:02:29.594230812Z", "status": "running", "restartCount": 0, "restartPolicy": "unless-stopped", "networkMode": "eiah-dev", "composeProject": "eiah_builder", "networks": ["eiah-dev"]}, "c0e46e5595913eeef9c353c2d10810b542b06abba9cd9b5e2e0e85d63421b938": {"name": "/eiah-radar-review-20260924", "image": "sha256:68f823d56bc9172e799a8b4ed7ef4a407b39328f5359dd7e90f3319a38b6a19b", "startedAt": "2026-09-24T16:50:36.203085584Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "default", "composeProject": null, "networks": ["bridge"]}, "04c1f1891566d63b2e916f9c83bc2863dd44b4505e9553e98e69717396edceea": {"name": "/radar-social-demo-postgres", "image": "sha256:68f823d56bc9172e799a8b4ed7ef4a407b39328f5359dd7e90f3319a38b6a19b", "startedAt": "2026-09-19T16:29:22.324110903Z", "status": "exited", "restartCount": 0, "restartPolicy": "no", "networkMode": "default", "composeProject": null, "networks": ["bridge"]}}}
+CONTAINER_ISOLATION {"id": "0d328e0f8bc08a5699eee09a66edb681c8e12ddfaf458f75a5ede77fa569d630", "name": "/eiah-whatsapp-meta-validation", "image": "sha256:9b05db12a35460fff0587e009f9326e414a53e9484555547f96d214a2ba98ef7", "startedAt": "2026-11-25T15:13:04.014367009Z", "status": "running", "restartCount": 0, "restartPolicy": "no", "networkMode": "bridge", "networks": {"bridge": {"Aliases": null, "DriverOpts": null, "EndpointID": "0c887659dd11086747b84ff3fe1a8e86aa9a1f890f7bc3361c86030d4b1723ea", "Gateway": "172.17.0.1", "GlobalIPv6Address": "", "GlobalIPv6PrefixLen": 0, "IPAMConfig": null, "IPAddress": "172.17.0.2", "IPPrefixLen": 16, "IPv6Gateway": "", "Links": null, "MacAddress": "02:42:ac:11:00:02", "NetworkID": "2d973c53a26fb9cca65993f33a90eeb468a4ffe1c53dde96bba6d35950703627"}}, "ports": {"5432/tcp": [{"HostIp": "127.0.0.1", "HostPort": "55434"}]}, "mounts": [], "tmpfs": {"/var/lib/postgresql/data": "rw,noexec,nosuid,size=256m"}, "composeProject": null, "owner": "da8c278d-7520-423d-bf4e-d8ba530aa403"}
+VALIDATION_COMMAND {"command": ["timeout", "120s", "node", "--import", "tsx", "--test", "apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts"], "environment": "dedicated URL/authorization passed in memory; credentials redacted"}
+TAP version 13
+# META_PG_IDENTITY {"db":"eiah_whatsapp_meta_synthetic","role":"meta_validation","version":"16.15 (Debian 16.15-1.pgdg12+2)","port":5432,"userTablesBefore":0,"hostPort":55434}
+# META_PG_MIGRATION {"sha256":"7492c4bc400eb08298cbe7b08471d92ca220c24f444f81ee801b81c61ff67f76","statements":2,"rows":0}
+# Subtest: Meta real PostgreSQL — dedicated disposable container only
+    # Subtest: 01 migration applies atomically to the empty disposable database
+    ok 1 - 01 migration applies atomically to the empty disposable database
+      ---
+      duration_ms: 14.347589
+      type: 'test'
+      ...
+# META_PG_CONSTRAINTS ["WhatsappMetaIngressReceipt_expiry_check","WhatsappMetaIngressReceipt_hash_check","WhatsappMetaIngressReceipt_pkey","WhatsappMetaIngressReceipt_scope_check"]
+    # Subtest: 02 PostgreSQL enforces primary key, scope, hash, nullability and expiry constraints
+    ok 2 - 02 PostgreSQL enforces primary key, scope, hash, nullability and expiry constraints
+      ---
+      duration_ms: 76.578764
+      type: 'test'
+      ...
+    # Subtest: 03 real adapter ACK follows committed technical persistence visible to another connection
+    ok 3 - 03 real adapter ACK follows committed technical persistence visible to another connection
+      ---
+      duration_ms: 91.732894
+      type: 'test'
+      ...
+    # Subtest: 04 duplicate event ID is ACKed without reprocessing
+    ok 4 - 04 duplicate event ID is ACKed without reprocessing
+      ---
+      duration_ms: 39.676527
+      type: 'test'
+      ...
+    # Subtest: 05 conflicting digest for the same identity rolls back and preserves the original
+    ok 5 - 05 conflicting digest for the same identity rolls back and preserves the original
+      ---
+      duration_ms: 51.190374
+      type: 'test'
+      ...
+# META_PG_CONCURRENCY {"pidA":96,"pidB":97,"fresh":1,"duplicate":1,"processed":1,"observed":{"pid":97,"wait":"Lock","blockers":[96]},"ackWhileLocked":false}
+    # Subtest: 06 independent connections race safely and a blocked ACK waits for the real row-lock transaction
+    ok 6 - 06 independent connections race safely and a blocked ACK waits for the real row-lock transaction
+      ---
+      duration_ms: 44.891863
+      type: 'test'
+      ...
+    # Subtest: 07 callback rejection rolls back the complete real batch
+    ok 7 - 07 callback rejection rolls back the complete real batch
+      ---
+      duration_ms: 23.405073
+      type: 'test'
+      ...
+# META_PG_FAILURE {"realSessionReadOnly":true,"ackStatus":503,"persisted":0}
+    # Subtest: 08 a real PostgreSQL read-only transaction failure never produces a positive ACK
+    ok 8 - 08 a real PostgreSQL read-only transaction failure never produces a positive ACK
+      ---
+      duration_ms: 27.395342
+      type: 'test'
+      ...
+# META_PG_RECONNECT {"writerPid":99,"readerPid":100,"persisted":1,"duplicate":true}
+    # Subtest: 09 committed receipt survives disconnect and a new Prisma/PG connection
+    ok 9 - 09 committed receipt survives disconnect and a new Prisma/PG connection
+      ---
+      duration_ms: 53.036142
+      type: 'test'
+      ...
+    # Subtest: 10 tenant/workspace partitions remain independent for the same event key
+    ok 10 - 10 tenant/workspace partitions remain independent for the same event key
+      ---
+      duration_ms: 16.127963
+      type: 'test'
+      ...
+    # Subtest: 11 persisted records contain only technical metadata, no payload/phone/content/credentials
+    ok 11 - 11 persisted records contain only technical metadata, no payload/phone/content/credentials
+      ---
+      duration_ms: 6.294031
+      type: 'test'
+      ...
+# META_PG_EXPIRY {"retentionMs":1209600000,"before":2,"deleted":1,"retained":1}
+    # Subtest: 12 expiry timestamps preserve milliseconds and real purge deletes only expired receipts
+    ok 12 - 12 expiry timestamps preserve milliseconds and real purge deletes only expired receipts
+      ---
+      duration_ms: 8.196863
+      type: 'test'
+      ...
+    1..12
+ok 1 - Meta real PostgreSQL — dedicated disposable container only
+  ---
+  duration_ms: 654.726132
+  type: 'test'
+  ...
+1..1
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 933.961265
+VALIDATION_EXIT 0
+CLEANUP {"removedContainer": "0d328e0f8bc08a5699eee09a66edb681c8e12ddfaf458f75a5ede77fa569d630", "name": "eiah-whatsapp-meta-validation", "anonymousVolumes": [], "data": "tmpfs destroyed", "absent": true}
+PRESERVATION {"allExistingContainersUnchanged": true, "eiahPostgresUntouched": true, "tenPriorLogsUnchanged": true, "sha256": {"acceptance.log": "1e211d32df34b7b17f9eeb7e08fa3640522579710f66d156265f3333799e4457", "typecheck.log": "de74d4834cdf3e1e2853c056aed704c95e980e268a3c3dccea908a1811e1c1c0", "isolation.log": "978c866399da2d1d51fe075e19d239412bd50d7b57d0f8da50ef684bdb348382", "operational-dependencies.log": "f3eaeb4e7429aa30addf3f2b9e3c80a2aeefbf085002ee3d965381e484f97224", "operational-tests.log": "100f3fe6a4910ada5f0991eea51ab33fab57ea2f2bfb92ff523d58693d1e942a", "operational-focal-types.log": "cf723934790256e9ad3623579be7e17e2ab2fabe9acb23f5ee415f8d233bb933", "operational-api-build.log": "d5fce0fe3fc1e3a6cfc44a981d4c81c5bfaaa3169e26136f5aa2c4a36b66fa0a", "operational-schema.log": "b16dbe1a5853ba358dcf891d5c3bfadcbb0ebee555dfe694f25cc5e2e48aaff8", "operational-docs.log": "fba2930a80f621c2d4693fc9bd2268d05d3e02db18845d2781df897200502fec", "operational-isolation.log": "6ed6589f70595e1998324185e6c29fe12449546bf3b056edb273084a2c4189b1"}}
+FINAL_EXIT 0
+RESUMPTION_CONFIRMATION {"discardedContainerAbsent": true, "eiahPostgresId": "3a35f642f716", "eiahPostgresRunningHealthy": true, "SQLAccessToEiahPostgres": false, "validationRepeated": false, "migrationHashUnchanged": true}
+
+FINAL_DOCUMENTARY_VALIDATION (no test-suite reexecution)
+COMMAND ["timeout", "120s", "node", "--import", "tsx", "scripts/checkEvidenceIndex.ts"]
+{
+  "ok": true,
+  "check": "check:evidence-index",
+  "file": "docs/EVIDENCE_INDEX.md",
+  "sizeChars": 359562,
+  "roadmap": "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md",
+  "refsChecked": 980
+}
+
+EXIT 0
+COMMAND ["timeout", "120s", "node", "--import", "tsx", "scripts/checkDocsLinkIntegrity.ts"]
+{
+  "ok": true,
+  "check": "check:docs-link-integrity",
+  "filesChecked": 29,
+  "targets": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CODEX.md",
+    "IA_EIAH.md",
+    "docs/architecture/EIAH_MULTICHANNEL_IMPLEMENTATION_PLAN_v1.md",
+    "docs/architecture/EIAH_OUTPUTS_MATRIX_v1.md",
+    "docs/architecture/adr-imob-journey-governed-by-case.md",
+    "docs/architecture/agent-chat-runtime.md",
+    "docs/architecture/chat-runtime-entrypoint-debt.md",
+    "docs/architecture/chat-vertical-handoff-v2-shadow.md",
+    "docs/architecture/chat-vertical-handoff-v2.md",
+    "docs/architecture/chat-vertical-imob-preflight-playbook.md",
+    "docs/architecture/db-contract-lifecycle-decisions-v1.md",
+    "docs/architecture/db-contract-lifecycle-v1.md",
+    "docs/architecture/existing-structure-preflight.md",
+    "docs/architecture/fase-3-dividas-documentadas-closure.md",
+    "docs/architecture/front-door-single-operational-surface.md",
+    "docs/architecture/imob-crm-governed-runtime.md",
+    "docs/architecture/mcp-contract-v1.md",
+    "docs/architecture/p3-economy-hardening-closure.md",
+    "docs/architecture/pre-duimp-case-migration-approval-package-v1.md",
+    "docs/architecture/pre-duimp-case-persistence-lifecycle-v1.md",
+    "docs/architecture/pre-duimp-governed-contracts-ownership-rfc-v1.md",
+    "docs/architecture/pre-duimp-human-authority-binding-rfc-v1.md",
+    "docs/architecture/presentation-snapshot-v1.md",
+    "docs/architecture/vertical-access-contract-v1.md",
+    "docs/architecture/vertical-context-imob.md",
+    "docs/architecture/white-label-runtime-gap.md",
+    "docs/architecture/worker-topology.md"
+  ]
+}
+
+EXIT 0
+FINAL_DELTA_ISOLATION {"PASS": true, "tracked": ["apps/api/src/index.ts", "apps/api/src/services/whatsappMetaAdapter.ts", "docs/EVIDENCE_INDEX.md", "docs/ops/whatsapp-provider-meta-controlled-development-decision-record.md", "ops/evidence/latest/whatsapp-meta-controlled-development-2026-11-25/README.md", "package.json", "packages/db/prisma/schema.prisma", "scripts/unit-tests-manifest.txt"], "new": ["apps/api/src/routes/whatsappMeta.ts", "apps/api/src/services/whatsappMetaOperationalConfig.ts", "apps/api/src/services/whatsappMetaPostgresStore.ts", "apps/api/src/tests/whatsapp.meta-operational.test.ts", "apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts", "packages/db/prisma/migrations/20261125180000_whatsapp_meta_ingress_receipt/migration.sql"], "stageEmpty": true, "branchUnchanged": true, "HEADUnchanged": true, "F224Preserved": true, "canonicalManifestMatches": true, "prohibitedSurfacesUnchanged": true}
+FINAL_WHITESPACE [{"path": "--check", "exit": 0, "PASS": true, "diagnostic": ""}, {"path": "apps/api/src/routes/whatsappMeta.ts", "exit": 1, "PASS": true, "diagnostic": ""}, {"path": "apps/api/src/services/whatsappMetaOperationalConfig.ts", "exit": 1, "PASS": true, "diagnostic": ""}, {"path": "apps/api/src/services/whatsappMetaPostgresStore.ts", "exit": 1, "PASS": true, "diagnostic": ""}, {"path": "apps/api/src/tests/whatsapp.meta-operational.test.ts", "exit": 1, "PASS": true, "diagnostic": ""}, {"path": "apps/api/src/tests/whatsapp.meta-postgres.integration.test.ts", "exit": 1, "PASS": true, "diagnostic": ""}, {"path": "packages/db/prisma/migrations/20261125180000_whatsapp_meta_ingress_receipt/migration.sql", "exit": 1, "PASS": true, "diagnostic": ""}]
+CONSOLIDATION_EXIT 0

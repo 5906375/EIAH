@@ -1,0 +1,35 @@
+{
+  "schema": "pre-duimp-typecheck-complement-v1",
+  "generatedOn": "2026-08-30",
+  "original": {
+    "config": "<temporary-path>/pre-duimp-pilot-gate-e2e-000005.tsconfig.json",
+    "sha256": "d0371a5628931efa7981b6bcdfbe0ecc46e3ceca2554d8c36a3db1e4486c9c39",
+    "exitCode": 2,
+    "diagnosticCount": 19,
+    "diagnosticCodes": [
+      "TS2339"
+    ],
+    "aggregateStatus": "FAIL_POST_E2E_QUALITY_GATE"
+  },
+  "derived": {
+    "config": "<temporary-path>/pre-duimp-pilot-gate-e2e-000005-typecheck-fixed.tsconfig.json",
+    "sha256": "0e60825e4f2cd2eb597635bf2a1589f1971756ffe2180e361e00bc28487fae21",
+    "onlySemanticChange": "include apps/api/src/types/express.d.ts",
+    "command": "pnpm exec tsc -p <temporary-path>/pre-duimp-pilot-gate-e2e-000005-typecheck-fixed.tsconfig.json --pretty false",
+    "exitCode": 0,
+    "diagnosticCount": 0,
+    "diagnosticCodes": [],
+    "status": "PASS"
+  },
+  "gitDiffCheck": {
+    "command": "git diff --check",
+    "exitCode": 0,
+    "status": "PASS"
+  },
+  "effects": {
+    "productFilesChanged": false,
+    "versionedFilesChanged": false,
+    "e2eRepeated": false,
+    "pilotAuthorized": false
+  }
+}

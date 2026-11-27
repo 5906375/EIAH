@@ -1,0 +1,35 @@
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	﻿2026-08-04T07:15:07.8143829Z ##[group]Run pnpm check:p3-settlement-support-by-env
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8145053Z ^[[36;1mpnpm check:p3-settlement-support-by-env^[[0m
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8197188Z shell: /usr/bin/bash -e {0}
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8197460Z env:
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8197659Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8197888Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8198181Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8198510Z   SETTLEMENT_ENV: staging
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:07.8198764Z ##[endgroup]
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1048700Z 
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1049677Z > eiah-builder@ check:p3-settlement-support-by-env /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1050686Z > node --experimental-strip-types scripts/checkP3SettlementSupportByEnv.ts
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1051175Z 
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1971760Z {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1972654Z   "ok": true,
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1973175Z   "check": "check:p3-settlement-support-by-env",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1973738Z   "environment": "staging",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1974137Z   "providers": [
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1974550Z     {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1974862Z       "id": "stripe",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1975225Z       "mode": "simulated"
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1975596Z     },
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1975891Z     {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1976203Z       "id": "crypto",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1976802Z       "mode": "simulated"
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1977166Z     },
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1977457Z     {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1977752Z       "id": "bank",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1978096Z       "mode": "simulated"
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1978453Z     }
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1979214Z   ],
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1979833Z   "matrix": "ops/contracts/settlement-provider-support-matrix.v1.json",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1981024Z   "evidence": "ops/evidence/latest/settlement-provider-e2e-2026-08-04.json",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1981972Z   "runbook": "docs/ops/settlement-provider-runbook.md"
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-04T07:15:08.1982567Z }

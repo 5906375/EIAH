@@ -1,0 +1,104 @@
+TAP version 13
+# Subtest: perguntas equivalentes sobre gratuidade, trial e começar sem pagar: o modelo só interpreta, a resposta vem do catálogo e é a mesma
+ok 1 - perguntas equivalentes sobre gratuidade, trial e começar sem pagar: o modelo só interpreta, a resposta vem do catálogo e é a mesma
+  ---
+  duration_ms: 30.967947
+  type: 'test'
+  ...
+# Subtest: contexto estruturado chega ao provider: vertical, etapa, situação e planos do catálogo, sem preços nem decisão
+ok 2 - contexto estruturado chega ao provider: vertical, etapa, situação e planos do catálogo, sem preços nem decisão
+  ---
+  duration_ms: 0.847214
+  type: 'test'
+  ...
+# Subtest: campos extras do modelo (resposta, plano, preço) são ignorados: nada comercial vem do provider
+ok 3 - campos extras do modelo (resposta, plano, preço) são ignorados: nada comercial vem do provider
+  ---
+  duration_ms: 0.359008
+  type: 'test'
+  ...
+# Subtest: plano gratuito só é afirmado se existir no catálogo
+ok 4 - plano gratuito só é afirmado se existir no catálogo
+  ---
+  duration_ms: 0.252652
+  type: 'test'
+  ...
+# Subtest: diferença entre planos e forma de pagamento: dados do catálogo; sem escolher plano nem pagar
+not ok 5 - diferença entre planos e forma de pagamento: dados do catálogo; sem escolher plano nem pagar
+  ---
+  duration_ms: 2.985529
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/front-door-intake.test.ts:1:4621'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /paga na hora ou depois/. Input:
+    
+    'O estado desta conversa não confere com o que o servidor tem registrado para o billing deste workspace. Atualize a conversa para continuar; eu não vou supor condições comerciais nem alterar nada.'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual: 'O estado desta conversa não confere com o que o servidor tem registrado para o billing deste workspace. Atualize a conversa para continuar; eu não vou supor condições comerciais nem alterar nada.'
+  operator: 'match'
+  stack: |-
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/front-door-intake.test.ts:95:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: ambiguidade, baixa confiança, fora de contexto e saída: desfechos contextuais, sem trocar de assunto sozinho
+ok 6 - ambiguidade, baixa confiança, fora de contexto e saída: desfechos contextuais, sem trocar de assunto sozinho
+  ---
+  duration_ms: 0.714777
+  type: 'test'
+  ...
+# Subtest: provider indisponível, erro, timeout e resposta inválida: desfecho explícito, sem inventar condição comercial
+ok 7 - provider indisponível, erro, timeout e resposta inválida: desfecho explícito, sem inventar condição comercial
+  ---
+  duration_ms: 41.893677
+  type: 'test'
+  ...
+# Subtest: autorização antes da interpretação: sem permissão de billing o provider nem é chamado
+ok 8 - autorização antes da interpretação: sem permissão de billing o provider nem é chamado
+  ---
+  duration_ms: 0.441367
+  type: 'test'
+  ...
+# Subtest: JSON em bloco de código é aceito; a interpretação nunca carrega efeito (intent/topic fechados)
+ok 9 - JSON em bloco de código é aceito; a interpretação nunca carrega efeito (intent/topic fechados)
+  ---
+  duration_ms: 0.55905
+  type: 'test'
+  ...
+# Subtest: contrato da requisição: mensagem obrigatória e limitada, etapa fechada, sem campos extras
+ok 10 - contrato da requisição: mensagem obrigatória e limitada, etapa fechada, sem campos extras
+  ---
+  duration_ms: 0.803162
+  type: 'test'
+  ...
+# Subtest: contexto do cliente divergente do servidor: etapa que o estado real da conta não comporta não chama o provider
+ok 11 - contexto do cliente divergente do servidor: etapa que o estado real da conta não comporta não chama o provider
+  ---
+  duration_ms: 0.976836
+  type: 'test'
+  ...
+# Subtest: rótulo de plano inventado pelo cliente não chega ao provider; só rótulos do catálogo autorizado
+ok 12 - rótulo de plano inventado pelo cliente não chega ao provider; só rótulos do catálogo autorizado
+  ---
+  duration_ms: 0.379897
+  type: 'test'
+  ...
+# Subtest: o contrato da requisição rejeita catálogo, permissão e escopo enviados pelo cliente (o servidor só usa os da sessão)
+ok 13 - o contrato da requisição rejeita catálogo, permissão e escopo enviados pelo cliente (o servidor só usa os da sessão)
+  ---
+  duration_ms: 0.240988
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 12
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 362.670676

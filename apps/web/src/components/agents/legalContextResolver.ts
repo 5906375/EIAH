@@ -143,13 +143,17 @@ export function resolveLegalVerticalContext(input: string): LegalVerticalContext
   return { vertical: "LEGAL", stage: stage.stage };
 }
 
-export function isLegalRoutingQuestion(input: string) {
+export function isLegalRoutingQuestion(input: string, requireExplicitRequest = false) {
   const normalized = normalizeIntentText(input);
+  // In a pending domain question, legal vocabulary alone is not a transfer intent.
+  if (requireExplicitRequest) {
+    return /\b(?:preciso|quero|necessito|busco|solicito)\b.*\b(?:ajuda|apoio|orientacao|especialista|parecer)\b.*\bjuridic[oa]\b/.test(normalized);
+  }
   const patterns = [
     "contrato",
     "clausula",
     "parecer",
-    "juridico",
+    "juridic",
     "termo aditivo",
     "minuta",
     "aluguel",

@@ -25,7 +25,7 @@ function createAction(name: string): RegisteredAction {
   };
 }
 
-test("run worker action resolution keeps tenant policy and also allows agent-declared core actions", () => {
+test("run worker action resolution does not treat agent-declared actions as authorization", () => {
   const definitions: Record<string, RegisteredAction> = {
     "realestate.apply_adjustment": createAction("realestate.apply_adjustment"),
     "guardian.checkEnvironmentSegregation": createAction("guardian.checkEnvironmentSegregation"),
@@ -53,9 +53,48 @@ test("run worker action resolution keeps tenant policy and also allows agent-dec
   });
 
   assert.ok(merged["realestate.apply_adjustment"]);
-  assert.ok(merged["guardian.checkEnvironmentSegregation"]);
-  assert.ok(merged["guardian.checkRuntimeHealth"]);
-  assert.ok(merged["guardian.checkEdgeProtection"]);
+  assert.equal(merged["guardian.checkEnvironmentSegregation"], undefined);
+  assert.equal(merged["guardian.checkRuntimeHealth"], undefined);
+  assert.equal(merged["guardian.checkEdgeProtection"], undefined);
+});
+
+test("run worker action resolution does not treat configured registry actions as authorization", () => {
+  const definitions: Record<string, RegisteredAction> = {
+    "realestate.apply_adjustment": createAction("realestate.apply_adjustment"),
+    "guardian.checkRuntimeHealth": createAction("guardian.checkRuntimeHealth"),
+  };
+
+  const merged = mergeActionsForExecution({
+    configured: {
+      "guardian.checkRuntimeHealth": definitions["guardian.checkRuntimeHealth"],
+    },
+    definitions,
+    dbAllowedCanonical: ["realestate.apply_adjustment"],
+    dbAllowedRaw: ["realestate.apply_adjustment"],
+    declaredAgentActions: [],
+  });
+
+  assert.ok(merged["realestate.apply_adjustment"]);
+  assert.equal(merged["guardian.checkRuntimeHealth"], undefined);
+});
+
+test("run worker action resolution fails closed when no tenant action policy is allowed", () => {
+  const definitions: Record<string, RegisteredAction> = {
+    "realestate.apply_adjustment": createAction("realestate.apply_adjustment"),
+    "guardian.checkRuntimeHealth": createAction("guardian.checkRuntimeHealth"),
+  };
+
+  const merged = mergeActionsForExecution({
+    configured: {
+      "guardian.checkRuntimeHealth": definitions["guardian.checkRuntimeHealth"],
+    },
+    definitions,
+    dbAllowedCanonical: [],
+    dbAllowedRaw: [],
+    declaredAgentActions: ["guardian.checkRuntimeHealth"],
+  });
+
+  assert.deepEqual(merged, {});
 });
 
 test("run worker action resolution ignores agent-declared actions that are not in core catalog", () => {
@@ -189,6 +228,23 @@ test("run worker preserves active MCP DB reasonCodes in run failure persistence"
     ),
     null
   );
+});
+
+test("run worker preserves governed action policy reasonCodes in run failure persistence", () => {
+  for (const reasonCode of [
+    "POLICY_NOT_FOUND",
+    "ACTION_POLICY_SCOPE_DENIED",
+    "ACTION_POLICY_DISABLED",
+    "ACTION_POLICY_STORE_UNAVAILABLE",
+  ] as const) {
+    const failure = resolveActiveMcpDenyRunFailure(
+      Object.assign(new Error("Governed action policy deny"), { reasonCode })
+    );
+
+    assert.equal(failure?.status, "error");
+    assert.equal(failure?.reasonCode, reasonCode);
+    assert.equal(failure?.result, null);
+  }
 });
 
 test("run worker records a sanitized DB_INPUT_INVALID failure audit", async () => {

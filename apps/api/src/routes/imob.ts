@@ -1,6 +1,12 @@
+import { createLogger } from "@eiah/core/logging/logger";
+import { llmFailureDiagnostic, llmDiagnosticIdentifier } from "@eiah/core/llm/LLMProviderError";
+import { applyConversationChanges, changeConversation, conversationSearchText, conversationTitle, isConversationDeleted } from "../services/imob/imobChatConversationManagement";
+import { proposalDraftRef } from "../services/imob/crm/imobProposalReviewContinuity";
 import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
+import { resolveImobEntitlements } from "../services/imob/imobEntitlements";
+import { authorizeImobConversation, authorizeImobHistoryActor, createImobHistoryAccessDeps, IMOB_CHAT_AUDIT_AGENT_ID, sendImobHistoryDenied, type ImobHistoryActor } from "../services/imob/imobHistoryAccess";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { generateContractPreview } from "../services/contracts/contractGenerator";
 import type { ContractType } from "../services/contracts/types";
@@ -20,7 +26,10 @@ import {
   type ImobContractIntakeBlockedOperation,
 } from "../services/imob/intake/imobContractIntakeRuntime";
 import { matchImobConversationalIntents } from "../services/imob/imobIntentCatalog";
-import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS, resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { readAgentAvailability } from "../services/agents";
+import { discoverCapabilityNeeds } from "../services/capabilityDiscovery";
+import { resolveImobTransversalNeeds } from "../services/imob/imobTransversalNeeds";
 import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshotService";
 import { buildImobBusinessExport } from "../services/imob/imobCaseExportService";
 import { lookupImobCep } from "../services/imob/imobCepLookup";
@@ -67,6 +76,7 @@ import {
   resolveImobOperationalUpdateImpl,
 } from "../services/imob/crm/imobCrmOperationalResolvers";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import { withStageScopedPrisma } from "../services/imob/crm/imobCrmOperationalResolverShared";
 import { resolveImobRecipeMissionContext } from "../services/imob/crm/imobRecipeMissionConfig";
 import { resolveImobTenantRecipeForWorkspace } from "../services/imob/crm/imobTenantRecipeContext";
 import { buildOwnerPendingSuggestion } from "../services/imob/crm/imobOwnerPendingSuggestion";
@@ -75,7 +85,12 @@ import {
   resolveLegacyCrmFallbackDecision,
   type LegacyCrmFallbackDecision,
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
-import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
+import { resolveImobCrmTurnEngine, resolveImobPropertyUnitIntakeTurn, resolveImobPropertyCaptureTurn, resolveImobTransversalTurnStage } from "../services/imob/crm/imobCrmTurnEngine";
+import { imobPropertyCaptureRequestSchema } from "@eiah/contracts";
+import { executeLlmStep } from "../orchestrator/llmExecutor";
+import { getAgentProfile } from "../services/agents";
+import { readVerticalRegistryFacts } from "../services/chat/workspaceVerticalRegistry";
+import { evaluateImobFrontDoorCapabilityAccess, IMOB_CASE_CONSULT_CAPABILITY } from "../services/chat/verticalRegistryComposition";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
 import {
   buildImobPendingAction,
@@ -98,13 +113,21 @@ import {
   imobOwnerUpdateSchema,
   imobPropertyCreateSchema,
   imobPropertyUpdateSchema,
+  imobRentalLeaseCreateSchema,
+  imobRentalLeaseCloseSchema,
+  imobAssetDealCreateSchema,
+  imobAssetDealCompleteSchema,
+  imobDocumentLinkSchema,
+  imobRentalContractGenerateSchema,
+  imobSaleContractGenerateSchema,
 } from "./imobCrmSchemas";
-import {
-  resolveImobInstallationStatus,
-  sendImobAccessDenied,
-} from "../services/imob/imobAccessGate";
+import { sendImobAccessDenied } from "../services/imob/imobAccessGate";
+import { imobInstallationGate } from "../services/imob/imobInstallationGate";
+import { imobWorkspaceAccessGate } from "../services/imob/imobWorkspaceAccessGate";
+import { imobRevocationGate } from "../services/imob/imobRevocationGate";
+import { imobMembershipGate } from "../services/imob/imobMembershipGate";
 import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
-import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
+import { canWorkspaceOperateImobStage, hasWorkspacePermission, readActiveWorkspaceMembership } from "../services/workspaceResponsibility";
 import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
 import {
   asStringList,
@@ -139,6 +162,14 @@ import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 
 export const imobRouter = createGovernedRouter();
 imobRouter.use(enforceTenant);
+// ADR-011 §2.5: revogação pela EIAH (somente leitura ou bloqueio total) vale para todas as rotas do IMOB.
+imobRouter.use(imobRevocationGate);
+// AUTHZ-IMOB-INSTALLATION-001: o IMOB precisa estar INSTALADO e HABILITADO no workspace (mesma fonte do registry de verticais), antes de qualquer dado.
+imobRouter.use(imobInstallationGate);
+// P12.1: vínculo com o workspace revogado/não ativo não consulta nem opera casos (todas as rotas do IMOB).
+imobRouter.use(imobMembershipGate);
+// AUTHZ-IMOB-CRM-001: vínculo ATIVO (leitura) + permissão base para qualquer rota do IMOB, antes de qualquer dado (o histórico tem porta própria).
+imobRouter.use(imobWorkspaceAccessGate);
 
 function parseWindowStart(windowRaw: unknown) {
   const normalized = typeof windowRaw === "string" ? windowRaw : "7d";
@@ -216,7 +247,6 @@ function ageHours(dateRaw: unknown) {
 }
 
 const IMOB_CHAT_AGENT_ID = "imob-chat";
-const IMOB_CHAT_AUDIT_AGENT_ID = "imob-chat-audit";
 const CHAT_KEY_CONVERSATION_CREATED = "conversation.created";
 const CHAT_KEY_MESSAGE = "conversation.message";
 const CHAT_KEY_TELEMETRY = IMOB_CHAT_TELEMETRY_KEY;
@@ -604,7 +634,9 @@ function injectResolvedPendingSuggestion(resolved: any) {
   });
 }
 
-async function resolveImobOperationalUpdate(params: ImobOperationalResolverParams) {
+async function resolveImobOperationalUpdate(rawParams: ImobOperationalResolverParams) {
+  // P12.2/P12.3: leituras de caso, owner, lead e imóvel do turno respeitam a permissão de etapa da pessoa.
+  const params = withStageScopedPrisma(rawParams);
   const resolved = await resolveImobOperationalUpdateImpl(params, {
     auditAgentId: IMOB_CHAT_AUDIT_AGENT_ID,
     resolveImobCrmOperationalUpdate: async () => null,
@@ -691,8 +723,50 @@ async function resolveImobOperationalUpdate(params: ImobOperationalResolverParam
   return resolveImobCrmOperationalUpdateLegacy(params as any);
 }
 
-async function resolveImobOperationalConsult(params: ImobOperationalResolverParams) {
+/**
+ * Disponibilidade real dos especialistas de apoio do IMOB no workspace do turno. Usa a verificação canônica de
+ * agents.ts (a mesma fonte do catálogo do Front Door); não cria regra própria de elegibilidade.
+ */
+async function readImobBackingSpecialistAvailabilityForTurn(params: { prisma: unknown; tenantId: string; workspaceId: string }) {
+  return readAgentAvailability({
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    agentIds: IMOB_BACKING_SPECIALIST_AGENT_IDS,
+    client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+  });
+}
+
+/**
+ * Capacidades transversais que o caso declara por sinais estruturais (fluxo, rascunho, oportunidade), descobertas em
+ * modo somente leitura no escopo do turno. Sem necessidade aplicável não há nenhuma consulta.
+ */
+async function discoverImobTransversalCapabilitiesForTurn(params: {
+  prisma: unknown;
+  tenantId: string;
+  workspaceId: string;
+  userId?: string | null;
+  turnNeeds?: ReadonlyArray<{ domain: string; capability: string; label?: string }> | null;
+  caseContext: unknown;
+  operational: unknown;
+}) {
+  const needs = resolveImobTransversalNeeds({ caseContext: params.caseContext as { flow?: unknown } | null, operational: params.operational, turnNeeds: params.turnNeeds });
+  if (needs.length === 0) return [];
+  return discoverCapabilityNeeds({
+    needs,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    client: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+    // A autoridade de contratação é da PESSOA que conversa; sem usuário identificado resulta em somente_consulta.
+    actor: { userId: params.userId ?? null },
+  });
+}
+
+async function resolveImobOperationalConsult(rawParams: ImobOperationalResolverParams) {
+  // P12.2/P12.3: leituras de caso, owner, lead e imóvel do turno respeitam a permissão de etapa da pessoa.
+  const params = withStageScopedPrisma(rawParams);
   const resolved = await resolveImobOperationalConsultImpl(params, {
+    readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
+    readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
     auditAgentId: IMOB_CHAT_AUDIT_AGENT_ID,
     resolveImobCrmOperationalUpdate: async () => null,
     resolveImobCrmOperationalConsult: async () => null,
@@ -775,7 +849,11 @@ async function resolveImobOperationalConsult(params: ImobOperationalResolverPara
     decision: fallbackDecision,
     event: "crm_legacy_fallback_invoked",
   });
-  return resolveImobCrmOperationalConsultLegacy(params as any);
+  return resolveImobCrmOperationalConsultLegacy({
+    ...(params as any),
+    readBackingSpecialistAvailability: readImobBackingSpecialistAvailabilityForTurn,
+    readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
+  });
 }
 
 const IMOB_CRM_LEGACY_FALLBACK_CONFIG = getLegacyCrmFallbackConfigFromEnv();
@@ -1068,6 +1146,26 @@ function buildImobProofSurfaceFromMessage(params: {
   } as const;
 }
 
+/**
+ * FD-IMOB-HISTORY-AUTHZ-001: porta do histórico persistido. Vínculo ATIVO (leitura) e, quando há conversa, titularidade — antes de ler
+ * ou gravar. Devolve o ator ou `null` (a resposta de negação já foi enviada). Nunca cria vínculo.
+ */
+async function gateImobHistory(req: TenantAwareRequest, res: Response, conversationId?: string | null): Promise<ImobHistoryActor | null> {
+  const deps = createImobHistoryAccessDeps(req.prisma);
+  const decision = conversationId
+    ? await authorizeImobConversation(req.authContext, conversationId, deps)
+    : await authorizeImobHistoryActor(req.authContext, deps);
+  if (!decision.allowed) {
+    sendImobHistoryDenied(res, decision);
+    return null;
+  }
+  if (conversationId && req.prisma && await isConversationDeleted(req.prisma, decision, conversationId)) {
+    res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+    return null;
+  }
+  return decision;
+}
+
 async function findConversationCreatedEvent(params: {
   prisma: NonNullable<TenantAwareRequest["prisma"]>;
   tenantId: string;
@@ -1341,75 +1439,37 @@ async function upsertImobCaseFromResolvedTurn(params: {
   };
 }
 
-async function resolveImobEntitlements(params: {
-  prisma: NonNullable<TenantAwareRequest["prisma"]>;
-  tenantId: string;
-  workspaceId: string;
-}) {
-  const [realEstatePolicies, productInstallations] = await Promise.all([
-    params.prisma.tenantActionPolicy.findMany({
-      where: {
-        tenantId: params.tenantId,
-        OR: [{ workspaceId: params.workspaceId }, { workspaceId: null }],
-        actionName: {
-          in: [
-            "realestate.apply_adjustment",
-            "action.realestate.apply_adjustment",
-            "realestate.register_property",
-            "realestate.create_contract",
-            "realestate.configure_property_rules",
-            "realestate.release_commission",
-            "realestate.search_knowledge_base",
-          ],
-        },
-        allowed: true,
-      },
-      select: { id: true },
-      take: 1,
-    }),
-    params.prisma
-      .$queryRaw<Array<{ product: string; status: string }>>`
-        SELECT product, status
-        FROM tenant_product_installations
-        WHERE tenant_id = ${params.tenantId}
-          AND workspace_id = ${params.workspaceId}
-      `
-      .catch(() => []),
-  ]);
-
-  const installationStatus = resolveImobInstallationStatus(productInstallations);
-  const hasImobInstallation = installationStatus === "active";
-  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0;
-  return {
-    REAL_ESTATE_CORE: realEstateCore,
-    IMOB_INSTALLED: hasImobInstallation,
-    IMOB_INSTALLATION_STATUS: installationStatus,
-  };
-}
-
 async function readImobWorkspaceAccessProfile(params: {
   prisma: NonNullable<TenantAwareRequest["prisma"]>;
   authContext: NonNullable<TenantAwareRequest["authContext"]>;
 }) {
+  // AUTHZ-IMOB-SERVICE-001: sem usuário não há papel nem permissão — nunca se fabrica "corretor" para token técnico (fail-closed).
   if (!params.authContext.userId) {
-    return {
-      responsibleLabel: "Corretor",
-      permissions: ["imob.chat.use", "imob.stage.*"],
-    };
+    return { responsibleLabel: "Identidade técnica sem autorização de serviço", permissions: [] as string[] };
   }
-  return readWorkspaceResponsibleProfile({
+  // AUTHZ-IMOB-CRM-001: SOMENTE o vínculo ATIVO existente (leitura). Antes, `readWorkspaceResponsibleProfile` criava o vínculo de quem não
+  // tinha, promovia o membro ativo único e devolvia as permissões de vínculo revogado. Sem vínculo ativo: sem permissões (fail-closed).
+  const membership = await readActiveWorkspaceMembership({
     prisma: params.prisma,
     tenantId: params.authContext.tenantId,
     workspaceId: params.authContext.workspaceId,
     userId: params.authContext.userId,
   });
+  if (!membership) return { responsibleLabel: "Responsável não definido", permissions: [] as string[] };
+  const user = await params.prisma.user.findUnique({ where: { id: params.authContext.userId }, select: { displayName: true, email: true } }).catch(() => null);
+  const identity = user?.displayName?.trim() || user?.email?.trim() || null;
+  const role = membership.roleKey.charAt(0).toUpperCase() + membership.roleKey.slice(1);
+  return { responsibleLabel: identity ? `${identity} (${role})` : role, permissions: membership.permissions };
 }
 
 function sendImobPermissionDenied(
-  req: TenantAwareRequest | undefined,
+  reqOrUndefined: TenantAwareRequest | undefined,
   res: Response,
   params: { code: string; message: string; stage?: string | null; capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH" }
 ) {
+  // P12: as guardas na forma legada `(res, permissões, …)` não recebem `req`; sem ele o escopo ficava vazio, a montagem do evento
+  // de auditoria falhava na validação e a NEGATIVA virava HTTP 500. A requisição autenticada é a da própria resposta (`res.req`).
+  const req = reqOrUndefined ?? ((res as Response & { req?: TenantAwareRequest }).req);
   return sendImobAccessDenied(res, {
     req,
     code: params.code,
@@ -1486,6 +1546,13 @@ registerImobCrmRoutes({
     imobLeadCreateSchema,
     imobLeadUpdateSchema,
     imobCaseCreateSchema,
+    imobRentalLeaseCreateSchema,
+    imobRentalLeaseCloseSchema,
+    imobAssetDealCreateSchema,
+    imobAssetDealCompleteSchema,
+    imobDocumentLinkSchema,
+    imobRentalContractGenerateSchema,
+    imobSaleContractGenerateSchema,
     imobCaseUpdateSchema,
     imobCaseAssignOwnerSchema,
     imobFollowUpRunSchema,
@@ -1659,16 +1726,115 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     return;
   }
 
+  // Contextual continuation of an editable property form. The client supplies draft DATA, never access or authority.
+  // As with field intake, return before resolving cases, recipes or operational mutations.
+  if (body.intake === "property_draft") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    const parsed = imobPropertyCaptureRequestSchema.safeParse(body.propertyCapture);
+    if (!parsed.success || parsed.data.message !== message) return res.status(400).json({ ok: false, error: { code: "IMOB_PROPERTY_CAPTURE_INVALID" } });
+    // The request middleware owns this ID; never replace it with a completion/provider ID.
+    const traceId = llmDiagnosticIdentifier(res.getHeader("x-trace-id"));
+    const intakeLogger = createLogger({ component: "imob-property-capture", traceId });
+    return res.json({ ok: true, data: await resolveImobPropertyCaptureTurn(parsed.data, {
+      traceId,
+      scope: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId },
+      observe: (diagnostic) => intakeLogger.info(diagnostic, "imob.property_capture.intake"),
+      interpret: async ({ systemPrompt, userPrompt }) => {
+        // Same coordinator and provider registry as the contextual Front Door intake; IMOB owns the domain contract.
+        intakeLogger.info({ stage: "profile_resolution" }, "imob.property_capture.runtime");
+        const profile = await (async () => {
+          try {
+            const resolved = await getAgentProfile(authContext.tenantId, authContext.workspaceId, "EIAH", prisma);
+            if (!resolved || resolved.chatRuntime?.chatEnabled === false) throw new Error("property_capture_runtime_unavailable");
+            return resolved;
+          } catch (error) {
+            intakeLogger.info({ stage: "profile_resolution", failure: llmFailureDiagnostic(error, "profile_resolution") }, "imob.property_capture.runtime.failure");
+            throw error;
+          }
+        })();
+        const result = await executeLlmStep({ profile: { model: profile.model, maxTokens: 1000, systemPrompt,
+          knowledgePolicy: { ...profile.knowledgePolicy, maskingPolicy: "required" } }, userPrompt,
+          metadata: { source: "imob-property-capture-intake", maskSensitiveBeforeLlm: true, traceId } });
+        return result.outputText;
+      },
+    }) });
+  }
+
+  // Intake de campo: auth/escopo, revogação, instalação, vínculo ativo e imob.chat.use já passaram; exige REAL_ESTATE_CORE.
+  // Não consulta/binda caso nem usa recipe, capability de consulta de caso ou action; retorna antes de dispatch e telemetria operacional.
+  if (body.intake === "property_units") {
+    const entitlements = await resolveImobEntitlements({ prisma, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId });
+    if (!entitlements.REAL_ESTATE_CORE) return res.status(403).json({ ok: false, error: { code: "ENTITLEMENT_MISSING", reasonCode: "ENTITLEMENT_MISSING" } });
+    return res.json({ ok: true, data: await resolveImobPropertyUnitIntakeTurn(message, body.threadState) });
+  }
+
+  // P11: o Front Door (/app/chat) reivindica o turno SOMENTE LEITURA. Acesso: handoff v2 + vertical.access.v1 sobre fatos do servidor
+  // (capability `crm.case.consult`); só roda a etapa transversal do P10 (nunca as etapas que gravam). O vínculo com o caso é
+  // FAIL-CLOSED e fica ANTES de qualquer resolução implícita de caso (por thread ou "mais recente"): só vale um `caseId` explícito,
+  // dentro do escopo do token e da etapa que a pessoa opera; sem `caseId` a recomendação é feita sem caso. Sem reivindicação, o Front
+  // Door segue o fluxo normal: `claimed:false`, sem telemetria e sem efeitos.
+  if (body.claimOnly === true) {
+    const explicitCaseId = asString(body.caseId);
+    let denied: string | null = null;
+    const claimedTurn = await resolveImobTransversalTurnStage({
+      prisma,
+      authContext,
+      workspaceResponsibleLabel: workspaceAccess.responsibleLabel,
+      helpers: {
+        resolveImobOperationalConsult,
+        applyCanonicalJourneyToResolvedData: imobCrmBusinessRead.applyCanonicalJourneyToResolvedData as (data: any, caseContext?: unknown) => any,
+        readTransversalCapabilities: discoverImobTransversalCapabilitiesForTurn,
+      },
+      message,
+      caseId: explicitCaseId,
+      threadState: asObject(body.threadState),
+      claimOnly: true,
+      authorize: async () => {
+        const access = evaluateImobFrontDoorCapabilityAccess(
+          await readVerticalRegistryFacts(prisma as never, { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, userId: authContext.userId ?? null }, { resolveImobPermission: true }),
+          IMOB_CASE_CONSULT_CAPABILITY,
+          `frontdoor-claim-${crypto.randomUUID()}`,
+        );
+        if (!access.allowed) denied = access.reasonCode;
+        return access.allowed;
+      },
+      resolveCase: async () => {
+        if (!explicitCaseId) return { kind: "none" };
+        const scoped = await prisma.imobCase.findFirst({
+          where: { id: explicitCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+          select: { id: true, stage: true },
+        });
+        if (!scoped) return { kind: "denied", reasonCode: "CASE_NOT_IN_SCOPE" };
+        if (!canWorkspaceOperateImobStage(workspaceAccess.permissions, scoped.stage)) return { kind: "denied", reasonCode: "STAGE_DENIED" };
+        return { kind: "bound", caseId: scoped.id };
+      },
+    });
+    if (!claimedTurn) return res.json({ ok: true, claimed: false, data: null, ...(denied ? { reasonCode: denied } : {}) });
+    return res.json({ ok: true, claimed: true, data: { ...claimedTurn.data, caseContext: claimedTurn.caseContext ?? claimedTurn.data.caseContext ?? null } });
+  }
+
+  // Only the new conversational carrier reads the latest event; persistence and gates remain unchanged.
+  const observesReview = Object.hasOwn(body, "continuityReplyRef")
+    || Object.hasOwn(asObject(asObject(body.threadState)?.operational) ?? {}, "continuity");
+  const reviewEventSelection = observesReview ? {
+    events: {
+      where: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+      take: 1,
+      select: { payload: true },
+    },
+  } : {};
   const existingScopedCase = requestedCaseId
     ? await prisma.imobCase.findFirst({
         where: { id: requestedCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
-        select: { id: true, stage: true, threadId: true, metadata: true },
+        select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
       })
     : requestedThreadId
       ? await prisma.imobCase.findFirst({
           where: { threadId: requestedThreadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
           orderBy: { updatedAt: "desc" },
-          select: { id: true, stage: true, threadId: true, metadata: true },
+          select: { id: true, flow: true, stage: true, status: true, threadId: true, metadata: true, blockers: true, pendingItems: true, ownerResponsible: true, nextStep: true, ...reviewEventSelection },
         })
       : null;
   if (
@@ -1854,17 +2020,31 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const engineBody = recipeMissionContext
     ? { ...engineBodyBase, recipeId: requestedRecipeId, recipeMissionContext }
     : engineBodyBase;
+  const reviewEvent = asObject(existingScopedCase?.events?.[0]?.payload);
+  const reviewDraft = reviewEvent?.flow === "proposal.create" && reviewEvent.operationalStatus === "ready_for_review"
+    ? asObject(reviewEvent.proposalDraft) : null;
+  const canOperateStage = (stage: string | null | undefined) => canWorkspaceOperateImobStage(workspaceAccess.permissions, stage);
   const data = await resolveImobCrmTurnEngine({
     prisma,
     authContext,
+    reviewDraftRef: reviewDraft ? proposalDraftRef(reviewDraft) : null,
+    reviewCase: existingScopedCase ? { caseId: existingScopedCase.id, threadId: existingScopedCase.threadId,
+      flow: existingScopedCase.flow, stage: existingScopedCase.stage, status: existingScopedCase.status,
+      ownerResponsible: existingScopedCase.ownerResponsible, nextStep: existingScopedCase.nextStep,
+      blockers: existingScopedCase.blockers, pendingItems: Array.isArray(existingScopedCase.pendingItems)
+        ? existingScopedCase.pendingItems.filter((item): item is string => typeof item === "string") : [],
+    } : null,
     body: engineBody,
     workspaceResponsibleLabel: workspaceAccess.responsibleLabel,
     entitlements,
     helpers: {
       asString,
       hydrateThreadStateWithPersistedLead,
-      resolveImobOperationalUpdate,
-      resolveImobOperationalConsult,
+      // P12: toda leitura de caso do turno (explícita, digitada na mensagem ou "o mais recente") respeita a permissão de ETAPA da pessoa.
+      resolveImobOperationalUpdate: (resolverParams: ImobOperationalResolverParams) =>
+        resolveImobOperationalUpdate({ ...resolverParams, canOperateStage }),
+      resolveImobOperationalConsult: (resolverParams: ImobOperationalResolverParams) =>
+        resolveImobOperationalConsult({ ...resolverParams, canOperateStage }),
       applyCanonicalJourneyToResolvedData: imobCrmBusinessRead.applyCanonicalJourneyToResolvedData as (data: any, caseContext?: unknown) => any,
       applyExistingRegistrationResolution,
       injectResolvedPendingSuggestion,
@@ -1873,6 +2053,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       formatImobCaseFlowLabel,
     },
   });
+
+  if (data.action === "property.units.clarify") return res.json({ ok: true, data });
 
   await recordImobResolveTurnSemanticTelemetry({
     prisma: prisma as never,
@@ -2626,6 +2808,10 @@ imobRouter.get("/chat/conversations", async (req, res) => {
     });
   }
 
+  const historyActor = await gateImobHistory(req as TenantAwareRequest, res);
+  if (!historyActor) return;
+  const ownedConversationIds = await createImobHistoryAccessDeps(prisma).listOwnedConversationIds(historyActor);
+
   const limitRaw = Number(req.query.limit ?? "30");
   const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, limitRaw)) : 30;
 
@@ -2725,11 +2911,33 @@ imobRouter.get("/chat/conversations", async (req, res) => {
     }
   }
 
-  const items = Array.from(conversationMap.values())
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, limit);
+  // FD-IMOB-HISTORY-AUTHZ-001: só as conversas das quais o usuário é titular (as demais nem aparecem).
+  const authorized = Array.from(conversationMap.values())
+    .filter((item) => ownedConversationIds.has(item.conversationId))
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  const visible = await applyConversationChanges(prisma, { tenantId: historyActor.tenantId, workspaceId: historyActor.workspaceId }, authorized);
+  const search = typeof req.query.q === "string" ? conversationSearchText(req.query.q.trim().slice(0, 200)) : "";
+  const items = visible.filter((item) => !search || conversationSearchText(`${item.title} ${item.lastMessagePreview ?? ""}`).includes(search)).slice(0, limit);
+  return res.json({ ok: true, items, capabilities: { search: true, rename: true, delete: true } });
+});
 
-  return res.json({ ok: true, items });
+imobRouter.patch("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  const title = conversationTitle(req.body?.title);
+  if (!title) return res.status(400).json({ ok: false, error: { code: "INVALID_CONVERSATION_TITLE", message: "Informe um título entre 1 e 120 caracteres, sem quebras de linha." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "rename", title);
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, title });
+});
+
+imobRouter.delete("/chat/conversations/:conversationId", async (req, res) => {
+  const actor = await gateImobHistory(req as TenantAwareRequest, res, req.params.conversationId);
+  if (!actor) return;
+  if (req.body?.confirm !== true) return res.status(400).json({ ok: false, error: { code: "CONVERSATION_DELETE_CONFIRMATION_REQUIRED", message: "Confirme a exclusão da conversa." } });
+  const changed = await changeConversation((req as TenantAwareRequest).prisma!, actor, req.params.conversationId, "delete");
+  if (!changed) return res.status(404).json({ ok: false, error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" } });
+  return res.json({ ok: true, conversationId: req.params.conversationId, deleted: true });
 });
 
 imobRouter.post("/chat/conversations", async (req, res) => {
@@ -2740,6 +2948,8 @@ imobRouter.post("/chat/conversations", async (req, res) => {
       error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
     });
   }
+
+  if (!(await gateImobHistory(req as TenantAwareRequest, res))) return;
 
   const body = asObject(req.body) ?? {};
   const title = asString(body.title) ?? "Nova conversa IMOB";
@@ -2830,6 +3040,8 @@ imobRouter.get("/chat/conversations/:conversationId/messages", async (req, res) 
     });
   }
 
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
+
   const limitRaw = Number(req.query.limit ?? "200");
   const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, limitRaw)) : 200;
 
@@ -2900,6 +3112,8 @@ imobRouter.get("/chat/conversations/:conversationId/threads", async (req, res) =
     });
   }
 
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
+
   const rows = await prisma.memoryEvent.findMany({
     where: {
       tenantId: authContext.tenantId,
@@ -2960,6 +3174,8 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
       error: { code: "INVALID_CONVERSATION_ID", message: "conversationId is required" },
     });
   }
+
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
 
   const body = asObject(req.body) ?? {};
   const role = asString(body.role);
@@ -3220,6 +3436,8 @@ imobRouter.get("/chat/conversations/:conversationId/interview-state", async (req
     });
   }
 
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
+
   const rows = await prisma.memoryEvent.findMany({
     where: {
       tenantId: authContext.tenantId,
@@ -3261,6 +3479,8 @@ imobRouter.put("/chat/conversations/:conversationId/interview-state", async (req
       error: { code: "INVALID_CONVERSATION_ID", message: "conversationId is required" },
     });
   }
+
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
 
   const body = asObject(req.body) ?? {};
   const state = asObject(body.state);
@@ -3325,6 +3545,8 @@ imobRouter.post("/chat/telemetry", async (req, res) => {
     });
   }
 
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
+
   const telemetry = await prisma.memoryEvent.create({
     data: {
       tenantId: authContext.tenantId,
@@ -3363,6 +3585,8 @@ imobRouter.get("/chat/telemetry/summary", async (req, res) => {
   const windowRaw = Number(req.query.windowHours ?? "24");
   const windowHours = Number.isFinite(windowRaw) ? Math.max(1, Math.min(24 * 30, windowRaw)) : 24;
   const conversationId = asString(req.query.conversationId);
+  // Com conversa: titularidade; sem conversa: só números agregados do workspace, mas exige vínculo ativo.
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
   const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
 
   const rows = await prisma.memoryEvent.findMany({
@@ -3503,6 +3727,8 @@ imobRouter.get("/chat/conversations/:conversationId/snapshot", async (req, res) 
     });
   }
 
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
+
   const conversationRows = await prisma.memoryEvent.findMany({
     where: {
       tenantId: authContext.tenantId,
@@ -3587,6 +3813,8 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
       error: { code: "INVALID_CONVERSATION_ID", message: "conversationId is required" },
     });
   }
+
+  if (!(await gateImobHistory(req as TenantAwareRequest, res, conversationId))) return;
 
   const conversationRows = await prisma.memoryEvent.findMany({
     where: {

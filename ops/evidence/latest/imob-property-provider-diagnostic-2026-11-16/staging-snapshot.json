@@ -1,0 +1,84 @@
+{
+  "workspace": "My Workspace (confirmed by user)",
+  "services": {
+    "api": {
+      "serviceId": "srv-db20abei0phs73cqbcgg",
+      "url": "https://eiah-api-staging.onrender.com",
+      "liveDeploy": {
+        "deployId": "dep-dbqpojijnfac739dijt0",
+        "status": "live",
+        "commitSha": "ba79d7063c929592209320e04c26903bed255ce7",
+        "createdAt": "2026-11-12T11:00:30.973448Z",
+        "finishedAt": "2026-11-12T11:03:19.339068Z"
+      }
+    },
+    "web": {
+      "serviceId": "srv-dbljranf3r2c73abtk50",
+      "url": "https://eiah-web-staging.onrender.com",
+      "liveDeploy": {
+        "deployId": "dep-dbtdtq7f3r2c73b08ol0",
+        "status": "live",
+        "commitSha": "9821e4355d3d71268a1179477a9e98b3f18345d9",
+        "createdAt": "2026-11-16T10:46:00.943999Z",
+        "finishedAt": "2026-11-16T10:46:29.4962Z"
+      }
+    }
+  },
+  "publicFetch": {
+    "webIndex": {
+      "status": 200,
+      "sha256": "c2730a5202ffdabf434d562552feb476d6388833c2a96d79f92758271208b902"
+    },
+    "bundle": {
+      "asset": "/assets/index-5XaTZwbE.js",
+      "sha256": "35ada8f63c3b354c76001a4a862bb8f5e5276544e000c7039741fc817fbf7454",
+      "configuredApiBase": "https://eiah-api-staging.onrender.com/api",
+      "containsPropertyDraft": true,
+      "containsGuidedCapture": true
+    },
+    "health": {
+      "status": 200,
+      "environment": "staging",
+      "version": "0.0.0-dev",
+      "commitSha": null
+    },
+    "unusedDefaultHost": {
+      "host": "https://dev.api.eiah.ai",
+      "healthReadResult": "URLError; not the API base configured by the published bundle"
+    }
+  },
+  "sourceInspection": {
+    "apiCommitContainsPropertyDraftIntake": false,
+    "apiCommitContainsResolveImobPropertyCaptureTurn": false,
+    "source": "git show ba79d7063c929592209320e04c26903bed255ce7:apps/api/src/routes/imob.ts and CRM engine"
+  },
+  "logs": {
+    "window": {
+      "start": "2026-11-16T00:00:00Z",
+      "end": "2026-11-17T00:00:00Z"
+    },
+    "queries": [
+      {
+        "type": "app text",
+        "filter": "imob.property_capture.intake",
+        "returned": 0,
+        "hasMore": false
+      },
+      {
+        "type": "app text",
+        "filter": "llm.completion",
+        "returned": 0,
+        "hasMore": false
+      },
+      {
+        "type": "request path",
+        "filter": "/api/imob/chat/resolve-turn",
+        "returned": 0,
+        "hasMore": false
+      }
+    ],
+    "limitation": "No trace/HTTP body of the user's staging attempt was available. Empty filtered results do not prove no requests occurred."
+  },
+  "noStagingMessageSent": true,
+  "noDeployOrConfigMutation": true
+}

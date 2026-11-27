@@ -34,6 +34,61 @@ export type VerticalEntitlementAction = z.infer<typeof verticalEntitlementAction
 export type TenantProductInstallationLike = z.infer<typeof tenantProductInstallationLikeSchema>;
 export type VerticalEntitlementGateInput = z.infer<typeof verticalEntitlementGateInputSchema>;
 
+/** Access to a product capability, never authorization of an Agent Protocol action.
+ * Additive to the legacy assignment/history gate below; not wired to runtime.
+ */
+const accessIdSchema = z.string().trim().min(1);
+export const verticalAccessContractV1Schema = z.object({
+  version: z.literal("vertical.access.v1"),
+  verticalId: accessIdSchema,
+  productId: accessIdSchema,
+  installationRequired: z.boolean(),
+  // Identifies the product entitlement derived from TenantProductInstallation.
+  // It is not a key looked up in TenantActionPolicy or an arbitrary boolean map.
+  entitlementKey: accessIdSchema.nullable(),
+  workspacePermission: accessIdSchema,
+  stagePolicy: z.enum(["not_required", "required"]),
+  // Existing ADR-011 usage is resolved by resolveVerticalUsage at the read boundary.
+  revocationPolicy: z.literal("resolved_usage"),
+  capabilities: z.array(z.object({
+    id: accessIdSchema,
+    allowedModes: z.array(z.enum(["read_only", "requires_write"])).min(1),
+  }).strict()).min(1),
+}).strict().superRefine((contract, ctx) => {
+  if (contract.installationRequired !== (contract.entitlementKey !== null)) {
+    ctx.addIssue({ code: "custom", message: "Product entitlement requires installation", path: ["entitlementKey"] });
+  }
+  if (new Set(contract.capabilities.map((entry) => entry.id)).size !== contract.capabilities.length) {
+    ctx.addIssue({ code: "custom", message: "Duplicate capability", path: ["capabilities"] });
+  }
+});
+
+export type VerticalAccessContractV1 = z.infer<typeof verticalAccessContractV1Schema>;
+
+const accessScopeSchema = z.object({ tenantId: accessIdSchema, workspaceId: accessIdSchema }).strict();
+export const verticalAccessRequestV1Schema = z.object({
+  scope: accessScopeSchema,
+  verticalId: accessIdSchema,
+  capabilityId: accessIdSchema,
+  mode: z.enum(["read_only", "requires_write"]),
+  stage: accessIdSchema.optional(),
+}).strict();
+
+/** Server-read facts. The caller must validate identity/membership and freshness.
+ * Missing facts never acquire defaults that grant access.
+ */
+export const verticalAccessFactsV1Schema = z.object({
+  scope: accessScopeSchema,
+  verticalId: accessIdSchema,
+  installation: tenantProductInstallationLikeSchema.nullable(),
+  workspacePermission: z.object({ key: accessIdSchema, allowed: z.boolean() }).strict(),
+  stagePermission: z.object({ stage: accessIdSchema, allowed: z.boolean() }).strict().nullable(),
+  usage: z.enum(["full", "read_only", "blocked"]),
+}).strict();
+
+export type VerticalAccessRequestV1 = z.infer<typeof verticalAccessRequestV1Schema>;
+export type VerticalAccessFactsV1 = z.infer<typeof verticalAccessFactsV1Schema>;
+
 export function resolveOperationalEntitlementStatus(input: {
   installation: TenantProductInstallationLike | null;
   billingPastDue?: boolean;

@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
 let request: ReturnType<typeof supertest>;
 let closeRunEventStream: () => Promise<unknown>;
@@ -11,7 +12,6 @@ let closeRunEventsTransport: () => Promise<unknown>;
 let closeRunQueueConnections: () => Promise<unknown>;
 let closeMemoryResources: () => Promise<unknown>;
 let closeRedisPublisher: () => Promise<unknown>;
-let closeRunEventPublisherResources: () => Promise<unknown>;
 let closeTenantPolicyStoreResources: () => Promise<unknown>;
 let closeCriticalMetricsRedis: () => Promise<unknown>;
 let closeCriticalKillSwitchRedis: () => Promise<unknown>;
@@ -29,7 +29,6 @@ before(async () => {
   ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
   ({ closeMemoryResources } = await import("../services/memory"));
   ({ closeRedisPublisher } = await import("@eiah/core/events/redisPublisher"));
-  ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
   ({ closeTenantPolicyStoreResources } = await import("@eiah/core/policy/TenantPolicyStore"));
   ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
   ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
@@ -51,6 +50,8 @@ before(async () => {
       revoked: false,
     },
   });
+  // FD-IMOB-HISTORY-AUTHZ-001: o histórico do IMOB exige vínculo ATIVO (fixture pelo serviço existente do workspace).
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
 });
 
 after(async () => {
@@ -65,7 +66,6 @@ after(async () => {
   await prismaGlobal.$disconnect();
   await closeMemoryResources();
   await closeRedisPublisher();
-  await closeRunEventPublisherResources();
   await closeTenantPolicyStoreResources();
   await closeCriticalMetricsRedis();
   await closeCriticalKillSwitchRedis();

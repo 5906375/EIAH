@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: continue-on-error true with a future waiver passes with days remaining
+ok 1 - continue-on-error true with a future waiver passes with days remaining
+  ---
+  duration_ms: 1.669806
+  type: 'test'
+  ...
+# Subtest: continue-on-error true with an expired waiver fails
+ok 2 - continue-on-error true with an expired waiver fails
+  ---
+  duration_ms: 0.282829
+  type: 'test'
+  ...
+# Subtest: continue-on-error true without a waiver fails as undeclared
+ok 3 - continue-on-error true without a waiver fails as undeclared
+  ---
+  duration_ms: 0.124032
+  type: 'test'
+  ...
+# Subtest: a declared waiver without continue-on-error fails as stale
+ok 4 - a declared waiver without continue-on-error fails as stale
+  ---
+  duration_ms: 0.167931
+  type: 'test'
+  ...
+# Subtest: no waiver and no continue-on-error passes
+ok 5 - no waiver and no continue-on-error passes
+  ---
+  duration_ms: 0.461984
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 12.428417

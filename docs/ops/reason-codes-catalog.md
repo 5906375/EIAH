@@ -300,6 +300,57 @@ fonte canônica falham em `check:reason-code-canon`.
 | `NOTIFICATION_BLOCKED_SECRET_PROVENANCE` | proposed |
 | `NOTIFICATION_BLOCKED_REASON_CODE_MISSING` | proposed |
 | `NOTIFICATION_BLOCKED_RUN_MISSING` | proposed |
+| `ORACULO_CONTEXT_DENIED` | proposed |
+| `ORACULO_PREPARATION_WRITE_DENIED` | proposed |
+| `ORACULO_PREPARATION_REVISION_CONFLICT` | proposed |
+| `ORACULO_PREPARATION_INTEGRITY_VIOLATION` | proposed |
+| `ORACULO_PREPARATION_INPUT_INVALID` | proposed |
+| `PRE_DUIMP_ACTION_UNKNOWN` | proposed |
+| `PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED` | proposed |
+| `PRE_DUIMP_ISOLATION_VIOLATION` | proposed |
+| `PRE_DUIMP_SCOPE_DENIED` | proposed |
+| `PRE_DUIMP_ENTITLEMENT_DENIED` | proposed |
+| `PRE_DUIMP_HITL_REQUIRED` | proposed |
+| `PRE_DUIMP_REPLAY_REJECTED` | proposed |
+| `PRE_DUIMP_RUNTIME_DISABLED` | proposed |
+| `PRE_DUIMP_INSTALLATION_MISSING` | proposed |
+| `PRE_DUIMP_INSTALLATION_INACTIVE` | proposed |
+| `PRE_DUIMP_INSTALLATION_INVALID` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_MISSING` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_DISABLED` | proposed |
+| `PRE_DUIMP_ACTION_POLICY_DENIED` | proposed |
+| `PRE_DUIMP_ACCESS_UNAVAILABLE` | proposed |
+| `PRE_DUIMP_PILOT_ACCESS_DENIED` | proposed |
+| `ORACULO_INPUT_INVALID` | active |
+| `ORACULO_SCOPE_DENIED` | active |
+| `ORACULO_EXTERNAL_EFFECT_BLOCKED` | active |
+| `ORACULO_VISIT_NOT_RESOLVED` | active |
+| `ORACULO_CONTENT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_ARTIFACT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_INSPECTION_REJECTED` | active |
+| `ORACULO_VALIDITY_EXPIRED` | active |
+| `ORACULO_VALIDITY_NOT_STARTED` | active |
+| `ORACULO_TEMPORAL_POLICY_UNRESOLVED` | active |
+| `ORACULO_STATUS_REVOKED` | active |
+| `ORACULO_STATUS_SUSPENDED` | active |
+| `ORACULO_STATUS_UNKNOWN` | active |
+| `ORACULO_STATUS_STALE` | active |
+| `ORACULO_STATUS_CONFLICT` | active |
+| `ORACULO_SOURCE_AUTHORITY_UNRESOLVED` | active |
+| `ORACULO_HITL_REQUIRED` | active |
+| `ORACULO_APPROVAL_CONTEXT_MISMATCH` | active |
+| `ORACULO_APPROVAL_EXPIRED` | active |
+| `ORACULO_APPROVAL_REJECTED` | active |
+| `ORACULO_INTENT_PAYLOAD_CONFLICT` | active |
+| `ORACULO_VISIT_REVISION_CONFLICT` | active |
+| `ORACULO_VISIT_TRANSITION_DENIED` | active |
+| `ORACULO_EVIDENCE_REQUIRED` | active |
+| `ORACULO_SNAPSHOT_MISMATCH` | active |
+| `ORACULO_COMMIT_OUTCOME_UNKNOWN` | active |
+| `ORACULO_COMMIT_FAILED_NO_EFFECT` | active |
+| `ORACULO_EXECUTION_AUTHORITY_LOST` | active |
+| `ORACULO_VERIFICATION_NOT_SATISFIED` | active |
+| `ORACULO_TEMPORAL_INCOHERENCE` | active |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker
@@ -327,3 +378,44 @@ O checker nasce informativo: ele não está entre os required checks atuais.
 Após o merge do RC-0, torná-lo required no ruleset
 `main-protection-hard-gates` é decisão autenticada de Carlos Alberto Merlo.
 Este PR não altera ruleset, branch protection ou workflow.
+
+## Oráculo SC CI1 — histórico de propostas no commit d1f1024 (2026-09-23)
+
+| Finding | Token proposto | Destino | Resultado candidato |
+| --- | --- | --- | --- |
+| RV01 | ORACULO_INPUT_INVALID | REQUEST_ERROR | Sem C5 |
+| RV02 | ORACULO_SCOPE_DENIED | REQUEST_ERROR | Sem C5 |
+| RV03 | ORACULO_EXTERNAL_EFFECT_BLOCKED | REQUEST_ERROR | Sem C5 |
+| RV04 | ORACULO_VISIT_NOT_RESOLVED | REQUEST_ERROR | Sem C5 |
+| RV05 | ORACULO_CONTENT_INTEGRITY_MISMATCH | C5 | DENIED |
+| RV06 | ORACULO_ARTIFACT_INTEGRITY_MISMATCH | C5 | DENIED |
+| RV07 | ORACULO_INSPECTION_REJECTED | C5 | DENIED |
+| RV08 | ORACULO_VALIDITY_EXPIRED | C5 | DENIED |
+| RV09 | ORACULO_VALIDITY_NOT_STARTED | C5 | DENIED |
+| RV10 | ORACULO_TEMPORAL_POLICY_UNRESOLVED | C5 | REVIEW_REQUIRED |
+| RV11 | ORACULO_STATUS_REVOKED | C5 | DENIED |
+| RV12 | ORACULO_STATUS_SUSPENDED | C5 | DENIED |
+| RV13 | ORACULO_STATUS_UNKNOWN | C5 | REVIEW_REQUIRED |
+| RV14 | ORACULO_STATUS_STALE | C5 | REVIEW_REQUIRED |
+| RV15 | ORACULO_STATUS_CONFLICT | C5 | REVIEW_REQUIRED |
+| RV16 | ORACULO_SOURCE_AUTHORITY_UNRESOLVED | C5 | REVIEW_REQUIRED |
+| RV17 | ORACULO_HITL_REQUIRED | C5 | REVIEW_REQUIRED |
+| RV18 | ORACULO_APPROVAL_CONTEXT_MISMATCH | C5 | REVIEW_REQUIRED |
+| RV19 | ORACULO_APPROVAL_EXPIRED | C5 | REVIEW_REQUIRED |
+| RV20 | ORACULO_APPROVAL_REJECTED | C5 | DENIED |
+| RV21 | ORACULO_INTENT_PAYLOAD_CONFLICT | REQUEST_ERROR | Sem C5 |
+| RV22 | ORACULO_VISIT_REVISION_CONFLICT | C5 | CONFLICT |
+| RV23 | ORACULO_VISIT_TRANSITION_DENIED | C5 | DENIED |
+| RV24 | ORACULO_EVIDENCE_REQUIRED | C5 | DENIED |
+| RV25 | ORACULO_SNAPSHOT_MISMATCH | C5 | REVIEW_REQUIRED |
+| RV26 | ORACULO_COMMIT_OUTCOME_UNKNOWN | TRACKING | Sem C5 |
+| RV27 | ORACULO_COMMIT_FAILED_NO_EFFECT | C5 | FAILED |
+| RV28 | ORACULO_EXECUTION_AUTHORITY_LOST | REQUEST_ERROR | Sem C5 |
+| FT03_NOT_VERIFIED_MAPPING_PENDING | ORACULO_VERIFICATION_NOT_SATISFIED | C5 | DENIED |
+| FT03_TEMPORAL_MAPPING_PENDING | ORACULO_TEMPORAL_INCOHERENCE | C5 | REVIEW_REQUIRED |
+
+No commit d1f1024, todos os tokens desta seção tinham status `proposed`. Owner: Carlos Alberto Merlo / Oráculo SC. Naquele commit não havia approver/evidenceRef de ativação preenchidos. A [matriz para ratificação](oraculo-negative-mapper-proposal.md) descreve escopo e limites. Naquela proposta, nenhuma entrada active foi alterada.
+
+## Oráculo CI1 — candidato local de ativação para PR dedicado
+
+A matriz foi ratificada na sessão; owner/approver: Carlos Alberto Merlo. A promoção local a active é restrita à simulação e está preparada para PR dedicado, ainda não publicado/mesclado. A fonte e os limites da aprovação estão em [registro da ratificação](oraculo-negative-ratification.md). A seção de propostas anterior descreve o estado histórico do commit d1f1024.

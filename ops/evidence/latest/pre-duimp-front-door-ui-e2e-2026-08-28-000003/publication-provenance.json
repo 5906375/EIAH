@@ -1,0 +1,120 @@
+{
+  "schema": "pre-duimp-publication-provenance-v1",
+  "generatedAt": "2026-08-28",
+  "sourcePackageId": "pre-duimp-ui-e2e-20260828-000003",
+  "sourcePackagePreserved": true,
+  "selfExcludedFromEntries": true,
+  "artifacts": [
+    {
+      "name": "01-front-door-logistica.png",
+      "sourceSha256": "0d8718a7c7e430551e22650765b474dc419fcde7913e1e987ef0b3abbf1f96e8",
+      "publishedSha256": "0d8718a7c7e430551e22650765b474dc419fcde7913e1e987ef0b3abbf1f96e8",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "02-pre-duimp-cognitive-ready.png",
+      "sourceSha256": "8916a5f4915e6f35382919701137c69f32e9af54a781291717757ed8195e3228",
+      "publishedSha256": "8916a5f4915e6f35382919701137c69f32e9af54a781291717757ed8195e3228",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "03-pre-duimp-authorized-shadow.png",
+      "sourceSha256": "849956de3c9a4605ca2668e7f95e2461a97a2be0ee0a2855e64a57346ee07039",
+      "publishedSha256": "849956de3c9a4605ca2668e7f95e2461a97a2be0ee0a2855e64a57346ee07039",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "counts-after.json",
+      "sourceSha256": "52412763b2ae540a0d877b11a041a0108cad0153bd64fa32777c4ca7c133b81d",
+      "publishedSha256": "52412763b2ae540a0d877b11a041a0108cad0153bd64fa32777c4ca7c133b81d",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "counts-before.json",
+      "sourceSha256": "a988a46cfb5b692e5f70ae401abb720b226c8c13049f396b8614a8d12b775c1e",
+      "publishedSha256": "a988a46cfb5b692e5f70ae401abb720b226c8c13049f396b8614a8d12b775c1e",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "default-off-restoration.json",
+      "sourceSha256": "9b5f71f236199a227057196144fffb1c255b040246d87695ca8a2e1c482e0997",
+      "publishedSha256": "9b5f71f236199a227057196144fffb1c255b040246d87695ca8a2e1c482e0997",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "name": "integrity-hashes.json",
+      "sourceSha256": "cc5feda21fe0ce469ddda547b0daee2a54910e23ec8191c7a747c5cdd0c9c8ac",
+      "publishedSha256": "3d37ee44e81047b456e1ab0bba6ae1ce64156f27dc86519bd9f846623755253b",
+      "transformed": true,
+      "maskingCategories": [
+        "capture-root",
+        "relative-artifact-paths",
+        "published-hash-regeneration"
+      ]
+    },
+    {
+      "name": "integrity.json",
+      "sourceSha256": "f3279729cf2095df32f5b422539f22c3f32c4cd1aabbd00c96963db47342e178",
+      "publishedSha256": "fef989594051c68e6015ff14a23e8f4180cc48bf178d22d709e921b5d98ad3a4",
+      "transformed": true,
+      "maskingCategories": [
+        "external-evidence-root"
+      ]
+    },
+    {
+      "name": "manifest.json",
+      "sourceSha256": "ecbb28bfe53d741e970b219757651eeaa19d8e8b7d5363cb7defd1bf471df133",
+      "publishedSha256": "2f3b59eb8de3323179318a6c7f024a5f94e29623e5c658b0a83f9f9b4836f529",
+      "transformed": true,
+      "maskingCategories": [
+        "capture-root",
+        "external-evidence-root",
+        "temporary-path",
+        "synthetic-credential-id",
+        "relative-artifact-paths",
+        "published-hash-regeneration"
+      ]
+    },
+    {
+      "name": "playwright-result.json",
+      "sourceSha256": "a12fcd7bcf1d2af5f020f74862d78714465056ad65c1b9c3cfb93b85958e250b",
+      "publishedSha256": "ca09c71a7f6b600591badda4b1d4ce86e73d62ca1bb5ac6fbb875620ec6c8f7b",
+      "transformed": true,
+      "maskingCategories": [
+        "temporary-path",
+        "synthetic-credential-id"
+      ]
+    },
+    {
+      "name": "playwright-sanitized.log",
+      "sourceSha256": "360ed3c13380921b5d4f4310e015c147ca7db3a57a7b6345327bea214ff386ab",
+      "publishedSha256": "eb415444b5a0a55ccc7c8a057f2e317f63bfb69017f883d52b4a5704a334c2d2",
+      "transformed": true,
+      "maskingCategories": [
+        "synthetic-credential-id"
+      ]
+    },
+    {
+      "name": "sensitivity-scan.json",
+      "sourceSha256": "9a88624f0ddbc5787039b3fd3b35767e23b8fedacab8eaee2a74bd7cec0b4d3d",
+      "publishedSha256": "e5623fe6c148fd4d7cb77340c93d7e25bab0ffb9fb8f6d86f69b25116b9d1288",
+      "transformed": true,
+      "maskingCategories": [
+        "publication-path-scan-regeneration"
+      ]
+    },
+    {
+      "name": "user-journey-summary.md",
+      "sourceSha256": "8d6b2df071767aa4621e3d11e59dc7fc72e5ee137baa7eb9edffc310a24c8d10",
+      "publishedSha256": "8d6b2df071767aa4621e3d11e59dc7fc72e5ee137baa7eb9edffc310a24c8d10",
+      "transformed": false,
+      "maskingCategories": []
+    }
+  ]
+}

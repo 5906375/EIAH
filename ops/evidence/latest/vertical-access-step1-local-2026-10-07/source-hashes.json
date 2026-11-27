@@ -1,0 +1,10 @@
+{
+  ".gitignore": "9ab21547b695c31e22d1179ace1cac548d64a15359d1990c7e55afe11505208c",
+  "apps/api/src/types/verticalEntitlementGateContract.ts": "ebd0ee99caffd5305a8be6a1d0ec80d9abf7d3b831654e400efcaeb9fa4b9e16",
+  "apps/api/src/services/products/verticalAccessResolver.ts": "a697e7350dc2f9e06605bfd6f1fc58d4e0f8ca3dbbae806f44db0acbddcc79cc",
+  "apps/api/src/services/chat/verticalRegistryComposition.ts": "68b17e32a159030dd0b55def085a40549f6bcd38de9469b183b11d7387f7932f",
+  "apps/api/src/tests/vertical-access-resolver.test.ts": "e1546a16fafcfb8e397437e1aabc23b3d94f4cd083d37823ecf7a63a5c5f6528",
+  "package.json": "a1ccd667114787bd670eb9035b2cf26a6748e5804e7650cbf1786ac815302f2c",
+  "scripts/unit-tests-manifest.txt": "e61968941d2384bb376093cd35131ba59ad2e73a58172d0b7524af32b26a4a4a",
+  "docs/architecture/vertical-access-contract-v1.md": "54a122cbf549ba6e4caa5d3f9cad26df7d699ec78e40a7c9b988f73973062f82"
+}

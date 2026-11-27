@@ -1,0 +1,142 @@
+TAP version 13
+# Subtest: A installation only
+ok 1 - A installation only
+  ---
+  duration_ms: 776.245096
+  type: 'test'
+  ...
+# Subtest: B P5 only realestate.apply_adjustment
+ok 2 - B P5 only realestate.apply_adjustment
+  ---
+  duration_ms: 104.949606
+  type: 'test'
+  ...
+# Subtest: B P5 only action.realestate.apply_adjustment
+ok 3 - B P5 only action.realestate.apply_adjustment
+  ---
+  duration_ms: 64.068427
+  type: 'test'
+  ...
+# Subtest: B P5 only realestate.register_property
+ok 4 - B P5 only realestate.register_property
+  ---
+  duration_ms: 55.219511
+  type: 'test'
+  ...
+# Subtest: B P5 only realestate.create_contract
+ok 5 - B P5 only realestate.create_contract
+  ---
+  duration_ms: 52.245336
+  type: 'test'
+  ...
+# Subtest: B P5 only realestate.release_commission
+ok 6 - B P5 only realestate.release_commission
+  ---
+  duration_ms: 43.030704
+  type: 'test'
+  ...
+# Subtest: C P7 exclusive realestate.configure_property_rules remains denied
+ok 7 - C P7 exclusive realestate.configure_property_rules remains denied
+  ---
+  duration_ms: 44.585161
+  type: 'test'
+  ...
+# Subtest: C P7 exclusive realestate.search_knowledge_base remains denied
+ok 8 - C P7 exclusive realestate.search_knowledge_base remains denied
+  ---
+  duration_ms: 45.746083
+  type: 'test'
+  ...
+# Subtest: D marketplace only remains allowed
+ok 9 - D marketplace only remains allowed
+  ---
+  duration_ms: 45.3895
+  type: 'test'
+  ...
+# Subtest: E no source remains denied
+ok 10 - E no source remains denied
+  ---
+  duration_ms: 43.826206
+  type: 'test'
+  ...
+# Subtest: F mixed sources and duplicates
+ok 11 - F mixed sources and duplicates
+  ---
+  duration_ms: 44.744808
+  type: 'test'
+  ...
+# Subtest: G tenant-wide grant survives workspace denial
+ok 12 - G tenant-wide grant survives workspace denial
+  ---
+  duration_ms: 40.39464
+  type: 'test'
+  ...
+# Subtest: H false, foreign tenant and foreign workspace excluded
+ok 13 - H false, foreign tenant and foreign workspace excluded
+  ---
+  duration_ms: 59.124783
+  type: 'test'
+  ...
+# Subtest: I P5 and exclusive P7
+ok 14 - I P5 and exclusive P7
+  ---
+  duration_ms: 60.069091
+  type: 'test'
+  ...
+# Subtest: inactive installation remains denied
+ok 15 - inactive installation remains denied
+  ---
+  duration_ms: 49.812952
+  type: 'test'
+  ...
+# Subtest: installation read failure retains fallback
+ok 16 - installation read failure retains fallback
+  ---
+  duration_ms: 40.997114
+  type: 'test'
+  ...
+# Subtest: J create logging failure preserves complete HTTP allow
+ok 17 - J create logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 86.522679
+  type: 'test'
+  ...
+# Subtest: J create logging failure preserves complete HTTP deny
+ok 18 - J create logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 76.042561
+  type: 'test'
+  ...
+# Subtest: J emit logging failure preserves complete HTTP allow
+ok 19 - J emit logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 85.016475
+  type: 'test'
+  ...
+# Subtest: J emit logging failure preserves complete HTTP deny
+ok 20 - J emit logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 76.448511
+  type: 'test'
+  ...
+# Subtest: existing response trace optional; no correlation generated
+ok 21 - existing response trace optional; no correlation generated
+  ---
+  duration_ms: 38.306654
+  type: 'test'
+  ...
+# Subtest: K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+ok 22 - K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+  ---
+  duration_ms: 1137.827052
+  type: 'test'
+  ...
+1..22
+# tests 22
+# suites 0
+# pass 22
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3077.619564

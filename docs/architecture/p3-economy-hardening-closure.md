@@ -1,5 +1,22 @@
 # P3 Economy Hardening — Audit & Closure Checklist
 
+## Nota de contenção pós-auditoria
+
+> **Data:** 2026-08-03. **Status desta nota:** `Proposta`.
+>
+> Este documento é histórico e anterior à auditoria de integridade da evidência de 2026-08-03. Ele não descreve o estado verificado do sistema. As afirmações "Closed Gaps", "Ready for merge & operationalization" e "Auditable End-to-End Chains" devem ser lidas como registro do que se pretendia no momento da redação, não como propriedades verificadas.
+>
+> A auditoria constatou:
+>
+> - `scripts/generateP3EconomyEvidence.ts:40-227,229-301` constrói afirmações e resultados estáticos e grava sete payloads JSON; o script apenas cita caminhos de testes e não executa esses testes;
+> - `scripts/checkP3EconomyHardening.ts:96-113` aceita `full` e `simulated` indistintamente entre os modos válidos do gate bloqueante;
+> - `.github/workflows/ci.yml:973-1003,1005-1043` regenera os payloads antes dos checks de recência, de modo que a data observada mede a geração no job, não a idade de uma execução real;
+> - `.github/workflows/ci.yml:973-1003,1005-1013` mantém `P3EconomyHardening` bloqueante enquanto `P3SettlementSupportByEnv`, o check discriminante por ambiente, usa `continue-on-error`.
+>
+> A frente `DISCRIMINATE-P3-EVIDENCE-MODE` permanece `pendente` em [Frentes abertas do PR-01](../ops/open-fronts.md). Esta nota não resolve a frente e não promove nem rebaixa o status de qualquer item.
+>
+> Esta nota não corrige nem reescreve o corpo abaixo. A revisão integral dos claims pertence ao PR-12 do [plano de PRs versionado](../ops/plano-prs-environment-settlement-pou-2026-07-31.md), subordinado por [ADR-003](../adr/ADR-003-work-registry-hierarchy.md). Conforme a decisão vigente, PR-12 é elegível, mas não é iniciado por esta nota; o plano permanece subordinado e pausado quanto aos demais itens não ressalvados.
+
 **Branch:** `feat/p3-settlement-provider-hardening`  
 **Reference date:** rolling / latest evidence in `ops/evidence/latest`  
 **Status:** Ready for merge & operationalization

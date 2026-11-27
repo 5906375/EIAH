@@ -9,15 +9,7 @@ import {
 
 export type { ImobExecutionRequest, ImobInventorySearchResponse, ImobResolveTurnResponse, ImobThreadConversationState };
 
-export async function resolveImobTurn(body: {
-  message: string;
-  threadLabel?: string | null;
-  threadId?: string | null;
-  caseId?: string | null;
-  recipeId?: string | null;
-  threadState?: ImobThreadConversationState | null;
-  actionId?: string | null;
-}): Promise<ImobResolveTurnResponse> {
+export async function resolveImobTurn(body: Parameters<typeof apiResolveImobTurn>[0]): Promise<ImobResolveTurnResponse> {
   const response = await apiResolveImobTurn(body);
   return response.data;
 }

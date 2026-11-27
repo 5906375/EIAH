@@ -59,6 +59,366 @@
   .pill {
     @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground;
   }
+
+  /* One conversation viewport; forms share its scroll instead of nesting another. */
+  .front-door-launcher {
+    height: max(30rem, calc(100dvh - 10rem));
+  }
+
+  .front-door-navigation a {
+    @apply inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap sm:min-h-[36px];
+  }
+
+  @media (min-width: 640px) {
+    .front-door-launcher {
+      height: max(30rem, calc(100dvh - 9.5rem));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .front-door-launcher {
+      height: max(30rem, calc(100dvh - 6rem));
+    }
+  }
+
+  /* Shell follows the shared page width; conversation has a narrower reading column. */
+  .front-door-page .front-door-launcher {
+    height: max(30rem, calc(100dvh - 8rem));
+  }
+
+  /* Match the resting Self-Service card border rather than its hover state. */
+  .front-door-page .front-door-launcher.front-door-launcher {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] {
+    /* Darken the inherited card backdrop by 20% without dimming content. */
+    background-color: rgb(0 0 0 / 0.2);
+    padding-inline: 0;
+  }
+
+  .front-door-page .front-door-launcher > header {
+    @apply mb-2 gap-x-3 gap-y-1;
+  }
+
+  .front-door-page .front-door-launcher > header [role="combobox"] {
+    @apply min-h-[44px] py-1 lg:min-h-[36px];
+  }
+
+  .front-door-page .front-door-sidebar {
+    border-bottom: 1px solid rgb(255 255 255 / 0.13);
+    padding-bottom: 0.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .front-door-page .front-door-sidebar {
+      border-bottom: 0;
+      padding-bottom: 0;
+      border-inline-end: 1px solid rgb(255 255 255 / 0.13);
+      padding-inline-end: 0.75rem;
+    }
+  }
+
+  .front-door-page .front-door-sidebar button,
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply min-h-[44px] w-full rounded-md border-0 bg-transparent px-2 py-1 text-left text-sm font-medium normal-case tracking-normal lg:min-h-[30px] lg:py-0.5;
+  }
+
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu nav > div {
+    margin-bottom: 0;
+  }
+
+  .front-door-page .front-door-sidebar.front-door-context-panel .imob-sidebar-menu button {
+    @apply min-h-[40px] py-1 text-sm font-normal normal-case tracking-normal lg:min-h-[28px] lg:py-0;
+    line-height: 1.4;
+  }
+
+  .front-door-page .front-door-sidebar button:hover:not(:disabled) {
+    @apply bg-white/[0.03] text-accent;
+  }
+
+  .front-door-page .front-door-sidebar button[aria-expanded="true"] {
+    @apply bg-transparent text-accent;
+  }
+
+  .front-door-page .front-door-sidebar-content {
+    @apply space-y-2;
+  }
+
+  .front-door-page .front-door-sidebar-controls > div > div {
+    @apply gap-1;
+  }
+
+  .front-door-page .front-door-sidebar [role="menuitem"] {
+    @apply text-sm;
+  }
+
+  .front-door-page .front-door-sidebar-status > div,
+  .front-door-page .front-door-sidebar-status > div > div {
+    @apply flex flex-col items-start gap-2;
+  }
+
+  .front-door-page .front-door-sidebar-status span {
+    @apply max-w-full whitespace-normal break-words rounded-lg px-2 text-xs normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar-controls > div {
+    @apply w-full max-w-full;
+  }
+
+  .front-door-page .front-door-sidebar [role="combobox"] {
+    @apply min-h-[44px] rounded-xl border border-white/[0.13] bg-black/30 px-3 text-sm font-normal;
+  }
+
+  .front-door-page .front-door-reading-column {
+    @apply mx-auto w-full min-w-0 max-w-3xl;
+  }
+
+  .front-door-page .front-door-composer > div:first-child {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .front-door-page .front-door-composer > button:last-child {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .front-door-page .imob-structured-form,
+  .front-door-page [data-testid="launcher-conversation-surface"] form {
+    @apply min-w-0 rounded-2xl border border-white/[0.13] bg-[#1a2231] p-4 sm:p-5;
+  }
+
+  .front-door-page .imob-structured-form {
+    @apply mt-0;
+  }
+
+  .front-door-page .imob-structured-form > div:first-child {
+    @apply border-b border-white/[0.13] pb-4;
+  }
+
+  .front-door-page .imob-form-fields {
+    @apply grid grid-cols-1 gap-3 space-y-0;
+  }
+
+  .front-door-page [data-imob-form-field="unitLabel"],
+  .front-door-page [data-imob-form-field="address"],
+  .front-door-page [data-imob-form-field="extraUnits"],
+  .front-door-page [data-imob-form-field]:has(input[type="file"]) {
+    grid-column: 1 / -1;
+  }
+
+  .front-door-page .imob-form-fields input,
+  .front-door-page .imob-form-fields select {
+    @apply min-h-[44px] min-w-0 rounded-xl px-4 py-2 text-[16px] sm:text-base;
+  }
+
+  /* Same rem scale as Perfil; keep mobile inputs at 16px to avoid zoom. */
+  .front-door-page .imob-structured-form label,
+  .front-door-page .imob-structured-form p {
+    @apply text-sm leading-relaxed;
+  }
+
+  .front-door-page .imob-structured-form > div:first-child > p:first-child {
+    @apply text-xs font-semibold uppercase tracking-[0.25em] text-accent;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] input,
+  .front-door-page [data-testid="launcher-conversation-surface"] select,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea {
+    @apply min-h-[44px] min-w-0 max-w-full text-[16px] sm:text-base;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] label {
+    @apply text-sm leading-relaxed;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button,
+  .front-door-composer button {
+    @apply min-h-[44px] max-w-full whitespace-normal text-[16px] font-medium sm:text-base normal-case tracking-normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Perfil controls shared by every native form and command inside Front Door. */
+  .front-door-page [data-testid="launcher-conversation-surface"] input:not([type="checkbox"]):not([type="radio"]),
+  .front-door-page [data-testid="launcher-conversation-surface"] select,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea,
+  .front-door-page .front-door-composer textarea,
+  .front-door-page .front-door-composer select {
+    @apply rounded-xl border border-white/[0.13] bg-black/30 px-4 py-2 text-foreground placeholder:text-muted-foreground;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] input:focus-visible,
+  .front-door-page [data-testid="launcher-conversation-surface"] select:focus-visible,
+  .front-door-page [data-testid="launcher-conversation-surface"] textarea:focus-visible {
+    @apply outline-none ring-2 ring-accent/40;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button,
+  .front-door-page .front-door-composer button,
+  .front-door-page .front-door-launcher > header button {
+    @apply rounded-full border border-white/[0.13] bg-white/5 px-4 py-2 font-semibold no-underline transition;
+  }
+
+  .front-door-page [data-testid="launcher-conversation-surface"] button:hover:not(:disabled),
+  .front-door-page .front-door-composer button:hover:not(:disabled) {
+    @apply bg-white/10 no-underline;
+  }
+
+  .front-door-page button[data-front-door-primary="true"],
+  .front-door-page [data-testid="launcher-conversation-surface"] button[type="submit"] {
+    @apply border border-white/[0.13] bg-accent/20 px-6 text-foreground;
+  }
+
+  .front-door-page button[data-front-door-primary="true"]:hover:not(:disabled),
+  .front-door-page [data-testid="launcher-conversation-surface"] button[type="submit"]:hover:not(:disabled) {
+    @apply bg-accent/30;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] {
+    @apply grid gap-1 rounded-xl border border-white/[0.13] bg-[#1a2231] p-1.5;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"],
+  .front-door-page [data-message-role="user"] {
+    @apply rounded-lg border border-white/[0.104] bg-white/[0.03] px-3 py-1.5 font-medium;
+  }
+
+  .front-door-page .front-door-composer [role="menu"] [role="menuitem"] {
+    @apply min-h-[44px] text-sm sm:min-h-[36px];
+  }
+
+  .front-door-page [data-message-role="user"] {
+    @apply w-fit;
+  }
+
+  .front-door-page .front-door-launcher button[role="combobox"] {
+    @apply rounded-xl bg-black/30 font-normal;
+  }
+
+  .front-door-page .front-door-launcher button:focus-visible {
+    @apply outline-none ring-2 ring-accent/40;
+  }
+
+  .front-door-page .front-door-launcher button[aria-expanded="true"],
+  .front-door-page .front-door-launcher button[aria-pressed="true"] {
+    @apply border-accent/40 bg-accent/20 text-accent;
+  }
+
+  /* Keep expanded sidebar controls light; broad command styles must not add pills. */
+  .front-door-page .front-door-sidebar.front-door-context-panel button[aria-expanded="true"] {
+    @apply bg-transparent text-accent;
+  }
+
+  .front-door-page .front-door-sidebar-status div:has(> span) {
+    @apply flex flex-col items-start gap-1;
+  }
+
+  .front-door-page .front-door-sidebar .front-door-sequence-toggle {
+    @apply flex items-center justify-between gap-2 text-xs font-normal normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-sidebar .front-door-sequence-turn {
+    @apply block truncate text-xs font-normal normal-case tracking-normal;
+  }
+
+  .front-door-page .front-door-conversation-history > div:first-child > h4 {
+    @apply min-w-0 flex-1;
+  }
+
+  .front-door-page .front-door-conversation-history > div:first-child > button {
+    @apply w-auto shrink-0;
+  }
+
+  /* Increase existing border alpha by 30%; preserve hue and borderless menus. */
+  .front-door-page [class~="border-white/10"] { border-color: rgb(255 255 255 / 0.13); }
+  .front-door-page [class~="border-white/[0.08]"] { border-color: rgb(255 255 255 / 0.104); }
+  .front-door-page [class~="border-white/5"] { border-color: rgb(255 255 255 / 0.065); }
+
+  .front-door-page .front-door-composer button[data-front-door-send="true"] {
+    @apply flex h-[44px] min-h-[44px] w-[44px] items-center justify-center rounded-full p-0 text-white;
+    position: relative;
+    align-self: end;
+    background: transparent;
+    border: 0;
+    margin-bottom: 0;
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"]::before {
+    content: "";
+    position: absolute;
+    width: 70%;
+    height: 70%;
+    border-radius: 50%;
+    background-color: #2d67ca;
+    border: 1px solid rgb(255 255 255 / 0.13);
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"] svg {
+    position: relative;
+    width: 15.4px;
+    height: 15.4px;
+  }
+  .front-door-page .front-door-composer button[data-front-door-send="true"]:hover:not(:disabled)::before {
+    background-color: #3977df;
+  }
+
+  .front-door-composer textarea {
+    display: block;
+    @apply text-[16px] sm:text-base;
+  }
+
+}
+
+
+/* Shared by every IMOB form in both chat surfaces. Keep the responsive width. */
+body .imob-structured-form.imob-structured-form {
+  padding: 0.7rem;
+  border-radius: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.4375rem;
+}
+body .imob-structured-form.imob-structured-form > div:first-child {
+  padding-bottom: 0.7rem;
+}
+body .imob-structured-form.imob-structured-form .imob-form-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] {
+  min-width: 0;
+}
+body .imob-structured-form.imob-structured-form [data-imob-form-field] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.175rem;
+}
+body .imob-structured-form.imob-structured-form :is(input, select, button) {
+  min-height: 30.8px;
+  padding: 0.35rem 0.7rem;
+  font-size: max(12px, 0.7rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form :is(input, select) {
+  border-radius: 0.525rem;
+}
+body .imob-structured-form.imob-structured-form :is(label, p, li) {
+  font-size: max(12px, 0.6125rem);
+  line-height: 1.4;
+}
+body .imob-structured-form.imob-structured-form .imob-form-actions {
+  gap: 0.2625rem;
+}
+@media (min-width: 640px) {
+  body .imob-structured-form.imob-structured-form { padding: 0.875rem; }
+}
+@media (max-width: 639px) {
+  /* Preserve readable mobile inputs and comfortable touch targets. */
+  body .imob-structured-form.imob-structured-form :is(input, select) {
+    min-height: 40px;
+    font-size: 16px;
+  }
+  body .imob-structured-form.imob-structured-form button { min-height: 40px; }
+  /* Arquivamento múltiplo: botões e busca com alvo de toque de 44px (o checkbox é acionado pelo label inteiro). */
+  body .imob-structured-form.imob-structured-form.imob-bulk-archive :is(button, input[type="search"]) { min-height: 44px; }
 }
 
 @layer utilities {
@@ -102,7 +462,7 @@
 }
 
 .mission-control-tour .introjs-button {
-  @apply rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground transition hover:border-accent/60 hover:text-accent;
+  @apply rounded-full border border-white/[0.13] bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground transition hover:border-accent/60 hover:text-accent;
 }
 
 .mission-control-tour .introjs-button.introjs-disabled {
@@ -128,4 +488,18 @@
 .mission-control-highlight {
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.45), 0 12px 40px -20px rgba(14, 165, 233, 0.55);
   border-radius: 24px !important;
+}
+
+/* Front Door: indicador de espera pelo resultado ("Buscando informação..."). Só opacidade (sem mudar o layout) e nunca some por completo. */
+@keyframes front-door-waiting-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.front-door-waiting-label {
+  animation: front-door-waiting-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .front-door-waiting-label { animation: none; }
 }

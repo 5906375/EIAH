@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: apps/api/src/tests/imob-property-capture-intake.test.ts
+ok 1 - apps/api/src/tests/imob-property-capture-intake.test.ts
+  ---
+  duration_ms: 1081.714663
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1091.263931

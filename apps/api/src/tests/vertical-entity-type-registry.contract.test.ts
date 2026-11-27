@@ -61,5 +61,8 @@ test("vertical entity type registry stays aligned with currently declared vertic
   const contractVerticals = [...responsibleActorVerticalKeySchema.options].sort();
 
   assert.deepEqual(declaredVerticals, contractVerticals);
+  const imob = registry.find((item) => item.verticalId === "IMOB")!;
+  assert.equal(imob.frontDoorSurface, "chat");
+  assert.equal(imob.operationalHubSurface, "imob_dashboard");
+  assert.equal(imob.activeDomain, "imob");
 });
-

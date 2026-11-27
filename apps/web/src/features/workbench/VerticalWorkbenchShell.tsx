@@ -22,6 +22,7 @@ type Props = {
     eyebrow: string;
     value: string;
   }>;
+  compactColumns?: boolean;
 };
 
 function getStatusClasses(tone: Props["statusTone"]) {
@@ -48,6 +49,7 @@ export function VerticalWorkbenchShell({
   backLabel = "Voltar ao Command Center",
   panelToggleLabel = "Painel contextual",
   heroHighlights = [],
+  compactColumns = false,
 }: Props) {
   return (
     <div className="flex min-h-0 flex-1 flex-col px-0.5 py-0.5 sm:px-1.5 sm:py-1.5 lg:px-2.5 lg:py-2.5">
@@ -78,7 +80,9 @@ export function VerticalWorkbenchShell({
       ) : null}
 
       <div className="flex-1 min-h-[520px] overflow-hidden rounded-[22px] border border-accent/24 bg-surface/80 shadow-[0_0_0_1px_rgba(56,189,248,0.16),0_22px_56px_-34px_rgba(56,189,248,0.34)] sm:rounded-[24px] xl:rounded-[28px]">
-        <div className="grid h-full min-h-[520px] lg:grid-cols-[208px,minmax(0,1fr)] xl:justify-center xl:grid-cols-[216px,minmax(760px,920px),272px] 2xl:grid-cols-[224px,minmax(820px,980px),280px]">
+        <div className={compactColumns
+          ? "grid h-full min-h-[520px] lg:grid-cols-[180px,minmax(0,1fr)] xl:grid-cols-[180px,minmax(0,1fr),240px]"
+          : "grid h-full min-h-[520px] lg:grid-cols-[208px,minmax(0,1fr)] xl:justify-center xl:grid-cols-[216px,minmax(760px,920px),272px] 2xl:grid-cols-[224px,minmax(820px,980px),280px]"}>
           <aside className="hidden h-full min-h-0 flex-col border-b border-white/10 bg-[linear-gradient(180deg,rgba(6,11,21,0.94)_0%,rgba(9,17,31,0.98)_100%)] lg:flex lg:border-b-0 lg:border-r">
             {sidebar}
           </aside>

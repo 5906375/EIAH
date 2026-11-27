@@ -1,0 +1,107 @@
+{
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "build_validate",
+            "integration_id": 15368
+          },
+          {
+            "context": "lint",
+            "integration_id": 15368
+          },
+          {
+            "context": "CiUnitSuite",
+            "integration_id": 15368
+          },
+          {
+            "context": "EvidenceIndex",
+            "integration_id": 15368
+          },
+          {
+            "context": "ReceiptCanonCompat",
+            "integration_id": 15368
+          },
+          {
+            "context": "P0CriticalityAudit",
+            "integration_id": 15368
+          },
+          {
+            "context": "P1CriticalChain",
+            "integration_id": 15368
+          },
+          {
+            "context": "RbacGuardrailRegression",
+            "integration_id": 15368
+          },
+          {
+            "context": "AgentsPolicyFailClosed",
+            "integration_id": 15368
+          },
+          {
+            "context": "AgentProtocolCompat",
+            "integration_id": 15368
+          },
+          {
+            "context": "P2AuditInterop",
+            "integration_id": 15368
+          },
+          {
+            "context": "ProviderBoundary",
+            "integration_id": 15368
+          },
+          {
+            "context": "P3EconomyHardening",
+            "integration_id": 15368
+          },
+          {
+            "context": "P3SettlementSupportByEnv",
+            "integration_id": 15368
+          },
+          {
+            "context": "SettlementContractDrift",
+            "integration_id": 15368
+          },
+          {
+            "context": "W4NonRegression",
+            "integration_id": 15368
+          },
+          {
+            "context": "DbPreviewPostgresValidate",
+            "integration_id": 15368
+          },
+          {
+            "context": "PublicHealthContract",
+            "integration_id": 15368
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: entrada pelo front door: founder
+ok 1 - entrada pelo front door: founder
+  ---
+  duration_ms: 4.907325
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: tenant_admin
+ok 2 - entrada pelo front door: tenant_admin
+  ---
+  duration_ms: 1.036099
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: service
+ok 3 - entrada pelo front door: service
+  ---
+  duration_ms: 0.922747
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: membro
+ok 4 - entrada pelo front door: membro
+  ---
+  duration_ms: 0.455645
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: admin do workspace
+ok 5 - entrada pelo front door: admin do workspace
+  ---
+  duration_ms: 0.517944
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: IMOB instalado
+ok 6 - entrada pelo front door: IMOB instalado
+  ---
+  duration_ms: 1.724163
+  type: 'test'
+  ...
+# Subtest: entrada pelo front door: IMOB sem instalação
+ok 7 - entrada pelo front door: IMOB sem instalação
+  ---
+  duration_ms: 0.418581
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 23.895216

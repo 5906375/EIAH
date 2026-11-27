@@ -1,0 +1,50 @@
+20050-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8965807Z     "^pou-gated-payment-e2e-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+20051-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8966282Z       "file": "pou-gated-payment-e2e-2026-08-01.json",
+20052-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8966653Z       "ageDays": 0.74
+20053-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967033Z     }
+20054-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967271Z   }
+20055-P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967495Z }
+20056:P3SettlementSupportByEnv	Check P3 settlement support matrix by env	﻿2026-08-01T17:41:27.9067284Z ##[group]Run pnpm check:p3-settlement-support-by-env
+20057:P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9067646Z ^[[36;1mpnpm check:p3-settlement-support-by-env^[[0m
+20058-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088154Z shell: /usr/bin/bash -e {0}
+20059-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088415Z env:
+20060-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088593Z   NODE_VERSION: 20
+20061-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088778Z   PNPM_VERSION: 10.12.4
+20062-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089011Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+20063-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089275Z   SETTLEMENT_ENV: staging
+20064-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089472Z ##[endgroup]
+20065-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1137303Z 
+20066:P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1138151Z > eiah-builder@ check:p3-settlement-support-by-env /home/runner/work/EIAH/EIAH
+20067-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1138968Z > node --experimental-strip-types scripts/checkP3SettlementSupportByEnv.ts
+20068-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1139356Z 
+20069-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1899611Z {
+20070-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1900078Z   "ok": false,
+20071:P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1900648Z   "check": "check:p3-settlement-support-by-env",
+20072-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1903426Z   "message": "provider_mode_not_allowed_for_environment",
+20073-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904116Z   "details": {
+20074-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904498Z     "environment": "staging",
+20075-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904917Z     "violations": [
+20076-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1905297Z       {
+20077-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1905655Z         "provider": "stripe",
+20078-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906050Z         "mode": "full",
+20079-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906431Z         "allowedModes": [
+20080-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906813Z           "simulated"
+20081-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1907396Z         ]
+20082-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1907713Z       }
+20083-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1908020Z     ]
+20084-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1908550Z   }
+20085-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1917606Z }
+20086-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.2062740Z  ELIFECYCLE  Command failed with exit code 1.
+20087-P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.2330563Z ##[error]Process completed with exit code 1.
+20088-P3SettlementSupportByEnv	Post Setup PNPM	﻿2026-08-01T17:41:28.2421711Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+20089-P3SettlementSupportByEnv	Post Setup PNPM	2026-08-01T17:41:28.2422650Z Post job cleanup.
+20090-P3SettlementSupportByEnv	Post Setup PNPM	2026-08-01T17:41:28.3598338Z Pruning is unnecessary.
+20091-P3SettlementSupportByEnv	Post Checkout repository	﻿2026-08-01T17:41:28.3742128Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+20092-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.3743697Z Post job cleanup.
+20093-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4617487Z [command]/usr/bin/git version
+20094-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4677599Z git version 2.54.0
+20095-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4723211Z Temporarily overriding HOME='/home/runner/work/_temp/f8a0e0eb-803c-46e4-b698-c8ec5b2d39bc' before making global git config changes
+20096-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4724385Z Adding repository directory to the temporary git global config as a safe directory
+20097-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4735111Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+20098-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4761085Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+20099-P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4816278Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"

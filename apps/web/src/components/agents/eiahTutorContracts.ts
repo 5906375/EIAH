@@ -42,7 +42,7 @@ export type ResponsePatternV1 = {
 export type KnowledgeUnitV1 = {
   id: string;
   title: string;
-  vertical: "core" | "imob" | "legal";
+  vertical: "core" | "imob" | "logistica" | "legal";
   topic: string;
   problemItSolves: string;
   canonicalAnswer: string;
@@ -2207,7 +2207,7 @@ function resolveDirectCoreTutorReply(normalizedInput: string): TutorContractRepl
   };
 }
 
-export function hasExactEiahTutorIntentMatch(input: string) {
+export function hasExactEiahTutorIntentMatch(input: string, allowContainedTerm = false) {
   const normalizedInput = normalizeIntentText(input);
   if (resolveDirectCoreTutorReply(normalizedInput)) return true;
 
@@ -2215,7 +2215,12 @@ export function hasExactEiahTutorIntentMatch(input: string) {
   const intent = pickBestIntent(ranked, 35);
   if (!intent) return false;
 
-  return isExactTermMatch(intent, normalizedInput);
+  if (isExactTermMatch(intent, normalizedInput)) return true;
+  if (!allowContainedTerm) return false;
+  // Continuidade pode ceder a um termo completo declarado no catálogo, nunca
+  // ao matching parcial inverso que associa "sim" a "simular".
+  const words = ` ${normalizedInput.replace(/[?!.,]/g, " ").replace(/\s+/g, " ").trim()} `;
+  return [...intent.examples, ...(intent.aliases ?? [])].some((term) => words.includes(` ${normalizeIntentText(term)} `));
 }
 
 function buildClarificationReply(): TutorContractReply {

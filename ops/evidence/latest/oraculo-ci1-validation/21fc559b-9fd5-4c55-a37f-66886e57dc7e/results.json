@@ -1,0 +1,102 @@
+{
+  "runId": "21fc559b-9fd5-4c55-a37f-66886e57dc7e",
+  "executedAt": "2026-09-24T10:46:27.962Z",
+  "imageId": "sha256:05c1acb89ae44b0bc936fdad9c7bcf32a2300ef1dbab9407bb6dd12eaee1c8c3",
+  "imageDigests": [
+    "postgres@sha256:cf2a05fe40887b721e4b3dbac8fd32673c08292dcc8ba6b62b52b7f640433bd0"
+  ],
+  "baseline": "6118f1079e17a4c0a8fd9caf9246fc3d6e694be2",
+  "serverVersionNum": "160011",
+  "roles": [
+    {
+      "rolname": "oraculo_ci1_approver",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolinherit": false,
+      "rolbypassrls": false
+    },
+    {
+      "rolname": "oraculo_ci1_executor",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolinherit": false,
+      "rolbypassrls": false
+    },
+    {
+      "rolname": "oraculo_ci1_owner",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolinherit": false,
+      "rolbypassrls": false
+    },
+    {
+      "rolname": "oraculo_ci1_reader",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolinherit": false,
+      "rolbypassrls": false
+    },
+    {
+      "rolname": "oraculo_ci1_writer",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolinherit": false,
+      "rolbypassrls": false
+    }
+  ],
+  "grants": {
+    "oraculo_ci1_executor": [
+      "oraculo_admit",
+      "oraculo_begin",
+      "oraculo_context",
+      "oraculo_finish",
+      "oraculo_read"
+    ],
+    "oraculo_ci1_approver": [
+      "oraculo_begin",
+      "oraculo_context",
+      "oraculo_approve"
+    ],
+    "oraculo_ci1_writer": [
+      "oraculo_write_scope",
+      "oraculo_write_authority",
+      "oraculo_write_global",
+      "oraculo_write_snapshot"
+    ],
+    "oraculo_ci1_reader": [
+      "oraculo_read"
+    ]
+  },
+  "command": "node --import tsx --test apps/api/src/services/logistica/oraculo/ci1.integration.test.ts",
+  "exitCode": 0,
+  "stdout": "TAP version 13\n# Subtest: CI1 basic: durable C5, atomic revision/audit and immutable replay\nok 1 - CI1 basic: durable C5, atomic revision/audit and immutable replay\n  ---\n  duration_ms: 167.745832\n  type: 'test'\n  ...\n# Subtest: CI1 HITL: persisted current review unlocks only integrated simulation\nok 2 - CI1 HITL: persisted current review unlocks only integrated simulation\n  ---\n  duration_ms: 132.915051\n  type: 'test'\n  ...\n# Subtest: CI1 no A1: durable hold without inventing a final reasonCode\nok 3 - CI1 no A1: durable hold without inventing a final reasonCode\n  ---\n  duration_ms: 149.078802\n  type: 'test'\n  ...\n# Subtest: CI1 rejection persists and does not become a later approval\nok 4 - CI1 rejection persists and does not become a later approval\n  ---\n  duration_ms: 126.124439\n  type: 'test'\n  ...\n# Subtest: CI1 later observations require new review before expiry is considered\nok 5 - CI1 later observations require new review before expiry is considered\n  ---\n  duration_ms: 115.554582\n  type: 'test'\n  ...\n# Subtest: CI1 material replacement cannot reuse a persisted A1\nok 6 - CI1 material replacement cannot reuse a persisted A1\n  ---\n  duration_ms: 117.152435\n  type: 'test'\n  ...\n# Subtest: CI1 revoked reviewer blocks execution\nok 7 - CI1 revoked reviewer blocks execution\n  ---\n  duration_ms: 103.606856\n  type: 'test'\n  ...\n# Subtest: CI1 session expiry uses real time despite historical valid fixture\nok 8 - CI1 session expiry uses real time despite historical valid fixture\n  ---\n  duration_ms: 79.38938\n  type: 'test'\n  ...\n# Subtest: CI1 spoofed actor and cross-tenant scope are rejected\nok 9 - CI1 spoofed actor and cross-tenant scope are rejected\n  ---\n  duration_ms: 98.281849\n  type: 'test'\n  ...\n# Subtest: CI1 HI conflict cannot overwrite original result\nok 10 - CI1 HI conflict cannot overwrite original result\n  ---\n  duration_ms: 95.243421\n  type: 'test'\n  ...\n# Subtest: CI1 negative evaluation is durable and cannot be retried into success\nok 11 - CI1 negative evaluation is durable and cannot be retried into success\n  ---\n  duration_ms: 112.551677\n  type: 'test'\n  ...\n# Subtest: CI1 database observation identity is immutable and scoped\nok 12 - CI1 database observation identity is immutable and scoped\n  ---\n  duration_ms: 77.513454\n  type: 'test'\n  ...\n# Subtest: CI1 least privilege: no direct DML, DDL, helper, approval or owner escalation\nok 13 - CI1 least privilege: no direct DML, DDL, helper, approval or owner escalation\n  ---\n  duration_ms: 71.226869\n  type: 'test'\n  ...\n# Subtest: CI1 finishing requires same transaction and connection; pool reuse is inert\nok 14 - CI1 finishing requires same transaction and connection; pool reuse is inert\n  ---\n  duration_ms: 95.609257\n  type: 'test'\n  ...\n# Subtest: CI1 two intentions at one revision yield one effect\nok 15 - CI1 two intentions at one revision yield one effect\n  ---\n  duration_ms: 118.117694\n  type: 'test'\n  ...\n# Subtest: CI1 failure after visit update rolls back visit, C5, audit and assessment\nok 16 - CI1 failure after visit update rolls back visit, C5, audit and assessment\n  ---\n  duration_ms: 125.253504\n  type: 'test'\n  ...\n# Subtest: CI1 lost COMMIT response reconciles on a separate connection without reapplying\nok 17 - CI1 lost COMMIT response reconciles on a separate connection without reapplying\n  ---\n  duration_ms: 112.895791\n  type: 'test'\n  ...\n# Subtest: CI1 revocation writer waits for the protected executor transaction\nok 18 - CI1 revocation writer waits for the protected executor transaction\n  ---\n  duration_ms: 84.229875\n  type: 'test'\n  ...\n# Subtest: CI1 global change precedes blocked executor and is reread after lock\nok 19 - CI1 global change precedes blocked executor and is reread after lock\n  ---\n  duration_ms: 103.338768\n  type: 'test'\n  ...\n# Subtest: CI1 legacy A1 is never selected and its data remains intact\nok 20 - CI1 legacy A1 is never selected and its data remains intact\n  ---\n  duration_ms: 91.116393\n  type: 'test'\n  ...\n# Subtest: CI1 invalid A1 validity window cannot authorize\nok 21 - CI1 invalid A1 validity window cannot authorize\n  ---\n  duration_ms: 121.018458\n  type: 'test'\n  ...\n# Subtest: CI1 E1 declared-set order is stable in persisted context\nok 22 - CI1 E1 declared-set order is stable in persisted context\n  ---\n  duration_ms: 128.773645\n  type: 'test'\n  ...\n# Subtest: CI1 committed assessment preserves exact resolved materials after snapshot replacement\nok 23 - CI1 committed assessment preserves exact resolved materials after snapshot replacement\n  ---\n  duration_ms: 95.932601\n  type: 'test'\n  ...\n# Subtest: CI1 OUT commits only matching proof after persisted IN\nok 24 - CI1 OUT commits only matching proof after persisted IN\n  ---\n  duration_ms: 105.955631\n  type: 'test'\n  ...\n# Subtest: CI1 failure in oraculo_intents after audit insertion rolls back every write\nok 25 - CI1 failure in oraculo_intents after audit insertion rolls back every write\n  ---\n  duration_ms: 96.904499\n  type: 'test'\n  ...\n# Subtest: CI1 failure in oraculo_executions after audit insertion rolls back every write\nok 26 - CI1 failure in oraculo_executions after audit insertion rolls back every write\n  ---\n  duration_ms: 81.911059\n  type: 'test'\n  ...\n# Subtest: CI1 null capabilities cannot become authority through SQL null semantics\nok 27 - CI1 null capabilities cannot become authority through SQL null semantics\n  ---\n  duration_ms: 55.625748\n  type: 'test'\n  ...\n# Subtest: CI1 reviewer identity revision change invalidates persisted authority\nok 28 - CI1 reviewer identity revision change invalidates persisted authority\n  ---\n  duration_ms: 85.715603\n  type: 'test'\n  ...\n# Subtest: CI1 disabled installation fails closed before execution\nok 29 - CI1 disabled installation fails closed before execution\n  ---\n  duration_ms: 66.371637\n  type: 'test'\n  ...\n# Subtest: CI1 every C5 evaluationRef resolves to a complete immutable C3\nok 30 - CI1 every C5 evaluationRef resolves to a complete immutable C3\n  ---\n  duration_ms: 115.341181\n  type: 'test'\n  ...\n# Subtest: CI1 C3 insert failure rolls back the simulated visit effect\nok 31 - CI1 C3 insert failure rolls back the simulated visit effect\n  ---\n  duration_ms: 98.127008\n  type: 'test'\n  ...\n# Subtest: CI1 E1 access requires this requester and an active execution context\nok 32 - CI1 E1 access requires this requester and an active execution context\n  ---\n  duration_ms: 109.07362\n  type: 'test'\n  ...\n1..32\n# tests 32\n# suites 0\n# pass 32\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 3751.365821\n",
+  "stderr": "",
+  "legacyPreserved": {
+    "record_format": "LEGACY",
+    "context_hash": null,
+    "governed_payload": null
+  },
+  "noRoleMemberships": true,
+  "fileHashes": {
+    "packages/db/prisma/migrations/20260922170000_oraculo_s1_persistence/migration.sql": "e7e4a4825c879ceea2a5ed337e104b3feabfe6345f4327e0f0bb4e99bd62cbc4",
+    "packages/db/prisma/migrations/20260923090000_oraculo_ci1_context_guard/migration.sql": "6de3c0f379938c2cae8f8c5d955e2c55758884bbdec0efc28633ba3987d69f2f",
+    "apps/api/src/services/logistica/oraculo/transactionExecutor.ts": "5f0419c3a66c63d62f6c5dc4491c17683445280f58dd7f0cd3ea6cacb9c06bf2",
+    "apps/api/src/services/logistica/oraculo/evaluation.ts": "8f99c1edd71651a6a491e52cde9b9e49149a8e878747d246a2696d2326036587",
+    "apps/api/src/services/logistica/oraculo/ci1.integration.test.ts": "f0080387bcd53fe4a3d3602b5429065f09d820f99915fd592a9bd82fa7845fd0",
+    "apps/api/scripts/validateOraculoS1Integrated.ts": "56126b0e0836c219b2b827c838737ca040dcdb948ca68ddcecbd235febdb77e2",
+    "packages/db/src/oraculo/connection.ts": "161cf17c0c195c4f58fbfa9d8f6c6dc125c276e530abcaa7da31b6cc65afdb2e",
+    "packages/db/prisma/schema.prisma": "f6c6f06dc51ad693e025c98e65fde8ec74955b4f98346aa6c7ba4e73264d3453",
+    "apps/api/src/services/logistica/oraculo/canonicalization.ts": "bd6bba5ebe71a46b928eb8722e4c7d435ca48b2330214260504666a62756738d",
+    "packages/contracts/src/oraculo.ts": "36b30722bc40b14161717361587e04939fe5ed159e52f1407aa7352016966edb",
+    "packages/contracts/src/governance.ts": "79116c6af16b2c92bd34a955a0d84f363e2abc318e62e135ccb4eb15473cc194",
+    "packages/db/prisma.oraculo-ci1.config.ts": "659b99ee493bfd7d78a959d14b4bea048ecc96ba8375680af710a84915318d7e",
+    "tsconfig.oraculo-ci1.json": "0d686ab02bd1ac07a5248de4ea77bf9cafe0e02bb16dcdc3788c290f9be430b2",
+    "package.json": "ea855aae006694d10b3fb20ce1f09afc8fd026dafd1ae19ecbc2282174a79900"
+  },
+  "cleanedUp": true
+}

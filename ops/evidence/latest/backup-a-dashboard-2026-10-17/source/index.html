@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BACKUP-A — Painel local</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>BACKUP-A <span>painel local</span></h1><div id="fresh" class="fresh" role="status">carregando…</div></div>
+  <nav id="nav" aria-label="Seções">
+    <button data-view="overview" class="on">Visão geral</button>
+    <button data-view="agenda">Agenda</button>
+    <button data-view="history">Histórico</button>
+    <button data-view="todo">Depende de você</button>
+  </nav>
+</header>
+<div class="banners">
+  <div class="banner strong">UPLOAD AO S3 MANUAL — iniciado pelo owner</div>
+  <div class="banner warn">Windows e WSL precisam estar funcionando no horário; horários perdidos não são recuperados automaticamente.</div>
+</div>
+<main>
+  <section id="view-overview"></section>
+  <section id="view-agenda" hidden></section>
+  <section id="view-history" hidden></section>
+  <section id="view-todo" hidden></section>
+</main>
+<aside id="drawer" class="drawer" hidden aria-label="Detalhes do run"></aside>
+<div id="modal" class="modal" hidden></div>
+<footer>Somente loopback (127.0.0.1) · atualização local a cada 5 s · nenhuma chamada AWS na atualização · fechar esta página não interrompe timers, capturas nem uploads</footer>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# sincronização do relógio — consultas SOMENTE LEITURA em 2026-10-17T12:59:11Z = 2026-10-17T09:59:11-03:00 (America/Sao_Paulo)
+
+## WSL: timedatectl
+               Local time: Sat 2026-10-17 09:59:11 -03   
+           Universal time: Sat 2026-10-17 12:59:11 UTC   
+                 RTC time: Sat 2026-10-17 12:59:12       
+                Time zone: America/Sao_Paulo (-03, -0300)
+System clock synchronized: yes                           
+              NTP service: inactive                      
+          RTC in local TZ: no                            
+
+## WSL: timedatectl show
+Timezone=America/Sao_Paulo
+NTP=no
+NTPSynchronized=yes
+TimeUSec=Sat 2026-10-17 09:59:11 -03
+RTCTimeUSec=Sat 2026-10-17 09:59:12 -03
+
+## WSL: serviços de tempo
+systemd-timesyncd: inactive
+chrony: inactive
+ntp: inactive
+chronyd: inactive
+
+## Windows: serviço Windows Time (sc query / w32tm)
+
+NOME_DO_SERVIÇO: w32time 
+        TIPO               : 20  WIN32_SHARE_PROCESS  
+        ESTADO              : 1  STOPPED 
+        CÓDIGO_DE_SAÍDA_DO_WIN32    : 1077  (0x435)
+        CÓDIGO_DE_SAÍDA_DO_SERVIÇO  : 0  (0x0)
+Ocorreu o seguinte erro: O serviço não foi iniciado. (0x80070426)
+
+## Windows: configuração (registro, leitura)
+    Type    REG_SZ    NTP
+
+    NtpServer    REG_SZ    time.windows.com,0x9
+
+fuso do Windows: E. South America Standard Time
+
+## diferença relógio Windows x WSL (3 amostras; o Windows lido via PowerShell UtcNow, com a janela de ida e volta)
+amostra 1: delta(Windows-WSL)=0.074s ; ida e volta=0.205s
+amostra 2: delta(Windows-WSL)=0.081s ; ida e volta=0.216s
+amostra 3: delta(Windows-WSL)=0.077s ; ida e volta=0.209s
+
+## CONCLUSÕES E LIMITAÇÕES
+- Fonte do relógio do WSL: INFERIDA como o host Windows (WSL2 deriva o tempo do host; não provado por estas consultas; não há cliente NTP ativo no WSL: NTP=no; systemd-timesyncd/chrony/ntp inativos). NTPSynchronized=yes é a flag do kernel e não identifica a fonte.
+- Serviço Windows Time (w32time) está PARADO (código 1077, nunca iniciado desde o boot); a configuração aponta time.windows.com (Type=NTP), mas NÃO há sincronização ativa pelo w32time medida agora. A última sincronização externa NÃO é verificável por estas consultas.
+- Windows e WSL concordam em ~0,08 s (amostras de 0,074 a 0,081 s; ida e volta ~0,21 s), o que mostra consistência entre os dois relógios, não exatidão em relação a UTC.
+- Converter fuso (UTC<->America/Sao_Paulo) não comprova sincronização do relógio.
+- Nada foi alterado: sem timedatectl set-*, sem w32tm /resync, sem iniciar serviços.

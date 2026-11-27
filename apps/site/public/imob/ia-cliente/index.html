@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Imobiliária Horizonte</title>
+  <link rel="stylesheet" href="../catalog.css">
+  <link rel="stylesheet" href="../step-guides.css">
+  <link rel="stylesheet" href="../visual.css">
+</head>
+<body data-product="ia-cliente" data-storefront>
+<a class="skip-link" href="#main">Pular para o conteúdo</a>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="./"><span class="brand-monogram" data-client-logo aria-hidden="true">IH</span><span data-client-name>Imobiliária Horizonte</span></a>
+    <button class="btn btn-ghost menu-toggle" type="button" id="menuToggle" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Navegação principal">
+      <a href="#inicio">Início</a>
+      <a href="#vitrine">Imóveis</a>
+      <a href="#contato">Contato</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <section class="intro" id="inicio">
+    <div class="wrap intro-grid">
+      <div class="intro-copy">
+        <h1 data-demo-guide-topic="inicio-vitrine">Encontre seu imóvel.<br><em>Ou apresente o seu.</em></h1>
+        <p class="lead" data-client-intro>Encontre imóveis para comprar, alugar ou passar a temporada no litoral catarinense.</p>
+        <div class="next-actions"><a class="btn btn-primary" href="?objetivo=novo#jornada" data-interest>Solicitar demonstração com IA</a><a class="btn btn-ghost" href="#vitrine">Explorar imóveis</a><a class="btn btn-ghost" href="?objetivo=cadastrar#jornada" data-interest="anuncio">Quero anunciar um imóvel</a></div>
+      </div>
+      <figure class="intro-art"><img src="../assets/previa02-abertura.webp" width="1024" height="572" fetchpriority="high" alt="Sala de um apartamento com sofá azul e grandes janelas para o mar"></figure>
+    </div>
+  </section>
+  <div class="wrap demo-notice next-actions">
+    <span>Esta prévia usa imóveis fictícios e funciona sem IA. Os pedidos de temporada de teste ficam neste navegador.</span>
+    <a class="btn btn-ghost" href="./personalizar/">Personalizar meu site</a>
+  </div>
+  <section class="journey-section" id="jornada" aria-labelledby="interest-title" hidden></section>
+  <div id="vitrine">
+    <section class="catalog-heading">
+      <div class="wrap">
+        <h2 data-demo-guide-topic="vitrine">Vitrine de imóveis</h2>
+        <p class="lead">Busque por características, filtre e compare os imóveis de exemplo.</p>
+        <div class="search-card" role="search">
+      <div class="mode-tabs" role="group" aria-label="Finalidade da busca">
+        <button class="active" data-mode="venda" aria-pressed="true">Comprar</button>
+        <button data-mode="locacao" aria-pressed="false">Aluguel anual</button>
+        <button data-mode="temporada" aria-pressed="false">Temporada</button>
+      </div>
+      <form class="ai-search" id="aiForm">
+        <label class="sr-only" for="aiInput">Descreva o imóvel que você procura</label>
+        <input id="aiInput" placeholder="Ex.: alugar apartamento no Centro" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Buscar</button>
+      </form>
+      <div class="ai-hint">Sugestões de busca
+        <button type="button" data-example="apartamento no Centro até 1 milhão">apartamento no Centro até 1 milhão</button>
+        <button type="button" data-example="alugar apartamento com 2 quartos">alugar apartamento com 2 quartos</button>
+        <button type="button" data-example="temporada em Itapema">temporada em Itapema</button>
+      </div>
+      <div class="ai-understood" id="aiUnderstood" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<section class="results" id="imoveis">
+  <div class="wrap">
+    <h3 data-demo-guide-topic="venda" id="listTitle">Imóveis à venda</h3>
+    <section class="stay-panel" id="stayPanel" aria-labelledby="stayTitle" hidden>
+      <h4 data-demo-guide-topic="temporada" id="stayTitle">Consulte as datas da sua estadia</h4>
+      <p class="field-help">Disponibilidade e valores fictícios para testar a consulta.</p>
+      <form id="stayForm">
+        <div class="stay-fields">
+          <label>Entrada<input name="arrival" type="date" required></label>
+          <label>Saída<input name="departure" type="date" required></label>
+          <label>Hóspedes<input name="guests" type="number" min="1" max="12" value="2" required></label>
+        </div>
+        <div class="next-actions">
+          <button class="btn btn-primary" type="submit">Consultar disponibilidade</button>
+          <button class="btn btn-ghost" id="staySample" type="button">Usar datas de exemplo</button>
+          <a class="btn btn-ghost" href="../operacao-eiah/equipe/#temporada">Abrir visão da equipe</a>
+        </div>
+      </form>
+      <p class="field-help" id="stayMessage" role="status"></p>
+    </section>
+    <div class="filters" aria-label="Filtros">
+      <div><label for="fType">Tipo</label><select id="fType"><option value="">Todos</option></select></div>
+      <div><label for="fCity">Cidade / bairro</label><select id="fCity"><option value="">Todas</option></select></div>
+      <div><label for="fBeds">Quartos</label><select id="fBeds"><option value="0">Qualquer</option><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4">4+</option></select></div>
+      <div><label for="fMax">Valor até (R$)</label><input id="fMax" inputmode="numeric" placeholder="Sem limite"></div>
+      <div><label for="fSort">Ordenar</label><select id="fSort"><option value="rel">Mais relevantes</option><option value="asc">Menor valor</option><option value="desc">Maior valor</option><option value="area">Maior área</option></select></div>
+    </div>
+
+    <div class="results-bar">
+      <span class="count" id="count" aria-live="polite"></span>
+      <div class="results-actions">
+        <button class="btn btn-ghost" id="onlyFav" type="button" aria-pressed="false">♡ Favoritos</button>
+        <button class="btn btn-ghost" id="clearFilters" type="button">Limpar filtros</button>
+      </div>
+    </div>
+
+    <div class="cards-carousel" role="region" aria-labelledby="listTitle">
+      <div class="property-carousel-buttons cards-navigation" id="cardsNavigation" role="group" aria-label="Navegação dos imóveis" hidden>
+        <button class="btn btn-ghost property-carousel-arrow" id="cardsPrevious" type="button" aria-label="Imóveis anteriores" aria-controls="cards">‹</button>
+        <button class="btn btn-ghost property-carousel-arrow" id="cardsNext" type="button" aria-label="Próximos imóveis" aria-controls="cards">›</button>
+      </div>
+      <div class="grid-cards" id="cards" role="group" aria-label="Lista de imóveis"></div>
+    </div>
+  </div>
+</section>
+
+
+
+  </div>
+</main>
+<footer data-demo-guide-topic="contato" class="client-footer" id="contato">
+  <div class="wrap client-footer-shell">
+    <div data-client-footer></div>
+  </div>
+</footer>
+<div class="compare-bar" id="compareBar" role="region" aria-label="Comparação de imóveis">
+  <span id="compareCount"></span>
+  <button class="btn btn-primary" id="compareOpen" type="button">Comparar</button>
+  <button class="btn btn-ghost" id="compareClear" type="button">Limpar</button>
+</div>
+<dialog class="modal" id="modal" aria-labelledby="modalTitle"><div class="modal-box" id="modalBox"></div></dialog>
+<script type="module" src="../demo-interest.mjs"></script>
+<script type="module" src="../catalog.mjs"></script>
+<script type="module" src="../client-brand.mjs"></script>
+<script type="module" src="../demo-guide.mjs"></script>
+</body></html>

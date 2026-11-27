@@ -14,7 +14,6 @@ let closeRunEventsTransport: () => Promise<unknown>;
 let closeRunQueueConnections: () => Promise<unknown>;
 let closeMemoryResources: () => Promise<unknown>;
 let closeRedisPublisher: () => Promise<unknown>;
-let closeRunEventPublisherResources: () => Promise<unknown>;
 let closeTenantPolicyStoreResources: () => Promise<unknown>;
 let closeCriticalMetricsRedis: () => Promise<unknown>;
 let closeCriticalKillSwitchRedis: () => Promise<unknown>;
@@ -97,7 +96,6 @@ before(async () => {
   ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
   ({ closeMemoryResources } = await import("../services/memory"));
   ({ closeRedisPublisher } = await import("@eiah/core/events/redisPublisher"));
-  ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
   ({ closeTenantPolicyStoreResources } = await import("@eiah/core/policy/TenantPolicyStore"));
   ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
   ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
@@ -120,9 +118,16 @@ before(async () => {
       revoked: false,
     },
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  const { installImobForTest } = await import("./support/imobInstallationFixture");
+  const { ensureWorkspaceMembershipForUser } = await import("../services/workspaceResponsibility");
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantId, workspaceId: workspaceId, userId: userId });
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [tenantId]);
   if (!prismaGlobal) return;
   debugCleanupStep("start");
   await prismaGlobal.$executeRaw`
@@ -153,8 +158,6 @@ after(async () => {
   debugCleanupStep("after-closeMemoryResources");
   await closeRedisPublisher();
   debugCleanupStep("after-closeRedisPublisher");
-  await closeRunEventPublisherResources();
-  debugCleanupStep("after-closeRunEventPublisherResources");
   await closeTenantPolicyStoreResources();
   debugCleanupStep("after-closeTenantPolicyStoreResources");
   await closeCriticalMetricsRedis();

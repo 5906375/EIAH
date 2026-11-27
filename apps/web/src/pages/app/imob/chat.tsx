@@ -1,3 +1,5 @@
+import { describeChatTurnFailure } from "./chatFailureCopy";
+import { formatImobStageLabel } from "@/features/imob/imobCommandCenterHelper";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -19,7 +21,6 @@ import {
   apiResolveImobAttachment,
   apiApplyImobAttachmentCrmSuggestion,
   apiFetchUploadBlob,
-  apiLookupImobCep,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
@@ -38,7 +39,25 @@ import {
   type ImobPresentationForm,
   type ImobPresentationWidget,
 } from "@/lib/api";
-import { useSession } from "@/state/sessionStore";
+import {
+  isRentalLeaseForm,
+} from "./rentalLeaseForm";
+import {
+  isPropertyCreateForm,
+} from "./propertyCreateForm";
+import {
+  isOwnerCreateForm,
+} from "./ownerCreateForm";
+import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
+import { ImobFormCard } from "@/features/imob/structured/ImobFormCard";
+import { createImobStructuredForms } from "@/features/imob/structured/createImobStructuredForms";
+import { useImobFormState } from "@/features/imob/structured/useImobFormState";
+import { buildProposalTextContinuation, hasPendingProposalReview, hasProposalReviewCarrier, buildProposalFormContinuation, isConversationalProposalForm } from "./proposalForm";
+import {
+  IMOB_ACTION_MENUS,
+  listImobActionMenuPrompts,
+} from "@/features/imob/imobActionMenus";
+import { getSession, useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
   searchImobInventory,
@@ -54,6 +73,7 @@ import {
   getContractTypeLabel,
   getStepQuestionText,
   getContractTypePrompt,
+  getContractChoiceOptions,
   isAffirmativeAnswer,
   isNegativeAnswer,
   moveInterviewToEditableField,
@@ -124,6 +144,8 @@ type CardCta = {
 
 type MessageCard = {
   type: CardType;
+  /** Rótulo do selo quando o padrão do tipo não descreve o card (ex.: histórico). */
+  chip?: string;
   title: string;
   lines: string[];
   compactConfirm?: boolean;
@@ -174,6 +196,8 @@ type ChatMessage = {
   assistantDedupeKey?: string | null;
   hiddenFromTimeline?: boolean;
   presentationMetadata?: ImobPresentationMetadata;
+  /** Existing domain descriptor, carried by the live presentation only. */
+  conversationState?: ImobThreadConversationState;
   blocks?: ImobPresentationBlock[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
@@ -189,6 +213,11 @@ type ChatMessage = {
   dispatchBadge?: string | null;
   /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
   slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
+  /**
+   * Respostas clicáveis (só na última mensagem): enviam o texto que o usuário
+   * digitaria (`reply`) ou abrem o próximo formulário já existente (`onSelect`).
+   */
+  quickReplies?: Array<{ id: string; label: string; reply?: string; onSelect?: () => void }>;
 };
 
 type AssistantMessageDedupeInput = {
@@ -571,21 +600,41 @@ const SHOW_TECHNICAL_CHAT = false;
 const SHOW_CHAT_FEEDBACK = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
+  // Formulários estruturados: abrem na hora e gravam direto (sem texto livre).
+  {
+    label: "Cadastrar proprietário",
+    shortLabel: "Proprietário",
+    prompt: "cadastrar proprietário",
+  },
+  {
+    label: "Cadastrar imóvel",
+    shortLabel: "Imóvel",
+    prompt: "cadastrar imóvel",
+  },
+  {
+    label: "Cadastrar locação",
+    shortLabel: "Locação",
+    prompt: "cadastrar locatário",
+  },
   {
     label: "Captar imóvel",
+    shortLabel: "Captar",
     prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
   },
   {
     label: "Gerar proposta",
+    shortLabel: "Proposta",
     prompt: "Quero gerar uma proposta comercial para um cliente.",
   },
   {
     label: "Iniciar contrato",
+    shortLabel: "Contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
   },
 ] as const;
 
 const STRUCTURED_IMOB_AUTOPROMPTS = [
+  ...listImobActionMenuPrompts(),
   ...QUICK_PROMPTS.map((prompt) => ({ label: prompt.label, prompt: prompt.prompt })),
   ...IMOB_BUSINESS_QUICK_ACTIONS.map((action) => ({ label: action.title, prompt: action.autoprompt })),
 ] as const;
@@ -1039,7 +1088,7 @@ function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): Messag
     title: "Próximas ações da jornada",
     lines: [
       `Jornada: ${formatCanonicalJourneyType(caseContext.canonical.journeyType)}`,
-      `Etapa atual: ${caseContext.stage}`,
+      `Etapa atual: ${formatImobStageLabel(caseContext.stage)}`,
       ...(caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
     ],
     ctas: mergeRecommendedActionCtas(undefined, caseContext),
@@ -1122,6 +1171,12 @@ function isSendSuggestedMessageAction(action?: CardCta["action"]): action is "se
   return action === "send_suggested_message";
 }
 
+/** Botões de escolha da entrevista de contrato (tipo, opções, sim/não), abaixo da própria pergunta. */
+function withContractInterviewChoices(message: ChatMessage, state: ContractInterviewState | null): ChatMessage {
+  const options = getContractChoiceOptions(state);
+  return options.length === 0 ? message : { ...message, quickReplies: options };
+}
+
 function isInlineChoicePresentation(message: ChatMessage) {
   return (
     message.role === "assistant" &&
@@ -1149,6 +1204,7 @@ function isLikelyPhone(value: string) {
 }
 
 function normalizeCepValue(value: string) {
+  if (/[^\d\s-]/.test(value) || value.replace(/\D/g, "").length > 8) return value;
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
@@ -1210,6 +1266,9 @@ function printMessageCard(message: ChatMessage) {
 }
 
 export function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
+  // Propostas transportam os campos em threadState.operational.proposalDraft.
+  // Este builder textual fica restrito aos demais formulários legados.
+  if (isConversationalProposalForm(form)) return "";
   const normalized: Record<string, string> = {};
   for (const field of form.fields) {
     normalized[field.name] = normalizeImobFormValue(values[field.name] ?? String(field.value ?? ""));
@@ -1264,14 +1323,6 @@ export function buildPresentationFormSubmission(form: ImobPresentationForm, valu
       normalized.desiredCity ? `cidade de interesse do lead ${normalized.desiredCity}` : null,
       normalized.budgetMax ? `faixa de orçamento do lead ${normalized.budgetMax}` : null,
     ],
-    proposta: [
-      normalized.propertyId ? `imóvel da proposta ${normalized.propertyId}` : null,
-      normalized.buyerName ? `nome do comprador ${normalized.buyerName}` : null,
-      normalized.buyerPhone ? `telefone do comprador ${normalized.buyerPhone}` : null,
-      normalized.buyerEmail ? `e-mail do comprador ${normalized.buyerEmail}` : null,
-      normalized.offerAmount ? `valor da proposta ${normalized.offerAmount}` : null,
-      normalized.contractType ? `tipo de proposta ${normalized.contractType}` : null,
-    ],
     anuncio: [
       normalized.propertyId ? `imóvel ${normalized.propertyId}` : null,
       normalized.listingTitle ? `título ${normalized.listingTitle}` : null,
@@ -1324,15 +1375,6 @@ export function buildPresentationFormSubmission(form: ImobPresentationForm, valu
     return [
       form.subjectId ? `atualizar imóvel ${form.subjectId}` : "atualizar imóvel",
       ...(linesByEntity[form.entity] ?? []),
-    ]
-      .filter(Boolean)
-      .join("\n");
-  }
-
-  if (compositeKey === "proposta:create") {
-    return [
-      "continuar proposta",
-      ...(linesByEntity.proposta ?? []),
     ]
       .filter(Boolean)
       .join("\n");
@@ -1924,7 +1966,7 @@ export function normalizeStoredSlotCollection(
 export function buildPersistedImobChatMessageMetadata(
   message: Pick<
     ChatMessage,
-    "card" | "proof" | "caseContext" | "presentationMetadata" | "blocks" | "widget" | "form" | "slotCollection" | "hiddenFromTimeline"
+    "card" | "proof" | "caseContext" | "presentationMetadata" | "blocks" | "widget" | "form" | "slotCollection" | "hiddenFromTimeline" | "conversationState"
   >,
   extraMetadata?: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -1939,6 +1981,10 @@ export function buildPersistedImobChatMessageMetadata(
     slotCollection: message.slotCollection ?? null,
     hiddenFromTimeline: message.hiddenFromTimeline === true ? true : undefined,
     ...(extraMetadata ?? {}),
+    // Existing metadata holds identification only; history never stores an active question credential or draft.
+    ...(hasProposalReviewCarrier(message.conversationState) ? { operationalContinuity: {
+      version: "v1", phase: message.conversationState?.operational?.continuity?.phase ?? "review", pending: null,
+    } } : {}),
   };
 }
 
@@ -1946,6 +1992,9 @@ export function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
   const metadata = (message.metadata && typeof message.metadata === "object"
     ? message.metadata
     : null) as Record<string, unknown> | null;
+  // Old review replies and unknown stored extensions fail closed as well. A marker is not authority.
+  const restoredReview = message.role === "assistant" && (message.action === "crm.proposal.review"
+    || Boolean(metadata && Object.prototype.hasOwnProperty.call(metadata, "operationalContinuity")));
   const cardCandidate = metadata?.card;
   const card =
     cardCandidate && typeof cardCandidate === "object" && !Array.isArray(cardCandidate)
@@ -2010,7 +2059,15 @@ export function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
   return {
     id: message.id,
     role: message.role,
-    text: message.content,
+    text: restoredReview
+      ? "Esta revisão pertence ao histórico. Reabra Gerar proposta para revisar os dados; nenhuma ação foi autorizada."
+      : message.content,
+    ...(restoredReview ? { conversationState: {
+      mode: "consult" as const, pendingSlot: "none" as const, resultOffset: 0,
+      slots: { goal: null, city: null, region: null, neighborhood: null,
+        budgetMax: null, bedrooms: null, bathrooms: null, propertyType: null },
+      operational: { flow: "proposal.create" as const, status: "ready_for_review" as const, pendingFields: [], continuity: null },
+    } } : {}),
     assistantDedupeKey: persistedAssistantDedupeKey ?? derivedAssistantDedupeKey,
     hiddenFromTimeline,
     presentationMetadata,
@@ -2092,6 +2149,8 @@ const ImobChatPage: React.FC = () => {
   const [uploadingDocuments, setUploadingDocuments] = React.useState(false);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const structuredMessagesRef = React.useRef(messages);
+  structuredMessagesRef.current = messages;
   const [pendingExecution, setPendingExecution] = React.useState<PendingExecution | null>(null);
   const [activeThread, setActiveThread] = React.useState<{ id: string; label: string } | null>(null);
   const [activeAssistantMessageId, setActiveAssistantMessageId] = React.useState<string | null>(null);
@@ -2116,9 +2175,15 @@ const ImobChatPage: React.FC = () => {
   const [typewriterMessageIds, setTypewriterMessageIds] = React.useState<Record<string, true>>({});
   const [sequentialChoiceMessageIds, setSequentialChoiceMessageIds] = React.useState<Record<string, true>>({});
   const [selectedKnowledgeContext, setSelectedKnowledgeContext] = React.useState<SelectedKnowledgeContext | null>(null);
-  const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
-  const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
-  const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
+  // Formulários do IMOB (estado, listas, CEP): módulo compartilhado com o front door.
+  const imobForms = useImobFormState(messages);
+  const {
+    setFormValuesByMessageId,
+    setFormErrorsByMessageId,
+    resolveFormValuesForMessage,
+    applyCepLookupToForm,
+    prepareIncomingMessage,
+  } = imobForms;
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
@@ -2143,6 +2208,17 @@ const ImobChatPage: React.FC = () => {
   const caseIdByThreadRef = React.useRef<Record<string, string>>({});
   const caseContextByThreadRef = React.useRef<Record<string, ImobCaseContext>>({});
   const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
+  const latestAssistantMessageRef = React.useRef<ChatMessage | null>(null);
+  latestAssistantMessageRef.current = [...messages].reverse().find((message) => message.role === "assistant") ?? null;
+  // Live correlation only. History remounts and scope changes cannot revive a review question.
+  const reviewScope = `${session.tenantId}:${session.workspaceId}:${session.userId}:${session.token}:${session.activeDomain}:${activeVerticalId}`;
+  const reviewOriginRef = React.useRef({ scope: reviewScope, conversationId, selectedThreadId, ref: `v1:${makeId("review")}`, sequence: 0 });
+  const origin = reviewOriginRef.current;
+  if (origin.scope !== reviewScope || (origin.conversationId !== conversationId && origin.conversationId !== null)
+    || origin.selectedThreadId !== selectedThreadId) {
+    reviewOriginRef.current = { scope: reviewScope, conversationId, selectedThreadId, ref: `v1:${makeId("review")}`, sequence: origin.sequence + 1 };
+  } else origin.conversationId = conversationId;
+
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const directedConfirmingRef = React.useRef(false);
@@ -2205,8 +2281,22 @@ const ImobChatPage: React.FC = () => {
     []
   );
 
-  const appendMessage = React.useCallback((message: ChatMessage) => {
-    setMessages((prev) => [...prev, message]);
+  const appendMessage = React.useCallback((incoming: ChatMessage) => {
+    // Anexos no próprio formulário e valores pendentes para este destino (módulo de formulários do IMOB).
+    const message = prepareIncomingMessage(incoming);
+    if (message.role === "assistant") latestAssistantMessageRef.current = message;
+    setMessages((prev) => [
+      // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
+      // Quando o usuário segue para outro pedido, o formulário estruturado aberto também fecha.
+      ...(message.form || message.role === "user"
+        ? prev.map((item) =>
+            item.form && (message.form || item.form.submitTarget)
+              ? { ...item, form: undefined, text: `${item.text ? `${item.text} ` : ""}(Formulário fechado sem salvar.)` }
+              : item,
+          )
+        : prev),
+      message,
+    ]);
     const threadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
     if (threadId && message.caseContext) {
       caseContextByThreadRef.current[threadId] = message.caseContext;
@@ -2231,47 +2321,6 @@ const ImobChatPage: React.FC = () => {
     }
   }, []);
 
-  const resolveFormValuesForMessage = React.useCallback(
-    (message: ChatMessage) => {
-      const form = message.form;
-      if (!form) return {} as Record<string, string>;
-
-      const currentThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
-      const values: Record<string, string> = Object.fromEntries(
-        form.fields.map((field) => [field.name, String(field.value ?? "")]),
-      );
-      const localOverrides = formValuesByMessageId[message.id] ?? null;
-      if (localOverrides) {
-        for (const [fieldName, value] of Object.entries(localOverrides)) {
-          values[fieldName] = value;
-        }
-      }
-
-      for (const field of form.fields) {
-        if (normalizeImobFormValue(values[field.name] ?? "")) continue;
-        for (let index = messages.length - 1; index >= 0; index -= 1) {
-          const candidate = messages[index];
-          if (candidate.id === message.id) continue;
-          const candidateForm = candidate.form;
-          if (!candidateForm) continue;
-          if (candidateForm.entity !== form.entity || candidateForm.action !== form.action) continue;
-          const candidateThreadId = candidate.thread?.id ?? candidate.card?.thread?.id ?? null;
-          if (candidateThreadId !== currentThreadId) continue;
-
-          const candidateLocalValues = formValuesByMessageId[candidate.id] ?? null;
-          const candidateValue = normalizeImobFormValue(
-            candidateLocalValues?.[field.name] ?? String(candidateForm.fields.find((item) => item.name === field.name)?.value ?? ""),
-          );
-          if (!candidateValue) continue;
-          values[field.name] = candidateValue;
-          break;
-        }
-      }
-
-      return values;
-    },
-    [formValuesByMessageId, messages],
-  );
 
   const updateMessageById = React.useCallback((messageId: string, patch: Partial<ChatMessage>) => {
     setMessages((prev) =>
@@ -2569,6 +2618,8 @@ const ImobChatPage: React.FC = () => {
   }, [requestedConversationId, requestedStartNew, requestedThreadId]);
 
   const loadConversation = React.useCallback(async (nextConversationId: string) => {
+    reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+    reviewOriginRef.current.sequence += 1;
     setHistoryLoading(true);
     setConversationId(nextConversationId);
     setMessages([]);
@@ -2611,6 +2662,8 @@ const ImobChatPage: React.FC = () => {
   }, [loadConversationMessages, refreshThreads, trackUxEvent]);
 
   const handleNewConversation = async () => {
+    reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+    reviewOriginRef.current.sequence += 1;
     if (pendingExecution) {
       clearPendingExecution("new_conversation");
     }
@@ -3055,17 +3108,12 @@ const ImobChatPage: React.FC = () => {
         });
         await runExecutionFlow(executionPending);
       } catch (error) {
-        const message =
-          error instanceof ApiError
-            ? `${error.message} (${error.status})`
-            : error instanceof Error
-              ? error.message
-              : "Falha ao orquestrar mensagem";
+        const failure = describeChatTurnFailure(error, "turn", "Falha ao orquestrar mensagem");
         setState("blocked");
         const blockedMessage: ChatMessage = {
           id: makeId("assistant"),
           role: "assistant",
-          text: "Não consegui continuar essa solicitação agora.",
+          text: failure.text,
           thread: {
             id: operationThread.id,
             label: operationThread.label,
@@ -3079,10 +3127,10 @@ const ImobChatPage: React.FC = () => {
               label: operationThread.label,
               status: "blocked",
             },
-            lines: ["Identifiquei uma restrição de segurança para este passo."],
+            lines: failure.lines,
             risk: {
-              level: "high",
-              reason: message,
+              level: failure.level,
+              reason: failure.reason,
             },
           },
         };
@@ -3150,17 +3198,12 @@ const ImobChatPage: React.FC = () => {
         metadata: { intent: plan.intent, action: plan.action, source: "command-center" },
       });
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `${error.message} (${error.status})`
-          : error instanceof Error
-            ? error.message
-            : "Falha ao preparar ação direcionada";
+      const failure = describeChatTurnFailure(error, "directed", "Falha ao preparar ação direcionada");
       setState("blocked");
       const blockedMessage: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: "Não consegui preparar esta ação agora.",
+        text: failure.text,
         thread: {
           id: operationThread.id,
           label: operationThread.label,
@@ -3174,10 +3217,10 @@ const ImobChatPage: React.FC = () => {
             label: operationThread.label,
             status: "blocked",
           },
-          lines: ["Identifiquei uma restrição de segurança para este passo."],
+          lines: failure.lines,
           risk: {
-            level: "high",
-            reason: message,
+            level: failure.level,
+            reason: failure.reason,
           },
         },
       };
@@ -3230,7 +3273,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: state },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
       const editedState = editResult.state;
@@ -3250,7 +3293,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: editedState },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3269,12 +3312,12 @@ const ImobChatPage: React.FC = () => {
       setContractInterviewState(restarted);
       setSingleEditFieldId(null);
       await persistInterviewState(activeConversationId, restarted);
-      const restartMessage: ChatMessage = {
+      const restartMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: `Sem problemas. Vamos revisar desde o inicio deste tipo de contrato.\n\n${getStepQuestionText(restarted) ?? "Qual o primeiro dado?"}`,
         thread: threadForInterview,
-      };
+      }, restarted);
       appendMessage(restartMessage);
       void persistMessage(restartMessage, {
         conversationId: activeConversationId,
@@ -3282,7 +3325,7 @@ const ImobChatPage: React.FC = () => {
         action: "realestate.create_contract",
         metadata: { contractInterview: restarted },
       });
-      setState("awaiting_user_action");
+      setState("idle");
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
@@ -3436,20 +3479,31 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: recoveryState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
       }
     },
     [appendMessage, persistInterviewState, persistMessage]
   );
 
-  const sendMessageText = async (rawText: string, options?: { displayText?: string; suppressUserEcho?: boolean }) => {
+  const sendMessageText = async (rawText: string, options?: {
+    displayText?: string;
+    suppressUserEcho?: boolean;
+    thread?: { id: string; label: string };
+    threadState?: ImobThreadConversationState;
+  }) => {
     const text = rawText.trim();
     const displayText = options?.displayText?.trim() || text;
     const shouldEchoUserMessage = shouldEchoImobUserMessage(options);
     if (!text) return;
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
-    const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
-    const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
+    const currentThreadId = options?.thread?.id ?? selectedThread?.threadId ?? activeThread?.id ?? null;
+    const currentThreadLabel = options?.thread?.label ?? selectedThread?.label ?? activeThread?.label ?? null;
+    const latestAssistant = latestAssistantMessageRef.current;
+    const currentThreadState = options?.threadState ?? (currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null)
+      ?? (hasProposalReviewCarrier(latestAssistant?.conversationState) ? latestAssistant?.conversationState : null);
+    const reviewPending = currentThreadState?.operational?.continuity?.pending;
+    const associatedReview = hasProposalReviewCarrier(currentThreadState) || hasProposalReviewCarrier(latestAssistant?.conversationState);
+    const latestQuestionRef = latestAssistant?.conversationState?.operational?.continuity?.pending?.ref;
     const userMessageId = shouldEchoUserMessage ? makeId("user") : null;
     if (shouldEchoUserMessage && userMessageId) {
       appendMessage({
@@ -3469,6 +3523,17 @@ const ImobChatPage: React.FC = () => {
     setInput("");
     setState("typing");
     const startedAt = Date.now();
+    const initialSession = getSession();
+    const requestContextRef = reviewOriginRef.current.ref;
+    const requestSequence = ++reviewOriginRef.current.sequence;
+    const isCurrentTurn = () => {
+      const current = getSession();
+      return requestContextRef === reviewOriginRef.current.ref && requestSequence === reviewOriginRef.current.sequence
+        && (!associatedReview || (latestAssistantMessageRef.current?.id === latestAssistant?.id
+          && latestAssistantMessageRef.current?.conversationState?.operational?.continuity?.pending?.ref === latestQuestionRef))
+        && current.tenantId === initialSession.tenantId && current.workspaceId === initialSession.workspaceId
+        && current.userId === initialSession.userId && current.token === initialSession.token && current.activeDomain === initialSession.activeDomain;
+    };
     let turn: ImobResolveTurnResponse;
     let resolvedCaseId: string | null = null;
     try {
@@ -3476,15 +3541,16 @@ const ImobChatPage: React.FC = () => {
         ? caseIdByThreadRef.current[currentThreadId] ?? requestedCaseId ?? null
         : requestedCaseId ?? null;
       turn = await resolveImobTurn({
-        message: text,
+        ...buildProposalTextContinuation(text, currentThreadState, requestContextRef),
+        ...(associatedReview ? { continuityReplyRef: reviewPending && latestQuestionRef === reviewPending.ref ? reviewPending.ref : null } : {}),
         threadLabel: currentThreadLabel,
         threadId: currentThreadId,
         caseId: resolvedCaseId,
         recipeId: requestedRecipeId,
-        threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
+      if (!isCurrentTurn()) return;
       emitChatRouteTelemetry({
         event: "error_observed",
         surfaceRoute: "/app/imob/chat",
@@ -3500,7 +3566,10 @@ const ImobChatPage: React.FC = () => {
       appendMessage({
         id: makeId("assistant"),
         role: "assistant",
-        text: presentationError.text,
+        text: associatedReview
+          ? "Não consegui continuar a revisão agora. O contexto foi preservado; tente novamente ou reabra Gerar proposta."
+          : presentationError.text,
+        ...(associatedReview ? { conversationState: currentThreadState ?? undefined, caseContext: latestAssistant?.caseContext } : {}),
         thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
         card: {
           ...presentationError.card,
@@ -3510,6 +3579,7 @@ const ImobChatPage: React.FC = () => {
       setState("blocked");
       return;
     }
+    if (!isCurrentTurn()) return;
     const resolvedProof = turn.presentation.proof;
     emitChatRouteTelemetry({
       event: "turn_observed",
@@ -3531,6 +3601,7 @@ const ImobChatPage: React.FC = () => {
       verticalSwitchObserved: false,
       failClosedObserved: turn.mode === "blocked",
     });
+    const isProposalReviewTurn = turn.action === "crm.proposal.review" || hasPendingProposalReview(turn.conversationState);
     const resolvedIntent = turn.executionRequest?.intent ?? null;
     const caseContextThreadId = typeof turn.caseContext?.threadId === "string" && turn.caseContext.threadId.trim().length > 0
       ? turn.caseContext.threadId.trim()
@@ -3543,7 +3614,9 @@ const ImobChatPage: React.FC = () => {
         || caseIdByThreadRef.current[currentThreadId] === turn.caseContext.caseId
       ),
     );
-    const operationThread = selectedThread
+    const operationThread = options?.thread
+      ? { id: options.thread.id, label: turn.threadLabel || options.thread.label }
+      : selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
       : caseContextThreadId
         ? {
@@ -3577,11 +3650,13 @@ const ImobChatPage: React.FC = () => {
         const created = await apiCreateImobChatConversation({
           title: getConversationTitleFromMessage(displayText, conversations),
         });
+        if (!isCurrentTurn()) return;
         activeConversationId = created.conversation.conversationId;
         setConversationId(activeConversationId);
         setConversations((prev) => [created.conversation, ...prev]);
         sessionRunByThreadRef.current = {};
       } catch (error) {
+        if (!isCurrentTurn()) return;
         const presentationError = buildImobFrontdoorStatePresentation({
           kind: resolveImobFrontdoorErrorStateKind(error),
           error,
@@ -3625,11 +3700,12 @@ const ImobChatPage: React.FC = () => {
         contractInterviewState.status === "review" ||
         contractInterviewState.status === "generating");
     const shouldContinueContractInterview =
-      interviewIsActive &&
+      !isProposalReviewTurn && interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
+    let userMessagePersisted: Promise<unknown> = Promise.resolve();
     if (shouldEchoUserMessage && userMessageId) {
-      void persistMessage(
+      userMessagePersisted = persistMessage(
         {
           id: userMessageId,
           role: "user",
@@ -3647,7 +3723,7 @@ const ImobChatPage: React.FC = () => {
         }
       );
     }
-    if (shouldContinueContractInterview || resolvedIntent === "contract") {
+    if (!isProposalReviewTurn && (shouldContinueContractInterview || resolvedIntent === "contract")) {
       const threadForInterview = {
         id: operationThread.id,
         label: "Contrato",
@@ -3659,12 +3735,12 @@ const ImobChatPage: React.FC = () => {
         setContractInterviewState(initialInterview);
         setSingleEditFieldId(null);
         await persistInterviewState(activeConversationId, initialInterview);
-        const kickoffMessage: ChatMessage = {
+        const kickoffMessage: ChatMessage = withContractInterviewChoices({
           id: makeId("assistant"),
           role: "assistant",
           text: getContractTypePrompt(),
           thread: threadForInterview,
-        };
+        }, initialInterview);
         appendMessage(kickoffMessage);
         void persistMessage(kickoffMessage, {
           conversationId: activeConversationId,
@@ -3672,7 +3748,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: initialInterview },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3703,7 +3779,7 @@ const ImobChatPage: React.FC = () => {
           action: "realestate.create_contract",
           metadata: { contractInterview: contractInterviewState },
         });
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3735,7 +3811,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         if (editApplied.ok) {
           setSingleEditFieldId(null);
         }
-        setState("awaiting_user_action");
+        setState("idle");
         return;
       }
 
@@ -3746,12 +3822,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       };
       setContractInterviewState(nextInterviewState);
       await persistInterviewState(activeConversationId, nextInterviewState);
-      const interviewMessage: ChatMessage = {
+      const interviewMessage: ChatMessage = withContractInterviewChoices({
         id: makeId("assistant"),
         role: "assistant",
         text: result.message ?? "Resumo atualizado. Responda: sim, nao ou editar <campo>.",
         thread: threadForInterview,
-      };
+      }, nextInterviewState);
       appendMessage(interviewMessage);
       void persistMessage(interviewMessage, {
         conversationId: activeConversationId,
@@ -3759,7 +3835,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         action: "realestate.create_contract",
         metadata: { contractInterview: nextInterviewState },
       });
-      setState("awaiting_user_action");
+      // Entrevista em coleta: a resposta é digitada (ou clicada), então a caixa de texto fica livre.
+      setState(nextInterviewState.status === "review" ? "awaiting_user_action" : "idle");
       return;
     }
 
@@ -3801,12 +3878,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
-    if (turn.mode === "consult") {
+    if (turn.mode === "consult" || isProposalReviewTurn) {
       const proof = resolveTurnPresentationProof(turn.presentation);
       const consultReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: turn.presentation.text,
+        conversationState: turn.conversationState,
         presentationMetadata: turn.presentation.metadata,
         blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
@@ -3936,6 +4014,40 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         });
       }
       setActiveThread({ id: baseThread.id, label: baseThread.label });
+      setState("done");
+      return;
+    }
+
+    if (
+      isRentalLeaseForm(turn.presentation.form)
+      || isPropertyCreateForm(turn.presentation.form)
+      || isOwnerCreateForm(turn.presentation.form)
+    ) {
+      // Formulários estruturados gravam direto na API (POST /imob/rentals ou
+      // /imob/properties): não há execução de agente a negociar, então só
+      // exibimos o formulário.
+      const isLease = isRentalLeaseForm(turn.presentation.form);
+      const isOwner = isOwnerCreateForm(turn.presentation.form);
+      const threadLabel = isLease ? "Locação" : "Captação";
+      const formReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: isLease
+          ? "Preencha os dados da locação. Só imóvel e nome do inquilino são obrigatórios."
+          : isOwner
+            ? "Preencha os dados do proprietário. Só o nome é obrigatório."
+            : "Preencha os dados do imóvel. Tipo, finalidade, cidade e endereço são obrigatórios.",
+        form: turn.presentation.form,
+        thread: { ...baseThread, label: threadLabel },
+      };
+      appendMessage(formReply);
+      // Persiste só o texto (sem o formulário nem valores) para o histórico
+      // não mostrar o pedido do usuário sem resposta ao recarregar.
+      // Depois da mensagem do usuário, para manter a ordem no histórico.
+      void userMessagePersisted
+        .catch(() => undefined)
+        .then(() => persistMessage({ ...formReply, form: undefined }, { conversationId: activeConversationId }));
+      setActiveThread({ id: baseThread.id, label: threadLabel });
       setState("done");
       return;
     }
@@ -4394,82 +4506,37 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     [appendMessage, conversationId, messages, persistMessage]
   );
 
-  const updateFormFieldValue = React.useCallback((messageId: string, fieldName: string, value: string) => {
-    setFormValuesByMessageId((prev) => ({
-      ...prev,
-      [messageId]: {
-        ...(prev[messageId] ?? {}),
-        [fieldName]: value,
-      },
-    }));
-    setFormErrorsByMessageId((prev) => {
-      if (!prev[messageId]?.[fieldName]) return prev;
-      const nextFieldErrors = { ...(prev[messageId] ?? {}) };
-      delete nextFieldErrors[fieldName];
-      return { ...prev, [messageId]: nextFieldErrors };
-    });
-  }, []);
 
-  const setFormLookupLoading = React.useCallback((messageId: string, fieldName: string, isLoading: boolean) => {
-    setFormLookupLoadingByMessageId((prev) => ({
-      ...prev,
-      [messageId]: {
-        ...(prev[messageId] ?? {}),
-        [fieldName]: isLoading,
-      },
-    }));
-  }, []);
 
-  const applyCepLookupToForm = React.useCallback(async (message: ChatMessage, fieldName: string, rawValue: string) => {
-    const form = message.form;
-    const field = form?.fields.find((item) => item.name === fieldName);
-    if (!form || !field || field.lookup?.kind !== "cep") return null;
-
-    const normalizedCep = normalizeCepValue(rawValue);
-    updateFormFieldValue(message.id, fieldName, normalizedCep);
-    if (normalizedCep.replace(/\D/g, "").length !== 8) return null;
-
-    setFormLookupLoading(message.id, fieldName, true);
-    try {
-      const response = await apiLookupImobCep(normalizedCep);
-      const nextValues: Array<[string, string | null]> = [
-        [fieldName, response.data.cep],
-        [resolveFieldAutofillTarget(field, "city") ?? "", response.data.city],
-        [resolveFieldAutofillTarget(field, "address") ?? "", response.data.street ?? response.data.address],
-        [resolveFieldAutofillTarget(field, "neighborhood") ?? "", response.data.neighborhood],
-      ];
-      const appliedValues: Record<string, string> = {};
-
-      for (const [targetFieldName, nextValue] of nextValues) {
-        if (!targetFieldName || !nextValue) continue;
-        appliedValues[targetFieldName] = nextValue;
-        updateFormFieldValue(message.id, targetFieldName, nextValue);
-      }
-      return appliedValues;
-    } catch (error) {
-      const reason =
-        error instanceof ApiError
-          ? error.status === 404
-            ? "CEP não encontrado."
-            : `Não consegui consultar o CEP agora. (${error.status})`
-          : "Não consegui consultar o CEP agora.";
-      setFormErrorsByMessageId((prev) => ({
-        ...prev,
-        [message.id]: {
-          ...(prev[message.id] ?? {}),
-          [fieldName]: reason,
-        },
-      }));
-      return null;
-    } finally {
-      setFormLookupLoading(message.id, fieldName, false);
+  function clearThreadOperationalState(message: ChatMessage) {
+    const threadIds = [message.thread?.id, message.card?.thread?.id, activeThread?.id].filter((id): id is string => Boolean(id));
+    for (const threadId of threadIds) {
+      const state = conversationStateByThreadRef.current[threadId];
+      if (state) conversationStateByThreadRef.current[threadId] = { ...state, operational: null };
     }
-  }, [setFormLookupLoading, updateFormFieldValue]);
+  }
 
+  const formOriginRef = reviewOriginRef.current.ref;
+  const structuredForms = createImobStructuredForms(imobForms, {
+    getFormContextKey: () => `${reviewOriginRef.current.ref}:${reviewOriginRef.current.sequence}:${latestAssistantMessageRef.current?.id ?? ""}`,
+    isFormCurrent: (message) => formOriginRef === reviewOriginRef.current.ref
+      && structuredMessagesRef.current.some((item) => item.id === message.id && Boolean(item.form)),
+    activeThreadId: activeThread?.id ?? null,
+    appendMessage: (message) => appendMessage(message as ChatMessage),
+    updateMessage: (messageId, patch) => updateMessageById(messageId, patch as Partial<ChatMessage>),
+    patchMessage: (messageId, update) =>
+      setMessages((prev) => prev.map((item) => (item.id === messageId ? (update(item) as ChatMessage) : item))),
+    persistMessage: (message, meta) => persistMessage(message as ChatMessage, meta),
+    sendText: (text, options) => sendMessageText(text, options),
+    onFormClosed: (message) => clearThreadOperationalState(message as ChatMessage),
+  });
+  const { handleActionMenuSelect } = structuredForms;
 
-  async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+  async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
     const form = message.form;
     if (!form) return;
+    if (await structuredForms.handleStructuredFormAction(message, actionId)) return;
+    if (actionId === "archive") return;
     if (actionId === "cancel") {
       setFormValuesByMessageId((prev) => ({
         ...prev,
@@ -4515,6 +4582,23 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (Object.keys(nextErrors).length > 0) {
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: nextErrors }));
+      return;
+    }
+
+    if (isConversationalProposalForm(form)) {
+      const thread = message.thread;
+      const built = buildProposalFormContinuation(form, currentValues, thread ? conversationStateByThreadRef.current[thread.id] : null);
+      if (!built.ok || !thread) {
+        setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.ok ? { _form: "Reabra a proposta para continuar." } : built.errors }));
+        return;
+      }
+      await sendMessageText(built.request.message, {
+        displayText: buildPresentationFormDisplayText(form, actionId),
+        suppressUserEcho: true,
+        thread,
+        threadState: built.request.threadState,
+      });
+      updateMessageById(message.id, { form: undefined, card: null as any });
       return;
     }
 
@@ -5055,6 +5139,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       if (pendingExecution && pendingExecution.thread.id !== thread.threadId) {
                         clearPendingExecution("thread_switched", { nextThreadId: thread.threadId });
                       }
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
                       setSelectedThreadId(thread.threadId);
                       setActiveThread({ id: thread.threadId, label: thread.label });
                       trackUxEvent("thread_selected", { threadId: thread.threadId, source: "shared_panel" });
@@ -5063,6 +5149,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       if (pendingExecution) {
                         clearPendingExecution("thread_filter_cleared");
                       }
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
                       setSelectedThreadId(null);
                       setActiveThread(null);
                       trackUxEvent("thread_filter_cleared");
@@ -5158,7 +5246,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <VerticalSelectorBar
                     verticals={VERTICAL_SELECTOR_ITEMS}
                     activeVerticalId={activeVerticalId}
-                    onSelect={setActiveVerticalId}
+                    onSelect={(verticalId) => {
+                      reviewOriginRef.current.ref = `v1:${makeId("review")}`;
+                      reviewOriginRef.current.sequence += 1;
+                      setActiveVerticalId(verticalId);
+                    }}
                   />
                   {isBrandedWorkspaceLabel ? (
                     <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground shadow-lg shadow-black/20">
@@ -5529,6 +5621,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             <ImobChatWidgets
                               widget={message.widget}
                               onAction={(action) => handleWidgetAction(action, message.caseContext)}
+                              returnTo={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
                             />
                           ) : null}
 
@@ -5538,7 +5631,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">{messageCard.title}</p>
                               {messageCard.type !== "action" ? (
                                 <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
-                                  {getCardTypeChip(messageCard.type)}
+                                  {messageCard.chip ?? getCardTypeChip(messageCard.type)}
                                 </span>
                               ) : null}
                             </div>
@@ -5686,111 +5779,37 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             </div>
                           ) : null}
 
-                          {!shouldDelayForm && message.form ? (() => {
-                            const formValues = resolveFormValuesForMessage(message);
-                            const formErrors = formErrorsByMessageId[message.id] ?? {};
-                            const formLookupLoading = formLookupLoadingByMessageId[message.id] ?? {};
-                            const formLabel = message.form.label?.trim() ?? "";
-                            const formDescription = message.form.description?.trim() ?? "";
-                            return (
-                              <div className="mt-2.5 space-y-2.5 rounded-xl border border-white/10 bg-surface/50 p-2.5">
-                                {formLabel || formDescription ? (
-                                  <div className="space-y-0.5">
-                                    {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
-                                    {formDescription ? (
-                                      <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{formDescription}</p>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                                <div className="space-y-2.5">
-                                  {message.form.fields.map((field) => (
-                                    <div key={`${message.id}-${field.name}`} className="space-y-1">
-                                      <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
-                                      <div className="flex gap-2">
-                                        {field.type === "select" ? (
-                                          <select
-                                            value={formValues[field.name] ?? ""}
-                                            onChange={(event) => updateFormFieldValue(message.id, field.name, event.target.value)}
-                                            className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
-                                          >
-                                            <option value="">{field.placeholder ?? ""}</option>
-                                            {Array.from(new Set((field.options ?? []).map((option) => option.group ?? "")))
-                                              .map((group) => {
-                                                const groupedOptions = (field.options ?? []).filter((option) => (option.group ?? "") === group);
-                                                if (!group) {
-                                                  return groupedOptions.map((option) => (
-                                                    <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
-                                                      {option.label}
-                                                    </option>
-                                                  ));
-                                                }
-                                                return (
-                                                  <optgroup key={`${message.id}-${field.name}-${group}`} label={group}>
-                                                    {groupedOptions.map((option) => (
-                                                      <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
-                                                        {option.label}
-                                                      </option>
-                                                    ))}
-                                                  </optgroup>
-                                                );
-                                              })}
-                                          </select>
-                                        ) : (
-                                          <input
-                                            type={field.type}
-                                            value={formValues[field.name] ?? ""}
-                                            inputMode={field.inputMode}
-                                            maxLength={field.maxLength}
-                                            onChange={(event) => updateFormFieldValue(
-                                              message.id,
-                                              field.name,
-                                              field.lookup?.kind === "cep" ? normalizeCepValue(event.target.value) : event.target.value,
-                                            )}
-                                            onBlur={() => {
-                                              if (field.lookup?.kind !== "cep") return;
-                                              void applyCepLookupToForm(message, field.name, formValues[field.name] ?? "");
-                                            }}
-                                            placeholder={field.placeholder}
-                                            className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
-                                          />
-                                        )}
-                                        {field.allowAttachment ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => setAttachmentMenuOpen(true)}
-                                            className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[11px] normal-case tracking-normal text-foreground hover:bg-black/30"
-                                          >
-                                            {field.attachmentLabel ?? "Anexar"}
-                                          </button>
-                                        ) : null}
-                                      </div>
-                                      {field.helperText ? (
-                                        <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
-                                      ) : null}
-                                      {formLookupLoading[field.name] ? (
-                                        <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Consultando CEP...</p>
-                                      ) : null}
-                                      {formErrors[field.name] ? (
-                                        <p className="text-[10px] normal-case tracking-normal text-rose-200">{formErrors[field.name]}</p>
-                                      ) : null}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {(message.form.actions ?? []).map((action) => (
-                                    <button
-                                      key={`${message.id}-form-${action.id}`}
-                                      type="button"
-                                      onClick={() => void handlePresentationFormAction(message, action.id)}
-                                      className={`rounded-full px-3 py-1 text-[11px] normal-case tracking-normal ${action.kind === "primary" ? "bg-accent/15 text-foreground" : "bg-black/25 text-muted-foreground hover:text-foreground"}`}
-                                    >
-                                      {action.label}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })() : null}
+                          {!isUser && isLastMessage && message.quickReplies?.length && !shouldAnimateAssistantText ? (
+                            <div className="mt-2 flex flex-col items-start gap-1.5" role="group" aria-label="Opções">
+                              {message.quickReplies.map((option) => (
+                                <button
+                                  key={`${message.id}-reply-${option.id}`}
+                                  type="button"
+                                  disabled={state === "typing" || state === "executing"}
+                                  onClick={() => {
+                                    if (option.onSelect) {
+                                      option.onSelect();
+                                      return;
+                                    }
+                                    if (option.reply) void sendMessageText(option.reply, { displayText: option.label.replace(/^\d+\)\s*/, "") });
+                                  }}
+                                  className="min-w-[180px] rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-left text-[13px] normal-case tracking-normal text-foreground transition hover:border-accent/60 hover:bg-accent/20 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                          {!shouldDelayForm && message.form ? (
+                            <ImobFormCard
+                              message={{ ...message, form: message.form }}
+                              state={imobForms}
+                              onSelectChange={structuredForms.handleSelectChange}
+                              onAction={(target, actionId) => handlePresentationFormAction(target as ChatMessage, actionId)}
+                              onAttachmentClick={() => setAttachmentMenuOpen(true)}
+                              onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
+                            />
+                          ) : null}
                         </div>
                       ) : null}
 
@@ -6106,18 +6125,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
             <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
-                <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
-                  {QUICK_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt.label}
-                      type="button"
-                      onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
-                      className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
-                    >
-                      {prompt.label}
-                    </button>
-                  ))}
-                </div>
+                <ImobActionMenuBar menus={IMOB_ACTION_MENUS} onSelect={handleActionMenuSelect} />
                 <div className="flex items-end gap-2 rounded-[16px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-sm sm:rounded-[18px] sm:p-2.5">
                   <input
                     ref={fileInputRef}

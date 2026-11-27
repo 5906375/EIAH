@@ -1,0 +1,1344 @@
+TAP version 13
+# Subtest: continue-on-error true with a future waiver passes with days remaining
+ok 1 - continue-on-error true with a future waiver passes with days remaining
+  ---
+  duration_ms: 7.258208
+  type: 'test'
+  ...
+# Subtest: continue-on-error true with an expired waiver fails
+ok 2 - continue-on-error true with an expired waiver fails
+  ---
+  duration_ms: 0.745018
+  type: 'test'
+  ...
+# Subtest: continue-on-error true without a waiver fails as undeclared
+ok 3 - continue-on-error true without a waiver fails as undeclared
+  ---
+  duration_ms: 0.343622
+  type: 'test'
+  ...
+# Subtest: a declared waiver without continue-on-error fails as stale
+ok 4 - a declared waiver without continue-on-error fails as stale
+  ---
+  duration_ms: 0.444206
+  type: 'test'
+  ...
+# Subtest: no waiver and no continue-on-error passes
+ok 5 - no waiver and no continue-on-error passes
+  ---
+  duration_ms: 1.359859
+  type: 'test'
+  ...
+# Subtest: full without providerAdapters fails criterion 1
+ok 6 - full without providerAdapters fails criterion 1
+  ---
+  duration_ms: 30.39989
+  type: 'test'
+  ...
+# Subtest: full with a declared missing module fails criterion 2
+ok 7 - full with a declared missing module fails criterion 2
+  ---
+  duration_ms: 6.917561
+  type: 'test'
+  ...
+# Subtest: full module resolving to the local stub fails criterion 3
+ok 8 - full module resolving to the local stub fails criterion 3
+  ---
+  duration_ms: 4.855533
+  type: 'test'
+  ...
+# Subtest: simulated without providerAdapters passes
+ok 9 - simulated without providerAdapters passes
+  ---
+  duration_ms: 1.85549
+  type: 'test'
+  ...
+# Subtest: a circular pair without an exception fails
+ok 10 - a circular pair without an exception fails
+  ---
+  duration_ms: 19.812626
+  type: 'test'
+  ...
+# Subtest: a circular pair with a valid nominal exception passes
+ok 11 - a circular pair with a valid nominal exception passes
+  ---
+  duration_ms: 1.432784
+  type: 'test'
+  ...
+# Subtest: a circular pair with an expired exception fails
+ok 12 - a circular pair with an expired exception fails
+  ---
+  duration_ms: 10.350774
+  type: 'test'
+  ...
+# Subtest: an exception for a nonexistent pair fails as stale
+ok 13 - an exception for a nonexistent pair fails as stale
+  ---
+  duration_ms: 1.182863
+  type: 'test'
+  ...
+# Subtest: a dynamic governed write path is reported as undetermined
+ok 14 - a dynamic governed write path is reported as undetermined
+  ---
+  duration_ms: 1.133484
+  type: 'test'
+  ...
+# Subtest: targets chained by && in one run command preserve order and are detected
+ok 15 - targets chained by && in one run command preserve order and are detected
+  ---
+  duration_ms: 0.953819
+  type: 'test'
+  ...
+# Subtest: recursive package target expansion detects and reports a target cycle
+ok 16 - recursive package target expansion detects and reports a target cycle
+  ---
+  duration_ms: 4.01119
+  type: 'test'
+  ...
+# Subtest: a destination reached through path.join(CONST, var) with var bound by for...of over a const array literal of templates is resolved, not undetermined
+ok 17 - a destination reached through path.join(CONST, var) with var bound by for...of over a const array literal of templates is resolved, not undetermined
+  ---
+  duration_ms: 85.911821
+  type: 'test'
+  ...
+# Subtest: a template interpolation resolved through the for...of array literal matches an equivalent glob pattern read by the check
+ok 18 - a template interpolation resolved through the for...of array literal matches an equivalent glob pattern read by the check
+  ---
+  duration_ms: 1.547531
+  type: 'test'
+  ...
+# Subtest: distinct prefixes resolved through the for...of array literal do not cross-match the check's pattern
+ok 19 - distinct prefixes resolved through the for...of array literal do not cross-match the check's pattern
+  ---
+  duration_ms: 1.267421
+  type: 'test'
+  ...
+# Subtest: a write destination reached via path.join(CONST, var) whose var is bound by for...of over a non-literal source stays undetermined
+ok 20 - a write destination reached via path.join(CONST, var) whose var is bound by for...of over a non-literal source stays undetermined
+  ---
+  duration_ms: 0.962349
+  type: 'test'
+  ...
+# Subtest: a function declaration is not counted as a call
+ok 21 - a function declaration is not counted as a call
+  ---
+  duration_ms: 0.450531
+  type: 'test'
+  ...
+# Subtest: a real call with a type-annotated argument is still captured alongside its declaration
+ok 22 - a real call with a type-annotated argument is still captured alongside its declaration
+  ---
+  duration_ms: 10.936928
+  type: 'test'
+  ...
+# Subtest: a genuinely dynamic read path stays undetermined
+ok 23 - a genuinely dynamic read path stays undetermined
+  ---
+  duration_ms: 0.814766
+  type: 'test'
+  ...
+# Subtest: ok semantics: an undetermined path without a declared exception fails ok
+ok 24 - ok semantics: an undetermined path without a declared exception fails ok
+  ---
+  duration_ms: 0.727529
+  type: 'test'
+  ...
+# Subtest: ok semantics: an undetermined path with an active declared exception does not fail ok, and is listed as excepted without being removed from undetermined
+ok 25 - ok semantics: an undetermined path with an active declared exception does not fail ok, and is listed as excepted without being removed from undetermined
+  ---
+  duration_ms: 0.778312
+  type: 'test'
+  ...
+# Subtest: ok semantics: an expired declared exception for an undetermined path still fails ok
+ok 26 - ok semantics: an expired declared exception for an undetermined path still fails ok
+  ---
+  duration_ms: 0.968282
+  type: 'test'
+  ...
+# Subtest: a *.test.ts file mentioned in a command's text is not analyzed: no pair, no undetermined
+ok 27 - a *.test.ts file mentioned in a command's text is not analyzed: no pair, no undetermined
+  ---
+  duration_ms: 0.671475
+  type: 'test'
+  ...
+# Subtest: a non-test file with the same content, mentioned in the same command shape, is still analyzed
+ok 28 - a non-test file with the same content, mentioned in the same command shape, is still analyzed
+  ---
+  duration_ms: 0.551867
+  type: 'test'
+  ...
+# Subtest: execution-aware gate separates blocking, disabled and uncalled references
+ok 29 - execution-aware gate separates blocking, disabled and uncalled references
+  ---
+  duration_ms: 22.502456
+  type: 'test'
+  ...
+# Subtest: tests added to a CI-invoked static suite become blocking
+ok 30 - tests added to a CI-invoked static suite become blocking
+  ---
+  duration_ms: 1.194472
+  type: 'test'
+  ...
+# Subtest: new orphan blocks even when absolute debt does not increase
+ok 31 - new orphan blocks even when absolute debt does not increase
+  ---
+  duration_ms: 1.501161
+  type: 'test'
+  ...
+# Subtest: a lower prior debt becomes the decreasing ceiling
+ok 32 - a lower prior debt becomes the decreasing ceiling
+  ---
+  duration_ms: 0.635146
+  type: 'test'
+  ...
+# Subtest: baseline válido: dados compatíveis com ExpectedFileBaseline, digests e proveniência declarada
+ok 33 - baseline válido: dados compatíveis com ExpectedFileBaseline, digests e proveniência declarada
+  ---
+  duration_ms: 40.524169
+  type: 'test'
+  ...
+# Subtest: a saída é aceita diretamente pelo verificador (compatibilidade de contrato)
+ok 34 - a saída é aceita diretamente pelo verificador (compatibilidade de contrato)
+  ---
+  duration_ms: 2.594732
+  type: 'test'
+  ...
+# Subtest: JSON inválido ou texto que não é JSON de objeto: reprovado sem lançar
+ok 35 - JSON inválido ou texto que não é JSON de objeto: reprovado sem lançar
+  ---
+  duration_ms: 16.75266
+  type: 'test'
+  ...
+# Subtest: raiz que não é objeto, ou objeto de outro tipo: TYPE_INVALID
+ok 36 - raiz que não é objeto, ou objeto de outro tipo: TYPE_INVALID
+  ---
+  duration_ms: 14.329762
+  type: 'test'
+  ...
+# Subtest: versão do schema: ausente, outra versão, tipo errado
+ok 37 - versão do schema: ausente, outra versão, tipo errado
+  ---
+  duration_ms: 15.275001
+  type: 'test'
+  ...
+# Subtest: chaves ausentes e inesperadas, na raiz, na proveniência e nas entradas
+ok 38 - chaves ausentes e inesperadas, na raiz, na proveniência e nas entradas
+  ---
+  duration_ms: 3.364159
+  type: 'test'
+  ...
+# Subtest: tipos estritos: provenance, files e entradas
+ok 39 - tipos estritos: provenance, files e entradas
+  ---
+  duration_ms: 30.026994
+  type: 'test'
+  ...
+# Subtest: proveniência: apenas 'declared' e formatos estritos; nada é tratado como prova
+ok 40 - proveniência: apenas 'declared' e formatos estritos; nada é tratado como prova
+  ---
+  duration_ms: 28.362698
+  type: 'test'
+  ...
+# Subtest: caminhos inválidos ou não canônicos
+ok 41 - caminhos inválidos ou não canônicos
+  ---
+  duration_ms: 10.986401
+  type: 'test'
+  ...
+# Subtest: arquivo duplicado, inclusive com chave repetida no JSON, e baseline vazio
+ok 42 - arquivo duplicado, inclusive com chave repetida no JSON, e baseline vazio
+  ---
+  duration_ms: 1.813285
+  type: 'test'
+  ...
+# Subtest: ordenação determinística: fora de ordem reprova, e a ordem é por unidade de código
+ok 43 - ordenação determinística: fora de ordem reprova, e a ordem é por unidade de código
+  ---
+  duration_ms: 5.290862
+  type: 'test'
+  ...
+# Subtest: contagens: negativa, fracionária, notação científica, '-0', acima do limite seguro, texto, null, booleano
+ok 44 - contagens: negativa, fracionária, notação científica, '-0', acima do limite seguro, texto, null, booleano
+  ---
+  duration_ms: 27.914176
+  type: 'test'
+  ...
+# Subtest: coerência: skipped + todo ≤ tests (igualdade é válida)
+ok 45 - coerência: skipped + todo ≤ tests (igualdade é válida)
+  ---
+  duration_ms: 0.997247
+  type: 'test'
+  ...
+# Subtest: sha256: obrigatório e sintaticamente estrito (64 hex minúsculos)
+ok 46 - sha256: obrigatório e sintaticamente estrito (64 hex minúsculos)
+  ---
+  duration_ms: 2.428603
+  type: 'test'
+  ...
+# Subtest: correspondência com o inventário: ausentes, adicionais, ambos, e ordem do inventário irrelevante
+ok 47 - correspondência com o inventário: ausentes, adicionais, ambos, e ordem do inventário irrelevante
+  ---
+  duration_ms: 1.252286
+  type: 'test'
+  ...
+# Subtest: opções inválidas (expectedFiles) reprovam, mesmo com baseline perfeito
+ok 48 - opções inválidas (expectedFiles) reprovam, mesmo com baseline perfeito
+  ---
+  duration_ms: 4.797692
+  type: 'test'
+  ...
+# Subtest: valores ambíguos: chaves repetidas em qualquer nível são rejeitadas (JSON.parse manteria a última)
+ok 49 - valores ambíguos: chaves repetidas em qualquer nível são rejeitadas (JSON.parse manteria a última)
+  ---
+  duration_ms: 2.904248
+  type: 'test'
+  ...
+# Subtest: nenhuma entrada inválida produz ok:true: mutações sucessivas do documento válido
+ok 50 - nenhuma entrada inválida produz ok:true: mutações sucessivas do documento válido
+  ---
+  duration_ms: 5.953293
+  type: 'test'
+  ...
+# Subtest: função pura: determinística, não depende da ordem do inventário e aceita opções congeladas
+ok 51 - função pura: determinística, não depende da ordem do inventário e aceita opções congeladas
+  ---
+  duration_ms: 1.632768
+  type: 'test'
+  ...
+# Subtest: os dados devolvidos não compartilham referências com as opções
+ok 52 - os dados devolvidos não compartilham referências com as opções
+  ---
+  duration_ms: 0.57094
+  type: 'test'
+  ...
+# Subtest: higiene do módulo: sem disco, processo, rede, ambiente, relógio ou aleatoriedade; só importa módulos do gate
+ok 53 - higiene do módulo: sem disco, processo, rede, ambiente, relógio ou aleatoriedade; só importa módulos do gate
+  ---
+  duration_ms: 1.573016
+  type: 'test'
+  ...
+# Subtest: identificadores UNIT_SUITE_BASELINE_* são estáveis, únicos e todos usados no módulo
+ok 54 - identificadores UNIT_SUITE_BASELINE_* são estáveis, únicos e todos usados no módulo
+  ---
+  duration_ms: 0.941279
+  type: 'test'
+  ...
+# Subtest: PASS integral: as oito etapas OK, sem motivos, com proveniência apenas declarada
+ok 55 - PASS integral: as oito etapas OK, sem motivos, com proveniência apenas declarada
+  ---
+  duration_ms: 64.142937
+  type: 'test'
+  ...
+# Subtest: a proveniência é só declarada: o relatório do baseline traz attestation not_demonstrated, mesmo em PASS
+ok 56 - a proveniência é só declarada: o relatório do baseline traz attestation not_demonstrated, mesmo em PASS
+  ---
+  duration_ms: 9.667434
+  type: 'test'
+  ...
+# Subtest: o SHA-256 do baseline é apenas reportado: formato inválido reprova; valor válido não é 'verificado' aqui
+ok 57 - o SHA-256 do baseline é apenas reportado: formato inválido reprova; valor válido não é 'verificado' aqui
+  ---
+  duration_ms: 36.346669
+  type: 'test'
+  ...
+# Subtest: a versão do Node não altera a decisão nesta etapa
+ok 58 - a versão do Node não altera a decisão nesta etapa
+  ---
+  duration_ms: 1.941003
+  type: 'test'
+  ...
+# Subtest: issues do adaptador reprovam mesmo com o verificador em PASS
+ok 59 - issues do adaptador reprovam mesmo com o verificador em PASS
+  ---
+  duration_ms: 17.171446
+  type: 'test'
+  ...
+# Subtest: baseline inválido passa obrigatoriamente pelo parser: as issues originais são preservadas e o restante é bloqueado
+ok 60 - baseline inválido passa obrigatoriamente pelo parser: as issues originais são preservadas e o restante é bloqueado
+  ---
+  duration_ms: 15.98137
+  type: 'test'
+  ...
+# Subtest: chave duplicada no baseline é rejeitada (JSON.parse manteria a última) e nunca chega ao verificador
+ok 61 - chave duplicada no baseline é rejeitada (JSON.parse manteria a última) e nunca chega ao verificador
+  ---
+  duration_ms: 1.148102
+  type: 'test'
+  ...
+# Subtest: o parser do baseline é sempre usado: texto com arquivos de outro inventário não alimenta o verificador
+ok 62 - o parser do baseline é sempre usado: texto com arquivos de outro inventário não alimenta o verificador
+  ---
+  duration_ms: 0.942901
+  type: 'test'
+  ...
+# Subtest: inventário inválido reprova, preserva as issues do parser e bloqueia baseline, integridade e argv
+ok 63 - inventário inválido reprova, preserva as issues do parser e bloqueia baseline, integridade e argv
+  ---
+  duration_ms: 9.712304
+  type: 'test'
+  ...
+# Subtest: integridade aprovada: declarado == anterior == posterior, com cobertura exata
+ok 64 - integridade aprovada: declarado == anterior == posterior, com cobertura exata
+  ---
+  duration_ms: 1.465095
+  type: 'test'
+  ...
+# Subtest: digest declarado diferente do observado antes e/ou depois reprova
+ok 65 - digest declarado diferente do observado antes e/ou depois reprova
+  ---
+  duration_ms: 12.542308
+  type: 'test'
+  ...
+# Subtest: digest anterior diferente do posterior: arquivo alterado durante a execução
+ok 66 - digest anterior diferente do posterior: arquivo alterado durante a execução
+  ---
+  duration_ms: 1.135057
+  type: 'test'
+  ...
+# Subtest: digest ausente, adicional ou inválido nos mapas reprova, com fase e arquivo
+ok 67 - digest ausente, adicional ou inválido nos mapas reprova, com fase e arquivo
+  ---
+  duration_ms: 41.915956
+  type: 'test'
+  ...
+# Subtest: forma de testFileDigests: ausente, malformada, mapa que não é objeto, antes nulo
+ok 68 - forma de testFileDigests: ausente, malformada, mapa que não é objeto, antes nulo
+  ---
+  duration_ms: 10.275059
+  type: 'test'
+  ...
+# Subtest: run presente exige digests posteriores; run nulo permite after nulo mas avalia os digests anteriores
+ok 69 - run presente exige digests posteriores; run nulo permite after nulo mas avalia os digests anteriores
+  ---
+  duration_ms: 7.632931
+  type: 'test'
+  ...
+# Subtest: run: null nunca é PASS, mesmo com todo o resto íntegro
+ok 70 - run: null nunca é PASS, mesmo com todo o resto íntegro
+  ---
+  duration_ms: 2.368155
+  type: 'test'
+  ...
+# Subtest: baseline inválido deixa a integridade não avaliada, com reprovação global, mesmo com digests corretos
+ok 71 - baseline inválido deixa a integridade não avaliada, com reprovação global, mesmo com digests corretos
+  ---
+  duration_ms: 0.807713
+  type: 'test'
+  ...
+# Subtest: argv divergente do inventário reprova: ausente, adicional, duplicado, inválido; './' é normalizado
+ok 72 - argv divergente do inventário reprova: ausente, adicional, duplicado, inválido; './' é normalizado
+  ---
+  duration_ms: 16.737737
+  type: 'test'
+  ...
+# Subtest: execução: código ≠ 0, sinal, timeout, saída desconhecida, não executada e observação inválida reprovam
+ok 73 - execução: código ≠ 0, sinal, timeout, saída desconhecida, não executada e observação inválida reprovam
+  ---
+  duration_ms: 8.053856
+  type: 'test'
+  ...
+# Subtest: eventos: ausente (null), vazio, só espaços, não texto e linha corrompida são distinguidos
+ok 74 - eventos: ausente (null), vazio, só espaços, não texto e linha corrompida são distinguidos
+  ---
+  duration_ms: 9.376445
+  type: 'test'
+  ...
+# Subtest: falha de suite com rc=0, resumo de sucesso e testes aprovados reprova e preserva o motivo do verificador
+ok 75 - falha de suite com rc=0, resumo de sucesso e testes aprovados reprova e preserva o motivo do verificador
+  ---
+  duration_ms: 1.153583
+  type: 'test'
+  ...
+# Subtest: resumo ausente, duplicado e eventos perdidos reprovam com os motivos do verificador
+ok 76 - resumo ausente, duplicado e eventos perdidos reprovam com os motivos do verificador
+  ---
+  duration_ms: 1.986581
+  type: 'test'
+  ...
+# Subtest: o veredito do verificador é preservado integralmente, usando os dados do parser do baseline
+ok 77 - o veredito do verificador é preservado integralmente, usando os dados do parser do baseline
+  ---
+  duration_ms: 1.462275
+  type: 'test'
+  ...
+# Subtest: todas as etapas são avaliadas e relatadas mesmo quando várias falham
+ok 78 - todas as etapas são avaliadas e relatadas mesmo quando várias falham
+  ---
+  duration_ms: 1.022881
+  type: 'test'
+  ...
+# Subtest: entrada ausente ou de tipo errado nunca lança e reprova, com todas as etapas não avaliadas
+ok 79 - entrada ausente ou de tipo errado nunca lança e reprova, com todas as etapas não avaliadas
+  ---
+  duration_ms: 12.912019
+  type: 'test'
+  ...
+# Subtest: exceções internas viram FAIL com GATE_INTERNAL_ERROR, nunca aprovação
+ok 80 - exceções internas viram FAIL com GATE_INTERNAL_ERROR, nunca aprovação
+  ---
+  duration_ms: 12.015322
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada, é determinística e aceita entrada congelada
+ok 81 - função pura: não altera a entrada, é determinística e aceita entrada congelada
+  ---
+  duration_ms: 2.283027
+  type: 'test'
+  ...
+# Subtest: a ordem de argv e das chaves dos mapas de digest não altera a decisão
+ok 82 - a ordem de argv e das chaves dos mapas de digest não altera a decisão
+  ---
+  duration_ms: 1.35753
+  type: 'test'
+  ...
+# Subtest: higiene do módulo: sem disco, processo, rede, ambiente, relógio, hash ou aleatoriedade; só importa módulos do gate
+ok 83 - higiene do módulo: sem disco, processo, rede, ambiente, relógio, hash ou aleatoriedade; só importa módulos do gate
+  ---
+  duration_ms: 17.944824
+  type: 'test'
+  ...
+# Subtest: identificadores GATE são estáveis, únicos, com prefixo, e todo código usado no módulo está declarado
+ok 84 - identificadores GATE são estáveis, únicos, com prefixo, e todo código usado no módulo está declarado
+  ---
+  duration_ms: 1.171237
+  type: 'test'
+  ...
+# Subtest: observe: observação completa => OBSERVED_UNATTESTED, sem aprovação, sem baseline e com candidatos por arquivo
+ok 85 - observe: observação completa => OBSERVED_UNATTESTED, sem aprovação, sem baseline e com candidatos por arquivo
+  ---
+  duration_ms: 11.411464
+  type: 'test'
+  ...
+# Subtest: observe: o módulo não usa baseline (nenhum parser de baseline nem texto de baseline na entrada)
+ok 86 - observe: o módulo não usa baseline (nenhum parser de baseline nem texto de baseline na entrada)
+  ---
+  duration_ms: 0.82913
+  type: 'test'
+  ...
+# Subtest: observe: nunca produz PASS nem aprovação, em nenhuma variação de entrada
+ok 87 - observe: nunca produz PASS nem aprovação, em nenhuma variação de entrada
+  ---
+  duration_ms: 12.014523
+  type: 'test'
+  ...
+# Subtest: observe: falhas estruturais => OBSERVATION_INCOMPLETE, nunca observação bem-sucedida
+ok 88 - observe: falhas estruturais => OBSERVATION_INCOMPLETE, nunca observação bem-sucedida
+  ---
+  duration_ms: 9.98254
+  type: 'test'
+  ...
+# Subtest: observe: teste falho => OBSERVATION_FAILED (contagens informativas, sem candidatos); saída ≠ 0 sem falha nos eventos => INCOMPLETE
+ok 89 - observe: teste falho => OBSERVATION_FAILED (contagens informativas, sem candidatos); saída ≠ 0 sem falha nos eventos => INCOMPLETE
+  ---
+  duration_ms: 2.098986
+  type: 'test'
+  ...
+# Subtest: observe: skip e todo nunca contam como teste executado; arquivo condicional ignorado fica NOT_DEMONSTRATED
+ok 90 - observe: skip e todo nunca contam como teste executado; arquivo condicional ignorado fica NOT_DEMONSTRATED
+  ---
+  duration_ms: 1.232469
+  type: 'test'
+  ...
+# Subtest: observe: pré-verificação (sem execução) avalia inventário, integridade e argv e deixa o resto bloqueado
+ok 91 - observe: pré-verificação (sem execução) avalia inventário, integridade e argv e deixa o resto bloqueado
+  ---
+  duration_ms: 1.499559
+  type: 'test'
+  ...
+# Subtest: observe: determinístico, ordenado e não altera a entrada
+ok 92 - observe: determinístico, ordenado e não altera a entrada
+  ---
+  duration_ms: 3.100203
+  type: 'test'
+  ...
+# Subtest: observe: entrada ilegível não lança e nunca vira observação bem-sucedida
+ok 93 - observe: entrada ilegível não lança e nunca vira observação bem-sucedida
+  ---
+  duration_ms: 6.592979
+  type: 'test'
+  ...
+# Subtest: observe: classificação de cobertura condicional pelo nome do arquivo
+ok 94 - observe: classificação de cobertura condicional pelo nome do arquivo
+  ---
+  duration_ms: 0.258272
+  type: 'test'
+  ...
+# Subtest: PASS integral: código 0, quatro artefatos, hashes e envelope launcher/decision/final
+ok 95 - PASS integral: código 0, quatro artefatos, hashes e envelope launcher/decision/final
+  ---
+  duration_ms: 1038.131115
+  type: 'test'
+  ...
+# Subtest: os dois campos de ambiente e de proveniência não vazam valores nem alegam atestação
+ok 96 - os dois campos de ambiente e de proveniência não vazam valores nem alegam atestação
+  ---
+  duration_ms: 708.117147
+  type: 'test'
+  ...
+# Subtest: baseline inválido: nenhum teste é iniciado, evidências preservadas, código 1
+ok 97 - baseline inválido: nenhum teste é iniciado, evidências preservadas, código 1
+  ---
+  duration_ms: 4.033236
+  type: 'test'
+  ...
+# Subtest: SHA-256 divergente do arquivo de teste: reprova antes de executar
+ok 98 - SHA-256 divergente do arquivo de teste: reprova antes de executar
+  ---
+  duration_ms: 3.825399
+  type: 'test'
+  ...
+# Subtest: arquivo de teste ausente, manifesto ilegível e entradas acima do teto: falham sem iniciar testes
+ok 99 - arquivo de teste ausente, manifesto ilegível e entradas acima do teto: falham sem iniciar testes
+  ---
+  duration_ms: 58.005168
+  type: 'test'
+  ...
+# Subtest: arquivo de teste que é link simbólico para fora da raiz é recusado
+ok 100 - arquivo de teste que é link simbólico para fora da raiz é recusado
+  ---
+  duration_ms: 3.711782
+  type: 'test'
+  ...
+# Subtest: arquivo alterado durante a execução: reprova pela integridade, mesmo com os testes passando
+ok 101 - arquivo alterado durante a execução: reprova pela integridade, mesmo com os testes passando
+  ---
+  duration_ms: 637.067615
+  type: 'test'
+  ...
+# Subtest: falha de teste e código de saída ≠ 0 reprovam com código 1 e preservam stdout/stderr
+ok 102 - falha de teste e código de saída ≠ 0 reprovam com código 1 e preservam stdout/stderr
+  ---
+  duration_ms: 677.262124
+  type: 'test'
+  ...
+# Subtest: falha de suite (hook) com código 0 e resumo de sucesso reprova
+ok 103 - falha de suite (hook) com código 0 e resumo de sucesso reprova
+  ---
+  duration_ms: 867.617717
+  type: 'test'
+  ...
+# Subtest: timeout: encerra o grupo inteiro, inclusive descendentes, e reprova
+ok 104 - timeout: encerra o grupo inteiro, inclusive descendentes, e reprova
+  ---
+  duration_ms: 5042.429458
+  type: 'test'
+  ...
+# Subtest: timeout: runner que ignora SIGTERM é encerrado por SIGKILL após a tolerância
+ok 105 - timeout: runner que ignora SIGTERM é encerrado por SIGKILL após a tolerância
+  ---
+  duration_ms: 1909.666135
+  type: 'test'
+  ...
+# Subtest: descendente que sobrevive ao runner após saída normal: é encerrado e a execução reprova
+ok 106 - descendente que sobrevive ao runner após saída normal: é encerrado e a execução reprova
+  ---
+  duration_ms: 484.345416
+  type: 'test'
+  ...
+# Subtest: limitação conhecida: descendente que abre nova sessão escapa da supervisão (não é detectado)
+ok 107 - limitação conhecida: descendente que abre nova sessão escapa da supervisão (não é detectado)
+  ---
+  duration_ms: 517.910105
+  type: 'test'
+  ...
+# Subtest: erro de spawn: reprova com evidências e campos indisponíveis explícitos
+ok 108 - erro de spawn: reprova com evidências e campos indisponíveis explícitos
+  ---
+  duration_ms: 5.546852
+  type: 'test'
+  ...
+# Subtest: reporter ausente: o runner falha, a execução reprova e o stderr preserva a causa
+ok 109 - reporter ausente: o runner falha, a execução reprova e o stderr preserva a causa
+  ---
+  duration_ms: 54.963787
+  type: 'test'
+  ...
+# Subtest: reporter inválido: sem eventos, linhas corrompidas, fluxo incompleto e arquivo grande demais reprovam
+ok 110 - reporter inválido: sem eventos, linhas corrompidas, fluxo incompleto e arquivo grande demais reprovam
+  ---
+  duration_ms: 2987.177259
+  type: 'test'
+  ...
+# Subtest: NDJSON truncado com registro end presente é reprovado pelos resumos por arquivo
+ok 111 - NDJSON truncado com registro end presente é reprovado pelos resumos por arquivo
+  ---
+  duration_ms: 733.992644
+  type: 'test'
+  ...
+# Subtest: artefatos pré-existentes: events/stdout colidindo impedem a execução; nada é sobrescrito
+ok 112 - artefatos pré-existentes: events/stdout colidindo impedem a execução; nada é sobrescrito
+  ---
+  duration_ms: 9.921191
+  type: 'test'
+  ...
+# Subtest: falha de persistência: código 2, evidências já gravadas preservadas, sem aprovação
+ok 113 - falha de persistência: código 2, evidências já gravadas preservadas, sem aprovação
+  ---
+  duration_ms: 713.78583
+  type: 'test'
+  ...
+# Subtest: decision.json pré-existente nunca é sobrescrito: gravação exclusiva, código 2
+ok 114 - decision.json pré-existente nunca é sobrescrito: gravação exclusiva, código 2
+  ---
+  duration_ms: 650.341467
+  type: 'test'
+  ...
+# Subtest: colisão de runId: a segunda execução falha com código 2 e não altera a primeira
+ok 115 - colisão de runId: a segunda execução falha com código 2 e não altera a primeira
+  ---
+  duration_ms: 574.653766
+  type: 'test'
+  ...
+# Subtest: concorrência: execuções simultâneas com ids distintos passam; com o mesmo id só uma prossegue
+ok 116 - concorrência: execuções simultâneas com ids distintos passam; com o mesmo id só uma prossegue
+  ---
+  duration_ms: 1839.422499
+  type: 'test'
+  ...
+# Subtest: execuções simultâneas no mesmo diretório de saída não misturam artefatos
+ok 117 - execuções simultâneas no mesmo diretório de saída não misturam artefatos
+  ---
+  duration_ms: 1009.720628
+  type: 'test'
+  ...
+# Subtest: ambiente mínimo: segredos e URLs de serviços do pai não chegam aos testes; DATABASE_URL é o sentinela
+ok 118 - ambiente mínimo: segredos e URLs de serviços do pai não chegam aos testes; DATABASE_URL é o sentinela
+  ---
+  duration_ms: 657.669412
+  type: 'test'
+  ...
+# Subtest: opções inválidas ou inseguras: código 2, sem criar diretório de execução
+ok 119 - opções inválidas ou inseguras: código 2, sem criar diretório de execução
+  ---
+  duration_ms: 2.736889
+  type: 'test'
+  ...
+# Subtest: loader tsx não resolvível a partir da raiz e diretório de saída indisponível: código 2
+ok 120 - loader tsx não resolvível a partir da raiz e diretório de saída indisponível: código 2
+  ---
+  duration_ms: 2.492171
+  type: 'test'
+  ...
+# Subtest: códigos de saída 0, 1 e 2 em sequência, sempre derivados do envelope
+ok 121 - códigos de saída 0, 1 e 2 em sequência, sempre derivados do envelope
+  ---
+  duration_ms: 674.040667
+  type: 'test'
+  ...
+# Subtest: baseline com permissão somente leitura e execução repetida: bytes e mtime inalterados em PASS e FAIL
+ok 122 - baseline com permissão somente leitura e execução repetida: bytes e mtime inalterados em PASS e FAIL
+  ---
+  duration_ms: 667.727556
+  type: 'test'
+  ...
+# Subtest: identificadores do lançador são estáveis, únicos e todos usados
+ok 123 - identificadores do lançador são estáveis, únicos e todos usados
+  ---
+  duration_ms: 1.249485
+  type: 'test'
+  ...
+# Subtest: CLI: argumentos desconhecidos, ausentes ou repetidos são rejeitados antes de qualquer execução
+ok 124 - CLI: argumentos desconhecidos, ausentes ou repetidos são rejeitados antes de qualquer execução
+  ---
+  duration_ms: 0.766078
+  type: 'test'
+  ...
+# Subtest: CLI de ponta a ponta: códigos 0, 1 e 2
+ok 125 - CLI de ponta a ponta: códigos 0, 1 e 2
+  ---
+  duration_ms: 1635.646086
+  type: 'test'
+  ...
+# Subtest: observe: execução completa => OBSERVED_UNATTESTED (código 0), sem baseline, sem PASS, quatro artefatos
+ok 126 - observe: execução completa => OBSERVED_UNATTESTED (código 0), sem baseline, sem PASS, quatro artefatos
+  ---
+  duration_ms: 461.586029
+  type: 'test'
+  ...
+# Subtest: observe: não aceita caminho de baseline (código 2, nenhum diretório criado) e não lê o baseline mesmo existente
+ok 127 - observe: não aceita caminho de baseline (código 2, nenhum diretório criado) e não lê o baseline mesmo existente
+  ---
+  duration_ms: 462.407559
+  type: 'test'
+  ...
+# Subtest: observe: gate sem baseline continua fail-closed e não inicia testes
+ok 128 - observe: gate sem baseline continua fail-closed e não inicia testes
+  ---
+  duration_ms: 2.453873
+  type: 'test'
+  ...
+# Subtest: observe: teste falho => OBSERVATION_FAILED (código 1) com contagens informativas e sem candidatos
+ok 129 - observe: teste falho => OBSERVATION_FAILED (código 1) com contagens informativas e sem candidatos
+  ---
+  duration_ms: 574.152062
+  type: 'test'
+  ...
+# Subtest: observe: falha de suite (hook) com saída 0 não é observação bem-sucedida
+ok 130 - observe: falha de suite (hook) com saída 0 não é observação bem-sucedida
+  ---
+  duration_ms: 528.449524
+  type: 'test'
+  ...
+# Subtest: observe: timeout => OBSERVATION_INCOMPLETE; o grupo inteiro é encerrado
+ok 131 - observe: timeout => OBSERVATION_INCOMPLETE; o grupo inteiro é encerrado
+  ---
+  duration_ms: 5535.536238
+  type: 'test'
+  ...
+# Subtest: observe: descendente que sobrevive ao runner rebaixa para OBSERVATION_INCOMPLETE mesmo com testes aprovados
+ok 132 - observe: descendente que sobrevive ao runner rebaixa para OBSERVATION_INCOMPLETE mesmo com testes aprovados
+  ---
+  duration_ms: 413.805029
+  type: 'test'
+  ...
+# Subtest: observe: arquivo de teste alterado durante a execução => OBSERVATION_INCOMPLETE
+ok 133 - observe: arquivo de teste alterado durante a execução => OBSERVATION_INCOMPLETE
+  ---
+  duration_ms: 1038.948685
+  type: 'test'
+  ...
+# Subtest: observe: arquivo condicional ignorado (sem banco) => cobertura NOT_DEMONSTRATED; skip nunca conta como executado
+ok 134 - observe: arquivo condicional ignorado (sem banco) => cobertura NOT_DEMONSTRATED; skip nunca conta como executado
+  ---
+  duration_ms: 578.647558
+  type: 'test'
+  ...
+# Subtest: observe: ambiente mínimo - segredos do pai não chegam aos testes e nada de ambiente é gravado
+ok 135 - observe: ambiente mínimo - segredos do pai não chegam aos testes e nada de ambiente é gravado
+  ---
+  duration_ms: 529.432867
+  type: 'test'
+  ...
+# Subtest: observe: execução repetida produz a mesma observação (determinística) e nunca sobrescreve execuções
+ok 136 - observe: execução repetida produz a mesma observação (determinística) e nunca sobrescreve execuções
+  ---
+  duration_ms: 937.721274
+  type: 'test'
+  ...
+# Subtest: observe: manifesto e argv divergentes reprovam antes de executar (nenhum teste iniciado)
+ok 137 - observe: manifesto e argv divergentes reprovam antes de executar (nenhum teste iniciado)
+  ---
+  duration_ms: 2.264816
+  type: 'test'
+  ...
+# Subtest: CLI: --mode padrão é gate; observe rejeita --baseline e modos desconhecidos
+ok 138 - CLI: --mode padrão é gate; observe rejeita --baseline e modos desconhecidos
+  ---
+  duration_ms: 0.584928
+  type: 'test'
+  ...
+# Subtest: CLI observe de ponta a ponta: 0 (observação completa), 1 (falha), 2 (uso); saída sem ok/PASS
+ok 139 - CLI observe de ponta a ponta: 0 (observação completa), 1 (falha), 2 (uso); saída sem ok/PASS
+  ---
+  duration_ms: 2020.744821
+  type: 'test'
+  ...
+# Subtest: inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+ok 140 - inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+  ---
+  duration_ms: 6.184557
+  type: 'test'
+  ...
+# Subtest: a ordem de saída não depende da ordem do manifesto nem do fim de linha
+ok 141 - a ordem de saída não depende da ordem do manifesto nem do fim de linha
+  ---
+  duration_ms: 0.729072
+  type: 'test'
+  ...
+# Subtest: entrada duplicada é reprovada, inclusive após normalização
+ok 142 - entrada duplicada é reprovada, inclusive após normalização
+  ---
+  duration_ms: 0.73571
+  type: 'test'
+  ...
+# Subtest: caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+ok 143 - caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+  ---
+  duration_ms: 0.623661
+  type: 'test'
+  ...
+# Subtest: extensão fora de .test.ts/.test.tsx é reprovada
+ok 144 - extensão fora de .test.ts/.test.tsx é reprovada
+  ---
+  duration_ms: 0.44037
+  type: 'test'
+  ...
+# Subtest: mais de um caminho na mesma linha ou comentário inline não é aceito
+ok 145 - mais de um caminho na mesma linha ou comentário inline não é aceito
+  ---
+  duration_ms: 0.303966
+  type: 'test'
+  ...
+# Subtest: todos os problemas são reportados de uma vez, na ordem das linhas
+ok 146 - todos os problemas são reportados de uma vez, na ordem das linhas
+  ---
+  duration_ms: 0.36224
+  type: 'test'
+  ...
+# Subtest: manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+ok 147 - manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+  ---
+  duration_ms: 0.332643
+  type: 'test'
+  ...
+# Subtest: conteúdo que não é texto é reprovado sem lançar
+ok 148 - conteúdo que não é texto é reprovado sem lançar
+  ---
+  duration_ms: 0.799009
+  type: 'test'
+  ...
+# Subtest: entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+ok 149 - entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+  ---
+  duration_ms: 0.860046
+  type: 'test'
+  ...
+# Subtest: manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+ok 150 - manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+  ---
+  duration_ms: 13.626545
+  type: 'test'
+  ...
+# Subtest: manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+ok 151 - manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+  ---
+  duration_ms: 2.876501
+  type: 'test'
+  ...
+# Subtest: o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+ok 152 - o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+  ---
+  duration_ms: 0.376866
+  type: 'test'
+  ...
+# Subtest: arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+ok 153 - arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+  ---
+  duration_ms: 2.576997
+  type: 'test'
+  ...
+# Subtest: execução completa: contadores, identidade relativa e aprovação pelo verificador
+ok 154 - execução completa: contadores, identidade relativa e aprovação pelo verificador
+  ---
+  duration_ms: 8.132637
+  type: 'test'
+  ...
+# Subtest: falha individual: failed=1 e reprovação
+ok 155 - falha individual: failed=1 e reprovação
+  ---
+  duration_ms: 0.96646
+  type: 'test'
+  ...
+# Subtest: falha de suite (hookFailed) com rc=0, resumo de sucesso e testes aprovados reprova com SUITE_FAILED
+ok 156 - falha de suite (hookFailed) com rc=0, resumo de sucesso e testes aprovados reprova com SUITE_FAILED
+  ---
+  duration_ms: 0.984356
+  type: 'test'
+  ...
+# Subtest: suite que passa não conta como teste e seu início é descontado de started
+ok 157 - suite que passa não conta como teste e seu início é descontado de started
+  ---
+  duration_ms: 0.497751
+  type: 'test'
+  ...
+# Subtest: skip, todo, skip+todo e todo que falha seguem a contagem do Node
+ok 158 - skip, todo, skip+todo e todo que falha seguem a contagem do Node
+  ---
+  duration_ms: 0.644214
+  type: 'test'
+  ...
+# Subtest: cancelamento: test:fail com cancelledByParent vira cancelled, não failed
+ok 159 - cancelamento: test:fail com cancelledByParent vira cancelled, não failed
+  ---
+  duration_ms: 0.752835
+  type: 'test'
+  ...
+# Subtest: nomes repetidos, em qualquer nível, são contados individualmente e não reprovam
+ok 160 - nomes repetidos, em qualquer nível, são contados individualmente e não reprovam
+  ---
+  duration_ms: 0.6207
+  type: 'test'
+  ...
+# Subtest: item de arquivo (nome = caminho absoluto, relativo ao cwd ou ./relativo) vira fileLevelEntries
+ok 161 - item de arquivo (nome = caminho absoluto, relativo ao cwd ou ./relativo) vira fileLevelEntries
+  ---
+  duration_ms: 1.19638
+  type: 'test'
+  ...
+# Subtest: item de arquivo com falha (erro de carga ou hook global) também é fileLevelEntries
+ok 162 - item de arquivo com falha (erro de carga ou hook global) também é fileLevelEntries
+  ---
+  duration_ms: 0.624691
+  type: 'test'
+  ...
+# Subtest: o cwd distingue o nome relativo: cwd diferente da raiz
+ok 163 - o cwd distingue o nome relativo: cwd diferente da raiz
+  ---
+  duration_ms: 2.782219
+  type: 'test'
+  ...
+# Subtest: resumo por arquivo ausente ou duplicado reprova; o global nunca substitui o do arquivo
+ok 164 - resumo por arquivo ausente ou duplicado reprova; o global nunca substitui o do arquivo
+  ---
+  duration_ms: 1.322919
+  type: 'test'
+  ...
+# Subtest: eventos incompletos: perda de resultados reprova pela contagem e pelo início sem resultado
+ok 165 - eventos incompletos: perda de resultados reprova pela contagem e pelo início sem resultado
+  ---
+  duration_ms: 0.592267
+  type: 'test'
+  ...
+# Subtest: vários arquivos intercalados: cada arquivo é avaliado de forma independente e a ordem não importa
+ok 166 - vários arquivos intercalados: cada arquivo é avaliado de forma independente e a ordem não importa
+  ---
+  duration_ms: 0.969992
+  type: 'test'
+  ...
+# Subtest: identidade vem só de eventos de teste e resumo: arquivo fora da raiz é issue
+ok 167 - identidade vem só de eventos de teste e resumo: arquivo fora da raiz é issue
+  ---
+  duration_ms: 0.608073
+  type: 'test'
+  ...
+# Subtest: eventos essenciais desconhecidos, campos inválidos e chaves extras são rejeitados
+ok 168 - eventos essenciais desconhecidos, campos inválidos e chaves extras são rejeitados
+  ---
+  duration_ms: 0.837867
+  type: 'test'
+  ...
+# Subtest: integridade do fluxo: fim ausente, contagem do fim, lacuna, duplicata, registros após o fim e cabeçalho
+ok 169 - integridade do fluxo: fim ausente, contagem do fim, lacuna, duplicata, registros após o fim e cabeçalho
+  ---
+  duration_ms: 0.975881
+  type: 'test'
+  ...
+# Subtest: fluxo vazio, sem eventos, ou opções inválidas: nunca presume sucesso
+ok 170 - fluxo vazio, sem eventos, ou opções inválidas: nunca presume sucesso
+  ---
+  duration_ms: 0.371094
+  type: 'test'
+  ...
+# Subtest: mais resultados de suite do que inícios é inconsistência explícita
+ok 171 - mais resultados de suite do que inícios é inconsistência explícita
+  ---
+  duration_ms: 0.261037
+  type: 'test'
+  ...
+# Subtest: parseNdjson: linhas vazias são ignoradas; linha corrompida ou que não é objeto vira issue
+ok 172 - parseNdjson: linhas vazias são ignoradas; linha corrompida ou que não é objeto vira issue
+  ---
+  duration_ms: 0.547593
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada e é determinística
+ok 173 - função pura: não altera a entrada e é determinística
+  ---
+  duration_ms: 0.349624
+  type: 'test'
+  ...
+# Subtest: serializeEvent grava apenas start/pass/fail/summary e descarta o resto
+ok 174 - serializeEvent grava apenas start/pass/fail/summary e descarta o resto
+  ---
+  duration_ms: 2.545408
+  type: 'test'
+  ...
+# Subtest: serializeEvent reduz os campos e nunca guarda mensagem de erro nem motivo de skip
+ok 175 - serializeEvent reduz os campos e nunca guarda mensagem de erro nem motivo de skip
+  ---
+  duration_ms: 2.813944
+  type: 'test'
+  ...
+# Subtest: serializeEvent preserva resumo do arquivo e global; valores inesperados viram null e o adaptador os rejeita
+ok 176 - serializeEvent preserva resumo do arquivo e global; valores inesperados viram null e o adaptador os rejeita
+  ---
+  duration_ms: 0.940593
+  type: 'test'
+  ...
+# Subtest: o reporter grava cabeçalho, eventos e fim, sem emitir nada no stdout do runner
+ok 177 - o reporter grava cabeçalho, eventos e fim, sem emitir nada no stdout do runner
+  ---
+  duration_ms: 4.8326
+  type: 'test'
+  ...
+# Subtest: sem a variável de ambiente, ou com arquivo já existente, o reporter lança erro e não altera o arquivo
+ok 178 - sem a variável de ambiente, ou com arquivo já existente, o reporter lança erro e não altera o arquivo
+  ---
+  duration_ms: 2.427525
+  type: 'test'
+  ...
+# Subtest: se a fonte falha no meio, o fim não é gravado e o adaptador acusa fluxo incompleto
+ok 179 - se a fonte falha no meio, o fim não é gravado e o adaptador acusa fluxo incompleto
+  ---
+  duration_ms: 1.285227
+  type: 'test'
+  ...
+# Subtest: e2e: execução completa e nomes repetidos/aninhados/suites aprovam
+ok 180 - e2e: execução completa e nomes repetidos/aninhados/suites aprovam
+  ---
+  duration_ms: 590.172759
+  type: 'test'
+  ...
+# Subtest: e2e: falha individual reprova
+ok 181 - e2e: falha individual reprova
+  ---
+  duration_ms: 236.34916
+  type: 'test'
+  ...
+# Subtest: e2e: falha de hook em describe() com testes aprovados e resumo de sucesso reprova por SUITE_FAILED
+ok 182 - e2e: falha de hook em describe() com testes aprovados e resumo de sucesso reprova por SUITE_FAILED
+  ---
+  duration_ms: 194.306302
+  type: 'test'
+  ...
+# Subtest: e2e: skip e todo precisam estar declarados; todo que falha segue a política vigente (todo)
+ok 183 - e2e: skip e todo precisam estar declarados; todo que falha segue a política vigente (todo)
+  ---
+  duration_ms: 676.491201
+  type: 'test'
+  ...
+# Subtest: e2e: cancelamento reprova
+ok 184 - e2e: cancelamento reprova
+  ---
+  duration_ms: 182.027583
+  type: 'test'
+  ...
+# Subtest: e2e: arquivo vazio, process.exit(0) prematuro e erro de carga reprovam como item de arquivo sem resumo
+ok 185 - e2e: arquivo vazio, process.exit(0) prematuro e erro de carga reprovam como item de arquivo sem resumo
+  ---
+  duration_ms: 665.901732
+  type: 'test'
+  ...
+# Subtest: e2e: identidade relativa e absoluta do arquivo é a mesma (caminho relativo à raiz)
+ok 186 - e2e: identidade relativa e absoluta do arquivo é a mesma (caminho relativo à raiz)
+  ---
+  duration_ms: 527.002146
+  type: 'test'
+  ...
+# Subtest: e2e: o item de arquivo prematuro é reconhecido também em subdiretório, com caminho relativo e absoluto
+ok 187 - e2e: o item de arquivo prematuro é reconhecido também em subdiretório, com caminho relativo e absoluto
+  ---
+  duration_ms: 329.387417
+  type: 'test'
+  ...
+# Subtest: e2e: vários arquivos na mesma execução são avaliados individualmente
+ok 188 - e2e: vários arquivos na mesma execução são avaliados individualmente
+  ---
+  duration_ms: 330.217926
+  type: 'test'
+  ...
+# Subtest: e2e: arquivo esperado que não foi passado ao runner e arquivo inesperado reprovam
+ok 189 - e2e: arquivo esperado que não foi passado ao runner e arquivo inesperado reprovam
+  ---
+  duration_ms: 438.400714
+  type: 'test'
+  ...
+# Subtest: e2e: reporter sem variável de ambiente derruba a execução (fail-closed)
+ok 190 - e2e: reporter sem variável de ambiente derruba a execução (fail-closed)
+  ---
+  duration_ms: 79.831168
+  type: 'test'
+  ...
+# Subtest: e2e: sob --test-force-exit nenhuma execução incompleta é aprovada
+ok 191 - e2e: sob --test-force-exit nenhuma execução incompleta é aprovada
+  ---
+  duration_ms: 4243.396956
+  type: 'test'
+  ...
+# Subtest: execução completa e concordante é aprovada
+ok 192 - execução completa e concordante é aprovada
+  ---
+  duration_ms: 5.750485
+  type: 'test'
+  ...
+# Subtest: rc=0 com contagem incompleta reprova (perda observada sob --test-force-exit)
+ok 193 - rc=0 com contagem incompleta reprova (perda observada sob --test-force-exit)
+  ---
+  duration_ms: 1.890993
+  type: 'test'
+  ...
+# Subtest: contagem truncada mas com resumo coerente com os eventos ainda reprova pela contagem esperada
+ok 194 - contagem truncada mas com resumo coerente com os eventos ainda reprova pela contagem esperada
+  ---
+  duration_ms: 0.603474
+  type: 'test'
+  ...
+# Subtest: contagem acima da esperada também reprova
+ok 195 - contagem acima da esperada também reprova
+  ---
+  duration_ms: 0.388663
+  type: 'test'
+  ...
+# Subtest: resumo por arquivo ausente reprova mesmo com todas as contagens batendo
+ok 196 - resumo por arquivo ausente reprova mesmo com todas as contagens batendo
+  ---
+  duration_ms: 0.794019
+  type: 'test'
+  ...
+# Subtest: resumo duplicado é resultado ambíguo e reprova
+ok 197 - resumo duplicado é resultado ambíguo e reprova
+  ---
+  duration_ms: 0.574879
+  type: 'test'
+  ...
+# Subtest: process.exit(0) prematuro (item de nível de arquivo, sem testes nem resumo) reprova
+ok 198 - process.exit(0) prematuro (item de nível de arquivo, sem testes nem resumo) reprova
+  ---
+  duration_ms: 0.365594
+  type: 'test'
+  ...
+# Subtest: falha real reprova e identifica o arquivo
+ok 199 - falha real reprova e identifica o arquivo
+  ---
+  duration_ms: 0.545279
+  type: 'test'
+  ...
+# Subtest: falha apenas no resumo (sem evento de falha) também reprova
+ok 200 - falha apenas no resumo (sem evento de falha) também reprova
+  ---
+  duration_ms: 0.673479
+  type: 'test'
+  ...
+# Subtest: skip declarado no baseline é aprovado
+ok 201 - skip declarado no baseline é aprovado
+  ---
+  duration_ms: 0.859433
+  type: 'test'
+  ...
+# Subtest: skip não declarado reprova, e skip declarado que desapareceu também
+ok 202 - skip não declarado reprova, e skip declarado que desapareceu também
+  ---
+  duration_ms: 0.413563
+  type: 'test'
+  ...
+# Subtest: todo é tratado como skip: precisa estar declarado
+ok 203 - todo é tratado como skip: precisa estar declarado
+  ---
+  duration_ms: 0.306206
+  type: 'test'
+  ...
+# Subtest: cancelamento reprova, mesmo que o resumo só o registre
+ok 204 - cancelamento reprova, mesmo que o resumo só o registre
+  ---
+  duration_ms: 0.291311
+  type: 'test'
+  ...
+# Subtest: eventos inconsistentes reprovam: teste iniciado sem resultado e resumo divergente dos eventos
+ok 205 - eventos inconsistentes reprovam: teste iniciado sem resultado e resumo divergente dos eventos
+  ---
+  duration_ms: 0.269871
+  type: 'test'
+  ...
+# Subtest: arquivo inesperado reprova a execução
+ok 206 - arquivo inesperado reprova a execução
+  ---
+  duration_ms: 0.336247
+  type: 'test'
+  ...
+# Subtest: arquivo obrigatório ausente (nunca iniciou) reprova
+ok 207 - arquivo obrigatório ausente (nunca iniciou) reprova
+  ---
+  duration_ms: 0.250277
+  type: 'test'
+  ...
+# Subtest: observações vazias com rc=0 reprovam: sem evidência não há aprovação presumida
+ok 208 - observações vazias com rc=0 reprovam: sem evidência não há aprovação presumida
+  ---
+  duration_ms: 0.227155
+  type: 'test'
+  ...
+# Subtest: dois testes legítimos com o mesmo nome não reprovam: nomes não fazem parte do contrato
+ok 209 - dois testes legítimos com o mesmo nome não reprovam: nomes não fazem parte do contrato
+  ---
+  duration_ms: 0.18399
+  type: 'test'
+  ...
+# Subtest: duas observações do mesmo arquivo são ambíguas e reprovam
+ok 210 - duas observações do mesmo arquivo são ambíguas e reprovam
+  ---
+  duration_ms: 0.346093
+  type: 'test'
+  ...
+# Subtest: observação malformada reprova o arquivo; entrada sem identificação reprova a execução
+ok 211 - observação malformada reprova o arquivo; entrada sem identificação reprova a execução
+  ---
+  duration_ms: 1.205505
+  type: 'test'
+  ...
+# Subtest: baseline inválido ou vazio reprova a execução
+ok 212 - baseline inválido ou vazio reprova a execução
+  ---
+  duration_ms: 0.793421
+  type: 'test'
+  ...
+# Subtest: execução: código de saída ≠ 0, sinal, timeout e saída desconhecida reprovam mesmo com arquivos íntegros
+ok 213 - execução: código de saída ≠ 0, sinal, timeout e saída desconhecida reprovam mesmo com arquivos íntegros
+  ---
+  duration_ms: 0.853371
+  type: 'test'
+  ...
+# Subtest: entrada ilegível não lança e reprova
+ok 214 - entrada ilegível não lança e reprova
+  ---
+  duration_ms: 0.392836
+  type: 'test'
+  ...
+# Subtest: função pura: não altera a entrada e produz o mesmo veredito com entrada congelada
+ok 215 - função pura: não altera a entrada e produz o mesmo veredito com entrada congelada
+  ---
+  duration_ms: 0.589954
+  type: 'test'
+  ...
+# Subtest: ordem de entrada não altera o veredito: arquivos saem em ordem determinística
+ok 216 - ordem de entrada não altera o veredito: arquivos saem em ordem determinística
+  ---
+  duration_ms: 0.338431
+  type: 'test'
+  ...
+# Subtest: identificadores de erro são estáveis, únicos e com prefixo UNIT_SUITE_
+ok 217 - identificadores de erro são estáveis, únicos e com prefixo UNIT_SUITE_
+  ---
+  duration_ms: 0.352898
+  type: 'test'
+  ...
+# Subtest: falha de suite com dois testes aprovados, resumo completo e rc=0 reprova
+ok 218 - falha de suite com dois testes aprovados, resumo completo e rc=0 reprova
+  ---
+  duration_ms: 0.448085
+  type: 'test'
+  ...
+# Subtest: falha de suite fica separada das falhas individuais e não altera as contagens
+ok 219 - falha de suite fica separada das falhas individuais e não altera as contagens
+  ---
+  duration_ms: 0.484048
+  type: 'test'
+  ...
+# Subtest: falha de suite reprova mesmo com skip e todo declarados e arquivos vizinhos íntegros
+ok 220 - falha de suite reprova mesmo com skip e todo declarados e arquivos vizinhos íntegros
+  ---
+  duration_ms: 0.519445
+  type: 'test'
+  ...
+# Subtest: suiteFailures é obrigatório e deve ser inteiro seguro não negativo
+ok 221 - suiteFailures é obrigatório e deve ser inteiro seguro não negativo
+  ---
+  duration_ms: 1.320298
+  type: 'test'
+  ...
+1..221
+# tests 221
+# suites 0
+# pass 221
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43926.465268
+{
+  "ok": true,
+  "check": "check:gate-waiver-expiry",
+  "clockDate": "2026-10-12",
+  "contract": "ops/contracts/gate-waivers.v1.json",
+  "warnings": [],
+  "violations": []
+}

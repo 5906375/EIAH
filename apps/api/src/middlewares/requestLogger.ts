@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { bindLogger, createLogger, ensureTraceId } from "@eiah/core";
+import { isWorkspaceBootstrapShadowEnabled, runWithRequestOrigin } from "../services/workspaceBootstrapShadow";
 
 const TRACE_HEADER = "x-trace-id";
 
@@ -57,5 +58,10 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     );
   });
 
+  // G2.2: contexto de origem da requisição só existe com a sombra do bootstrap ligada; desligada, a cadeia é a original.
+  if (isWorkspaceBootstrapShadowEnabled()) {
+    runWithRequestOrigin({ req, traceId }, next);
+    return;
+  }
   next();
 }

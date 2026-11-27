@@ -1,0 +1,7 @@
+7c59974f911bf0a28aac059d7d1389ecfd3d99d397ba873ea459156ea9f1651b  ./FIRST-CAPTURE.md
+77cdc60b01687f8da617c52b77a063f7abe01de94ecc348ad55dbcd249b5e93d  ./journal-first-scheduled-capture.txt
+c06b610fd9dbc04c63f0b92fef84567616613ec130f08e4b40dce1a9b80927e2  ./run-receipts/receipts.tsv
+06a539b8d37cf9d0f341c5b52d45fe0009b13dd6a4f1e60b98102f290405938a  ./run-receipts/run-log.txt
+29b5889ad7fbbea53a3d160ef3f940fe9a7b0491c9df92349e17e74e718eeb7a  ./run-receipts/run.json
+2b0f9cf9df6588ea0389a7a1bf6f47106a8f26d33a83c0754efc5fec263dfad4  ./run-verification.txt
+567378c518056af341fcde5d78ba154a864ee1b7cdb4916fc6e6552c70707aaf  ./systemd-state.txt

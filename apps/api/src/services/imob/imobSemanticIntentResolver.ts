@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { IMOB_MAX_UNITS_PER_BATCH, IMOB_PROPERTY_UNIT_INTAKE_POLICY, looksLikeMultipleUnits, parseCanonicalImobUnits, type ImobPropertyUnitIntake } from "@eiah/contracts";
 import { IMOB_ACTION_CATALOG, type ImobActionKey, type ImobEntityKey } from "./imobActionCatalog";
 import {
   detectEntityPlurality,
@@ -8,6 +9,7 @@ import {
 } from "./imobIntentCatalog";
 
 type SemanticIntentPayload = {
+  propertyUnits?: z.infer<typeof PropertyUnitsSchema> | null;
   entity: string | null;
   action: string | null;
   confidence: number | null;
@@ -19,6 +21,7 @@ type SemanticIntentPayload = {
 };
 
 export type ImobSemanticIntentResolution = {
+  propertyUnits?: ImobPropertyUnitIntake;
   parsedIntent: ParsedImobIntent;
   source: "openai" | "parser_fallback";
   confidence: number | null;
@@ -96,7 +99,15 @@ const KNOWN_ACTIONS: ImobActionKey[] = [
   "export",
 ];
 
+const PropertyUnitsSchema = z.object({
+  status: z.enum(["resolved", "not_mentioned", "needs_clarification"]),
+  confidence: z.number().min(0).max(1).nullable(),
+  expressions: z.array(z.object({ kindText: z.string(), identifiersText: z.string() })).max(IMOB_MAX_UNITS_PER_BATCH),
+  singleLabel: z.string().max(80).nullable(),
+});
+
 const SemanticIntentResponseSchema = z.object({
+  propertyUnits: PropertyUnitsSchema.nullable().optional(),
   entity: z.string().trim().min(1).nullable().optional(),
   action: z.string().trim().min(1).nullable().optional(),
   confidence: z.number().min(0).max(1).nullable().optional(),
@@ -111,6 +122,16 @@ const SemanticIntentJsonSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    propertyUnits: {
+      type: ["object", "null"], additionalProperties: false,
+      properties: {
+        status: { type: "string", enum: ["resolved", "not_mentioned", "needs_clarification"] },
+        confidence: { type: ["number", "null"] },
+        expressions: { type: "array", items: { type: "object", additionalProperties: false,
+          properties: { kindText: { type: "string" }, identifiersText: { type: "string" } }, required: ["kindText", "identifiersText"] } },
+        singleLabel: { type: ["string", "null"] },
+      }, required: ["status", "confidence", "expressions", "singleLabel"],
+    },
     entity: { type: ["string", "null"] },
     action: { type: ["string", "null"] },
     confidence: { type: ["number", "null"] },
@@ -128,7 +149,7 @@ const SemanticIntentJsonSchema = {
       },
     },
   },
-  required: ["entity", "action", "confidence", "needsClarification", "composedIntents"],
+  required: ["entity", "action", "confidence", "needsClarification", "composedIntents", "propertyUnits"],
 } as const;
 
 function extractResponseText(payload: any) {
@@ -207,7 +228,7 @@ function toParsedIntent(
   };
 }
 
-async function resolveWithOpenAi(message: string, apiKey: string): Promise<SemanticIntentPayload | null> {
+async function resolveWithOpenAi(message: string, apiKey: string, unitsOnly = false): Promise<SemanticIntentPayload | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), INTENT_RESOLUTION_TIMEOUT_MS);
   try {
@@ -229,7 +250,15 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
                   "Você classifica intenções do chat IMOB em um catálogo canônico. " +
                   "Não invente entidades ou ações fora do catálogo. " +
                   "Se a frase estiver ambígua, retorne action=null ou entity=null e needsClarification=true. " +
-                  "Quando a frase pedir mais de uma ação na mesma sentença, preencha composedIntents na ordem em que as ações aparecem.",
+                  "Quando a frase pedir mais de uma ação na mesma sentença, preencha composedIntents na ordem em que as ações aparecem. " +
+                  "No contexto de cadastro de imóvel, interprete também as identificações de unidades em propertyUnits. " +
+                  "Não confunda número do endereço, quantidade ou quartos com identificação de unidade. Não invente números nem tipos. " +
+                  "Para cada lista/faixa explícita, copie em kindText o tipo de unidade e em identifiersText o trecho contínuo de números/lista/faixa, ambos LITERALMENTE da mensagem. " +
+                  "Ex.: em 'Tenho três kitnets de teste, da 102 à 104', copie kindText='kitnets', identifiersText='102 à 104'. " +
+                  "Variações naturais equivalentes devem gerar a mesma estrutura. Quantidade sem identificações, alternativas, contradições ou incerteza exigem status=needs_clarification. " +
+                  "Use singleLabel apenas para uma identificação singular copiada literalmente da mensagem; não preencha expressions junto com singleLabel. " +
+                  "Sem identificação de unidade na mensagem, use status=not_mentioned, expressions=[] e singleLabel=null. " +
+                  (unitsOnly ? "Esta chamada é intake de identificação de unidades de um formulário IMOB; interprete o campo, sem executar ações, mesmo que não exista verbo de cadastro." : ""),
               },
             ],
           },
@@ -266,6 +295,7 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
     const validated = SemanticIntentResponseSchema.safeParse(parsed);
     if (!validated.success) return null;
     return {
+      propertyUnits: validated.data.propertyUnits,
       entity: validated.data.entity ?? null,
       action: validated.data.action ?? null,
       confidence: validated.data.confidence ?? null,
@@ -282,6 +312,60 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function clarifyUnits(message: string = IMOB_PROPERTY_UNIT_INTAKE_POLICY.clarification): Extract<ImobPropertyUnitIntake, { status: "needs_clarification" }> {
+  return { status: "needs_clarification", unitLabels: [], message };
+}
+
+/** O modelo interpreta; os trechos literais e o normalizador protegem os identificadores. */
+function normalizeSemanticUnits(message: string, payload: SemanticIntentPayload | null): ImobPropertyUnitIntake {
+  const units = payload?.propertyUnits;
+  if (!units) return clarifyUnits(IMOB_PROPERTY_UNIT_INTAKE_POLICY.unavailable);
+  const clarification = (): ImobPropertyUnitIntake => ({ ...clarifyUnits(), confidence: units.confidence });
+  if (units.status === "not_mentioned") return units.expressions.length || units.singleLabel !== null
+    ? clarification() : { status: "not_mentioned", unitLabels: [] };
+  if (payload?.needsClarification || units.status !== "resolved" || units.confidence === null
+    || units.confidence < IMOB_PROPERTY_UNIT_INTAKE_POLICY.minimumConfidence) return clarification();
+  const contains = (quote: string) => {
+    const needle = quote.trim().toLowerCase();
+    if (!needle) return false;
+    const source = message.toLowerCase();
+    const word = /[\p{L}\p{N}]/u;
+    for (let at = source.indexOf(needle); at !== -1; at = source.indexOf(needle, at + 1)) {
+      if ((!word.test(needle[0]) || !word.test(source[at - 1] ?? ""))
+        && (!word.test(needle.at(-1)!) || !word.test(source[at + needle.length] ?? ""))) return true;
+    }
+    return false;
+  };
+  if (units.singleLabel !== null) {
+    if (units.expressions.length || !contains(units.singleLabel) || looksLikeMultipleUnits(message) || looksLikeMultipleUnits(units.singleLabel)) return clarification();
+    const canonical = parseCanonicalImobUnits(units.singleLabel);
+    if (canonical && (canonical.invalidRanges.length || canonical.units.length !== 1)) return clarification();
+    return { status: "resolved", source: "openai", confidence: units.confidence, unitLabels: [canonical?.units[0]?.label ?? units.singleLabel.trim()] };
+  }
+  const labels: string[] = [];
+  for (const expression of units.expressions) {
+    if (!contains(expression.kindText) || !contains(expression.identifiersText)) return clarification();
+    const canonical = parseCanonicalImobUnits(`${expression.kindText} ${expression.identifiersText}`);
+    if (!canonical || canonical.invalidRanges.length || !canonical.units.length) return clarification();
+    labels.push(...canonical.units.map((unit) => unit.label));
+  }
+  if (!labels.length || labels.length > IMOB_MAX_UNITS_PER_BATCH) return clarification();
+  return { status: "resolved", source: "openai", confidence: units.confidence, unitLabels: [...new Set(labels)] };
+}
+
+/** Mesma boundary/provider/model do turno IMOB; intake consultivo, sem persistência. */
+export async function resolveImobPropertyUnitIntake(message: string): Promise<ImobPropertyUnitIntake> {
+  const canonical = parseCanonicalImobUnits(message);
+  if (canonical) {
+    if (canonical.invalidRanges.length || !canonical.units.length) return clarifyUnits();
+    return { status: "resolved", source: "canonical", unitLabels: canonical.units.map((unit) => unit.label) };
+  }
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return clarifyUnits(IMOB_PROPERTY_UNIT_INTAKE_POLICY.unavailable);
+  const resolved = normalizeSemanticUnits(message, await resolveWithOpenAi(message, apiKey, true));
+  return resolved.status === "not_mentioned" ? clarifyUnits() : resolved;
 }
 
 export async function resolveImobSemanticIntent(message: string): Promise<ImobSemanticIntentResolution> {
@@ -302,8 +386,11 @@ export async function resolveImobSemanticIntent(message: string): Promise<ImobSe
   }
 
   const confidence = semantic.confidence ?? null;
+  const propertyUnits = semantic.propertyUnits ? normalizeSemanticUnits(message, semantic) : undefined;
   if (semantic.needsClarification || (typeof confidence === "number" && confidence < SEMANTIC_CONFIDENCE_THRESHOLD)) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents: [] };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents: [],
+      ...(propertyUnits ? { propertyUnits: propertyUnits.status === "not_mentioned" ? propertyUnits
+        : { ...clarifyUnits(), confidence: semantic.propertyUnits?.confidence } } : {}) };
   }
 
   const entity = isValidEntity(semantic.entity) ? semantic.entity : null;
@@ -319,14 +406,15 @@ export async function resolveImobSemanticIntent(message: string): Promise<ImobSe
     .filter((item): item is ParsedImobIntent => item !== null);
 
   if (entity && action && !supportsEntityAction(entity, action)) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
+    return { propertyUnits, parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
   }
 
   if (!entity && !action) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
+    return { propertyUnits, parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
   }
 
   return {
+    propertyUnits,
     parsedIntent: toParsedIntent(message, { entity, action }),
     source: "openai",
     confidence,

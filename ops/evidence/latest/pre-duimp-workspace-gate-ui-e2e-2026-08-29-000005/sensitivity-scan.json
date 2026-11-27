@@ -1,0 +1,90 @@
+{
+  "schema": "pre-duimp-workspace-gate-publication-sensitivity-v1",
+  "scannedOn": "2026-08-30",
+  "scope": {
+    "expectedPackageFileCount": 25,
+    "packageFilesCovered": [
+      "01-no-grant-front-door.png",
+      "02-workspace-grant-front-door.png",
+      "03-pre-duimp-ready.png",
+      "04-pre-duimp-authorized-shadow.png",
+      "05-pre-duimp-live-revoked.png",
+      "counts-scenario-a.json",
+      "counts-scenario-b.json",
+      "counts-scenario-c.json",
+      "default-off-restoration.json",
+      "integrity-hashes.json",
+      "integrity.json",
+      "manifest.json",
+      "playwright-result.json",
+      "playwright-sanitized.log",
+      "publication-provenance.json",
+      "quality-addendum/README.md",
+      "quality-addendum/integrity-hashes.json",
+      "quality-addendum/provenance.json",
+      "quality-addendum/quality-gate-addendum.json",
+      "quality-addendum/sensitivity-scan.json",
+      "quality-addendum/tsconfig-change-sanitized.diff",
+      "quality-addendum/typecheck-result.json",
+      "sensitivity-scan.json",
+      "surface-scenario-b.json",
+      "user-journey-summary.md"
+    ],
+    "textFilesScanned": [
+      "counts-scenario-a.json",
+      "counts-scenario-b.json",
+      "counts-scenario-c.json",
+      "default-off-restoration.json",
+      "integrity.json",
+      "manifest.json",
+      "playwright-result.json",
+      "playwright-sanitized.log",
+      "publication-provenance.json",
+      "quality-addendum/README.md",
+      "quality-addendum/integrity-hashes.json",
+      "quality-addendum/provenance.json",
+      "quality-addendum/quality-gate-addendum.json",
+      "quality-addendum/sensitivity-scan.json",
+      "quality-addendum/tsconfig-change-sanitized.diff",
+      "quality-addendum/typecheck-result.json",
+      "surface-scenario-b.json",
+      "user-journey-summary.md"
+    ],
+    "binaryFilesVisuallyReviewed": [
+      "01-no-grant-front-door.png",
+      "02-workspace-grant-front-door.png",
+      "03-pre-duimp-ready.png",
+      "04-pre-duimp-authorized-shadow.png",
+      "05-pre-duimp-live-revoked.png"
+    ],
+    "generatedIntegrityIndexValidation": "post-generation-silent-scan"
+  },
+  "categories": {
+    "localAbsolutePaths": 0,
+    "hostIdentity": 0,
+    "credentialMaterial": 0,
+    "authMetadata": 0,
+    "clientStateMaterial": 0,
+    "emailAddresses": 0,
+    "databaseConnectionMaterial": 0,
+    "fileUrls": 0,
+    "windowsPaths": 0,
+    "repositoryIdentity": 0
+  },
+  "retainedProductPathnames": {
+    "app": 9,
+    "api": 8,
+    "classifiedAsProductRoutes": true
+  },
+  "visualReview": {
+    "crops": [
+      "01-no-grant-front-door.png",
+      "02-workspace-grant-front-door.png"
+    ],
+    "dimensions": "1440x890",
+    "identityOrCredentialMaterialVisible": false,
+    "passed": true
+  },
+  "findingCount": 0,
+  "passed": true
+}

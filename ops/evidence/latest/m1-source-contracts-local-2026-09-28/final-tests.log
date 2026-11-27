@@ -1,0 +1,628 @@
+TAP version 13
+# Subtest: CLI: --mode ausente produz INPUT_ERROR, exit 1
+ok 1 - CLI: --mode ausente produz INPUT_ERROR, exit 1
+  ---
+  duration_ms: 394.367585
+  type: 'test'
+  ...
+# Subtest: CLI: JSON malformado produz INPUT_ERROR, exit 1
+ok 2 - CLI: JSON malformado produz INPUT_ERROR, exit 1
+  ---
+  duration_ms: 260.36222
+  type: 'test'
+  ...
+# Subtest: CLI: política sem campo obrigatório produz INPUT_ERROR, exit 1 (nunca aprovação por omissão)
+ok 3 - CLI: política sem campo obrigatório produz INPUT_ERROR, exit 1 (nunca aprovação por omissão)
+  ---
+  duration_ms: 219.686588
+  type: 'test'
+  ...
+# Subtest: CLI: mesmo pacote válido — package mode exit 0 (OK), gate mode exit 3 (GUARANTEE_NOT_DEMONSTRATED)
+ok 4 - CLI: mesmo pacote válido — package mode exit 0 (OK), gate mode exit 3 (GUARANTEE_NOT_DEMONSTRATED)
+  ---
+  duration_ms: 381.140425
+  type: 'test'
+  ...
+# Subtest: CLI: --checker-now simulado aparece marcado como simulated, nunca como avaliação real atual
+ok 5 - CLI: --checker-now simulado aparece marcado como simulated, nunca como avaliação real atual
+  ---
+  duration_ms: 471.016874
+  type: 'test'
+  ...
+# Subtest: CLI: evidência vencida em modo gate produz VALIDATION_FAILED, exit 2
+ok 6 - CLI: evidência vencida em modo gate produz VALIDATION_FAILED, exit 2
+  ---
+  duration_ms: 190.673471
+  type: 'test'
+  ...
+# Subtest: simulação de 4 transições semanais: seleção rotaciona corretamente e o ciclo mais antigo sempre expira pouco depois da 3ª captura
+ok 7 - simulação de 4 transições semanais: seleção rotaciona corretamente e o ciclo mais antigo sempre expira pouco depois da 3ª captura
+  ---
+  duration_ms: 1733.750365
+  type: 'test'
+  ...
+# Subtest: approved policy: four weekly evaluations ABC → BCD → CDE → DEF, including the interval after each deadline
+ok 8 - approved policy: four weekly evaluations ABC → BCD → CDE → DEF, including the interval after each deadline
+  ---
+  duration_ms: 2809.138968
+  type: 'test'
+  ...
+# Subtest: seven-day deadline: before, exactly at and after; zero tolerance and no fallback to old available trio
+ok 9 - seven-day deadline: before, exactly at and after; zero tolerance and no fallback to old available trio
+  ---
+  duration_ms: 1681.915688
+  type: 'test'
+  ...
+# Subtest: missing middle window cannot be replaced by an older window; newer provisional does not displace required set
+ok 10 - missing middle window cannot be replaced by an older window; newer provisional does not displace required set
+  ---
+  duration_ms: 329.38161
+  type: 'test'
+  ...
+# Subtest: 14/28 days: inclusive boundary and 1 ms after, governed by first generation rather than correction timestamps
+ok 11 - 14/28 days: inclusive boundary and 1 ms after, governed by first generation rather than correction timestamps
+  ---
+  duration_ms: 358.993411
+  type: 'test'
+  ...
+# Subtest: newest required window gets 14 even when a historical file has a newer generatedAt
+ok 12 - newest required window gets 14 even when a historical file has a newer generatedAt
+  ---
+  duration_ms: 155.487549
+  type: 'test'
+  ...
+# Subtest: pending run after seven days; day-nine conclusion still cannot prove completeness or resolve conflicting versions
+ok 13 - pending run after seven days; day-nine conclusion still cannot prove completeness or resolve conflicting versions
+  ---
+  duration_ms: 479.786509
+  type: 'test'
+  ...
+# Subtest: closure: cutoff chronology and counts are checked locally, including premature final claims
+ok 14 - closure: cutoff chronology and counts are checked locally, including premature final claims
+  ---
+  duration_ms: 1375.444966
+  type: 'test'
+  ...
+# Subtest: missing closure metadata is an undemonstrated guarantee; historical provisional capture fails policy too
+ok 15 - missing closure metadata is an undemonstrated guarantee; historical provisional capture fails policy too
+  ---
+  duration_ms: 460.065633
+  type: 'test'
+  ...
+# Subtest: operational scope remains explicitly unconfigured; fixtures cannot designate it
+ok 16 - operational scope remains explicitly unconfigured; fixtures cannot designate it
+  ---
+  duration_ms: 461.856624
+  type: 'test'
+  ...
+# Subtest: configuration cannot override approved thresholds, scope, retention or promote self-declared guarantees
+ok 17 - configuration cannot override approved thresholds, scope, retention or promote self-declared guarantees
+  ---
+  duration_ms: 2048.420776
+  type: 'test'
+  ...
+# Subtest: same-digest contradictory closure metadata is not silently deduplicated or chosen by order
+ok 18 - same-digest contradictory closure metadata is not silently deduplicated or chosen by order
+  ---
+  duration_ms: 493.840576
+  type: 'test'
+  ...
+# Subtest: P1 dispenses with individual ratification; mismatched history and receipt inconsistency remain independent blockers
+ok 19 - P1 dispenses with individual ratification; mismatched history and receipt inconsistency remain independent blockers
+  ---
+  duration_ms: 447.664998
+  type: 'test'
+  ...
+# Subtest: invalid history cannot refresh an earlier known anchor; omitted history never proves first generation
+ok 20 - invalid history cannot refresh an earlier known anchor; omitted history never proves first generation
+  ---
+  duration_ms: 419.309943
+  type: 'test'
+  ...
+# Subtest: computeLastClosedWeekUtc matches the real service's confirmed outputs
+ok 21 - computeLastClosedWeekUtc matches the real service's confirmed outputs
+  ---
+  duration_ms: 4.709835
+  type: 'test'
+  ...
+# Subtest: conjunto válido sob política explícita (MIN_CYCLES=3, MAX_AGE_DAYS=14) selects and passes all checks
+ok 22 - conjunto válido sob política explícita (MIN_CYCLES=3, MAX_AGE_DAYS=14) selects and passes all checks
+  ---
+  duration_ms: 4.302073
+  type: 'test'
+  ...
+# Subtest: evidência vencida falha recência (idade > MAX_AGE_DAYS)
+ok 23 - evidência vencida falha recência (idade > MAX_AGE_DAYS)
+  ---
+  duration_ms: 0.856468
+  type: 'test'
+  ...
+# Subtest: evidência futura (generatedAt > checkerNow) é rejeitada
+ok 24 - evidência futura (generatedAt > checkerNow) é rejeitada
+  ---
+  duration_ms: 0.589656
+  type: 'test'
+  ...
+# Subtest: fronteira exata de recência: 14,000 dias passa, 14,001 dias falha (comparação estrita)
+ok 25 - fronteira exata de recência: 14,000 dias passa, 14,001 dias falha (comparação estrita)
+  ---
+  duration_ms: 0.945093
+  type: 'test'
+  ...
+# Subtest: Opção C (proposta): effectiveMaxAgeDays explícito substitui policy.maxAgeDays só para o ciclo chamado com ele
+ok 26 - Opção C (proposta): effectiveMaxAgeDays explícito substitui policy.maxAgeDays só para o ciclo chamado com ele
+  ---
+  duration_ms: 1.25675
+  type: 'test'
+  ...
+# Subtest: tolerância não estende a recência: fresh generatedAt não sobrevive a uma âncora de primeira geração vencida
+ok 27 - tolerância não estende a recência: fresh generatedAt não sobrevive a uma âncora de primeira geração vencida
+  ---
+  duration_ms: 0.673443
+  type: 'test'
+  ...
+# Subtest: receipt ausente falha packageConsistency (raw_receipt_missing) — nunca é chamado de verificação contra a fonte
+ok 28 - receipt ausente falha packageConsistency (raw_receipt_missing) — nunca é chamado de verificação contra a fonte
+  ---
+  duration_ms: 0.573399
+  type: 'test'
+  ...
+# Subtest: receipt com digest inconsistente falha packageConsistency (raw_receipt_digest_mismatch)
+ok 29 - receipt com digest inconsistente falha packageConsistency (raw_receipt_digest_mismatch)
+  ---
+  duration_ms: 0.536961
+  type: 'test'
+  ...
+# Subtest: consistência com os receipts incluídos passa sem que isso constitua comprovação contra a fonte
+ok 30 - consistência com os receipts incluídos passa sem que isso constitua comprovação contra a fonte
+  ---
+  duration_ms: 3.005945
+  type: 'test'
+  ...
+# Subtest: métricas fora do threshold (auditGap real > 0) falham mesmo com evidência consistente com o receipt
+ok 31 - métricas fora do threshold (auditGap real > 0) falham mesmo com evidência consistente com o receipt
+  ---
+  duration_ms: 0.59254
+  type: 'test'
+  ...
+# Subtest: sampleSize=0 falha thresholds (sample_size_zero) mesmo com measurementStatus=measured
+ok 32 - sampleSize=0 falha thresholds (sample_size_zero) mesmo com measurementStatus=measured
+  ---
+  duration_ms: 0.498341
+  type: 'test'
+  ...
+# Subtest: mistura de escopos: cycle de outro tenant é excluído, nunca contado
+ok 33 - mistura de escopos: cycle de outro tenant é excluído, nunca contado
+  ---
+  duration_ms: 1.586272
+  type: 'test'
+  ...
+# Subtest: janela ausente (measurementStatus != measured) é detectada e excluída, não escondida
+ok 34 - janela ausente (measurementStatus != measured) é detectada e excluída, não escondida
+  ---
+  duration_ms: 1.181471
+  type: 'test'
+  ...
+# Subtest: janelas não consecutivas (lacuna de uma semana) falham window_not_consecutive
+ok 35 - janelas não consecutivas (lacuna de uma semana) falham window_not_consecutive
+  ---
+  duration_ms: 0.389463
+  type: 'test'
+  ...
+# Subtest: mesmo digest repetido não aumenta a contagem de janelas distintas
+ok 36 - mesmo digest repetido não aumenta a contagem de janelas distintas
+  ---
+  duration_ms: 0.695239
+  type: 'test'
+  ...
+# Subtest: versões conflitantes (mesma janela, digest diferente) são rejeitadas — nenhuma é descartada silenciosamente
+ok 37 - versões conflitantes (mesma janela, digest diferente) são rejeitadas — nenhuma é descartada silenciosamente
+  ---
+  duration_ms: 0.362014
+  type: 'test'
+  ...
+# Subtest: conflito provisório->final é rotulado como tal, mas continua não resolvido automaticamente (nenhuma versão é descartada)
+ok 38 - conflito provisório->final é rotulado como tal, mas continua não resolvido automaticamente (nenhuma versão é descartada)
+  ---
+  duration_ms: 0.513161
+  type: 'test'
+  ...
+# Subtest: conflito sem relação provisório/final é rotulado como divergência inexplicada
+ok 39 - conflito sem relação provisório/final é rotulado como divergência inexplicada
+  ---
+  duration_ms: 0.462166
+  type: 'test'
+  ...
+# Subtest: última janela não é a mais recente fechada, sem tolerância: falha window_not_latest_closed
+ok 40 - última janela não é a mais recente fechada, sem tolerância: falha window_not_latest_closed
+  ---
+  duration_ms: 0.460516
+  type: 'test'
+  ...
+# Subtest: tolerância de captura aceita o conjunto anterior dentro do prazo, mas nunca estende a recência de cada evidência
+ok 41 - tolerância de captura aceita o conjunto anterior dentro do prazo, mas nunca estende a recência de cada evidência
+  ---
+  duration_ms: 0.398261
+  type: 'test'
+  ...
+# Subtest: ratificação exigida e ausente falha; ratificação exigida e presente passa
+ok 42 - ratificação exigida e ausente falha; ratificação exigida e presente passa
+  ---
+  duration_ms: 2.612093
+  type: 'test'
+  ...
+# Subtest: sem exigência de ratificação: reportado not_required, nunca como dispensa da ratificação de release
+ok 43 - sem exigência de ratificação: reportado not_required, nunca como dispensa da ratificação de release
+  ---
+  duration_ms: 3.094168
+  type: 'test'
+  ...
+# Subtest: ausência de histórico com artefato recente: idade por generatedAt é diagnosticada, mas historyProvenance nunca vira válido/passed
+ok 44 - ausência de histórico com artefato recente: idade por generatedAt é diagnosticada, mas historyProvenance nunca vira válido/passed
+  ---
+  duration_ms: 0.447799
+  type: 'test'
+  ...
+# Subtest: histórico autodeclarado recente, sem comprovação externa: permanece self_declared_unverified, nunca 'verified'
+ok 45 - histórico autodeclarado recente, sem comprovação externa: permanece self_declared_unverified, nunca 'verified'
+  ---
+  duration_ms: 0.693826
+  type: 'test'
+  ...
+# Subtest: âncora anterior vencida com artefato atual recente: idade pelo generatedAt e pelo histórico são diferenciadas, e a mais antiga governa
+ok 46 - âncora anterior vencida com artefato atual recente: idade pelo generatedAt e pelo histórico são diferenciadas, e a mais antiga governa
+  ---
+  duration_ms: 3.041355
+  type: 'test'
+  ...
+# Subtest: histórico temporalmente inconsistente: entrada futura em relação a checkerNow falha
+ok 47 - histórico temporalmente inconsistente: entrada futura em relação a checkerNow falha
+  ---
+  duration_ms: 0.559256
+  type: 'test'
+  ...
+# Subtest: histórico temporalmente inconsistente: mesmo digest com dois generatedAt contraditórios falha
+ok 48 - histórico temporalmente inconsistente: mesmo digest com dois generatedAt contraditórios falha
+  ---
+  duration_ms: 0.351169
+  type: 'test'
+  ...
+# Subtest: histórico inconsistente (digest atual ausente do próprio histórico declarado) falha
+ok 49 - histórico inconsistente (digest atual ausente do próprio histórico declarado) falha
+  ---
+  duration_ms: 0.300081
+  type: 'test'
+  ...
+# Subtest: tentativa de declarar confiança pelo próprio pacote: um campo extra 'verified'/'trusted' no histórico não promove a status confiável
+ok 50 - tentativa de declarar confiança pelo próprio pacote: um campo extra 'verified'/'trusted' no histórico não promove a status confiável
+  ---
+  duration_ms: 0.283876
+  type: 'test'
+  ...
+# Subtest: todo ciclo de entrada aparece em `considered`, incluído ou excluído com motivo explícito
+ok 51 - todo ciclo de entrada aparece em `considered`, incluído ou excluído com motivo explícito
+  ---
+  duration_ms: 0.339541
+  type: 'test'
+  ...
+# Subtest: B: nenhum instante satisfaz simultaneamente 'última janela fechada' e 'final plausível' quando maturação=cadência=7 dias
+ok 52 - B: nenhum instante satisfaz simultaneamente 'última janela fechada' e 'final plausível' quando maturação=cadência=7 dias
+  ---
+  duration_ms: 750.364786
+  type: 'test'
+  ...
+# Subtest: C: 'última janela matura' (em vez de 'última fechada') permite política+captura coerentes no mesmo instante — mas o gate continua GUARANTEE_NOT_DEMONSTRATED
+ok 53 - C: 'última janela matura' (em vez de 'última fechada') permite política+captura coerentes no mesmo instante — mas o gate continua GUARANTEE_NOT_DEMONSTRATED
+  ---
+  duration_ms: 397.273889
+  type: 'test'
+  ...
+# Subtest: D: captura provisória (run pendente excluída) vs. final (run incluída) — conflito rotulado, nenhuma versão descartada, identidade preservada
+ok 54 - D: captura provisória (run pendente excluída) vs. final (run incluída) — conflito rotulado, nenhuma versão descartada, identidade preservada
+  ---
+  duration_ms: 271.505473
+  type: 'test'
+  ...
+# Subtest: E: tolerância cobre a janela ausente, mas nunca promove captureStatus 'provisional' a 'final'
+ok 55 - E: tolerância cobre a janela ausente, mas nunca promove captureStatus 'provisional' a 'final'
+  ---
+  duration_ms: 196.559603
+  type: 'test'
+  ...
+# Subtest: E: tolerância nunca autoriza pular mais de uma janela obrigatória
+ok 56 - E: tolerância nunca autoriza pular mais de uma janela obrigatória
+  ---
+  duration_ms: 201.002803
+  type: 'test'
+  ...
+# Subtest: E: tolerância nunca renova a primeira geração — âncora vencida continua vencida mesmo com a janela coberta pela tolerância
+ok 57 - E: tolerância nunca renova a primeira geração — âncora vencida continua vencida mesmo com a janela coberta pela tolerância
+  ---
+  duration_ms: 215.903883
+  type: 'test'
+  ...
+# Subtest: B: zero tolerance cannot accept the previous window at the exact seven-day boundary
+ok 58 - B: zero tolerance cannot accept the previous window at the exact seven-day boundary
+  ---
+  duration_ms: 660.975904
+  type: 'test'
+  ...
+# Subtest: C: select the clock-required matured trio even with a newer provisional capture; never retreat when required window is missing
+ok 59 - C: select the clock-required matured trio even with a newer provisional capture; never retreat when required window is missing
+  ---
+  duration_ms: 1127.756393
+  type: 'test'
+  ...
+# Subtest: C: matured-window policy requires an explicit finite maturation duration
+ok 60 - C: matured-window policy requires an explicit finite maturation duration
+  ---
+  duration_ms: 342.569607
+  type: 'test'
+  ...
+# Subtest: D: run remains pending after seven days, finishes on day nine, and corrections preserve the first-generation anchor
+ok 61 - D: run remains pending after seven days, finishes on day nine, and corrections preserve the first-generation anchor
+  ---
+  duration_ms: 679.939595
+  type: 'test'
+  ...
+# Subtest: F: retained files can be stale evidence; expired retention does not change evidence age or remove files
+ok 62 - F: retained files can be stale evidence; expired retention does not change evidence age or remove files
+  ---
+  duration_ms: 166.797049
+  type: 'test'
+  ...
+# Subtest: manifesto válido é aceito
+ok 63 - manifesto válido é aceito
+  ---
+  duration_ms: 1.685138
+  type: 'test'
+  ...
+# Subtest: schemaVersion ausente/errado falha
+ok 64 - schemaVersion ausente/errado falha
+  ---
+  duration_ms: 0.905305
+  type: 'test'
+  ...
+# Subtest: script untracked alegando proveniência só via repoCommitSha (sem hash do conteúdo) é rejeitado — correção da ADR-009 §14.7
+ok 65 - script untracked alegando proveniência só via repoCommitSha (sem hash do conteúdo) é rejeitado — correção da ADR-009 §14.7
+  ---
+  duration_ms: 0.383455
+  type: 'test'
+  ...
+# Subtest: script untracked com hash do conteúdo do script é aceito (proveniência mais fraca, mas não superestimada)
+ok 66 - script untracked com hash do conteúdo do script é aceito (proveniência mais fraca, mas não superestimada)
+  ---
+  duration_ms: 0.188582
+  type: 'test'
+  ...
+# Subtest: mecanismo de transporte inválido falha
+ok 67 - mecanismo de transporte inválido falha
+  ---
+  duration_ms: 0.211204
+  type: 'test'
+  ...
+# Subtest: retenção: sem retentionExpiresAt declarado -> not_declared
+ok 68 - retenção: sem retentionExpiresAt declarado -> not_declared
+  ---
+  duration_ms: 0.205241
+  type: 'test'
+  ...
+# Subtest: retenção: dentro do prazo declarado -> within_retention
+ok 69 - retenção: dentro do prazo declarado -> within_retention
+  ---
+  duration_ms: 0.239041
+  type: 'test'
+  ...
+# Subtest: retenção: prazo declarado já vencido -> expired (reportado, não escondido)
+ok 70 - retenção: prazo declarado já vencido -> expired (reportado, não escondido)
+  ---
+  duration_ms: 0.165379
+  type: 'test'
+  ...
+# Subtest: sem snapshot de origem: sourceMaterial=absent; recomputation=not_run; completude sempre not_demonstrated
+ok 71 - sem snapshot de origem: sourceMaterial=absent; recomputation=not_run; completude sempre not_demonstrated
+  ---
+  duration_ms: 0.400497
+  type: 'test'
+  ...
+# Subtest: snapshot legado é metadata_only, nunca uma execução de recomputação
+ok 72 - snapshot legado é metadata_only, nunca uma execução de recomputação
+  ---
+  duration_ms: 1.715915
+  type: 'test'
+  ...
+# Subtest: identity projections validate without claiming metrics, mapping or completeness
+ok 73 - identity projections validate without claiming metrics, mapping or completeness
+  ---
+  duration_ms: 15.617612
+  type: 'test'
+  ...
+# Subtest: legacy bytes preserved, metadata never upgraded even with package-level claims
+ok 74 - legacy bytes preserved, metadata never upgraded even with package-level claims
+  ---
+  duration_ms: 3.182164
+  type: 'test'
+  ...
+# Subtest: versioned metadata and absent input have explicit statuses
+ok 75 - versioned metadata and absent input have explicit statuses
+  ---
+  duration_ms: 4.560333
+  type: 'test'
+  ...
+# Subtest: rejects unknown version
+ok 76 - rejects unknown version
+  ---
+  duration_ms: 4.335582
+  type: 'test'
+  ...
+# Subtest: rejects missing structure
+ok 77 - rejects missing structure
+  ---
+  duration_ms: 3.448414
+  type: 'test'
+  ...
+# Subtest: rejects duplicate run identity even with new envelope hash
+ok 78 - rejects duplicate run identity even with new envelope hash
+  ---
+  duration_ms: 6.994236
+  type: 'test'
+  ...
+# Subtest: rejects duplicate fact identity
+ok 79 - rejects duplicate fact identity
+  ---
+  duration_ms: 4.713742
+  type: 'test'
+  ...
+# Subtest: rejects dangling reference
+ok 80 - rejects dangling reference
+  ---
+  duration_ms: 0.554686
+  type: 'test'
+  ...
+# Subtest: rejects wrong referenced digest
+ok 81 - rejects wrong referenced digest
+  ---
+  duration_ms: 0.55099
+  type: 'test'
+  ...
+# Subtest: rejects forged row digest
+ok 82 - rejects forged row digest
+  ---
+  duration_ms: 0.577165
+  type: 'test'
+  ...
+# Subtest: rejects forged envelope digest
+ok 83 - rejects forged envelope digest
+  ---
+  duration_ms: 0.264873
+  type: 'test'
+  ...
+# Subtest: rejects derived count mismatch
+ok 84 - rejects derived count mismatch
+  ---
+  duration_ms: 0.225852
+  type: 'test'
+  ...
+# Subtest: rejects unsafe count
+ok 85 - rejects unsafe count
+  ---
+  duration_ms: 0.292222
+  type: 'test'
+  ...
+# Subtest: rejects calendar rollover
+ok 86 - rejects calendar rollover
+  ---
+  duration_ms: 0.233357
+  type: 'test'
+  ...
+# Subtest: rejects non-UTC timestamp
+ok 87 - rejects non-UTC timestamp
+  ---
+  duration_ms: 0.561725
+  type: 'test'
+  ...
+# Subtest: rejects cutoff after generation
+ok 88 - rejects cutoff after generation
+  ---
+  duration_ms: 0.453977
+  type: 'test'
+  ...
+# Subtest: rejects run at excluded upper boundary
+ok 89 - rejects run at excluded upper boundary
+  ---
+  duration_ms: 0.389286
+  type: 'test'
+  ...
+# Subtest: rejects finish after cutoff
+ok 90 - rejects finish after cutoff
+  ---
+  duration_ms: 0.314235
+  type: 'test'
+  ...
+# Subtest: rejects fact after cutoff
+ok 91 - rejects fact after cutoff
+  ---
+  duration_ms: 0.252302
+  type: 'test'
+  ...
+# Subtest: rejects approved billing semantics invented
+ok 92 - rejects approved billing semantics invented
+  ---
+  duration_ms: 0.140612
+  type: 'test'
+  ...
+# Subtest: rejects successful recomputation claim
+ok 93 - rejects successful recomputation claim
+  ---
+  duration_ms: 0.207378
+  type: 'test'
+  ...
+# Subtest: unresolved orphan retained explicitly, counts derived, no completeness upgrade
+ok 94 - unresolved orphan retained explicitly, counts derived, no completeness upgrade
+  ---
+  duration_ms: 1.073035
+  type: 'test'
+  ...
+# Subtest: same source id in different fact tables is not semantic deduplication
+ok 95 - same source id in different fact tables is not semantic deduplication
+  ---
+  duration_ms: 0.830884
+  type: 'test'
+  ...
+# Subtest: empty included projection is not an executed measurement
+ok 96 - empty included projection is not an executed measurement
+  ---
+  duration_ms: 0.63849
+  type: 'test'
+  ...
+# Subtest: diagnostic rejects unverified execution passed
+ok 97 - diagnostic rejects unverified execution passed
+  ---
+  duration_ms: 0.229529
+  type: 'test'
+  ...
+# Subtest: diagnostic rejects unverified execution failed
+ok 98 - diagnostic rejects unverified execution failed
+  ---
+  duration_ms: 0.131689
+  type: 'test'
+  ...
+# Subtest: diagnostic rejects unverified execution recomputed_against_included_snapshot
+ok 99 - diagnostic rejects unverified execution recomputed_against_included_snapshot
+  ---
+  duration_ms: 0.080078
+  type: 'test'
+  ...
+# Subtest: diagnostic rejects unknown version and independent approval boolean
+ok 100 - diagnostic rejects unknown version and independent approval boolean
+  ---
+  duration_ms: 0.199406
+  type: 'test'
+  ...
+# Subtest: package rejects source scope/time mismatch and ambiguous legacy plus new material
+ok 101 - package rejects source scope/time mismatch and ambiguous legacy plus new material
+  ---
+  duration_ms: 0.973543
+  type: 'test'
+  ...
+# Subtest: malformed legacy metadata is rejected rather than promoted
+ok 102 - malformed legacy metadata is rejected rather than promoted
+  ---
+  duration_ms: 0.340213
+  type: 'test'
+  ...
+# Subtest: full package diagnostic cannot claim internal consistency or completeness
+ok 103 - full package diagnostic cannot claim internal consistency or completeness
+  ---
+  duration_ms: 2.718032
+  type: 'test'
+  ...
+1..103
+# tests 103
+# suites 0
+# pass 103
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 11908.805755

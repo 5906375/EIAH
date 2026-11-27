@@ -1,0 +1,174 @@
+--- antes/app.js	2026-10-17 10:51:21.334089001 -0300
++++ depois/app.js	2026-10-17 10:55:18.546074002 -0300
+@@ -1,6 +1,6 @@
+ "use strict";
+ /* BACKUP-A painel local — todo texto vindo do servidor entra no DOM via textContent (nunca por HTML interpretado). */
+-const S = { token: null, ov: null, lastOk: 0, lastTry: 0, err: null, view: "overview", hist: { q: "", profile: "", state: "", from: "", to: "", sort: "desc", page: 1, page_size: 10 }, histData: null, histErr: null, drawer: null, drawerData: null, drawerErr: null, modal: null, busy: false };
++const S = { token: null, ov: null, lastOk: 0, lastTry: 0, err: null, view: "overview", hist: { q: "", profile: "", state: "", from: "", to: "", sort: "desc", page: 1, page_size: "10" }, histData: null, histErr: null, drawer: null, drawerData: null, drawerErr: null, modal: null, busy: false };
+ const NA = "não disponível";
+ 
+ function el(tag, attrs, ...kids) {
+@@ -8,6 +8,7 @@
+   for (const [k, v] of Object.entries(attrs || {})) {
+     if (v === null || v === undefined || v === false) continue;
+     if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
++    else if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+     else if (k === "disabled" || k === "hidden") e[k] = !!v; else e.setAttribute(k, v);
+   }
+   for (const c of kids.flat()) { if (c === null || c === undefined || c === false) continue; e.append(c.nodeType ? c : document.createTextNode(String(c))); }
+@@ -23,7 +24,7 @@
+ function copyBtn(text) {
+   return el("button", { class: "btn cp", type: "button", title: "copiar", onclick: async (ev) => {
+     const b = ev.currentTarget; try { await navigator.clipboard.writeText(text); b.textContent = "copiado"; } catch (e) {
+-      const ta = el("textarea", { style: "position:fixed;opacity:0" }); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); b.textContent = "copiado"; } catch (e2) { b.textContent = "falhou"; } ta.remove(); }
++      const ta = el("textarea", { style: { position: "fixed", opacity: "0" } }); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); b.textContent = "copiado"; } catch (e2) { b.textContent = "falhou"; } ta.remove(); }
+     setTimeout(() => (b.textContent = "copiar"), 1500); } }, "copiar");
+ }
+ const withCopy = (text, cls) => el("span", {}, el("span", { class: cls || "mono", text: text }), copyBtn(text));
+@@ -68,7 +69,7 @@
+     job && !jobRunning ? el("div", { class: "small mut" }, "último job do dashboard: ", job.kind, " · ", job.status, job.result ? " · " + job.result.verdict : "", " ", el("button", { class: "btn", onclick: () => openJob() }, "ver")) : null));
+   if (q) {
+     const cls = q.pct >= 100 ? "b" : (q.pct >= 80 ? "w" : "");
+-    g.append(card("Fila pendente de envio", el("div", { class: "big", text: `${q.queue_mb} MB de ${q.limit_mb} MB (${q.pct}%)` }), el("div", { class: "bar" }, el("i", { class: cls, style: `width:${Math.min(100, q.pct)}%` })),
++    g.append(card("Fila pendente de envio", el("div", { class: "big", text: `${q.queue_mb} MB de ${q.limit_mb} MB (${q.pct}%)` }), el("div", { class: "bar" }, el("i", { class: cls, style: { width: Math.min(100, q.pct) + "%" } })),
+       el("div", { class: "small mut", text: `aguardando upload (CAPTURED/UPLOADING): ${q.pending_mb} MB · outros runs não verificados (DRYRUN/NOOP/FAILED…): ${q.other_mb} MB — a regra do limite soma tudo que não é UPLOADED_VERIFIED` }),
+       el("div", { class: "note small", text: `Ao atingir ${q.limit_mb} MB a captura é RECUSADA com código 77 (também se o arquivo local verificado atingir ${q.archive_limit_mb} MB ou o espaço livre ficar abaixo do piso de ${ov.config.BA_MIN_FREE_MB} MB). Acompanhe o crescimento.` })));
+     g.append(card("Verificado mantido localmente", el("div", { class: "big", text: `${q.archive_mb} MB de ${q.archive_limit_mb} MB` }), el("div", { class: "small mut", text: "cópias locais de runs UPLOADED_VERIFIED; nada é apagado automaticamente (sem prune-local)." })));
+@@ -119,27 +120,39 @@
+ }
+ 
+ /* ------------------------------------------------------------ histórico */
+-function renderHistory() {
++const FILTERS = [["f-q", "q"], ["f-profile", "profile"], ["f-state", "state"], ["f-from", "from"], ["f-to", "to"], ["f-sort", "sort"], ["f-size", "page_size"]];
++let histTimer = null;
++function initHistory() {
+   const root = document.getElementById("view-history"); root.replaceChildren();
+-  const h = S.hist, d = S.histData;
+-  const inp = (label, key, type, opts) => el("label", {}, label, type === "select" ? el("select", { onchange: (e) => { h[key] = e.target.value; h.page = 1; loadHistory(); } }, opts.map(([v, t]) => el("option", { value: v, text: t, selected: h[key] === v ? "selected" : null })))
+-    : el("input", { type, value: h[key], placeholder: opts || "", onchange: (e) => { h[key] = e.target.value; h.page = 1; loadHistory(); } }));
++  const h = S.hist, apply = () => { h.page = 1; loadHistory(); };
++  const sel = (id, label, key, opts) => el("label", {}, label, el("select", { id, onchange: (e) => { h[key] = e.target.value; apply(); } }, opts.map(([v, t]) => el("option", { value: v, text: t, selected: String(h[key]) === v ? "selected" : null }))));
+   root.append(el("div", { class: "filters" },
+-    inp("Buscar identificador", "q", "search", "ex.: 7c3750"), inp("Perfil", "profile", "select", [["", "todos"], ["daily", "diário"], ["weekly", "semanal"], ["manual", "manual (G3)"]]),
+-    inp("Estado", "state", "select", [["", "todos"], ["CAPTURED", "CAPTURED"], ["UPLOADED_VERIFIED", "UPLOADED_VERIFIED"], ["UPLOADING", "UPLOADING"], ["DRYRUN", "DRYRUN"], ["NOOP", "NOOP"], ["FAILED", "FAILED"], ["MANUAL", "MANUAL (G3)"]]),
+-    inp("De (Brasília)", "from", "date"), inp("Até (Brasília)", "to", "date"), inp("Ordem por data", "sort", "select", [["desc", "mais recentes primeiro"], ["asc", "mais antigos primeiro"]]),
+-    inp("Por página", "page_size", "select", [["10", "10"], ["25", "25"], ["50", "50"]]), el("button", { class: "btn", onclick: () => { Object.assign(S.hist, { q: "", profile: "", state: "", from: "", to: "", page: 1 }); loadHistory(); } }, "Limpar")));
+-  if (S.histErr) root.append(el("div", { class: "note" }, "Histórico ", na("não disponível: " + S.histErr)));
+-  if (!d) { root.append(el("div", { class: "mut", text: "carregando…" })); return; }
+-  root.append(el("div", { class: "small mut", text: `${d.total} registro(s) de ${d.total_unfiltered} · fontes consultadas: ` + d.sources.map((s) => `${s.name} (${s.count}${s.error ? ", ERRO: " + s.error : ""})`).join("; ") + ` · consulta ${d.queried ? d.queried.brt : NA}` }));
+-  if (d.read_errors.length) root.append(el("div", { class: "note", text: "Falhas de leitura: " + d.read_errors.join("; ") }));
+-  root.append(el("div", { class: "note small", text: d.note }));
+-  const tb = el("table", {}, el("thead", {}, el("tr", {}, ["Criado", "Run", "Perfil", "Captura", "Upload", "MB", "Obs."].map((x) => el("th", { text: x })))), el("tbody", {}, d.items.map((r) => el("tr", { class: "click", tabindex: "0", onclick: () => openDrawer(r.id), onkeydown: (e) => { if (e.key === "Enter") openDrawer(r.id); } },
++    el("label", {}, "Buscar identificador", el("input", { id: "f-q", type: "search", value: h.q, placeholder: "ex.: 7c3750", oninput: (e) => { h.q = e.target.value; clearTimeout(histTimer); histTimer = setTimeout(apply, 300); } })),
++    sel("f-profile", "Perfil", "profile", [["", "todos"], ["daily", "diário"], ["weekly", "semanal"], ["manual", "manual (G3)"]]),
++    sel("f-state", "Estado", "state", [["", "todos"], ["CAPTURED", "CAPTURED"], ["UPLOADED_VERIFIED", "UPLOADED_VERIFIED"], ["UPLOADING", "UPLOADING"], ["DRYRUN", "DRYRUN"], ["NOOP", "NOOP"], ["FAILED", "FAILED"], ["MANUAL", "MANUAL (G3)"]]),
++    el("label", {}, "De (Brasília)", el("input", { id: "f-from", type: "date", value: h.from, onchange: (e) => { h.from = e.target.value; apply(); } })),
++    el("label", {}, "Até (Brasília)", el("input", { id: "f-to", type: "date", value: h.to, onchange: (e) => { h.to = e.target.value; apply(); } })),
++    sel("f-sort", "Ordem por data", "sort", [["desc", "mais recentes primeiro"], ["asc", "mais antigos primeiro"]]),
++    sel("f-size", "Por página", "page_size", [["5", "5"], ["10", "10"], ["25", "25"], ["50", "50"]]),
++    el("button", { class: "btn", id: "f-clear", type: "button", onclick: () => { Object.assign(h, { q: "", profile: "", state: "", from: "", to: "", page: 1 }); for (const [id, k] of FILTERS) { const x = document.getElementById(id); if (x) x.value = String(h[k]); } loadHistory(); } }, "Limpar")),
++    el("div", { class: "hint", text: "Clique numa linha (ou use Tab + Enter) para abrir os detalhes do run." }),
++    el("div", { id: "hist-info" }), el("div", { id: "hist-table", class: "scroll" }), el("div", { id: "hist-pager", class: "filters" }));
++}
++function renderHistory() {
++  if (!document.getElementById("hist-info")) initHistory();
++  const h = S.hist, d = S.histData, info = document.getElementById("hist-info"), tbl = document.getElementById("hist-table"), pg = document.getElementById("hist-pager");
++  info.replaceChildren(); tbl.replaceChildren(); pg.replaceChildren();
++  if (S.histErr) info.append(el("div", { class: "note" }, "Histórico ", na("não disponível: " + S.histErr)));
++  if (!d) { info.append(el("div", { class: "mut", text: "carregando…" })); return; }
++  info.append(el("div", { class: "small mut", text: `${d.total} registro(s) de ${d.total_unfiltered} · fontes consultadas: ` + d.sources.map((s) => `${s.name} (${s.count}${s.error ? ", ERRO: " + s.error : ""})`).join("; ") + ` · consulta ${d.queried ? d.queried.brt : NA}` }));
++  if (d.read_errors.length) info.append(el("div", { class: "note", text: "Falhas de leitura: " + d.read_errors.join("; ") }));
++  info.append(el("div", { class: "note small", text: d.note }));
++  tbl.append(el("table", {}, el("thead", {}, el("tr", {}, ["Criado", "Run", "Perfil", "Captura", "Upload", "MB", "Obs.", ""].map((x) => el("th", { text: x })))), el("tbody", {}, d.items.map((r) => el("tr", { class: "click", tabindex: "0", role: "button", "aria-label": "Abrir detalhes de " + r.id, onclick: () => openDrawer(r.id), onkeydown: (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDrawer(r.id); } } },
+     el("td", {}, r.created ? el("span", {}, r.created.brt, el("br"), el("span", { class: "mut small", text: r.created.utc })) : na()),
+     el("td", {}, el("span", { class: "mono", text: r.id }), el("br"), pill(r.state, stateKind(r.state))), el("td", { text: r.profile }), el("td", { text: r.capture_state }), el("td", { text: r.upload_state }), el("td", { text: r.mb === null ? NA : String(r.mb) }),
+-    el("td", {}, r.incomplete.length ? pill("incompleto: " + r.incomplete.join(", "), "warn") : null, r.read_errors.length ? pill("falha de leitura", "bad") : null, r.ambiguous ? pill("ambíguo", "bad") : null, r.conflict ? pill("conflito", "bad") : null)))));
+-  root.append(el("div", { class: "scroll" }, tb));
+-  root.append(el("div", { class: "filters" }, el("button", { class: "btn", disabled: h.page <= 1, onclick: () => { h.page--; loadHistory(); } }, "← anterior"), `página ${d.page} de ${d.pages}`, el("button", { class: "btn", disabled: d.page >= d.pages, onclick: () => { h.page++; loadHistory(); } }, "próxima →")));
++    el("td", {}, r.incomplete.length ? pill("incompleto: " + r.incomplete.join(", "), "warn") : null, r.read_errors.length ? pill("falha de leitura", "bad") : null, r.ambiguous ? pill("ambíguo", "bad") : null, r.conflict ? pill("conflito", "bad") : null),
++    el("td", {}, el("span", { class: "open", text: "Abrir ›" })))))));
++  pg.append(el("button", { class: "btn", type: "button", disabled: h.page <= 1, onclick: () => { h.page--; loadHistory(); } }, "← anterior"), `página ${d.page} de ${d.pages}`, el("button", { class: "btn", type: "button", disabled: d.page >= d.pages, onclick: () => { h.page++; loadHistory(); } }, "próxima →"));
+ }
+ async function loadHistory() {
+   const p = new URLSearchParams(); for (const [k, v] of Object.entries(S.hist)) if (v !== "" && v !== null) p.set(k, v);
+@@ -178,7 +191,7 @@
+     ["Pasta do run (WSL)", withCopy(d.dir)], ["Recibos (não são backup)", withCopy(d.receipts_path)], ["Log da captura", d.log_path ? withCopy(d.log_path) : na()]]));
+   dr.append(el("h3", { text: "Arquivos de backup (.age) — hashes são os registrados nos recibos, não recalculados" }));
+   for (const o of d.objects) {
+-    dr.append(el("div", { class: "card", style: "margin-bottom:10px" }, el("h3", { text: o.id }), kv([
++    dr.append(el("div", { class: "card", style: { marginBottom: "10px" } }, el("h3", { text: o.id }), kv([
+       ["Arquivo .age (WSL)", o.present ? withCopy(o.path) : na("arquivo ausente" + (o.local_copy ? " — " + o.local_copy : ""))],
+       ["Explorador do Windows", o.windows_path ? withCopy(o.windows_path) : na()],
+       ["Bytes", el("span", {}, o.size === null ? NA : String(o.size), " ", o.size_matches === null ? "" : (o.size_matches ? pill("confere com o recibo", "ok") : pill("DIVERGE do recibo", "bad")))],
+@@ -242,11 +255,11 @@
+   if (m.step === "plan") {
+     const p = m.plan, sess = S.ov && S.ov.session, sessOk = sess && sess.verified && sess.fresh, rcx = p.remote_check;
+     const blocked = rcx && rcx.done && rcx.objects.some((o) => /JÁ EXISTE/.test(o.status));
+-    const phrase = p.confirm_phrase, inp = el("input", { type: "text", id: "ph", placeholder: phrase, style: "width:100%", autocomplete: "off", oninput: (e) => { document.getElementById("go").disabled = !(e.target.value === phrase && sessOk && !blocked && !m.busy); } });
++    const phrase = p.confirm_phrase, inp = el("input", { type: "text", id: "ph", placeholder: phrase, style: { width: "100%" }, autocomplete: "off", oninput: (e) => { document.getElementById("go").disabled = !(e.target.value === phrase && sessOk && !blocked && !m.busy); } });
+     modalShell(el("h2", { text: "Revise o plano de envio" }), kv([["Run", withCopy(p.run)], ["Estado", pill(p.state, stateKind(p.state))], ["Bucket / região", `${p.bucket} / ${p.region}`], ["Pendentes", `${p.pending.length} objeto(s), ${p.pending_bytes} bytes`],
+       ["Escrita", "PutObject condicional (--if-none-match '*', SHA-256), tentativa única, sem repetição cega"], ["Verificação", "download completo pela role Restore: SHA-256 do ciphertext, tamanho e VersionId (UPLOADED_VERIFIED só após todos)"], ["Hash do plano", withCopy(p.plan_hash)], ["Preparado em", T(p.prepared)]]),
+       el("div", { class: "scroll" }, el("table", {}, el("thead", {}, el("tr", {}, ["Objeto", "Estado", "Bytes", "Chave de destino", "SHA-256"].map((x) => el("th", { text: x })))),
+-        el("tbody", {}, p.objects.map((o) => el("tr", {}, el("td", { text: o.id }), el("td", { text: o.st }), el("td", { text: String(o.bytes) }), el("td", {}, withCopy(o.key)), el("td", {}, withCopy(o.sha))))))),
++        el("tbody", {}, p.objects.map((o) => el("tr", {}, el("td", { text: o.id }), el("td", { class: "nw", text: o.st }), el("td", { class: "nw", text: String(o.bytes) }), el("td", {}, withCopy(o.key)), el("td", {}, withCopy(o.sha))))))),
+       rcx ? el("div", { class: "note" }, rcx.done ? ["Conferência remota: ", rcx.objects.map((o) => el("div", { text: o.id + ": " + o.status }))] : "Conferência remota não realizada: " + rcx.reason) : el("div", { class: "note small", text: "Conferência remota das chaves não solicitada (nenhuma chamada AWS até agora)." }),
+       el("div", { class: "note" }, "Sessão AWS: ", sessOk ? pill("verificada recentemente e válida", "ok") : pill("não verificada/expirada — use 'Verificar sessão AWS' (e faça o login humano se necessário)", "bad"), " ", el("button", { class: "btn", onclick: verifySession }, "Verificar sessão AWS")),
+       m.err ? el("div", { class: "note", text: m.err }) : null,
+@@ -305,10 +318,16 @@
+ 
+ /* ------------------------------------------------------------ laço de atualização */
+ function renderAll() {
++  if (S.pointerDown) { S.pendingRender = true; renderFresh(); return; }   // não troca o DOM entre mousedown e mouseup (cliques não se perdem)
+   renderOverview(S.ov); renderAgenda(S.ov); renderTodo(S.ov);
+-  if (S.view === "history") renderHistory();
+   renderFresh();
+ }
++for (const t of ["pointerdown", "mousedown", "touchstart"]) document.addEventListener(t, () => { S.pointerDown = true; }, true);
++for (const t of ["pointerup", "pointercancel", "mouseup", "touchend", "touchcancel"]) document.addEventListener(t, () => { S.pointerDown = false; if (S.pendingRender) { S.pendingRender = false; setTimeout(renderAll, 50); } }, true);
++document.addEventListener("keydown", (e) => {
++  if (e.key !== "Escape") return;
++  if (S.modal && !(S.modal.busy)) { closeModal(); } else if (S.drawer) { S.drawer = null; renderDrawer(); }
++});
+ function renderFresh() {
+   const f = document.getElementById("fresh"); const now = Date.now();
+   const age = S.lastOk ? Math.round((now - S.lastOk) / 1000) : null;
+@@ -322,7 +341,7 @@
+   if (S.busy && !force) return; if (S.busy) return;
+   S.busy = true; S.lastTry = Date.now();
+   try { S.ov = await getJ("/api/overview"); S.lastOk = Date.now(); S.err = null; } catch (e) { S.err = e.message; }
+-  try { if (S.view === "history") await loadHistory(); if (S.drawer) await refreshDrawer(); } catch (e) { /* já tratado nas funções */ }
++  try { if (!S.pointerDown) { if (S.view === "history" && !document.activeElement.matches("#f-q")) await loadHistory(); if (S.drawer) await refreshDrawer(); } } catch (e) { /* já tratado nas funções */ }
+   renderAll(); S.busy = false;
+ }
+ function loop() { tick().finally(() => setTimeout(loop, 5000)); }
+@@ -330,7 +349,7 @@
+   const b = e.target.closest("button"); if (!b) return; S.view = b.dataset.view;
+   for (const x of document.querySelectorAll("#nav button")) x.classList.toggle("on", x === b);
+   for (const v of ["overview", "agenda", "history", "todo"]) document.getElementById("view-" + v).hidden = v !== S.view;
+-  if (S.view === "history") loadHistory();
++  if (S.view === "history") { renderHistory(); loadHistory(); }
+ });
+ function applyHash() {
+   const h = decodeURIComponent((location.hash || "").slice(1)); const m = h.match(/^run=([A-Za-z0-9\-]{10,80})$/);
+--- antes/app.css	2026-10-17 10:51:21.334089001 -0300
++++ depois/app.css	2026-10-17 10:55:18.546074002 -0300
+@@ -32,3 +32,19 @@
+ .note{background:var(--accbg);color:var(--ink);border-left:4px solid var(--acc);padding:8px 10px;border-radius:6px;margin:8px 0;font-size:.88rem}
+ .todo li{margin:8px 0}footer{padding:14px 16px;color:var(--mut);font-size:.78rem;text-align:center}
+ @media (max-width:640px){.kv{grid-template-columns:1fr}.big{font-size:1.15rem}header.top{position:static}}
++
++/* interatividade e acessibilidade (02B.11 — dashboard) */
++[hidden]{display:none!important}
++button,select,input[type=checkbox],input[type=date],nav button,tr.click{cursor:pointer}
++nav button:hover,button.btn:hover:not(:disabled){background:var(--accbg);border-color:var(--acc);color:var(--acc)}
++button.btn.pri:hover:not(:disabled){background:var(--acc);color:#fff;filter:brightness(1.1)}button.btn.danger:hover:not(:disabled){background:var(--bad);color:#fff;filter:brightness(1.1)}
++button:active:not(:disabled){transform:translateY(1px)}
++:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
++button.cp{border-style:dashed}
++tr.click{transition:background .12s}tr.click:hover,tr.click:focus-visible{background:var(--accbg)}
++tr.click .open{display:inline-block;border:1px solid var(--acc);color:var(--acc);border-radius:8px;padding:2px 9px;font-weight:600;white-space:nowrap}
++tr.click:hover .open{background:var(--acc);color:#fff}
++.hint{color:var(--mut);font-size:.84rem;margin:2px 0 8px}
++input[type=search],input[type=date],select{min-height:34px}
++
++.nw{white-space:nowrap}

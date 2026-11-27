@@ -1,0 +1,209 @@
+{
+  "status": "PARCIAL",
+  "scope": "Authorized Δ1–Δ3 only; transversal proposal not generally ratified",
+  "head": "70e66db4e7eea727f0f3567d8291595b1f86243b",
+  "branch": "feat/imob-guided-property-draft",
+  "stageEmpty": true,
+  "tests": {
+    "consumerTransport": {
+      "log": "delta-first.log",
+      "executed": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "finalAffectedSelection": {
+      "log": "delta-ids-final.log",
+      "executed": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0,
+      "notAdditionalDistinctTests": true
+    },
+    "deterministicCapability": {
+      "log": "delta-capability.log",
+      "executed": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "reusedIntake": {
+      "log": "intake-tests-direct.log",
+      "executed": 13,
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    "reusedAdapter": {
+      "log": "adapter-tests-direct.log",
+      "executed": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    }
+  },
+  "typecheck": {
+    "log": "delta-final-types.log",
+    "result": "REPROVADO",
+    "exitCode": 1,
+    "roots": 16,
+    "focusedDiagnostics": 2,
+    "dependencyDiagnostics": 16,
+    "introduced": 0,
+    "baseline": "delta-typecheck.json",
+    "final": "delta-typecheck-final.json",
+    "fullTypecheckCertified": false
+  },
+  "identifierCompatibility": {
+    "correlation": "traceId metadata only",
+    "completionId": "body id or absent",
+    "providerRequestId": "real header or absent",
+    "legacyAccountingRequestId": "real completion ID preferred; real header only when completion ID absent",
+    "noIdentity": "CapabilityUsageIdentityUnavailableError; retryable false; generationCompleted true; no capability fallback",
+    "recordCapabilityUsageBodyUnchanged": true,
+    "billingFileUnchanged": true,
+    "financialRuleChange": false,
+    "financialBlocker": "Durable metering of ID-less consumption requires separately authorized financial identity/reconciliation contract; no key invented",
+    "modelUsed": "confirmed or absent; not requested model fallback"
+  },
+  "fixture": {
+    "path": "apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json",
+    "source": "ops/evidence/latest/imob-property-provider-diagnostic-2026-11-16/openai-integrated.json",
+    "sourceSha256": "f77384445eebd224b210fb2d9101e79e7a0b46d7b4a9462172df0b454333bbd7",
+    "treatment": "Only error.type/error.code; original unchanged; test status and request IDs synthetic"
+  },
+  "executions": "delta-executions.json",
+  "actualProviderCalls": 0,
+  "domainWrites": 0,
+  "paidCalls": 0,
+  "newFallbacks": false,
+  "limits": [
+    "No authenticated HTTP/browser/database validation",
+    "No real model-generated bedrooms/garage proposal approved",
+    "Specific staging attempt cause still unproven; local quota not staging quota",
+    "Separate deployment alignment and retest required",
+    "No remote CI approval",
+    "Packaged module smoke not full packaged application run",
+    "Financial writer/idempotency checked statically and with double, not database concurrency"
+  ],
+  "buildsAndGates": {
+    "contracts": {
+      "log": "delta-contracts.log",
+      "exitCode": 0,
+      "result": "APROVADO"
+    },
+    "core": {
+      "log": "delta-core-final.log",
+      "exitCode": 0,
+      "result": "APROVADO"
+    },
+    "providers": {
+      "log": "delta-providers-build.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "reused": true
+    },
+    "packagedModules": {
+      "log": "delta-package-final.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "fullPackagedApplicationCertified": false
+    },
+    "officialTestRegistration": {
+      "log": "delta-ci-final.log",
+      "exitCode": 0,
+      "result": "APROVADO local",
+      "remoteCI": false
+    },
+    "evidenceIndexFirst": {
+      "log": "delta-evidence-index.log",
+      "exitCode": 1,
+      "result": "BLOQUEADO pelo sandbox",
+      "cause": "historical git query spawnSync git EPERM; original gate output preserved"
+    },
+    "evidenceIndexOutside": {
+      "log": "delta-evidence-index-outside.log",
+      "exitCode": 0,
+      "result": "APROVADO local",
+      "refsChecked": 961,
+      "authorizedSandboxRetry": true
+    },
+    "whitespace": {
+      "log": "delta-whitespace-final.log",
+      "exitCode": 0,
+      "result": "APROVADO"
+    }
+  },
+  "integrity": {
+    "manifest": "source-hashes.json",
+    "scan": "No credential pattern matches in 61 scoped text files before final manifest; no original log rewritten",
+    "protectedInstructionsUnchanged": true,
+    "originalRealDiagnosticUnchanged": true,
+    "stageEmpty": true
+  },
+  "packaging": {
+    "plan": "ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md",
+    "normalPaths": 39,
+    "forcePaths": 32,
+    "uniquePaths": 71,
+    "stageExecuted": false,
+    "commitExecuted": false,
+    "losslessLogs": [
+      {
+        "original": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-direct.log",
+        "published": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-direct.log.gz",
+        "originalSha256": "e37de56f82bced491b04c6a1bc4c22eeb83b441aa7ed0c04f2007a607884aef3",
+        "publishedSha256": "6802dd7dfa3f627fce8a9efe9c44808748f2054f2048d7b1925965aaa17700b3",
+        "treatment": "Lossless gzip, mtime=0; no normalization or sanitization; original bytes preserved locally",
+        "originalTrailingWhitespaceLines": 4
+      },
+      {
+        "original": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-final.log",
+        "published": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-tests-final.log.gz",
+        "originalSha256": "5984a3193775edcc4f7e8ec7fa5a0120f57adba153c1aa86c05e6c508da20e63",
+        "publishedSha256": "06c5ab3df2f612b4c9bc5f527270cc42d3c7a487c45e5c47acdb6349fbc0ae7a",
+        "treatment": "Lossless gzip, mtime=0; no normalization or sanitization; original bytes preserved locally",
+        "originalTrailingWhitespaceLines": 2
+      }
+    ],
+    "historicalDiagnosticManifest": "Preserved unchanged: 8 modified source hashes match diagnostic HEAD; historical Evidence Index hash matches index before correction row; all 6 recorded diagnostic artifacts unchanged",
+    "manifest": "source-hashes.json",
+    "previousManifestSnapshotPreserved": true,
+    "originalLogsRewritten": false,
+    "newSanitization": "None; only lossless gzip of the two specified logs",
+    "sourceAndTestsChangedDuringPreparation": false,
+    "validationsInvalidated": false,
+    "referenceReview": "Selected README/results/new Evidence Index references checked for delivery closure; no global gate rerun",
+    "secretReview": "No high-confidence credential patterns in selected text/decompressed logs; synthetic fixture and no actual credential values observed; not exhaustive",
+    "preparationChecks": {
+      "result": "APROVADO",
+      "exitCode": 0,
+      "normal": 39,
+      "force": 32,
+      "unique": 71,
+      "newTextWhitespaceFiles": 51,
+      "noIndexExitCodes": {
+        "1": 51
+      },
+      "noIndexMeaning": "Exit 1 with empty output denotes differences against /dev/null, not a whitespace failure",
+      "trackedDiffCheckExitCode": 0,
+      "referencesChecked": 30,
+      "referencesInDelivery": true,
+      "gzipByteEquality": true,
+      "protectedInstructionsUnchanged": true,
+      "previousPlanByteSuffixMatchesHead": true,
+      "stageEmpty": true,
+      "credentialPatternMatches": 0,
+      "testsBuildsProviderCallsExecuted": 0
+    },
+    "preflightFirstAttempt": {
+      "exitCode": 1,
+      "cause": "Verifier assertion incorrectly classified git diff --no-index --check exit 1 as whitespace failure; all 51 invocations had empty diagnostics. Verifier corrected; no source, log or test change resulted."
+    }
+  }
+}

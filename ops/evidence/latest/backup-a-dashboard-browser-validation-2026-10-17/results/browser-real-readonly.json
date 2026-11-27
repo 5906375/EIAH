@@ -1,0 +1,209 @@
+{
+ "mode": "real",
+ "base": "http://127.0.0.1:8765/",
+ "at": "2026-10-17T13:56:01.821Z",
+ "results": [
+  {
+   "name": "página carrega e renderiza cartões da visão geral",
+   "ok": true,
+   "detail": "true"
+  },
+  {
+   "name": "app.js carregado (HTTP 200)",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "app.css carregado (HTTP 200)",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "/api/overview respondeu 200",
+   "ok": true,
+   "detail": "[[\"http://127.0.0.1:8765/api/session\",200],[\"http://127.0.0.1:8765/api/overview\",200]]"
+  },
+  {
+   "name": "script ativo (estado S existe e há atualização bem-sucedida)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "botões de navegação têm cursor de clique",
+   "ok": true,
+   "detail": "{\"navCursor\":\"pointer\",\"navBorder\":\"1px\",\"barPct\":0}"
+  },
+  {
+   "name": "barra da fila respeita o percentual (CSP não bloqueia estilo)",
+   "ok": true,
+   "detail": "largura da barra = 0% do trilho"
+  },
+  {
+   "name": "clicar em Agenda mostra a agenda",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "clicar em Depende de você mostra a seção",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "clicar em Histórico mostra a tabela",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "histórico lista runs",
+   "ok": true,
+   "detail": "linhas=6"
+  },
+  {
+   "name": "histórico mostra total e fontes consultadas",
+   "ok": true,
+   "detail": "[6,6]"
+  },
+  {
+   "name": "busca por identificador filtra enquanto digita (sem precisar Enter/sair do campo)",
+   "ok": true,
+   "detail": "total=[1,6] valor=7c3750"
+  },
+  {
+   "name": "botão Limpar restaura a lista completa",
+   "ok": true,
+   "detail": "[6,6]"
+  },
+  {
+   "name": "texto digitado e foco do campo sobrevivem à atualização automática (5 s)",
+   "ok": true,
+   "detail": "{\"v\":\"zz\",\"focus\":true}"
+  },
+  {
+   "name": "filtro por perfil: a soma diário+semanal+manual iguala o total (cada clique altera o resultado)",
+   "ok": true,
+   "detail": "daily=4 weekly=1 manual=1 total=6"
+  },
+  {
+   "name": "filtro por estado altera o resultado",
+   "ok": true,
+   "detail": "[3,6]"
+  },
+  {
+   "name": "filtro de período (De 2099) zera os registros e informa 0",
+   "ok": true,
+   "detail": "[0,6]"
+  },
+  {
+   "name": "ordenação por data inverte a ordem",
+   "ok": true,
+   "detail": "asc=261016T111525Z desc=000746Z-7c3750"
+  },
+  {
+   "name": "paginação: com 5 por página aparecem 2 páginas (6 runs)",
+   "ok": true,
+   "detail": "[\"página 1 de 2\",\"1\",\"2\"]"
+  },
+  {
+   "name": "botão próxima leva à página 2 com os registros restantes",
+   "ok": true,
+   "detail": "linhas=1"
+  },
+  {
+   "name": "botão anterior volta à página 1",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "clicar na linha abre o painel de detalhes do run",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "detalhes mostram horários em Brasília e UTC",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "detalhes mostram tamanhos, SHA-256 e recuperação",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "botão copiar do detalhe muda para 'copiado'",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "conteúdo copiado para a área de transferência é o valor mostrado",
+   "ok": true,
+   "detail": "copiado=BA-AUTO-daily-20261017T110000746Z-7c3750 esperado=BA-AUTO-daily-20261017T110000746Z-7c3750"
+  },
+  {
+   "name": "botão Fechar esconde o painel de detalhes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "teclado: Enter em linha focada abre os detalhes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "existe 'Verificar sessão AWS' (não clicado no modo real)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "modo real: nenhuma requisição POST/AWS foi disparada pela navegação",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "botão copiar do comando de login funciona",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "390 px: sem rolagem horizontal da página",
+   "ok": true,
+   "detail": "{\"sw\":390,\"cw\":390}"
+  },
+  {
+   "name": "sem erros/exceções no console do navegador",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "sem requisições bloqueadas ou falhas de rede",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "sem respostas HTTP >= 400 (exceto favicon)",
+   "ok": true,
+   "detail": "[]"
+  }
+ ],
+ "console": [],
+ "netFails": [],
+ "responses": {
+  "http://127.0.0.1:8765/": 200,
+  "http://127.0.0.1:8765/app.css": 200,
+  "http://127.0.0.1:8765/app.js": 200,
+  "http://127.0.0.1:8765/api/session": 200,
+  "http://127.0.0.1:8765/api/overview": 200,
+  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTUgOWExIDEgMCAxMDAtMiAxIDEgMCAwMDAgMnpNNiAxMWExIDEgMCAxMS0yIDAgMSAxIDAgMDEyIDB6TTggOWExIDEgMCAxMDAtMiAxIDEgMCAwMDAgMnpNOSAxMWExIDEgMCAxMS0yIDAgMSAxIDAgMDEyIDB6TTExIDlhMSAxIDAgMTAwLTIgMSAxIDAgMDAwIDJ6IiBmaWxsPSJXaW5kb3dUZXh0Ii8+PHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNSAzLjVBMi41IDIuNSAwIDAwMTIuNSAxaC05QTIuNSAyLjUgMCAwMDEgMy41djlBMi41IDIuNSAwIDAwMy41IDE1aDlhMi41IDIuNSAwIDAwMi41LTIuNXYtOXpNMiA1aDEydjcuNWMwIC44My0uNjcgMS41LTEuNSAxLjVoLTlBMS41IDEuNSAwIDAxMiAxMi41VjV6bTEuNS0zaDljLjgzIDAgMS41LjY3IDEuNSAxLjVWNEgydi0uNUMyIDIuNjcgMi42NyAyIDMuNSAyeiIgZmlsbD0iV2luZG93VGV4dCIvPjwvc3ZnPg==": 200,
+  "http://127.0.0.1:8765/api/runs?sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?q=7c3750&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?q=zz&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?profile=daily&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?profile=weekly&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?profile=manual&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?state=UPLOADED_VERIFIED&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?from=2099-01-01&sort=desc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?sort=asc&page=1&page_size=10": 200,
+  "http://127.0.0.1:8765/api/runs?sort=desc&page=1&page_size=5": 200,
+  "http://127.0.0.1:8765/api/runs?sort=desc&page=2&page_size=5": 200,
+  "http://127.0.0.1:8765/api/run/BA-AUTO-daily-20261017T110000746Z-7c3750": 200
+ }
+}

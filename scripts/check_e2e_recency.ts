@@ -65,6 +65,20 @@ if (zeroLatency.length > 0) {
   });
 }
 
+const invalidHighEvidence = scenarioResults.filter(
+  (s) =>
+    typeof s.txId !== "string" ||
+    !s.txId ||
+    s.invariantStatus !== "ok" ||
+    typeof s.bundleHash !== "string" ||
+    !s.bundleHash
+);
+if (invalidHighEvidence.length > 0) {
+  fail("all HIGH scenarios must have txId, invariantStatus=ok and bundleHash", {
+    invalid: invalidHighEvidence.map((s) => s.scenario),
+  });
+}
+
 // --- Standard quality / recency checks ---
 
 const ts = new Date((data.generatedAt || data.timestamp || 0) as string);

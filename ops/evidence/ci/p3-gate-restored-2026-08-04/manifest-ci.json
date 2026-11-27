@@ -1,0 +1,261 @@
+{
+  "schemaVersion": "ci-evidence-manifest.v1",
+  "freezeDate": "2026-08-04",
+  "declaredStatus": "Proposta",
+  "repository": "5906375/EIAH",
+  "workflow": "CI Monorepo",
+  "ciExecution": true,
+  "evidenceScope": "three-run-comparison-with-run-30887018488-and-ruleset-get-captured-on-2026-08-04",
+  "directoryConvention": "ops/evidence/ci/<topic>-<capture-date>",
+  "collection": {
+    "method": "gh-cli-by-authenticated-human-operator",
+    "operatorAuthenticated": true,
+    "agentCollectedDirectly": false,
+    "agentBoundary": "Commands were executed outside the agent sandbox only with operator authorization.",
+    "tokenScopes": [
+      "gist",
+      "read:org",
+      "repo",
+      "workflow"
+    ],
+    "administrativeScope": false,
+    "githubApiWriteCalls": 0,
+    "collectionDate": "2026-08-04",
+    "collectedRunIds": [
+      30887018488
+    ],
+    "notRecollectedRunIds": [
+      30713272468,
+      30840321426
+    ]
+  },
+  "runs": [
+    {
+      "runId": 30713272468,
+      "url": "https://github.com/5906375/EIAH/actions/runs/30713272468",
+      "headSha": "de228d3f7f0c7a430e6e933ce824947bde0d322c",
+      "headBranch": "fix/settlement-matrix-honesty",
+      "event": "pull_request",
+      "attempt": 1,
+      "number": 943,
+      "createdAt": "2026-08-01T18:46:00Z",
+      "startedAt": "2026-08-01T18:46:00Z",
+      "updatedAt": "2026-08-01T18:47:13Z",
+      "conclusion": "success",
+      "measuredJobs": [
+        {
+          "name": "P3SettlementSupportByEnv",
+          "databaseId": 91404418214,
+          "conclusion": "failure"
+        },
+        {
+          "name": "OrphanTestsRegression",
+          "databaseId": 91404418162,
+          "conclusion": "success"
+        }
+      ],
+      "repositoryState": "P3 job suppression active by waiver; generator declared stripe=full.",
+      "source": {
+        "kind": "prior-versioned-freeze",
+        "commit": "be35bebee2489c2d3e40d7f8de438a155da68c4e",
+        "manifest": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/manifest-ci.json",
+        "jobs": "ops/evidence/ci/p3-settlement-env-gate-2026-08-03/p3-env-run-30713272468-jobs.json",
+        "recollectedOn2026-08-04": false
+      }
+    },
+    {
+      "runId": 30840321426,
+      "url": "https://github.com/5906375/EIAH/actions/runs/30840321426",
+      "headSha": "729c791d64f04420407f988b58bc09a8cc67cd8f",
+      "headBranch": "fix/settlement-matrix-honesty",
+      "event": "pull_request",
+      "attempt": 1,
+      "number": 944,
+      "createdAt": "2026-08-03T18:13:46Z",
+      "startedAt": "2026-08-03T18:13:46Z",
+      "updatedAt": "2026-08-03T18:14:58Z",
+      "conclusion": "failure",
+      "measuredJobs": [
+        {
+          "name": "P3SettlementSupportByEnv",
+          "databaseId": 91775495102,
+          "conclusion": "success"
+        },
+        {
+          "name": "OrphanTestsRegression",
+          "databaseId": 91775495248,
+          "conclusion": "failure"
+        }
+      ],
+      "repositoryState": "P3 job suppression removed; P3 waiver still present.",
+      "measuredFailure": {
+        "job": "OrphanTestsRegression",
+        "stepNumber": 7,
+        "stepName": "Run orphan tests gate unit test",
+        "reason": "GATE_WAIVER_STALE"
+      },
+      "source": {
+        "kind": "prior-read-only-queries-recorded-in-correction",
+        "commit": "b5426e67c9a0a589f73e2848f03bfbe3d5b98595",
+        "record": "ops/evidence/corrections/gate-waiver-p3-settlement-removal-2026-08-03.md",
+        "recollectedOn2026-08-04": false
+      }
+    },
+    {
+      "runId": 30887018488,
+      "url": "https://github.com/5906375/EIAH/actions/runs/30887018488",
+      "headSha": "b5426e67c9a0a589f73e2848f03bfbe3d5b98595",
+      "headBranch": "fix/settlement-matrix-honesty",
+      "event": "pull_request",
+      "attempt": 1,
+      "number": 945,
+      "createdAt": "2026-08-04T07:14:28Z",
+      "startedAt": "2026-08-04T07:14:28Z",
+      "updatedAt": "2026-08-04T07:16:07Z",
+      "conclusion": "failure",
+      "measuredJobs": [
+        {
+          "name": "P3SettlementSupportByEnv",
+          "databaseId": 91920370340,
+          "conclusion": "success"
+        },
+        {
+          "name": "OrphanTestsRegression",
+          "databaseId": 91920370085,
+          "conclusion": "success"
+        }
+      ],
+      "failedJobs": [
+        {
+          "name": "P1ReconciliationRecurring",
+          "databaseId": 91920370082,
+          "conclusion": "failure",
+          "failedStepNumber": 6,
+          "failedStepName": "Check P1 recurring reconciliation stability",
+          "reason": "weekly_cycle_evidence_too_old",
+          "ageDays": 15.3,
+          "maxAgeDays": 14
+        },
+        {
+          "name": "P2HighGlobalCoverage",
+          "databaseId": 91920370049,
+          "conclusion": "failure",
+          "failedStepNumber": 7,
+          "failedStepName": "Check P2 HIGH evidence recency",
+          "reason": "p2_evidence_too_old",
+          "ageDays": 30.65,
+          "maxAgeDays": 30
+        }
+      ],
+      "repositoryState": "P3 declaration aligned with the versioned contract; no P3 suppression; waivers empty.",
+      "source": {
+        "kind": "current-read-only-collection",
+        "captureDate": "2026-08-04",
+        "recollectedOn2026-08-04": true
+      }
+    }
+  ],
+  "observedP3CheckOutput": {
+    "runId": 30887018488,
+    "ok": true,
+    "check": "check:p3-settlement-support-by-env",
+    "environment": "staging",
+    "stripeMode": "simulated",
+    "stepConclusion": "success"
+  },
+  "recencyFinding": {
+    "evidenceFilesChangedBetweenMeasuredHeads": false,
+    "fromRunId": 30840321426,
+    "toRunId": 30887018488,
+    "P1ReconciliationRecurring": {
+      "fromAgeDays": 14.76,
+      "toAgeDays": 15.3
+    },
+    "P2HighGlobalCoverage": {
+      "fromAgeDays": 30.11,
+      "toAgeDays": 30.65
+    },
+    "treatment": "Finding only; candidate for a separate front. Not registered or resolved by this artifact."
+  },
+  "repositoryStateAssertionsAtHead": {
+    "headSha": "b5426e67c9a0a589f73e2848f03bfbe3d5b98595",
+    "p3JobContinueOnError": false,
+    "waiverContract": "ops/contracts/gate-waivers.v1.json",
+    "waivers": []
+  },
+  "rulesetQuery": {
+    "queryDate": "2026-08-04",
+    "id": 13498700,
+    "name": "main-protection-hard-gates",
+    "enforcement": "active",
+    "target": "branch",
+    "defaultBranchCondition": true,
+    "requiredStatusChecksCount": 20,
+    "requiredStatusChecks": [
+      "build_validate",
+      "lint",
+      "CiUnitSuite",
+      "EvidenceIndex",
+      "ReceiptCanonCompat",
+      "P0CriticalityAudit",
+      "P1CriticalChain",
+      "P1ReconciliationRecurring",
+      "RbacGuardrailRegression",
+      "AgentsPolicyFailClosed",
+      "AgentProtocolCompat",
+      "P2AuditInterop",
+      "P2HighGlobalCoverage",
+      "ProviderBoundary",
+      "P3EconomyHardening",
+      "P3SettlementSupportByEnv",
+      "SettlementContractDrift",
+      "W4NonRegression",
+      "DbPreviewPostgresValidate",
+      "PublicHealthContract"
+    ],
+    "capturedOutput": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-ruleset-13498700.json"
+  },
+  "artifacts": [
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-meta.json",
+      "bytes": 506,
+      "sha256": "7cd2018171f02e9b9afd701c3ddc7ce37a74913c002939644cedf054465cba29",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-jobs.json",
+      "bytes": 56341,
+      "sha256": "2fae5196ab5533a5606d6006e25c313660a7e7c2776a318d2c69789a65e1bf2c",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-p3-settlement-step-excerpt.log",
+      "bytes": 4296,
+      "sha256": "cfa0707afa390bcd4529934d4fc35528e5ffa2193106028cc0c4772d18b4df43",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-run-30887018488-orphan-step-7-excerpt.log",
+      "bytes": 12574,
+      "sha256": "047204e6e35e565434672f8cc13d94cf62097ae4f985c4bf72c884d64ed093a7",
+      "versioned": true
+    },
+    {
+      "path": "ops/evidence/ci/p3-gate-restored-2026-08-04/f4-ruleset-13498700.json",
+      "bytes": 2188,
+      "sha256": "19df7b52da5945e87fe3ea7e05c9540dd7e754bc61d30d16d636c62151cfde3a",
+      "versioned": true
+    },
+    {
+      "path": "/tmp/f4-run-30887018488-full.log",
+      "bytes": 2439007,
+      "sha256": "32e39b73a1ce93acb7711b1c0192360aaf82e4fd6cd4a8d45f294f4ab5c6f60f",
+      "versioned": false,
+      "repositoryPath": null,
+      "recoveryCommand": "gh run view 30887018488 -R 5906375/EIAH --log",
+      "recoverabilityLimit": "Available only while provider retention permits; the full log is explicitly not stored in this repository."
+    }
+  ],
+  "freezeCommitSha": "",
+  "freezeCommitReference": "HEAD at indexing time; no commit SHA was invented before commit creation."
+}

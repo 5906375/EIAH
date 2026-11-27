@@ -40,6 +40,11 @@ export async function resolveImobOperationalConsultImpl(
   if (crmResolved) return crmResolved;
 
   const context: ImobOperationalConsultContext = buildGovernedImobOperationalConsultContext(params, helpers);
+  // P10: o turno foi interpretado como necessidade/contratação transversal (não depende do texto): lê o CASO e responde
+  // com o resolvedor de capacidades, sem abrir cadastro nem contrato.
+  if (params.transversalTurn) {
+    return resolveImobCaseOperationalConsult(params, helpers, { ...context, businessReadIntent: "pipeline_status" });
+  }
   if (!context.hasOperationalTarget || !context.hasOperationalAction) {
     return null;
   }

@@ -1,0 +1,11 @@
+# STORAGE-02B.11-DEC-20261017-01 — captura LOCAL cifrada do BACKUP-A (sem AWS). %i = daily|weekly.
+# Falha => alerta em $BA_HOME/alerts/alerts.log via backup-a-run.sh. Não envia ao S3 e não exclui nada.
+[Unit]
+Description=EIAH BACKUP-A captura %i (local, cifrada, sem AWS)
+[Service]
+Type=oneshot
+Environment=BA_CONF=%h/.eiah-aws/automation/backup-a/backup-a.env
+ExecStart=%h/.eiah-aws/automation/backup-a/backup-a-run.sh capture %i
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=3h

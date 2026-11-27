@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { redactUrlCredentials } from "../services/redactUrlCredentials";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -43,6 +44,8 @@ import {
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
+import { filterActionsByEvaluationGate, productForAction } from "../services/products/verticalEvaluationContract";
 import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 
 /* ──────────────────────────────────────────────
@@ -582,60 +585,39 @@ async function persistRunProgressSnapshot(params: {
 async function resolveActionsForExecution(
   tenantId: string,
   workspaceId: string,
-  declaredActionNames?: string[]
+  _declaredActionNames?: string[]
 ) {
-  const configured = tenantActionResolver(tenantId) ?? {};
-  const configuredCount = Object.keys(configured).length;
   const definitions = getRegisteredActionDefinitions();
+  const policyStore = TenantPolicyStore.getInstance();
 
-  const registered = Object.keys(definitions).filter((name) => Boolean(name && name.trim()));
-  const canonicalByNormalized = new Map<string, string>();
-  for (const actionName of registered) {
-    const normalized = actionName.trim().toLowerCase();
-    if (!canonicalByNormalized.has(normalized)) {
-      canonicalByNormalized.set(normalized, actionName);
-    }
-  }
-
-  const dbPolicies = await prismaGlobal.tenantActionPolicy.findMany({
-    where: {
-      tenantId,
-      OR: [{ workspaceId }, { workspaceId: null }],
-      allowed: true,
-    },
-    select: { actionName: true },
-  });
-
-  const dbAllowedCanonical = dbPolicies
-    .map((row) => canonicalByNormalized.get(row.actionName.trim().toLowerCase()))
-    .filter((name): name is string => Boolean(name));
-  const dbAllowedRaw = dbPolicies
-    .map((row) => row.actionName.trim())
-    .filter((name): name is string => Boolean(name));
-  const declaredAgentActions = resolveDeclaredActionNames(
-    declaredActionNames,
-    canonicalByNormalized,
-    definitions
+  const decisions = await Promise.all(
+    Object.keys(definitions)
+      .filter((actionName) => Boolean(actionName?.trim()))
+      .map(async (actionName) => ({
+        actionName,
+        decision: await policyStore.resolveScopeDecision(
+          tenantId,
+          workspaceId,
+          actionName,
+        ),
+      }))
   );
 
-  // Fallback seguro: sem policies resolvidas e sem resolver custom => libera catálogo registrado.
-  if (dbAllowedCanonical.length === 0 && dbAllowedRaw.length === 0 && configuredCount === 0) {
-    return definitions;
-  }
-
-  const dbAllowedCanonicalResolved = dbAllowedCanonical.map(
-    (name) => canonicalByNormalized.get(name.trim().toLowerCase()) ?? name
-  );
-  const dbAllowedRawResolved = dbAllowedRaw.map(
-    (name) => canonicalByNormalized.get(name.trim().toLowerCase()) ?? name
-  );
+  const dbAllowedByPolicy = decisions
+    .filter(({ decision }) => decision.allowed)
+    .map(({ actionName }) => actionName);
+  // Avaliação gratuita: run enfileirado antes do fim da validade e executado depois NÃO pode usar as policies que a ativação
+  // provisionou. A leitura só ocorre se há action do IMOB e só restringe workspaces com grant (sem grant: conjunto idêntico).
+  const dbAllowedCanonical = dbAllowedByPolicy.some((action) => productForAction(action) === "IMOB")
+    ? [...filterActionsByEvaluationGate(new Set(dbAllowedByPolicy), await readEvaluationGrantGate({ prisma: prismaGlobal as never, tenantId, workspaceId }))]
+    : dbAllowedByPolicy;
 
   return mergeActionsForExecution({
-    configured: configured as Record<string, RegisteredAction>,
+    configured: {},
     definitions,
-    dbAllowedCanonical: dbAllowedCanonicalResolved,
-    dbAllowedRaw: dbAllowedRawResolved,
-    declaredAgentActions,
+    dbAllowedCanonical,
+    dbAllowedRaw: [],
+    declaredAgentActions: [],
   });
 }
 
@@ -1083,6 +1065,7 @@ export type RunWorkerGovernanceDeps = {
   ) => ReturnType<TenantPolicyStore["resolveScopeDecision"]>;
   emitRunEvent: typeof emitRunEvent;
   updateRunStatus: typeof updateRunStatus;
+  persistRunFailureEvidence?: typeof persistRunFailureEvidence;
 };
 
 function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
@@ -1092,10 +1075,18 @@ function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
     finalizeCancelledRunPartial,
     getAgentProfile,
     getRegisteredActionDefinitions,
-    resolveScopeDecision: (tenantId, workspaceId, action) =>
-      TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action),
+    resolveScopeDecision: async (tenantId, workspaceId, action) => {
+      const decision = await TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action);
+      if (!decision.allowed || productForAction(action) !== "IMOB") return decision;
+      // Mesma regra da lista de actions: com grant de avaliação que não está ativo e válido AGORA, a action do IMOB é negada.
+      const gate = await readEvaluationGrantGate({ prisma: prismaGlobal as never, tenantId, workspaceId });
+      return gate.applies && !gate.allowed
+        ? { allowed: false as const, reasonCode: "SCOPE_NOT_ALLOWED" as const, tenantId, workspaceId, scope: action }
+        : decision;
+    },
     emitRunEvent,
     updateRunStatus,
+    persistRunFailureEvidence,
   };
 }
 
@@ -1245,14 +1236,60 @@ export async function processRunPayload(
         workspaceIdPresent: true,
         actionPolicyDecision: actionPolicyEvaluation.actionPolicyDecision,
       });
+      const policyDenied =
+        actionPolicyEvaluation.actionPolicyDecision?.decision === "denied";
+      const policyEventPayload =
+        policyDenied && actionPolicyEvaluation.eventPayload
+          ? {
+              ...actionPolicyEvaluation.eventPayload,
+              enforcementApplied: true,
+            }
+          : actionPolicyEvaluation.eventPayload;
+
       await deps.emitRunEvent({
         runId,
         tenantId,
         workspaceId,
         userId,
         type: RUN_ACTION_POLICY_EVALUATED_EVENT_TYPE,
-        payload: actionPolicyEvaluation.eventPayload,
+        payload: policyEventPayload,
       });
+
+      if (policyDenied) {
+        const reasonCode =
+          actionPolicyEvaluation.eventPayload?.reasonCode ??
+          "ACTION_POLICY_STORE_UNAVAILABLE";
+        const message =
+          `Action "${actionPolicyEvaluation.actionPolicyDecision?.action}" denied by tenant policy`;
+        const policyError = Object.assign(new Error(message), { reasonCode });
+
+        await (deps.persistRunFailureEvidence ?? persistRunFailureEvidence)(
+          {
+            error: policyError,
+            message,
+            prisma: prismaGlobal,
+            tenantId,
+            workspaceId,
+            runId,
+            userId,
+            responseForScl: (scl) => ({
+              error: message,
+              reasonCode,
+              actionPolicyDecision:
+                actionPolicyEvaluation.actionPolicyDecision,
+              txId: scl.txId,
+              criticalHash: scl.criticalHash,
+            }),
+          },
+          {
+            appendSclRecord,
+            finalizeRunRecord,
+            emitRunEvent: deps.emitRunEvent,
+          },
+        );
+
+        return;
+      }
     }
 
     const runningRun = await deps.updateRunStatus({
@@ -3014,7 +3051,7 @@ export function startRunQueueBullMqWorker() {
 
   worker.on("ready", () => {
     console.log(
-      `[EIAH_BUILDER runQueueWorker] Listening on queue=${QueueName.RUNS} redis=${redisUrl} concurrency=${concurrency}`
+      `[EIAH_BUILDER runQueueWorker] Listening on queue=${QueueName.RUNS} redis=${redactUrlCredentials(redisUrl)} concurrency=${concurrency}`
     );
   });
 

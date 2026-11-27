@@ -1,5 +1,5 @@
 export class RetryExhaustedError extends Error {
-  constructor(message: string) {
+  constructor(message: string, readonly cause?: unknown) {
     super(message);
     this.name = "RetryExhaustedError";
   }
@@ -11,6 +11,7 @@ type RetryOptions = {
   maxDelayMs?: number;
   backoffFactor?: number;
   jitterRatio?: number;
+  shouldRetry?: (error: unknown) => boolean;
 };
 
 export async function retry<T>(
@@ -34,6 +35,7 @@ export async function retry<T>(
     try {
       return await fn();
     } catch (err) {
+      if (options.shouldRetry?.(err) === false) throw err;
       lastErr = err;
       const jitter = currentDelayMs * jitterRatio * Math.random();
       const delayWithJitter = Math.min(maxDelayMs, currentDelayMs + jitter);
@@ -42,5 +44,5 @@ export async function retry<T>(
     }
   }
 
-  throw new RetryExhaustedError(`Retry exhausted: ${(lastErr as Error | null)?.message ?? lastErr}`);
+  throw new RetryExhaustedError(`Retry exhausted: ${(lastErr as Error | null)?.message ?? lastErr}`, lastErr);
 }

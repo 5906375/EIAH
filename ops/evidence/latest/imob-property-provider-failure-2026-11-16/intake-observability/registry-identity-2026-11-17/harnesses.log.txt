@@ -1,0 +1,5 @@
+=== registry-harness-info.log ===
+{"hypothesis":"HISTORICAL_DIAGNOSIS_REUSED_CURRENT_BASELINE_VALIDATED","invariant":"APROVADO","checks":{"executed":5,"passed":5,"failed":0,"skipped":0},"syntheticAdapterCalls":1,"realProviderCalls":0,"exitCode":0}
+
+=== consumer-harness-file.log ===
+{"result":"APROVADO","checks":{"executed":7,"passed":7,"failed":0,"skipped":0},"consumerCoreEntries":25,"modules":104,"chunks":78,"namedBindingsChecked":169,"blockedNetworkAttempts":0,"realProviderCalls":0}

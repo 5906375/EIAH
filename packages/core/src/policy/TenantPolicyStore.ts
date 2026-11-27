@@ -194,6 +194,92 @@ export class TenantPolicyStore {
     }
   }
 
+  async resolveExactWorkspaceScopeDecision(
+    tenantId: string,
+    workspaceId: string,
+    scope: string,
+  ): Promise<ScopeDecision> {
+    const normalizedScope = normalizeScope(scope);
+    if (!tenantId.trim() || !workspaceId.trim() || !normalizedScope) {
+      return buildDecision({
+        allowed: false,
+        reasonCode: "SCOPE_NOT_ALLOWED",
+        tenantId,
+        workspaceId,
+        scope: normalizedScope || scope.trim(),
+      });
+    }
+
+    try {
+      const prismaGlobal = await loadPrismaGlobal();
+      const rows = (await prismaGlobal.tenantActionPolicy.findMany({
+        where: {
+          tenantId,
+          workspaceId,
+          actionName: normalizedScope,
+        },
+        select: {
+          workspaceId: true,
+          allowed: true,
+          maxVersion: true,
+        },
+      })) as TenantActionPolicyRow[];
+
+      // Filter defensively as well as constraining the query: a tenant-wide
+      // grant must never become pilot authority, even through an adapter or
+      // test double that returns a broader result set.
+      const exactWorkspacePolicies = rows.filter((row) => row.workspaceId === workspaceId);
+      if (exactWorkspacePolicies.length > 1) {
+        return buildDecision({
+          allowed: false,
+          reasonCode: "POLICY_STORE_UNAVAILABLE",
+          tenantId,
+          workspaceId,
+          scope: normalizedScope,
+        });
+      }
+
+      const exactWorkspacePolicy = exactWorkspacePolicies[0] ?? null;
+      if (!exactWorkspacePolicy) {
+        return buildDecision({
+          allowed: false,
+          reasonCode: "POLICY_NOT_FOUND",
+          tenantId,
+          workspaceId,
+          scope: normalizedScope,
+        });
+      }
+
+      if (!exactWorkspacePolicy.allowed) {
+        return buildDecision({
+          allowed: false,
+          reasonCode: "TENANT_POLICY_DISABLED",
+          tenantId,
+          workspaceId,
+          scope: normalizedScope,
+          policyVersion: toPolicyVersion(exactWorkspacePolicy.maxVersion),
+        });
+      }
+
+      return buildDecision({
+        allowed: true,
+        reasonCode: "SCOPE_ALLOWED",
+        tenantId,
+        workspaceId,
+        scope: normalizedScope,
+        policyVersion: toPolicyVersion(exactWorkspacePolicy.maxVersion),
+      });
+    } catch {
+      return buildDecision({
+        allowed: false,
+        reasonCode: "POLICY_STORE_UNAVAILABLE",
+        tenantId,
+        workspaceId,
+        scope: normalizedScope,
+      });
+    }
+  }
+
   async isScopeAllowed(tenantId: string, workspaceId: string, scope: string) {
     const decision = await this.resolveScopeDecision(tenantId, workspaceId, scope);
     return decision.allowed;

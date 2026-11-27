@@ -1,0 +1,71 @@
+# Verificação pós-instalação — 2026-10-17 07:51:16 -0300 (relógio local do WSL; fuso America/Sao_Paulo)
+$ date; cat /etc/timezone
+Sat Oct 17 07:51:16 -03 2026
+America/Sao_Paulo
+
+$ systemctl --version | head -1
+systemd 245 (245.4-4ubuntu3.20)
+
+$ systemctl --user is-enabled/is-active
+backup-a-capture-daily.timer enabled=enabled active=active
+backup-a-capture-weekly.timer enabled=enabled active=active
+
+$ systemctl --user list-timers --all
+NEXT                        LEFT        LAST PASSED UNIT                          ACTIVATES                      
+Sat 2026-10-17 08:00:00 -03 8min left   n/a  n/a    backup-a-capture-daily.timer  backup-a-capture@daily.service 
+Fri 2026-10-23 18:00:00 -03 6 days left n/a  n/a    backup-a-capture-weekly.timer backup-a-capture@weekly.service
+
+2 timers listed.
+
+$ systemctl --user show <timers> -p TimersCalendar -p Persistent -p AccuracyUSec -p Unit
+Unit=backup-a-capture@daily.service
+TimersCalendar={ OnCalendar=*-*-* 08:00:00 America/Sao_Paulo ; next_elapse=Sat 2026-10-17 08:00:00 -03 }
+AccuracyUSec=1s
+Persistent=no
+Unit=backup-a-capture@weekly.service
+TimersCalendar={ OnCalendar=Fri *-*-* 18:00:00 America/Sao_Paulo ; next_elapse=Fri 2026-10-23 18:00:00 -03 }
+AccuracyUSec=1s
+Persistent=no
+
+$ systemctl --user list-unit-files 'backup-a*'
+UNIT FILE                     STATE   VENDOR PRESET
+backup-a-capture@.service     static  enabled      
+backup-a-capture-daily.timer  enabled enabled      
+backup-a-capture-weekly.timer enabled enabled      
+
+3 unit files listed.
+
+$ ls ~/.config/systemd/user; crontab -l
+backup-a-capture-daily.timer
+backup-a-capture-weekly.timer
+backup-a-capture@.service
+timers.target.wants
+no crontab for <WSL_USER>
+
+$ grep -H '^Exec' ~/.config/systemd/user/backup-a-*.service
+<WSL_HOME>/.config/systemd/user/backup-a-capture@.service:ExecStart=%h/.eiah-aws/automation/backup-a/backup-a-run.sh capture %i
+
+$ cmp units instaladas x v3
+backup-a-capture@.service idêntico
+backup-a-capture-daily.timer idêntico
+backup-a-capture-weekly.timer idêntico
+
+$ systemd-analyze calendar (fuso explícito)
+Normalized form: *-*-* 08:00:00 America/Sao_Paulo
+    Next elapse: Sat 2026-10-17 08:00:00 -03     
+       (in UTC): Sat 2026-10-17 11:00:00 UTC     
+Normalized form: Fri *-*-* 18:00:00 America/Sao_Paulo
+    Next elapse: Fri 2026-10-23 18:00:00 -03         
+       (in UTC): Fri 2026-10-23 21:00:00 UTC         
+
+$ nenhuma execução disparada manualmente; serviços @daily/@weekly:
+backup-a-capture@daily.service  loaded inactive dead EIAH BACKUP-A captura daily (local, cifrada, sem AWS) 
+backup-a-capture@weekly.service loaded inactive dead EIAH BACKUP-A captura weekly (local, cifrada, sem AWS)
+
+$ backup-a.sh status (fila/limites)
+BACKUP-A status @ 2026-10-17T10:51:16Z | home=<WSL_HOME>/.eiah-aws/backup-a-auto
+espaço livre /mnt/c: 12327 MB (mín 3000) | fila não enviada: 2 MB (máx 1500) | arquivo verificado local: 230 MB (máx 4000)
+  BA-AUTO-daily-20261016T175927631Z-67df70         DRYRUN             1 MB
+
+$ loginctl show-user | grep Linger
+Linger=no

@@ -1,0 +1,22 @@
+{
+  "command": [
+    "pnpm",
+    "check:evidence-index"
+  ],
+  "execution": "require_escalated; authorized tool execution",
+  "recordSource": "structured summary transcribed from exec/wait tool response, not independent raw log",
+  "exitCode": 0,
+  "testSummary": {
+    "tests": 8,
+    "pass": 8,
+    "fail": 0
+  },
+  "checkerOutput": {
+    "ok": true,
+    "check": "check:evidence-index",
+    "file": "docs/EVIDENCE_INDEX.md",
+    "sizeChars": 280427,
+    "roadmap": "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md",
+    "refsChecked": 646
+  }
+}

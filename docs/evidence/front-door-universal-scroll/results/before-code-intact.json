@@ -1,0 +1,159 @@
+{
+  "mode": "before",
+  "fixture": "sessão e API sintéticas, tudo mockado, nenhuma escrita real",
+  "results": [
+    {
+      "width": 320,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 434,
+          "bottom": 746,
+          "height": 312,
+          "view": 424,
+          "scrollTop": 2962,
+          "scrollHeight": 3712
+        },
+        "B": {
+          "top": 434,
+          "bottom": 5673,
+          "height": 5239,
+          "view": 424,
+          "scrollTop": 2962,
+          "scrollHeight": 8638
+        },
+        "C": {
+          "held": 2062,
+          "kept": 2062
+        },
+        "D": {
+          "top": 669,
+          "bottom": 981,
+          "height": 312,
+          "view": 424,
+          "scrollTop": 3333,
+          "scrollHeight": 4318
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    },
+    {
+      "width": 390,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 578,
+          "bottom": 798,
+          "height": 219,
+          "view": 568,
+          "scrollTop": 2155,
+          "scrollHeight": 2956
+        },
+        "B": {
+          "top": 578,
+          "bottom": 4147,
+          "height": 3569,
+          "view": 568,
+          "scrollTop": 2155,
+          "scrollHeight": 6306
+        },
+        "C": {
+          "held": 1255,
+          "kept": 1255
+        },
+        "D": {
+          "top": 769,
+          "bottom": 989,
+          "height": 219,
+          "view": 568,
+          "scrollTop": 2433,
+          "scrollHeight": 3425
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    },
+    {
+      "width": 1440,
+      "mode": "before",
+      "scenarios": {
+        "A": {
+          "top": 716,
+          "bottom": 862,
+          "height": 146,
+          "view": 710,
+          "scrollTop": 1015,
+          "scrollHeight": 1884
+        },
+        "B": {
+          "top": 716,
+          "bottom": 2635,
+          "height": 1918,
+          "view": 710,
+          "scrollTop": 1015,
+          "scrollHeight": 3656
+        },
+        "C": {
+          "held": 115,
+          "kept": 115
+        },
+        "D": {
+          "top": 716,
+          "bottom": 862,
+          "height": 146,
+          "view": 710,
+          "scrollTop": 1332,
+          "scrollHeight": 2201
+        }
+      },
+      "requests": {
+        "GET /api/agents": 1,
+        "GET /api/marketplace": 4,
+        "GET /api/delegations": 4,
+        "GET /api/billing/tenant/summary": 2,
+        "GET /api/plans/quotas": 2,
+        "POST /api/helpdesk/telemetry": 2,
+        "GET /api/billing/agents/summary": 2,
+        "GET /api/session/context": 3,
+        "GET /api/vertical-access/notices": 1,
+        "GET /api/chat/vertical-registry": 1,
+        "POST /api/chat/vertical-handoff": 2,
+        "GET /api/imob/chat/conversations": 1,
+        "POST /api/imob/chat/runtime-shadow-state": 1,
+        "POST /api/imob/chat/resolve-turn": 1,
+        "POST /api/imob/chat/conversations": 2
+      }
+    }
+  ]
+}

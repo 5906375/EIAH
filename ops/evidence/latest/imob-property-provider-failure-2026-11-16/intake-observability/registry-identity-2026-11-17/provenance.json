@@ -1,0 +1,121 @@
+{
+  "recordedAt": "2026-11-25T20:43:18.107585+00:00",
+  "sourceArchive": "Acervo externo de preservação WSL, complemento 32/twdg-incremental-20261125/core-validation; originais intactos",
+  "sourceFiles": {
+    "correction-results.json": {
+      "bytes": 16485,
+      "sha256": "dd32652a419b4b0dbb9ec810cf6b15e384f419ebd85b8c63128781e5fcfa77fb"
+    },
+    "consumer-packaging-results.json": {
+      "bytes": 97290,
+      "sha256": "441947cf425512d4ee173c9eaefdc6d4b3ac71d674cf92b2b2128749d49014f8"
+    },
+    "consumer-file-static-preflight.json": {
+      "bytes": 323,
+      "sha256": "4f59aee58ed9272f1336930553fd0fdb5dfe34021b04889d9695c8cddd693a78"
+    },
+    "core-build-result.json": {
+      "bytes": 591,
+      "sha256": "481cec32ec13bb4c2c1de51428236cffa4312709745784b5bf602210e06c9508"
+    },
+    "api-build-result.json": {
+      "bytes": 589,
+      "sha256": "5107c82144f1f1c61e3a4ef3c3c882feb97f009c159b0b373c825ae5600b13c5"
+    },
+    "applicability-info.json": {
+      "bytes": 85134,
+      "sha256": "39f18ac3c8c1c652c2db2c95cc0bff1034b044f4fa12a620ad05e6b6adaf821a"
+    },
+    "harness-executions.json": {
+      "bytes": 3103,
+      "sha256": "c80ecdafc339af83629faf3b0fe6b33b35029636b30f5cdddcd33aabc966954d"
+    },
+    "harness-executions-info.json": {
+      "bytes": 5576,
+      "sha256": "18e70b5866ea3cab62d68efd599b4fdc2f3f95e8780d4afe86da59a86c564aba"
+    },
+    "harness-executions-consumer-file.json": {
+      "bytes": 2742,
+      "sha256": "67b556af1ea440fe77d9d93c60c4b5a13254c9203a186386d18541c938b22bda"
+    },
+    "preparation.json": {
+      "bytes": 1282,
+      "sha256": "05e95ba33e80763a3f45023b726564afece8347c2d4d7265c84fbd717d4b858b"
+    },
+    "core-build.log": {
+      "bytes": 29458,
+      "sha256": "f2da088323b3522aca582fef2ba5dc4da6139ab9179baf6eebbddbba8a974376"
+    },
+    "api-build.log": {
+      "bytes": 713,
+      "sha256": "825f47211825c34a76caacf9c44028acf8576d07d4318b417be8c494896d4235"
+    },
+    "registry-harness-info.log": {
+      "bytes": 214,
+      "sha256": "eb77e45265e1dfc2724ba5809357e88257887832238acd30f6d111fcb841892d"
+    },
+    "consumer-harness-file.log": {
+      "bytes": 207,
+      "sha256": "5eb19582b46a1ffd6c153e48f83d2ec43247c1a951729a183f402a5f176429d4"
+    },
+    "registry-harness.log": {
+      "bytes": 20169,
+      "sha256": "9f61b4de02e2e20824fc05f53046124e66f569964d789e6fa1ccf290923aa296"
+    },
+    "consumer-harness-info.log": {
+      "bytes": 29848,
+      "sha256": "c8dafd351d9b01fd300605f228dc7372d664151809127e15edae2661527d3cd0"
+    }
+  },
+  "publishedFiles": {
+    "registry-results.json": {
+      "bytes": 16485,
+      "sha256": "dd32652a419b4b0dbb9ec810cf6b15e384f419ebd85b8c63128781e5fcfa77fb"
+    },
+    "consumer-results.json": {
+      "bytes": 97290,
+      "sha256": "441947cf425512d4ee173c9eaefdc6d4b3ac71d674cf92b2b2128749d49014f8"
+    },
+    "validation.json": {
+      "bytes": 7520,
+      "sha256": "c856b1d737565a89c7234e4b0a8d0335d436e33ffabb6519424635d479a42d17"
+    },
+    "executions.json": {
+      "bytes": 11948,
+      "sha256": "ab73e128875ff99d5473c702befc7b66036ac410a1795f118fa4e5437892902d"
+    },
+    "builds.log.txt": {
+      "bytes": 30073,
+      "sha256": "2856d073faa89a1796d9c819811665ab43044c4c11ec4af242b552eb3c71f080"
+    },
+    "harnesses.log.txt": {
+      "bytes": 490,
+      "sha256": "8fa043491406a1c1ab3f54e548ef779933c3f095fd888ad36857ade352873810"
+    },
+    "preparation-failures.log.txt": {
+      "bytes": 964,
+      "sha256": "4ad84dff6c1e54d8f8e349a6a16958e27508a0414cd0d0ed7fd418363de51a0c"
+    },
+    "README.md": {
+      "bytes": 5594,
+      "sha256": "b627ed6e0e6bf008528b8e7e9a689bd12addc5991915c2b810fe66f5deae9429"
+    }
+  },
+  "transformations": [
+    "Seleção de resultados reais; nenhum build/harness novo",
+    "JSONs e logs: normalização somente dos prefixos absolutos privados de caminhos",
+    "Logs Core/API e logs aprovados concatenados em seções nomeadas",
+    "Logs das duas falhas: extração de linhas legíveis, omitindo frames/linhas base64 maiores que 1000 caracteres; originais integrais e hashes preservados externamente",
+    "validation.json/executions.json consolidados dos registros reais; README contextualiza escopo/limites"
+  ],
+  "notImported": [
+    "342 arquivos preservados",
+    "dist",
+    "node_modules",
+    "caches",
+    "deltas IMOB/WhatsApp",
+    "harnesses duplicados",
+    "arquivos de configuração privada"
+  ],
+  "sanitization": "Verificação de nomes/conteúdo e metadados selecionados; apenas dados sintéticos, sem credenciais reais fornecidas aos processos. Prefixos locais normalizados. Não adiciona env-files nem dados reais."
+}

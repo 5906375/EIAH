@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "check": "check:docs-link-integrity",
+  "filesChecked": 23,
+  "targets": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CODEX.md",
+    "IA_EIAH.md",
+    "docs/architecture/EIAH_MULTICHANNEL_IMPLEMENTATION_PLAN_v1.md",
+    "docs/architecture/EIAH_OUTPUTS_MATRIX_v1.md",
+    "docs/architecture/adr-imob-journey-governed-by-case.md",
+    "docs/architecture/agent-chat-runtime.md",
+    "docs/architecture/chat-runtime-entrypoint-debt.md",
+    "docs/architecture/chat-vertical-handoff-v2-shadow.md",
+    "docs/architecture/chat-vertical-handoff-v2.md",
+    "docs/architecture/chat-vertical-imob-preflight-playbook.md",
+    "docs/architecture/db-contract-lifecycle-decisions-v1.md",
+    "docs/architecture/db-contract-lifecycle-v1.md",
+    "docs/architecture/existing-structure-preflight.md",
+    "docs/architecture/fase-3-dividas-documentadas-closure.md",
+    "docs/architecture/imob-crm-governed-runtime.md",
+    "docs/architecture/mcp-contract-v1.md",
+    "docs/architecture/p3-economy-hardening-closure.md",
+    "docs/architecture/presentation-snapshot-v1.md",
+    "docs/architecture/vertical-context-imob.md",
+    "docs/architecture/white-label-runtime-gap.md",
+    "docs/architecture/worker-topology.md"
+  ]
+}

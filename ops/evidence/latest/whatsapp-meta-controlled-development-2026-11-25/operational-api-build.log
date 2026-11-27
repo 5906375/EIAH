@@ -1,0 +1,25 @@
+COMMAND ['timeout', '60s', 'pnpm', '--filter', '@eiah/api', 'build']
+
+> @eiah/api@ prebuild /home/jusall/projects/EIAH_BUILDER/apps/api
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/api@ build /home/jusall/projects/EIAH_BUILDER/apps/api
+> pnpm run typecheck && tsup --config tsup.config.ts
+
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_BUILDER/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+CLI Building entry: src/index.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: /home/jusall/projects/EIAH_BUILDER/apps/api/tsup.config.ts
+CLI Target: node22
+CLI Cleaning output folder
+ESM Build start
+ESM dist/index.js     3.66 MB
+ESM dist/index.js.map 6.89 MB
+ESM ⚡️ Build success in 512ms
+
+EXIT 0

@@ -1,0 +1,2985 @@
+{
+  "date": "2026-11-25",
+  "executedAt": "2026-11-25T20:34:17.128Z",
+  "result": "APROVADO",
+  "exitCode": 0,
+  "checks": {
+    "executed": 7,
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "probes": [
+    "Consumer entry paths and named exports",
+    "Transitive core file/chunk graph",
+    "Existing formal-dist smoke adapted for shared constructor",
+    "Four provider subclasses share LLMProvider",
+    "Adapter LLMProviderError identity through registry/router/completion",
+    "RetryExhaustedError identity and completion cause unwrapping",
+    "WorkerTopologyConfigError identity in pure leaf"
+  ],
+  "manifests": [
+    {
+      "path": "apps/api/package.json",
+      "name": "@eiah/api",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": true,
+      "role": "API consumer"
+    },
+    {
+      "path": "packages/providers/package.json",
+      "name": "@eiah/providers",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": true,
+      "role": "provider leaves copied as package and inlined into API"
+    },
+    {
+      "path": "packages/mcp-runner/package.json",
+      "name": "@repo/mcp-runner",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": true,
+      "role": "manifest dependency; no runtime core imports in MCP sources; inlined into API"
+    },
+    {
+      "path": "apps/cli/package.json",
+      "name": "@eiah/cli",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": false,
+      "role": "separate delivery; not in API image"
+    },
+    {
+      "path": "apps/workers/action-runner/package.json",
+      "name": "@eiah/workers/action-runner",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": false,
+      "role": "separate delivery; not in API image"
+    },
+    {
+      "path": "apps/workers/maintenance-worker/package.json",
+      "name": "@eiah/workers/maintenance-worker",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": false,
+      "role": "separate delivery; not in API image"
+    },
+    {
+      "path": "apps/workers/run-worker/package.json",
+      "name": "@eiah/workers/run-worker",
+      "coreDependency": "workspace:*",
+      "includedInApiImage": false,
+      "role": "separate delivery; not in API image"
+    }
+  ],
+  "consumerFiles": [
+    "apps/api/dist/index.js",
+    "packages/providers/dist/AnthropicProvider.js",
+    "packages/providers/dist/DeepSeekProvider.js",
+    "packages/providers/dist/GeminiProvider.js",
+    "packages/providers/dist/OpenAIProvider.js",
+    "packages/providers/dist/index.js"
+  ],
+  "consumerImports": [
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "COMMERCIAL_AUTHORITY_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "listRegisteredActions"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "aadvProfile",
+        "defiOneProfile",
+        "diariasProfile",
+        "eiahProfile",
+        "finNexusProfile",
+        "flowOrchestratorProfile",
+        "guardianProfile",
+        "iBcProfile",
+        "imageNftDiariasProfile",
+        "j360Profile",
+        "marketingProfile",
+        "nftPyProfile",
+        "onchainMonitorProfile",
+        "pitchProfileThinking",
+        "riskAnalyzerProfile"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceActionPolicyProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "getProductDefaultActionPolicies"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceActionPolicyProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "getProductDefaultActionPolicies"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceAgentProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "getProductProvisionedAgents",
+        "WORKSPACE_AGENT_PROVISIONING_VERSION"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/connection",
+      "dynamic": false,
+      "bindings": [
+        "getRedisConnection"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "publishRun"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "TenantPolicyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "bindLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailLedger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailLedger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit",
+        "recordGuardrailLedger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "checkScopePermission"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "COMMERCIAL_AUTHORITY_SCOPE_CATALOG"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/tenantInvoiceService",
+      "dynamic": false,
+      "bindings": [
+        "calculateInvoiceAmounts",
+        "generateMonthlyInvoice",
+        "resolvePlanPricingProfile"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "FINANCIAL_AUTHORITY_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "FINANCIAL_AUTHORITY_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "FINANCIAL_AUTHORITY_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/actionQueue",
+      "dynamic": false,
+      "bindings": [
+        "publishAction"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/governedOperationCatalog",
+      "dynamic": false,
+      "bindings": [
+        "BILLING_RUN_COST_DEBIT_OPERATION_ID",
+        "getGovernedOperation"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/billing/reconciliation",
+      "dynamic": false,
+      "bindings": [
+        "calculateBillingReconciliation",
+        "resolveLimit",
+        "BLOCKED_ERROR_CODE_TO_CATEGORY"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "publishRun"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/mcpGovernanceEnv",
+      "dynamic": false,
+      "bindings": [
+        "parseMcpEnforceContractsEnv",
+        "parseMcpProxyAllActionsEnv"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "createLedgerBackedIdempotencyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "TenantPolicyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceAgentProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "getProductProvisionedAgents"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/runQueue",
+      "dynamic": false,
+      "bindings": [
+        "drainRunDlq",
+        "drainRunQueue",
+        "getRunDlqCounts",
+        "getRunQueueCounts"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/actionQueue",
+      "dynamic": false,
+      "bindings": [
+        "drainActionDlq",
+        "drainActionQueue",
+        "getActionDlqCounts",
+        "getActionQueueCounts"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/maintenanceQueue",
+      "dynamic": false,
+      "bindings": [
+        "drainMaintenanceDlq",
+        "drainMaintenanceQueue",
+        "getMaintenanceDlqCounts",
+        "getMaintenanceQueueCounts"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/runQueue",
+      "dynamic": false,
+      "bindings": [
+        "redriveRunQueue"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "isReservedAuthorityScopeName"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "checkScopePermission"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "AgentOrchestrator",
+        "ConsoleTelemetryBridge",
+        "DefaultPlanManager",
+        "buildRecommendationPrompt",
+        "generateStatefulRecommendations",
+        "publishAction",
+        "createActionQueueEvents",
+        "consume",
+        "createLogger",
+        "bindLogger",
+        "withCostContext",
+        "enqueueRunAtivoUniversal",
+        "PlanStepStore",
+        "executeRegisteredAction",
+        "getRegisteredActionDefinitions",
+        "defaultRunGuardrails",
+        "runGuardrails",
+        "recordGuardrailAudit",
+        "requireRedisUrl"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "TenantPolicyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/completionEngine",
+      "dynamic": false,
+      "bindings": [
+        "runCompletion"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProviderError",
+      "dynamic": false,
+      "bindings": [
+        "llmFailureDiagnostic",
+        "llmDiagnosticIdentifier"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMRegistry",
+      "dynamic": false,
+      "bindings": [
+        "llmRegistry"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProviderError",
+      "dynamic": false,
+      "bindings": [
+        "LLMProviderError",
+        "llmDiagnosticIdentifier"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/mcpGovernanceEnv",
+      "dynamic": false,
+      "bindings": [
+        "parseMcpEnforceContractsEnv",
+        "parseMcpProxyAllActionsEnv",
+        "parseMcpDefaultVersionEnv"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "requireRedisUrl"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "MemoryService",
+        "PostgresLongTermMemoryStore",
+        "PostgresVectorMemoryStore",
+        "PrismaMemorySnapshotStore",
+        "RedisShortTermMemoryStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "appendSignedHash"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/actions/reporting/j360LegalReportSchema",
+      "dynamic": false,
+      "bindings": [
+        "J360LegalReportSchema"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/actions/reporting/mktCampaignReportSchema",
+      "dynamic": false,
+      "bindings": [
+        "MktCampaignReportSchema"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/actions/reporting/recipeOrchestrationSchema",
+      "dynamic": false,
+      "bindings": [
+        "RecipeOrchestrationSchema"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "createLogger",
+        "requireRedisUrl"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "bindLogger",
+        "createLogger",
+        "ensureTraceId"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": true,
+      "bindings": []
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "VersionedActionRegistry",
+        "registerAllActions"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "registerAction"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "ADMIN_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "COMMERCIAL_AUTHORITY_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "queueSnapshot"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/snapshot",
+      "dynamic": false,
+      "bindings": [
+        "queueSnapshot"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "ADMIN_SCOPES"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "TenantPolicyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "TenantPolicyStore"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceAgentProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "FRONT_DOOR_AGENTS",
+        "WORKSPACE_AGENT_PROVISIONING_VERSION"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/catalog/workspaceAgentProvisioning",
+      "dynamic": false,
+      "bindings": [
+        "FRONT_DOOR_AGENTS",
+        "WORKSPACE_AGENT_PROVISIONING_VERSION"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "publishRun"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProviderError",
+      "dynamic": false,
+      "bindings": [
+        "llmFailureDiagnostic",
+        "llmDiagnosticIdentifier"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/security/killSwitch",
+      "dynamic": false,
+      "bindings": [
+        "resolveTenantCapabilityFlag"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/llm/LLMProviderError",
+      "dynamic": false,
+      "bindings": [
+        "isLLMProviderError",
+        "llmFailureDiagnostic",
+        "llmDiagnosticIdentifier"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "requireRedisUrl"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/tenantInvoiceService",
+      "dynamic": false,
+      "bindings": [
+        "resolvePlanPricingProfile"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "checkScopePermission"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/services/guardrailLedgerStore",
+      "dynamic": false,
+      "bindings": [
+        "recordGuardrailAudit"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core",
+      "dynamic": false,
+      "bindings": [
+        "createLogger",
+        "bindLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/connection",
+      "dynamic": false,
+      "bindings": [
+        "getRedisConnection"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/runQueue",
+      "dynamic": false,
+      "bindings": [
+        "closeRunQueueConnections"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/policy/TenantPolicyStore",
+      "dynamic": false,
+      "bindings": [
+        "closeTenantPolicyStoreResources"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/security/killSwitch",
+      "dynamic": false,
+      "bindings": [
+        "closeCriticalKillSwitchRedis"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/workerTopology",
+      "dynamic": false,
+      "bindings": [
+        "resolveWorkerTopology"
+      ]
+    },
+    {
+      "consumer": "apps/api/dist/index.js",
+      "specifier": "@eiah/core/queue/workerOwnershipLease",
+      "dynamic": false,
+      "bindings": [
+        "acquireWorkerOwnershipLease"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/AnthropicProvider.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/DeepSeekProvider.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/GeminiProvider.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/OpenAIProvider.js",
+      "specifier": "@eiah/core/llm/LLMProvider",
+      "dynamic": false,
+      "bindings": [
+        "LLMProvider"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/OpenAIProvider.js",
+      "specifier": "@eiah/core/llm/LLMProviderError",
+      "dynamic": false,
+      "bindings": [
+        "LLMProviderError",
+        "llmDiagnosticIdentifier"
+      ]
+    },
+    {
+      "consumer": "packages/providers/dist/OpenAIProvider.js",
+      "specifier": "@eiah/core/logging/logger",
+      "dynamic": false,
+      "bindings": [
+        "createLogger"
+      ]
+    }
+  ],
+  "resolvedEntries": {
+    "@eiah/core/services/guardrailLedgerStore": "packages/core/dist/services/guardrailLedgerStore.js",
+    "@eiah/core": "packages/core/dist/index.js",
+    "@eiah/core/catalog/workspaceActionPolicyProvisioning": "packages/core/dist/catalog/workspaceActionPolicyProvisioning.js",
+    "@eiah/core/catalog/workspaceAgentProvisioning": "packages/core/dist/catalog/workspaceAgentProvisioning.js",
+    "@eiah/core/queue/connection": "packages/core/dist/queue/connection.js",
+    "@eiah/core/logging/logger": "packages/core/dist/logging/logger.js",
+    "@eiah/core/policy/TenantPolicyStore": "packages/core/dist/policy/TenantPolicyStore.js",
+    "@eiah/core/services/tenantInvoiceService": "packages/core/dist/services/tenantInvoiceService.js",
+    "@eiah/core/queue/actionQueue": "packages/core/dist/queue/actionQueue.js",
+    "@eiah/core/catalog/governedOperationCatalog": "packages/core/dist/catalog/governedOperationCatalog.js",
+    "@eiah/core/billing/reconciliation": "packages/core/dist/billing/reconciliation.js",
+    "@eiah/core/services/mcpGovernanceEnv": "packages/core/dist/services/mcpGovernanceEnv.js",
+    "@eiah/core/queue/runQueue": "packages/core/dist/queue/runQueue.js",
+    "@eiah/core/queue/maintenanceQueue": "packages/core/dist/queue/maintenanceQueue.js",
+    "@eiah/core/llm/completionEngine": "packages/core/dist/llm/completionEngine.js",
+    "@eiah/core/llm/LLMProviderError": "packages/core/dist/llm/LLMProviderError.js",
+    "@eiah/core/llm/LLMRegistry": "packages/core/dist/llm/LLMRegistry.js",
+    "@eiah/core/llm/LLMProvider": "packages/core/dist/llm/LLMProvider.js",
+    "@eiah/core/actions/reporting/j360LegalReportSchema": "packages/core/dist/actions/reporting/j360LegalReportSchema.js",
+    "@eiah/core/actions/reporting/mktCampaignReportSchema": "packages/core/dist/actions/reporting/mktCampaignReportSchema.js",
+    "@eiah/core/actions/reporting/recipeOrchestrationSchema": "packages/core/dist/actions/reporting/recipeOrchestrationSchema.js",
+    "@eiah/core/queue/snapshot": "packages/core/dist/queue/snapshot.js",
+    "@eiah/core/security/killSwitch": "packages/core/dist/security/killSwitch.js",
+    "@eiah/core/queue/workerTopology": "packages/core/dist/queue/workerTopology.js",
+    "@eiah/core/queue/workerOwnershipLease": "packages/core/dist/queue/workerOwnershipLease.js"
+  },
+  "namedBindingsChecked": 169,
+  "graph": {
+    "modules": [
+      "packages/core/dist/services/guardrailLedgerStore.js",
+      "packages/core/dist/chunk-3EATMUSJ.js",
+      "packages/core/dist/chunk-424PT5DM.js",
+      "packages/core/dist/index.js",
+      "packages/core/dist/chunk-T5IVZEJV.js",
+      "packages/core/dist/chunk-LTWXFA52.js",
+      "packages/core/dist/chunk-TXP2IHKM.js",
+      "packages/core/dist/chunk-XADEOMR4.js",
+      "packages/core/dist/chunk-5TCXA5MP.js",
+      "packages/core/dist/chunk-OJ6RDHLL.js",
+      "packages/core/dist/chunk-OLHZGYXK.js",
+      "packages/core/dist/chunk-J6H767DG.js",
+      "packages/core/dist/chunk-S6GHMKMW.js",
+      "packages/core/dist/chunk-JGJMPNX7.js",
+      "packages/core/dist/chunk-5KT3WB3O.js",
+      "packages/core/dist/chunk-NBDL7WSH.js",
+      "packages/core/dist/chunk-3FCY2DN4.js",
+      "packages/core/dist/chunk-7YJTIZGK.js",
+      "packages/core/dist/chunk-ODSH63U3.js",
+      "packages/core/dist/chunk-IJGDXQ5A.js",
+      "packages/core/dist/chunk-T3RZCBN2.js",
+      "packages/core/dist/chunk-5C2TNWN2.js",
+      "packages/core/dist/chunk-MBFZUNSD.js",
+      "packages/core/dist/chunk-DTZDXVB2.js",
+      "packages/core/dist/chunk-AI4CU5W4.js",
+      "packages/core/dist/chunk-NCGZ5VGM.js",
+      "packages/core/dist/chunk-VW2UVK5X.js",
+      "packages/core/dist/chunk-IP426BZD.js",
+      "packages/core/dist/chunk-BKZX3YK6.js",
+      "packages/core/dist/chunk-YXZ5NBFR.js",
+      "packages/core/dist/chunk-ZNSZSEHU.js",
+      "packages/core/dist/chunk-T6HPBBU3.js",
+      "packages/core/dist/chunk-2WLQ23ZR.js",
+      "packages/core/dist/chunk-MGGB3C6J.js",
+      "packages/core/dist/chunk-MVDQPRGU.js",
+      "packages/core/dist/chunk-OQIRAGGO.js",
+      "packages/core/dist/chunk-3C5UANV7.js",
+      "packages/core/dist/chunk-IOVVL5L5.js",
+      "packages/core/dist/chunk-IN4WJEOC.js",
+      "packages/core/dist/chunk-FXUKIZXZ.js",
+      "packages/core/dist/chunk-OHDGBRPI.js",
+      "packages/core/dist/chunk-Y5DX27F7.js",
+      "packages/core/dist/chunk-WKV4LBLL.js",
+      "packages/core/dist/chunk-XJEDWFS3.js",
+      "packages/core/dist/chunk-Y3NAHTST.js",
+      "packages/core/dist/chunk-H2ACEHYF.js",
+      "packages/core/dist/chunk-WNQURWCF.js",
+      "packages/core/dist/chunk-LFH342PK.js",
+      "packages/core/dist/chunk-C26TQ75V.js",
+      "packages/core/dist/chunk-HZUTD6XT.js",
+      "packages/core/dist/chunk-NAVGCSWE.js",
+      "packages/core/dist/chunk-KARVQAJX.js",
+      "packages/core/dist/chunk-Y4VZDHIC.js",
+      "packages/core/dist/chunk-FL3TGXLF.js",
+      "packages/core/dist/chunk-AKB5K4JR.js",
+      "packages/core/dist/chunk-2O6445PZ.js",
+      "packages/core/dist/chunk-JAYMXQS3.js",
+      "packages/core/dist/chunk-ZB4VG7QL.js",
+      "packages/core/dist/chunk-5S2B34DO.js",
+      "packages/core/dist/chunk-JZWD4A4R.js",
+      "packages/core/dist/chunk-BIM7PTCQ.js",
+      "packages/core/dist/chunk-NDXPYMYF.js",
+      "packages/core/dist/chunk-46SAYSYD.js",
+      "packages/core/dist/chunk-CM5G5GDI.js",
+      "packages/core/dist/chunk-7XJNFX6Q.js",
+      "packages/core/dist/chunk-UXAJDOVM.js",
+      "packages/core/dist/chunk-YE7OW3HE.js",
+      "packages/core/dist/chunk-G7MAJCD3.js",
+      "packages/core/dist/chunk-KEDTFNSQ.js",
+      "packages/core/dist/chunk-UGQU7FMI.js",
+      "packages/core/dist/chunk-F6BX46OD.js",
+      "packages/core/dist/chunk-O7NJVQY6.js",
+      "packages/core/dist/chunk-ITJCVKQC.js",
+      "packages/core/dist/chunk-TZC7WCTV.js",
+      "packages/core/dist/chunk-NNCPNRZC.js",
+      "packages/core/dist/chunk-57HTLRKE.js",
+      "packages/core/dist/integrations-IGHIWNFT.js",
+      "packages/core/dist/catalog/workspaceActionPolicyProvisioning.js",
+      "packages/core/dist/catalog/workspaceAgentProvisioning.js",
+      "packages/core/dist/chunk-U5SIDYCS.js",
+      "packages/core/dist/queue/connection.js",
+      "packages/core/dist/logging/logger.js",
+      "packages/core/dist/policy/TenantPolicyStore.js",
+      "packages/core/dist/services/tenantInvoiceService.js",
+      "packages/core/dist/queue/actionQueue.js",
+      "packages/core/dist/catalog/governedOperationCatalog.js",
+      "packages/core/dist/chunk-OVTDCE7D.js",
+      "packages/core/dist/billing/reconciliation.js",
+      "packages/core/dist/services/mcpGovernanceEnv.js",
+      "packages/core/dist/queue/runQueue.js",
+      "packages/core/dist/queue/maintenanceQueue.js",
+      "packages/core/dist/llm/completionEngine.js",
+      "packages/core/dist/llm/LLMProviderError.js",
+      "packages/core/dist/llm/LLMRegistry.js",
+      "packages/core/dist/llm/LLMProvider.js",
+      "packages/core/dist/actions/reporting/j360LegalReportSchema.js",
+      "packages/core/dist/actions/reporting/mktCampaignReportSchema.js",
+      "packages/core/dist/actions/reporting/recipeOrchestrationSchema.js",
+      "packages/core/dist/queue/snapshot.js",
+      "packages/core/dist/security/killSwitch.js",
+      "packages/core/dist/queue/workerTopology.js",
+      "packages/core/dist/chunk-HBL4TSCV.js",
+      "packages/core/dist/queue/workerOwnershipLease.js",
+      "packages/core/dist/chunk-SDDIETUH.js"
+    ],
+    "chunks": [
+      "packages/core/dist/chunk-3EATMUSJ.js",
+      "packages/core/dist/chunk-424PT5DM.js",
+      "packages/core/dist/chunk-T5IVZEJV.js",
+      "packages/core/dist/chunk-LTWXFA52.js",
+      "packages/core/dist/chunk-TXP2IHKM.js",
+      "packages/core/dist/chunk-XADEOMR4.js",
+      "packages/core/dist/chunk-5TCXA5MP.js",
+      "packages/core/dist/chunk-OJ6RDHLL.js",
+      "packages/core/dist/chunk-OLHZGYXK.js",
+      "packages/core/dist/chunk-J6H767DG.js",
+      "packages/core/dist/chunk-S6GHMKMW.js",
+      "packages/core/dist/chunk-JGJMPNX7.js",
+      "packages/core/dist/chunk-5KT3WB3O.js",
+      "packages/core/dist/chunk-NBDL7WSH.js",
+      "packages/core/dist/chunk-3FCY2DN4.js",
+      "packages/core/dist/chunk-7YJTIZGK.js",
+      "packages/core/dist/chunk-ODSH63U3.js",
+      "packages/core/dist/chunk-IJGDXQ5A.js",
+      "packages/core/dist/chunk-T3RZCBN2.js",
+      "packages/core/dist/chunk-5C2TNWN2.js",
+      "packages/core/dist/chunk-MBFZUNSD.js",
+      "packages/core/dist/chunk-DTZDXVB2.js",
+      "packages/core/dist/chunk-AI4CU5W4.js",
+      "packages/core/dist/chunk-NCGZ5VGM.js",
+      "packages/core/dist/chunk-VW2UVK5X.js",
+      "packages/core/dist/chunk-IP426BZD.js",
+      "packages/core/dist/chunk-BKZX3YK6.js",
+      "packages/core/dist/chunk-YXZ5NBFR.js",
+      "packages/core/dist/chunk-ZNSZSEHU.js",
+      "packages/core/dist/chunk-T6HPBBU3.js",
+      "packages/core/dist/chunk-2WLQ23ZR.js",
+      "packages/core/dist/chunk-MGGB3C6J.js",
+      "packages/core/dist/chunk-MVDQPRGU.js",
+      "packages/core/dist/chunk-OQIRAGGO.js",
+      "packages/core/dist/chunk-3C5UANV7.js",
+      "packages/core/dist/chunk-IOVVL5L5.js",
+      "packages/core/dist/chunk-IN4WJEOC.js",
+      "packages/core/dist/chunk-FXUKIZXZ.js",
+      "packages/core/dist/chunk-OHDGBRPI.js",
+      "packages/core/dist/chunk-Y5DX27F7.js",
+      "packages/core/dist/chunk-WKV4LBLL.js",
+      "packages/core/dist/chunk-XJEDWFS3.js",
+      "packages/core/dist/chunk-Y3NAHTST.js",
+      "packages/core/dist/chunk-H2ACEHYF.js",
+      "packages/core/dist/chunk-WNQURWCF.js",
+      "packages/core/dist/chunk-LFH342PK.js",
+      "packages/core/dist/chunk-C26TQ75V.js",
+      "packages/core/dist/chunk-HZUTD6XT.js",
+      "packages/core/dist/chunk-NAVGCSWE.js",
+      "packages/core/dist/chunk-KARVQAJX.js",
+      "packages/core/dist/chunk-Y4VZDHIC.js",
+      "packages/core/dist/chunk-FL3TGXLF.js",
+      "packages/core/dist/chunk-AKB5K4JR.js",
+      "packages/core/dist/chunk-2O6445PZ.js",
+      "packages/core/dist/chunk-JAYMXQS3.js",
+      "packages/core/dist/chunk-ZB4VG7QL.js",
+      "packages/core/dist/chunk-5S2B34DO.js",
+      "packages/core/dist/chunk-JZWD4A4R.js",
+      "packages/core/dist/chunk-BIM7PTCQ.js",
+      "packages/core/dist/chunk-NDXPYMYF.js",
+      "packages/core/dist/chunk-46SAYSYD.js",
+      "packages/core/dist/chunk-CM5G5GDI.js",
+      "packages/core/dist/chunk-7XJNFX6Q.js",
+      "packages/core/dist/chunk-UXAJDOVM.js",
+      "packages/core/dist/chunk-YE7OW3HE.js",
+      "packages/core/dist/chunk-G7MAJCD3.js",
+      "packages/core/dist/chunk-KEDTFNSQ.js",
+      "packages/core/dist/chunk-UGQU7FMI.js",
+      "packages/core/dist/chunk-F6BX46OD.js",
+      "packages/core/dist/chunk-O7NJVQY6.js",
+      "packages/core/dist/chunk-ITJCVKQC.js",
+      "packages/core/dist/chunk-TZC7WCTV.js",
+      "packages/core/dist/chunk-NNCPNRZC.js",
+      "packages/core/dist/chunk-57HTLRKE.js",
+      "packages/core/dist/chunk-U5SIDYCS.js",
+      "packages/core/dist/chunk-OVTDCE7D.js",
+      "packages/core/dist/chunk-HBL4TSCV.js",
+      "packages/core/dist/chunk-SDDIETUH.js"
+    ],
+    "edges": [
+      {
+        "from": "packages/core/dist/services/guardrailLedgerStore.js",
+        "to": "packages/core/dist/chunk-3EATMUSJ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/services/guardrailLedgerStore.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-T5IVZEJV.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-LTWXFA52.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-TXP2IHKM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-TXP2IHKM.js",
+        "to": "packages/core/dist/chunk-XADEOMR4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-5TCXA5MP.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-OJ6RDHLL.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-OLHZGYXK.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-J6H767DG.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-J6H767DG.js",
+        "to": "packages/core/dist/chunk-S6GHMKMW.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-S6GHMKMW.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-S6GHMKMW.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-J6H767DG.js",
+        "to": "packages/core/dist/chunk-NBDL7WSH.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-NBDL7WSH.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-J6H767DG.js",
+        "to": "packages/core/dist/chunk-3FCY2DN4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-3FCY2DN4.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-3FCY2DN4.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-S6GHMKMW.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-7YJTIZGK.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-ODSH63U3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-IJGDXQ5A.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-NBDL7WSH.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-T3RZCBN2.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-T3RZCBN2.js",
+        "to": "packages/core/dist/chunk-5C2TNWN2.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-5C2TNWN2.js",
+        "to": "packages/core/dist/chunk-MBFZUNSD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MBFZUNSD.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-T3RZCBN2.js",
+        "to": "packages/core/dist/chunk-MBFZUNSD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-5C2TNWN2.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-MBFZUNSD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-DTZDXVB2.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-AI4CU5W4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-NCGZ5VGM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-VW2UVK5X.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-IP426BZD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-BKZX3YK6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-YXZ5NBFR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-YXZ5NBFR.js",
+        "to": "packages/core/dist/chunk-ZNSZSEHU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AI4CU5W4.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-NCGZ5VGM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-VW2UVK5X.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-IP426BZD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-BKZX3YK6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-YXZ5NBFR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-ZNSZSEHU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-T6HPBBU3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-2WLQ23ZR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-2WLQ23ZR.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-MGGB3C6J.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-MVDQPRGU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-OQIRAGGO.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OQIRAGGO.js",
+        "to": "packages/core/dist/chunk-3C5UANV7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OQIRAGGO.js",
+        "to": "packages/core/dist/chunk-IOVVL5L5.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OQIRAGGO.js",
+        "to": "packages/core/dist/chunk-IN4WJEOC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OQIRAGGO.js",
+        "to": "packages/core/dist/chunk-FXUKIZXZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-OHDGBRPI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OHDGBRPI.js",
+        "to": "packages/core/dist/chunk-3C5UANV7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-OHDGBRPI.js",
+        "to": "packages/core/dist/chunk-Y5DX27F7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-Y5DX27F7.js",
+        "to": "packages/core/dist/chunk-FXUKIZXZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-WKV4LBLL.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-WKV4LBLL.js",
+        "to": "packages/core/dist/chunk-IOVVL5L5.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-XJEDWFS3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-XJEDWFS3.js",
+        "to": "packages/core/dist/chunk-IN4WJEOC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-XJEDWFS3.js",
+        "to": "packages/core/dist/chunk-Y5DX27F7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-Y5DX27F7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-Y3NAHTST.js",
+        "to": "packages/core/dist/chunk-H2ACEHYF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-H2ACEHYF.js",
+        "to": "packages/core/dist/chunk-3EATMUSJ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-H2ACEHYF.js",
+        "to": "packages/core/dist/chunk-XADEOMR4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-LFH342PK.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-C26TQ75V.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-C26TQ75V.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-NAVGCSWE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-NAVGCSWE.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-KARVQAJX.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-KARVQAJX.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-Y4VZDHIC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-Y4VZDHIC.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-FL3TGXLF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-FL3TGXLF.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-AKB5K4JR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-AKB5K4JR.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-2O6445PZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-2O6445PZ.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-JAYMXQS3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-JAYMXQS3.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-ZB4VG7QL.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-ZB4VG7QL.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-5S2B34DO.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-5S2B34DO.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-JZWD4A4R.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-JZWD4A4R.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-BIM7PTCQ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-BIM7PTCQ.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-NDXPYMYF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-NDXPYMYF.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-46SAYSYD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-46SAYSYD.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-CM5G5GDI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-CM5G5GDI.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-LFH342PK.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-7XJNFX6Q.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-7XJNFX6Q.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-7XJNFX6Q.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-UXAJDOVM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-UXAJDOVM.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-UXAJDOVM.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-YE7OW3HE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-YE7OW3HE.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-YE7OW3HE.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-G7MAJCD3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-G7MAJCD3.js",
+        "to": "packages/core/dist/chunk-3FCY2DN4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-G7MAJCD3.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-G7MAJCD3.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-KEDTFNSQ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-KEDTFNSQ.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-KEDTFNSQ.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-UGQU7FMI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-UGQU7FMI.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-UGQU7FMI.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-F6BX46OD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-F6BX46OD.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-F6BX46OD.js",
+        "to": "packages/core/dist/chunk-O7NJVQY6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/chunk-MGGB3C6J.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-MVDQPRGU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-OQIRAGGO.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-OHDGBRPI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-3C5UANV7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-WKV4LBLL.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-IOVVL5L5.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-ITJCVKQC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-TZC7WCTV.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-XJEDWFS3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-IN4WJEOC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-Y5DX27F7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-FXUKIZXZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-LFH342PK.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-C26TQ75V.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-NNCPNRZC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-NAVGCSWE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-KARVQAJX.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-Y4VZDHIC.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-FL3TGXLF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-AKB5K4JR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-2O6445PZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-JAYMXQS3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-ZB4VG7QL.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-5S2B34DO.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-JZWD4A4R.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-BIM7PTCQ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-NDXPYMYF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-46SAYSYD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-CM5G5GDI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-HZUTD6XT.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-7XJNFX6Q.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-UXAJDOVM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-YE7OW3HE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-G7MAJCD3.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-3FCY2DN4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-KEDTFNSQ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-UGQU7FMI.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-F6BX46OD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-Y3NAHTST.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-H2ACEHYF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-3EATMUSJ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-XADEOMR4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-O7NJVQY6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-WNQURWCF.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/integrations-IGHIWNFT.js",
+        "dynamic": true
+      },
+      {
+        "from": "packages/core/dist/integrations-IGHIWNFT.js",
+        "to": "packages/core/dist/chunk-3EATMUSJ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/integrations-IGHIWNFT.js",
+        "to": "packages/core/dist/chunk-XADEOMR4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/integrations-IGHIWNFT.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "to": "packages/core/dist/services/guardrailLedgerStore.js",
+        "dynamic": true
+      },
+      {
+        "from": "packages/core/dist/catalog/workspaceActionPolicyProvisioning.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/catalog/workspaceAgentProvisioning.js",
+        "to": "packages/core/dist/chunk-U5SIDYCS.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/catalog/workspaceAgentProvisioning.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/connection.js",
+        "to": "packages/core/dist/chunk-MBFZUNSD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/connection.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/connection.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/logging/logger.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/logging/logger.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/policy/TenantPolicyStore.js",
+        "to": "packages/core/dist/chunk-IJGDXQ5A.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/policy/TenantPolicyStore.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/services/tenantInvoiceService.js",
+        "to": "packages/core/dist/chunk-T5IVZEJV.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/services/tenantInvoiceService.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/actionQueue.js",
+        "to": "packages/core/dist/chunk-3FCY2DN4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/actionQueue.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/actionQueue.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/actionQueue.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/actionQueue.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/catalog/governedOperationCatalog.js",
+        "to": "packages/core/dist/chunk-OVTDCE7D.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/catalog/governedOperationCatalog.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/billing/reconciliation.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/services/mcpGovernanceEnv.js",
+        "to": "packages/core/dist/chunk-5TCXA5MP.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/services/mcpGovernanceEnv.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/runQueue.js",
+        "to": "packages/core/dist/chunk-S6GHMKMW.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/runQueue.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/runQueue.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/runQueue.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/runQueue.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/maintenanceQueue.js",
+        "to": "packages/core/dist/chunk-NBDL7WSH.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/maintenanceQueue.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/maintenanceQueue.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/maintenanceQueue.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-AI4CU5W4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-NCGZ5VGM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-VW2UVK5X.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-IP426BZD.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-BKZX3YK6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-YXZ5NBFR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-ZNSZSEHU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/completionEngine.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMProviderError.js",
+        "to": "packages/core/dist/chunk-BKZX3YK6.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMProviderError.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMRegistry.js",
+        "to": "packages/core/dist/chunk-ZNSZSEHU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMRegistry.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMProvider.js",
+        "to": "packages/core/dist/chunk-DTZDXVB2.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMProvider.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/j360LegalReportSchema.js",
+        "to": "packages/core/dist/chunk-3C5UANV7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/j360LegalReportSchema.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/mktCampaignReportSchema.js",
+        "to": "packages/core/dist/chunk-IOVVL5L5.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/mktCampaignReportSchema.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/recipeOrchestrationSchema.js",
+        "to": "packages/core/dist/chunk-FXUKIZXZ.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/actions/reporting/recipeOrchestrationSchema.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-J6H767DG.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-S6GHMKMW.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-NBDL7WSH.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-3FCY2DN4.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-57HTLRKE.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-JGJMPNX7.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/snapshot.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/security/killSwitch.js",
+        "to": "packages/core/dist/chunk-5KT3WB3O.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/security/killSwitch.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/workerTopology.js",
+        "to": "packages/core/dist/chunk-HBL4TSCV.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/workerTopology.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/workerOwnershipLease.js",
+        "to": "packages/core/dist/chunk-SDDIETUH.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/queue/workerOwnershipLease.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMRouter.js",
+        "to": "packages/core/dist/chunk-YXZ5NBFR.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMRouter.js",
+        "to": "packages/core/dist/chunk-ZNSZSEHU.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/llm/LLMRouter.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/utils/retry.js",
+        "to": "packages/core/dist/chunk-NCGZ5VGM.js",
+        "dynamic": false
+      },
+      {
+        "from": "packages/core/dist/utils/retry.js",
+        "to": "packages/core/dist/chunk-424PT5DM.js",
+        "dynamic": false
+      }
+    ],
+    "externals": [
+      {
+        "from": "packages/core/dist/chunk-3EATMUSJ.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-3EATMUSJ.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "Prisma"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-LTWXFA52.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-XADEOMR4.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-TXP2IHKM.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-TXP2IHKM.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "prismaGlobal"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-OJ6RDHLL.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "Prisma"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-OLHZGYXK.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "prismaGlobal"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-JGJMPNX7.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": [
+          "randomUUID"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-JGJMPNX7.js",
+        "specifier": "pino",
+        "dynamic": false,
+        "bindings": [
+          "stdTimeFunctions"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-S6GHMKMW.js",
+        "specifier": "@eiah/contracts",
+        "dynamic": false,
+        "bindings": [
+          "QueueName",
+          "RunJobName"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-S6GHMKMW.js",
+        "specifier": "bullmq",
+        "dynamic": true,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-NBDL7WSH.js",
+        "specifier": "@eiah/contracts",
+        "dynamic": false,
+        "bindings": [
+          "MaintenanceJobName",
+          "QueueName"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-NBDL7WSH.js",
+        "specifier": "bullmq",
+        "dynamic": true,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-3FCY2DN4.js",
+        "specifier": "dotenv/config",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-3FCY2DN4.js",
+        "specifier": "@eiah/contracts",
+        "dynamic": false,
+        "bindings": [
+          "ActionJobName",
+          "QueueName"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-3FCY2DN4.js",
+        "specifier": "bullmq",
+        "dynamic": true,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-IJGDXQ5A.js",
+        "specifier": "@repo/db",
+        "dynamic": true,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-5C2TNWN2.js",
+        "specifier": "bullmq",
+        "dynamic": false,
+        "bindings": [
+          "Queue"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-T3RZCBN2.js",
+        "specifier": "bullmq",
+        "dynamic": false,
+        "bindings": [
+          "Queue"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-2WLQ23ZR.js",
+        "specifier": "ioredis",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-3C5UANV7.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-IOVVL5L5.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-IN4WJEOC.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-FXUKIZXZ.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-OQIRAGGO.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-H2ACEHYF.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-H2ACEHYF.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "Prisma",
+          "prismaGlobal"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-MVDQPRGU.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-7XJNFX6Q.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-UXAJDOVM.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-YE7OW3HE.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-G7MAJCD3.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-G7MAJCD3.js",
+        "specifier": "@eiah/contracts",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-KEDTFNSQ.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-UGQU7FMI.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-O7NJVQY6.js",
+        "specifier": "fs",
+        "dynamic": false,
+        "bindings": [
+          "existsSync"
+        ]
+      },
+      {
+        "from": "packages/core/dist/chunk-O7NJVQY6.js",
+        "specifier": "fs/promises",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-O7NJVQY6.js",
+        "specifier": "path",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-F6BX46OD.js",
+        "specifier": "path",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/chunk-F6BX46OD.js",
+        "specifier": "zod",
+        "dynamic": false,
+        "bindings": [
+          "z"
+        ]
+      },
+      {
+        "from": "packages/core/dist/integrations-IGHIWNFT.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/integrations-IGHIWNFT.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "prismaGlobal"
+        ]
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "specifier": "@repo/db",
+        "dynamic": false,
+        "bindings": [
+          "Prisma"
+        ]
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "specifier": "crypto",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "specifier": "@eiah/contracts",
+        "dynamic": false,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/index.js",
+        "specifier": "@repo/db",
+        "dynamic": true,
+        "bindings": []
+      },
+      {
+        "from": "packages/core/dist/security/killSwitch.js",
+        "specifier": "ioredis",
+        "dynamic": false,
+        "bindings": []
+      }
+    ]
+  },
+  "sideEffectReview": {
+    "staticOnly": [
+      "apps/api/dist/index.js",
+      "packages/core/dist/index.js",
+      "packages/providers/dist/index.js"
+    ],
+    "reason": "API starts services; core barrel reaches DB/BullMQ/signer/queue modules; provider barrel is bundled into API and is not a plain-Node entry under its extensionless tsc output",
+    "executed": [
+      "@eiah/core/llm/LLMRegistry",
+      "@eiah/core/llm/LLMRouter",
+      "@eiah/core/llm/completionEngine",
+      "@eiah/core/llm/LLMProviderError",
+      "@eiah/core/llm/LLMProvider",
+      "@eiah/core/utils/retry",
+      "@eiah/core/queue/workerTopology",
+      "packages/providers/dist/AnthropicProvider.js",
+      "packages/providers/dist/DeepSeekProvider.js",
+      "packages/providers/dist/GeminiProvider.js",
+      "packages/providers/dist/OpenAIProvider.js"
+    ],
+    "constructors": "provider constructors only with synthetic keys; HTTP transport always injected",
+    "mcp": "API source-map incorporation checked; no standalone MCP load (no local standalone dist)"
+  },
+  "mcpSourcesInApi": [
+    "../../../packages/mcp-runner/src/registry/ToolRegistry.ts",
+    "../../../packages/mcp-runner/src/validator/SchemaValidator.ts",
+    "../../../packages/mcp-runner/src/executor/MCPCircuitBreaker.ts",
+    "../../../packages/mcp-runner/src/executor/dbAllowlist.ts",
+    "../../../packages/mcp-runner/src/executor/MCPExecutor.ts"
+  ],
+  "providerInheritance": [
+    "OpenAIProvider",
+    "AnthropicProvider",
+    "GeminiProvider",
+    "DeepSeekProvider"
+  ],
+  "reusedSmoke": "../EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs",
+  "reusedSmokeSha256": "dcd5196563f0f3d305248b844d65da4ec665469b534641d449d1698c23d00e5b",
+  "reusedSmokeSummaries": [
+    {
+      "ok": true,
+      "scope": "official dist outputs only; no HTTP/DB or full packaged application run",
+      "coreAndProviderImports": true,
+      "declarationsPresent": true,
+      "crossEntryFailureIdentity": true,
+      "syntheticQuotaInvocations": 1,
+      "idsSeparated": true,
+      "realProviderCalls": 0
+    }
+  ],
+  "syntheticAdapterTransportCalls": 1,
+  "syntheticTransientDispatches": 1,
+  "priorRegistryExecutorResultReused": "correction-results.json (5/5; all 43 hashes checked, no repetition)",
+  "blockedNetworkAttempts": 0,
+  "realProviderCalls": 0,
+  "serviceStarts": 0,
+  "buildsExecuted": 0,
+  "artifactsSha256": {
+    "packages/core/dist/services/guardrailLedgerStore.js": "25a55941f77f46c049140561097acff626af8cbf9e120294e5fdd3ca3c9b70c6",
+    "packages/core/dist/chunk-3EATMUSJ.js": "16a116f0c36c801c4858a455291dc13dd385ad35f9dab3ac30b46cb12ade2e54",
+    "packages/core/dist/chunk-424PT5DM.js": "fd960785f5073b0427f00945822fd17fe729f44b1a67f6254352f8f04a0c5c33",
+    "packages/core/dist/index.js": "d9c4e7a7cf3ab5f2dbab970ed90822aed0a458dd1e7d0efbdc319d6906e0d4f3",
+    "packages/core/dist/chunk-T5IVZEJV.js": "68c22293a6207d233c781fd5fde741dfae83b752f1ee77d7fde3266fe79371e4",
+    "packages/core/dist/chunk-LTWXFA52.js": "a3d1fd29aab65c4a4e04874023aad23584867a08a1ceb37b6485319981f547ce",
+    "packages/core/dist/chunk-TXP2IHKM.js": "6bcf4d04219a876b4f4fd71c78e38a8c4f0ae587a9a119547bb5b4be264101ad",
+    "packages/core/dist/chunk-XADEOMR4.js": "c8b661dad18995af31604f36c3da01c11ddee0cf9b912faac70be3cff575ec8c",
+    "packages/core/dist/chunk-5TCXA5MP.js": "e59281015e63e124fcc922aca358da06b9673b54f12eb7d2f43fdf2c5dabb1ba",
+    "packages/core/dist/chunk-OJ6RDHLL.js": "707f56a5eda3b91c0b742b6d57622a40be1a0d372584c999935d8cd81c8e765e",
+    "packages/core/dist/chunk-OLHZGYXK.js": "9804a32069ee1de6af82af6de3022a0fed246faed59f49256cd7fcc8fc106301",
+    "packages/core/dist/chunk-J6H767DG.js": "d48da1a97ce4264fb4bd1dc14d084183c79334ac610d6f54d4097df06e268466",
+    "packages/core/dist/chunk-S6GHMKMW.js": "504c5041d5e784df56d160a4a7688331b2ef98e358adc074e6884be5f90e73d4",
+    "packages/core/dist/chunk-JGJMPNX7.js": "d081301ddd87b42d3b2ab7e1c25470b5e0d720b4089f5a0d97c35bfb7ae78927",
+    "packages/core/dist/chunk-5KT3WB3O.js": "04aa3a3d8722fc92b5f7967efe257eb235a98f4121ac5cc887a3784a65619437",
+    "packages/core/dist/chunk-NBDL7WSH.js": "56711e0138c0a2942b06abf107d12438126cc71e01a9503e45b0b717da8cbd08",
+    "packages/core/dist/chunk-3FCY2DN4.js": "77f21b3e2dd1b016eaf460169d8fec70b6cd11b10402a0c029e494d5677e2191",
+    "packages/core/dist/chunk-7YJTIZGK.js": "32071815d074bcae45c5b8409f2e5046e3d8d8b2da5725a3545dd8729a255c33",
+    "packages/core/dist/chunk-ODSH63U3.js": "e870dbc51f3a0da97f819baad71132f0d74374f787fbb46b6d9b02d4be048977",
+    "packages/core/dist/chunk-IJGDXQ5A.js": "f1e53afcfbb0a4b76bed612d9a7ca756c1e65e5985e820890380ad9a466f0f37",
+    "packages/core/dist/chunk-T3RZCBN2.js": "8535d5868c671f7d8a173ef725d5cf8f9a80e8ba76d0b0bce4f34705b38d30fd",
+    "packages/core/dist/chunk-5C2TNWN2.js": "c0d6f8263326b7e1a8e63ba83741b1db59707e155fa25dd079e658a0375f4730",
+    "packages/core/dist/chunk-MBFZUNSD.js": "199f0a25793b82e143cf26a71c8d360c296a977fa1618d12c62eaf8ee959ea9b",
+    "packages/core/dist/chunk-DTZDXVB2.js": "86d261f2463db60d6749eaef00cdeee6df1a2efcf3ffbd259b19503e4f22ab5e",
+    "packages/core/dist/chunk-AI4CU5W4.js": "eaa52be46e676489f87ffb68d814d4d898a86c012bde75e500edd17e7fb90150",
+    "packages/core/dist/chunk-NCGZ5VGM.js": "703a22747a8e48accef51ee7f09cd3b63b30e536c8c40befb9afecf7d45fd31c",
+    "packages/core/dist/chunk-VW2UVK5X.js": "5d3884e4ddb9456a8558e501bf74d45e7fe28b9eac0af852f0715b0823f085d9",
+    "packages/core/dist/chunk-IP426BZD.js": "c6ff0b8aa3daef6ed19c7e40fc442e5a04114c41d2afb8baf3648c0eb1978b81",
+    "packages/core/dist/chunk-BKZX3YK6.js": "1a67163bb983b516920b1a38740e0fbbce694daa431ab8129b9a82cdced11069",
+    "packages/core/dist/chunk-YXZ5NBFR.js": "b8b86549a120cc67ff7d8e0cff06e7d1e6aac4315d89fd29e17ede50d6fc7913",
+    "packages/core/dist/chunk-ZNSZSEHU.js": "9f8271d8bc747cb5e08f753c29f136f3b5e0528729b611c27b09329b6014020a",
+    "packages/core/dist/chunk-T6HPBBU3.js": "cee99b202b87ccafe578ebca4d530315c98fd607bbb3f458ea2f31a66fbe5f52",
+    "packages/core/dist/chunk-2WLQ23ZR.js": "7293d64c15c7866bff9873d9bf7fccaf255513209ca13ebc11f5c761dd0fbcb7",
+    "packages/core/dist/chunk-MGGB3C6J.js": "2850ae20d452a4ecf4159e4056fb810ce897bb0f3269c8faabba7e340b86ff62",
+    "packages/core/dist/chunk-MVDQPRGU.js": "897fce66adb627730f8ab342c36de9e9180d0073774d761651d1634bd700669b",
+    "packages/core/dist/chunk-OQIRAGGO.js": "2f070fb1b267ddb02f40b9c001cdd3b2de7878ccbf13b0fd0a8907ac3d21ff99",
+    "packages/core/dist/chunk-3C5UANV7.js": "16fcc14e6d26a289b8f01bf3b45199875b55c4aea6d12792691997c74f553e78",
+    "packages/core/dist/chunk-IOVVL5L5.js": "b351318cbbbd4d3fcd1c9e6359f66b091599bb2f5d55765915b0f9e9f5933cdb",
+    "packages/core/dist/chunk-IN4WJEOC.js": "2a7ad10b9d061b416b4030fc54fb3218fc48be96c39e55f72581be298539ad27",
+    "packages/core/dist/chunk-FXUKIZXZ.js": "33b555e31023185c2f43802889dca108002d07f0ec688a3f407d85bbd2a53491",
+    "packages/core/dist/chunk-OHDGBRPI.js": "3b95358578059fd9a6d00e804e99aca8259f115811f21057cf5bd2669aad2694",
+    "packages/core/dist/chunk-Y5DX27F7.js": "bcacfc5de03e34d140121766112dfc0723f64069aacdda157cfb1eca3603eee9",
+    "packages/core/dist/chunk-WKV4LBLL.js": "5b33e31ae76f98877027acfe6ed2a5e2b03c2ebec028334f425bc798d82f712b",
+    "packages/core/dist/chunk-XJEDWFS3.js": "3d4783799a9601da60e02c48ea8714d4cfed10a2a9abe452e2e9080fe4532028",
+    "packages/core/dist/chunk-Y3NAHTST.js": "7b28880afd161afb15a102098e7d204e6e34b8ca7221c9daa3151c36debbb54e",
+    "packages/core/dist/chunk-H2ACEHYF.js": "922e41c3e801c96c8278aee3f793e842faac5528e26b4723a7da102ed756f234",
+    "packages/core/dist/chunk-WNQURWCF.js": "671f552235a13436a078b62567201e702c3e94a6bf7106aa52c1514ad1336258",
+    "packages/core/dist/chunk-LFH342PK.js": "83c9acd392d6f03c4bfc6f1b68724121c3c88a432d813fa7f68b4aa74f7f9fc9",
+    "packages/core/dist/chunk-C26TQ75V.js": "5f2120577259270668a4f55cc0c71ca53886640bcc4e171b16fb9464572bc4de",
+    "packages/core/dist/chunk-HZUTD6XT.js": "d53166944ff9af3290548d052a4aafd77a820b99e84bbed2f4abae5d914a0777",
+    "packages/core/dist/chunk-NAVGCSWE.js": "46413d1c2ba43b374eb4a0c4327f24e9457a077d291c8f316d5454bbe41487fe",
+    "packages/core/dist/chunk-KARVQAJX.js": "eea4ac2d9c8f77176e84160ede53f2394d730ebd24da0222d7bf400837339fe7",
+    "packages/core/dist/chunk-Y4VZDHIC.js": "2e4671f7620a63c76e6e521ed2a0e6f7973a3abdf88b4004fa0f1e73b68be7df",
+    "packages/core/dist/chunk-FL3TGXLF.js": "f80b6df095359dc65173c50aab1d84ae5afcb03da2099dc87d02c11c78867361",
+    "packages/core/dist/chunk-AKB5K4JR.js": "f02892ec4315e79d013d287516333a2cdd388d10c914b2c182eb9fb929069214",
+    "packages/core/dist/chunk-2O6445PZ.js": "6221a0a08b0d0fbeb943da73dfa962377a10a996262f8c34f496461c76be4488",
+    "packages/core/dist/chunk-JAYMXQS3.js": "086fe2049ad58543e73f016b22fc4bf321c35e2a208bfe6a8801091bf3e1548a",
+    "packages/core/dist/chunk-ZB4VG7QL.js": "5e80a92089f2a333a775eaf7a61216b65fb8bc2c7aaf448b6a751a7b6a49a0f7",
+    "packages/core/dist/chunk-5S2B34DO.js": "709f0b8d44f8d6706f7f7fb69d38d70435b1800ef690bcd56dc20dcc7cca9d5b",
+    "packages/core/dist/chunk-JZWD4A4R.js": "db3ee06527090a9f9dc30ee628c24155c931efde28a9693171fcf85235e5e16c",
+    "packages/core/dist/chunk-BIM7PTCQ.js": "a3c5b796f5791d127883303ebcde844f7a553ef92f17920583a630d02e9385dd",
+    "packages/core/dist/chunk-NDXPYMYF.js": "488960c5011c8d7094691ddb3de99ad48c5bd766be2802e2d02a0db88f918127",
+    "packages/core/dist/chunk-46SAYSYD.js": "c0e57c0d73dc722ef97ed5663e91fc1d08d5d5b1fb50b9b004a483e87203c896",
+    "packages/core/dist/chunk-CM5G5GDI.js": "a4bfdf87a567d1e4950113ac35e3d0d45f3da298855c1b301f976de417e6f985",
+    "packages/core/dist/chunk-7XJNFX6Q.js": "1c60060126b440271bef80140522abecbf2ed800a3cf37d786aec2b82c47e103",
+    "packages/core/dist/chunk-UXAJDOVM.js": "8a6097b7bcef86362f22b10d67713f2b99dec835d88734051dd69070cb7f2dc4",
+    "packages/core/dist/chunk-YE7OW3HE.js": "58d902be55b0b7e4dc4d92f11bbe6e22b3e3077ace5e2baf5839895a5579ffd7",
+    "packages/core/dist/chunk-G7MAJCD3.js": "e46fbb3f42020139e196eacea1b8e9404b504ba5a3a7f39661f6e97b1ebd1361",
+    "packages/core/dist/chunk-KEDTFNSQ.js": "4dcb5061f5af48f7494d5288170828b30f406948621a48b9406c0e5b92c18ecc",
+    "packages/core/dist/chunk-UGQU7FMI.js": "75b4417d126e011a9ebfd973237e2eaa1b59b4c364b9cad3ac7cdeab101d796a",
+    "packages/core/dist/chunk-F6BX46OD.js": "278349343fdf178a2d63265b3230f4ab397d80fd69ec0629b81c49e31ab3b2f9",
+    "packages/core/dist/chunk-O7NJVQY6.js": "35a76b55f1b4297a132cd855291890183343daa080b5cca93ddac515301e129a",
+    "packages/core/dist/chunk-ITJCVKQC.js": "70ef5ab60b7f9734d0664a54e146050674d0b1a141232ed8cac6b22a039e86b8",
+    "packages/core/dist/chunk-TZC7WCTV.js": "9e368b944c9d35577681fd63dad06b7e583d10568d4a44994cb8cb3acd02eda7",
+    "packages/core/dist/chunk-NNCPNRZC.js": "9a28beea7737380bb2e02b01c55ddd334ae7cd12148e94c9b6f44336203320b8",
+    "packages/core/dist/chunk-57HTLRKE.js": "85311ad0db3022c94d99034098902460cf62aa6256c702a21b41442c5e5bed95",
+    "packages/core/dist/integrations-IGHIWNFT.js": "98b5beb4880c172b64b5a651d1a6593123a9b837b5a3b08532e7be5c5e274bfc",
+    "packages/core/dist/catalog/workspaceActionPolicyProvisioning.js": "fa96277c5ee1590b9505c781bec5f9e8f151209a9e0279a046414021b878926d",
+    "packages/core/dist/catalog/workspaceAgentProvisioning.js": "755e360d44fb4b1cd3a9b9064f771365819bebe46cd22996fdbcee6df3e79064",
+    "packages/core/dist/chunk-U5SIDYCS.js": "f4bb94eefc7f91a496fddbb885028d51bd85991c91707bb133ba6316edd3c0aa",
+    "packages/core/dist/queue/connection.js": "eab055eca143cd575d6beed558cfff786d87239c8dd93d807d970e8ba6b1793b",
+    "packages/core/dist/logging/logger.js": "626842a814a75a371b679972170b43e5864645a33e4e7f26d003d73c6f1cc962",
+    "packages/core/dist/policy/TenantPolicyStore.js": "8eecd3200f249ec1200953473d16d945b8c1a0694780b9ec7ed11bcee5171b7c",
+    "packages/core/dist/services/tenantInvoiceService.js": "c327ec18aaa21d5dc5d20b06c1fc10f11dde283cf9f91f3b88eb7ba40206e233",
+    "packages/core/dist/queue/actionQueue.js": "4f210b226611ec68019d5c17f85e7af3cb3e21a6ce4c31de83679ea00f6e9430",
+    "packages/core/dist/catalog/governedOperationCatalog.js": "cfe581305c4245e5d9df6955d9ae802186e78a3978b7806e03bc8036da38005e",
+    "packages/core/dist/chunk-OVTDCE7D.js": "6136bc26e2925267563898b7077bbd486e20c026ace7d544d2276a7de7d351bd",
+    "packages/core/dist/billing/reconciliation.js": "3170844c2f6f53fb83e4fd8fcba282153813cf4df5b51826ff93c9ad3e913461",
+    "packages/core/dist/services/mcpGovernanceEnv.js": "27e2e50ecc696bc19ceae34a1b78eb72af1d1cfdfd7f8b1e829280bd16ce0932",
+    "packages/core/dist/queue/runQueue.js": "bfecb01394b4f199b9a6e3d86bee33c9298a612e8c90342e95e8b92a9b7755c8",
+    "packages/core/dist/queue/maintenanceQueue.js": "142057bd5cea66fd18b613926fbdd41d39c6a70665555f10c122efc9c6a78026",
+    "packages/core/dist/llm/completionEngine.js": "7c34b73c3cd0e8e01dc790787e95e0d50cb41dc803972b9ff65698507e732518",
+    "packages/core/dist/llm/LLMProviderError.js": "7d308d74b6ce6c9d032950cc52b1f922b47d581b344c844f11a846186e8c583d",
+    "packages/core/dist/llm/LLMRegistry.js": "5873adaf78c0746404a29fc82713572a9ae974a983abf5ce04a366a1d64531d5",
+    "packages/core/dist/llm/LLMProvider.js": "692764016fd6393082df8f1bfa1a04ab5d454afea6a98050b4513eb4ef6588e9",
+    "packages/core/dist/actions/reporting/j360LegalReportSchema.js": "fbc3decdc9452019b20327261337c2ea49cebee605d77c137dea64a02bd39b95",
+    "packages/core/dist/actions/reporting/mktCampaignReportSchema.js": "ad87ad861597c353cb4deebd42d8b7e9065c7778e23db1c4aa4ea77e1f42ed24",
+    "packages/core/dist/actions/reporting/recipeOrchestrationSchema.js": "98d3b4b6c97098a85222615b33a5c3627457cecbbd83027305a8644624d7d998",
+    "packages/core/dist/queue/snapshot.js": "11400a6382682446f6cde7d1a8c48df61c11e35f67e300287726d911398eec61",
+    "packages/core/dist/security/killSwitch.js": "f59c74c3342be6bab59626d8d842f9fce051b59de4eba3b8f41e740b9b66f0dc",
+    "packages/core/dist/queue/workerTopology.js": "be4c1b4152ca0aa633b35ef9592fef7615401ff1129aee1d41a1ac7cf94266a7",
+    "packages/core/dist/chunk-HBL4TSCV.js": "b09cd284f541eecc15cf5ac95606828b382269ccf693897b99afb7cccbf26ade",
+    "packages/core/dist/queue/workerOwnershipLease.js": "14817c0baa1ec182992fde4edbb55399f5572b29786373137acae537b9816050",
+    "packages/core/dist/chunk-SDDIETUH.js": "5c63e0c006e966faf8a4fed258b658e0506bccae025fb806628383685f523c3b",
+    "packages/core/dist/llm/LLMRouter.js": "ba3748b9fe1e8f7a39e8ccc0e30b7b7e08119d2d99abc539629a547803e197a8",
+    "packages/core/dist/utils/retry.js": "4d6c9f782e11e1eaa635379cc55a480713c1189129ae71b29186067c0e49eb7e",
+    "packages/providers/dist/AnthropicProvider.js": "e0155f8f3e982932eac10b16aeb7abcff95ce7ad67ed3e81962a69c48f12063e",
+    "packages/providers/dist/DeepSeekProvider.js": "def5f2f2571fabe1257f16850308e3b1e711d34cff067c462ba69c8963749e7d",
+    "packages/providers/dist/GeminiProvider.js": "fe4b65a1f470ea0ef61f3d05d5171f6bbfe89113be99978327552a10bd0a8dd8",
+    "packages/providers/dist/OpenAIProvider.js": "a85860ab0febbb5d416b0c471b5d4239a2db90be87c310ffa75c137a29e629a1",
+    "packages/providers/dist/index.js": "4d2a1d8991bb363cee2f1b83e3c012ae66b758a284833b0395136693321f8082"
+  },
+  "limitation": "Graph and export checks for whole API core surface are STATIC. Runtime imports only reviewed safe leaves; no barrel/API/MCP/worker startup, DB, queue, Docker image or staging proof."
+}

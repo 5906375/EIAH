@@ -1,0 +1,27 @@
+[
+  {
+    "name": "focal-types",
+    "command": [
+      "node",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/typecheck-preparation.mjs"
+    ],
+    "startedAt": "2026-11-16T18:07:09.389170+00:00",
+    "finishedAt": "2026-11-16T18:07:10.031636+00:00",
+    "exitCode": 1,
+    "log": "preparation-typecheck.log"
+  },
+  {
+    "name": "focal-types-outside",
+    "command": [
+      "node",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/typecheck-preparation.mjs"
+    ],
+    "scope": "outside sandbox, authorized; read-only git baseline, no providers/network",
+    "exitCode": 1,
+    "log": "preparation-typecheck-outside.log",
+    "result": "REPROVADO",
+    "focusedDiagnostics": 2,
+    "dependencyDiagnostics": 16,
+    "introduced": 0
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "name": "main-protection-hard-gates",
+  "enforcement": "active",
+  "target": "branch",
+  "checks": [
+    "build_validate",
+    "lint",
+    "CiUnitSuite",
+    "EvidenceIndex",
+    "ReceiptCanonCompat",
+    "P0CriticalityAudit",
+    "P1CriticalChain",
+    "P1ReconciliationRecurring",
+    "RbacGuardrailRegression",
+    "AgentsPolicyFailClosed",
+    "AgentProtocolCompat",
+    "P2AuditInterop",
+    "P2HighGlobalCoverage",
+    "ProviderBoundary",
+    "P3EconomyHardening",
+    "P3SettlementSupportByEnv",
+    "SettlementContractDrift",
+    "W4NonRegression",
+    "DbPreviewPostgresValidate",
+    "PublicHealthContract"
+  ]
+}

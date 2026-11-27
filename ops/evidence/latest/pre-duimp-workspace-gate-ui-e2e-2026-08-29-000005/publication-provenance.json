@@ -1,0 +1,237 @@
+{
+  "schema": "pre-duimp-workspace-gate-publication-provenance-v1",
+  "generatedOn": "2026-08-30",
+  "sourceRoots": {
+    "e2e": "<capture-root>",
+    "qualityAddendum": "<quality-addendum-root>",
+    "temporary": "<temporary-path>"
+  },
+  "sourceIdentities": {
+    "controllerSha256": "55c9dbbe9ad86334df81b5c869531a773ac6a7bfd7038d57d0070faa7bb2a21c",
+    "manifestSha256": "8bd25fee1efce5f2fd0f27f420b15ef67710c075e598b01721c4807e97757bca",
+    "originalTsconfigSha256": "d0371a5628931efa7981b6bcdfbe0ecc46e3ceca2554d8c36a3db1e4486c9c39",
+    "derivedTsconfigSha256": "0e60825e4f2cd2eb597635bf2a1589f1971756ffe2180e361e00bc28487fae21"
+  },
+  "mappingPolicy": {
+    "mappedSourceArtifacts": 22,
+    "bidirectionalMappingRequired": true,
+    "generatedRootArtifacts": [
+      "publication-provenance.json",
+      "sensitivity-scan.json",
+      "integrity-hashes.json"
+    ],
+    "generatedRootArtifactsExcludedFromBidirectionalMapping": true,
+    "reason": "Avoid self-referential hash cycles while integrity-hashes.json covers every other published file."
+  },
+  "supersededSourceIndexes": [
+    {
+      "source": "e2e-000005/integrity-hashes.json",
+      "sourceSha256": "19da6b785cc78b6a140f2517d0aa2d891724bfdd1d200f1b4b22af81ebcc1552",
+      "replacement": "integrity-hashes.json"
+    },
+    {
+      "source": "e2e-000005/sensitivity-scan.json",
+      "sourceSha256": "fd7474c7538167c87f26e4729a94e78f88aeb794aadba2b60d6f0a8482842926",
+      "replacement": "sensitivity-scan.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "source": "e2e-000005/01-no-grant-front-door.png",
+      "publishedPath": "01-no-grant-front-door.png",
+      "sourceSha256": "1997ac666c37e30d3633acd9df6268a4662e779084f99158c788daca895f945d",
+      "publishedSha256": "45d76fa9314a5e217fce820ea913beea01a2af34a2022a430d18a81740345861",
+      "transformed": true,
+      "maskingCategories": [
+        "visual-crop"
+      ]
+    },
+    {
+      "source": "e2e-000005/02-workspace-grant-front-door.png",
+      "publishedPath": "02-workspace-grant-front-door.png",
+      "sourceSha256": "021c9a2477fa1f4057cf6705b5623bcd1c43e8429a13313ca52ca9e76b2c9f8c",
+      "publishedSha256": "4d811dbd1abbd764d95ec1469076a2265a1561d505fdee9a4240218c301cc099",
+      "transformed": true,
+      "maskingCategories": [
+        "visual-crop"
+      ]
+    },
+    {
+      "source": "e2e-000005/03-pre-duimp-ready.png",
+      "publishedPath": "03-pre-duimp-ready.png",
+      "sourceSha256": "3dc359e7885c84606bd785404a0eea2329fd4c2b45d6d5614138e506628445c8",
+      "publishedSha256": "3dc359e7885c84606bd785404a0eea2329fd4c2b45d6d5614138e506628445c8",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/04-pre-duimp-authorized-shadow.png",
+      "publishedPath": "04-pre-duimp-authorized-shadow.png",
+      "sourceSha256": "e2892487bc38bdb04038ea963c392934be5b9fafee9b6ea0a951103249e279a9",
+      "publishedSha256": "e2892487bc38bdb04038ea963c392934be5b9fafee9b6ea0a951103249e279a9",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/05-pre-duimp-live-revoked.png",
+      "publishedPath": "05-pre-duimp-live-revoked.png",
+      "sourceSha256": "19ebb3ca9ef00a7246912544aec9b21f3dd67b3e40fbc7ac968a4317137ddbdf",
+      "publishedSha256": "19ebb3ca9ef00a7246912544aec9b21f3dd67b3e40fbc7ac968a4317137ddbdf",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/counts-scenario-a.json",
+      "publishedPath": "counts-scenario-a.json",
+      "sourceSha256": "a438d91dfcc3cb312b2edc67402c344cf47941b8d4b1b5120b91badefc9406ad",
+      "publishedSha256": "a438d91dfcc3cb312b2edc67402c344cf47941b8d4b1b5120b91badefc9406ad",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/counts-scenario-b.json",
+      "publishedPath": "counts-scenario-b.json",
+      "sourceSha256": "c9c40dd3311a4d00ec55b3b1945aeaad8e7db00696fab1afe33f8c95966a8e21",
+      "publishedSha256": "c9c40dd3311a4d00ec55b3b1945aeaad8e7db00696fab1afe33f8c95966a8e21",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/counts-scenario-c.json",
+      "publishedPath": "counts-scenario-c.json",
+      "sourceSha256": "012d35bfa08c2339d1db518074bf595a6019460ff8852e66ac77a68c032dc40f",
+      "publishedSha256": "1c4a29264183ffef37a5810ccbf8dd5a9bdd006b3d2013cf2489fa93212bfe1b",
+      "transformed": true,
+      "maskingCategories": [
+        "auth-metadata"
+      ]
+    },
+    {
+      "source": "e2e-000005/default-off-restoration.json",
+      "publishedPath": "default-off-restoration.json",
+      "sourceSha256": "dcb10e2801a398583c5b7034d02dbced02a63905657fe3abd0c847373eb00cf4",
+      "publishedSha256": "dcb10e2801a398583c5b7034d02dbced02a63905657fe3abd0c847373eb00cf4",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/integrity.json",
+      "publishedPath": "integrity.json",
+      "sourceSha256": "8c2f50d3febbaba156728a19716dcc185e465bbf1d9068675a363b6ee67af2e9",
+      "publishedSha256": "1cf71c6c2e5a5018fbc7d3aa13e303ca10afcdb2ba4816383004d5a531f81d6a",
+      "transformed": true,
+      "maskingCategories": [
+        "synthetic-credential-id"
+      ]
+    },
+    {
+      "source": "e2e-000005/manifest.json",
+      "publishedPath": "manifest.json",
+      "sourceSha256": "8bd25fee1efce5f2fd0f27f420b15ef67710c075e598b01721c4807e97757bca",
+      "publishedSha256": "ecae483d8392e09134874fd5962c496447d97368804f045dda19042c3cda8dc4",
+      "transformed": true,
+      "maskingCategories": [
+        "capture-root",
+        "repository-root",
+        "external-evidence-root",
+        "temporary-path",
+        "synthetic-credential-id",
+        "relative-artifact-paths"
+      ]
+    },
+    {
+      "source": "e2e-000005/playwright-result.json",
+      "publishedPath": "playwright-result.json",
+      "sourceSha256": "a504f37f4a0cc9c8cefb29aac490102aa572bc39418be4932894dfa33ab41fc4",
+      "publishedSha256": "da2f8a53653ee705aad8784771b5b99ce32909cdc1048a4db8adfac92ce1672a",
+      "transformed": true,
+      "maskingCategories": [
+        "temporary-path",
+        "synthetic-credential-id",
+        "auth-metadata"
+      ]
+    },
+    {
+      "source": "e2e-000005/playwright-sanitized.log",
+      "publishedPath": "playwright-sanitized.log",
+      "sourceSha256": "1e186ab2beb4bc9a13cce31971218c24f21d40132c34dd27d4262b3beb87df96",
+      "publishedSha256": "c92da9cd61a45c9e67fb8295d634339a792ffd89c2cb50fa827b5b972162c668",
+      "transformed": true,
+      "maskingCategories": [
+        "synthetic-credential-id"
+      ]
+    },
+    {
+      "source": "e2e-000005/surface-scenario-b.json",
+      "publishedPath": "surface-scenario-b.json",
+      "sourceSha256": "fc1e339c60f87a584fc4f41b34bbf4e1835860b223062ced765f823ccdceba0a",
+      "publishedSha256": "fc1e339c60f87a584fc4f41b34bbf4e1835860b223062ced765f823ccdceba0a",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "e2e-000005/user-journey-summary.md",
+      "publishedPath": "user-journey-summary.md",
+      "sourceSha256": "f447cc2ebe3fde1909466b3bd2e31c0491d653cd59db82f55eba942277210fb6",
+      "publishedSha256": "f447cc2ebe3fde1909466b3bd2e31c0491d653cd59db82f55eba942277210fb6",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/README.md",
+      "publishedPath": "quality-addendum/README.md",
+      "sourceSha256": "2c93f4695fb91f58fc4c483dfe3c23a3f66f421d92e14415d7741e6658dbfc9a",
+      "publishedSha256": "2c93f4695fb91f58fc4c483dfe3c23a3f66f421d92e14415d7741e6658dbfc9a",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/integrity-hashes.json",
+      "publishedPath": "quality-addendum/integrity-hashes.json",
+      "sourceSha256": "67ef4b0c61f010309d1cf0a26f9cd7eec4bd9f739f649fa824b754a88a6d6e09",
+      "publishedSha256": "67ef4b0c61f010309d1cf0a26f9cd7eec4bd9f739f649fa824b754a88a6d6e09",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/provenance.json",
+      "publishedPath": "quality-addendum/provenance.json",
+      "sourceSha256": "daf89042f5cb950a777d38acee11b842ed068c637d6cf5dac25348034094e97b",
+      "publishedSha256": "daf89042f5cb950a777d38acee11b842ed068c637d6cf5dac25348034094e97b",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/quality-gate-addendum.json",
+      "publishedPath": "quality-addendum/quality-gate-addendum.json",
+      "sourceSha256": "20cf4a665010721653f800b63fc08de53b043ba1b4e1fb66b96e5225f7348614",
+      "publishedSha256": "20cf4a665010721653f800b63fc08de53b043ba1b4e1fb66b96e5225f7348614",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/sensitivity-scan.json",
+      "publishedPath": "quality-addendum/sensitivity-scan.json",
+      "sourceSha256": "336a2fe5c46f175847c64af42a8185486577b309cd842311878d1396e71e7168",
+      "publishedSha256": "336a2fe5c46f175847c64af42a8185486577b309cd842311878d1396e71e7168",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/tsconfig-change-sanitized.diff",
+      "publishedPath": "quality-addendum/tsconfig-change-sanitized.diff",
+      "sourceSha256": "e93e4a14073dede528252f9a5a876dbd7ad19864765a25fc71dd3478cdf21153",
+      "publishedSha256": "e93e4a14073dede528252f9a5a876dbd7ad19864765a25fc71dd3478cdf21153",
+      "transformed": false,
+      "maskingCategories": []
+    },
+    {
+      "source": "quality-addendum-000005/typecheck-result.json",
+      "publishedPath": "quality-addendum/typecheck-result.json",
+      "sourceSha256": "32411c83171d0b7025020366291edc1493a8f066bb656bd8e9e409890be291f6",
+      "publishedSha256": "32411c83171d0b7025020366291edc1493a8f066bb656bd8e9e409890be291f6",
+      "transformed": false,
+      "maskingCategories": []
+    }
+  ]
+}

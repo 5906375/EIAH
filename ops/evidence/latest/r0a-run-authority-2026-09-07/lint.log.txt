@@ -1,5 +1,0 @@
-
-> eiah-builder@ lint [WORKSPACE_ROOT]/EIAH_R0A
-> echo "Run linting via individual packages"
-
-Run linting via individual packages

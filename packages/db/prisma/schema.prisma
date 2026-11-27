@@ -9,6 +9,21 @@ datasource db {
   provider = "postgresql"
 }
 
+// Technical inbound receipt only: no payload, sender, content or domain relation.
+// Proposed in 8.9.2. Migration/retention policy require review before real activation.
+model WhatsappMetaIngressReceipt {
+  tenantId    String   @db.VarChar(160)
+  workspaceId String   @db.VarChar(160)
+  scope       String   @db.VarChar(64)
+  eventKey    String   @db.Char(64)
+  digest      String   @db.Char(64)
+  receivedAt  DateTime @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@id([tenantId, workspaceId, eventKey])
+  @@index([expiresAt])
+}
+
 // ========================================
 // 🧠 Enums — Execução e Pagamentos
 // (necessários para validação e índices)
@@ -28,6 +43,15 @@ enum RunApprovalStatus {
   pending
   approved
   rejected
+}
+
+enum GovernedCaseLifecycle {
+  DISCOVERY
+  ASSESSING
+  AWAITING_REVIEW
+  READY
+  BLOCKED
+  CLOSED
 }
 
 enum PaymentStatus {
@@ -89,6 +113,7 @@ model Tenant {
   workspaceAgentAssignments WorkspaceAgentAssignment[]
   runUsageBreakdowns        RunUsageBreakdown[]
   billingLedgerEntries      BillingLedger[]
+  financialAuthorityDesignations FinancialAuthorityDesignation[]
   invoices                  TenantInvoice[]
   helpdeskSessions          HelpdeskSession[]
   productInstallations      TenantProductInstallation[]
@@ -99,6 +124,7 @@ model Tenant {
   imobCases                 ImobCase[]
   imobCaseEvents            ImobCaseEvent[]
   imobMarketScanRuns        ImobMarketScanRun[]
+  governedCases             GovernedCase[]
   agentInstalls             AgentInstall[]
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
@@ -141,6 +167,7 @@ model Workspace {
   imobCases                 ImobCase[]
   imobCaseEvents            ImobCaseEvent[]
   imobMarketScanRuns        ImobMarketScanRun[]
+  governedCases             GovernedCase[]
   agentInstalls             AgentInstall[]
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
@@ -166,6 +193,7 @@ model User {
   connectorInstances              ConnectorInstance[]
   memberships                     TenantMembership[]
   walletIdentities                WalletIdentity[]
+  financialAuthorityDesignations  FinancialAuthorityDesignation[]
 
   @@index([tenantId, email])
   @@map("users")
@@ -193,6 +221,90 @@ model TenantProductInstallation {
   @@map("tenant_product_installations")
 }
 
+/// ADR-011 §2.1: liberação de vertical pela EIAH (tenant + workspace + vertical).
+model VerticalAccessApproval {
+  id                String    @id
+  tenantId          String    @map("tenant_id")
+  workspaceId       String    @map("workspace_id")
+  vertical          String
+  status            String
+  source            String
+  revocationMode    String?   @map("revocation_mode")
+  requestedByUserId String?   @map("requested_by_user_id")
+  requestedAt       DateTime? @map("requested_at")
+  decidedBy         String?   @map("decided_by")
+  decidedAt         DateTime? @map("decided_at")
+  note              String?
+  score             Int?
+  recommendation    String?
+  scoreReasons      Json?     @map("score_reasons")
+  scoreRuleVersion  String?   @map("score_rule_version")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @map("updated_at")
+  /// Avaliação gratuita (migration 20261113120000): todas nulas em linhas sem grant. `pre_ativacao` = decisão/aceite sem uso;
+  /// `encerrado` = fim regular por validade (distinto de `revogado`).
+  requestContext    Json?     @map("request_context")
+  grantKind         String?   @map("grant_kind")
+  grantTerms        Json?     @map("grant_terms")
+  grantTermsHash    String?   @map("grant_terms_hash")
+  grantAcceptedBy   String?   @map("grant_accepted_by")
+  grantAcceptedAt   DateTime? @map("grant_accepted_at")
+  grantAcceptedHash String?   @map("grant_accepted_hash")
+  grantStartedAt    DateTime? @map("grant_started_at")
+  grantValidUntil   DateTime? @map("grant_valid_until")
+  grantClosedReason String?   @map("grant_closed_reason")
+  evaluationUsedAt  DateTime? @map("evaluation_used_at")
+
+  @@unique([tenantId, workspaceId, vertical], map: "vertical_access_approvals_scope_key")
+  @@index([status, updatedAt], map: "vertical_access_approvals_status_idx")
+  @@map("vertical_access_approvals")
+}
+
+/// ADR-011 §2.1: auditoria de cada mudança de estado da liberação.
+model VerticalAccessApprovalEvent {
+  id             String   @id
+  approvalId     String   @map("approval_id")
+  tenantId       String   @map("tenant_id")
+  workspaceId    String   @map("workspace_id")
+  vertical       String
+  fromStatus     String?  @map("from_status")
+  toStatus       String   @map("to_status")
+  actor          String
+  note           String?
+  score          Int?
+  recommendation String?
+  revocationMode String?  @map("revocation_mode")
+  channel        String?
+  detail         Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([approvalId, createdAt], map: "vertical_access_approval_events_approval_idx")
+  @@map("vertical_access_approval_events")
+}
+
+model VerticalAccessNotice {
+  id          String   @id
+  approvalId  String   @map("approval_id")
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  vertical    String
+  kind        String
+  message     String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId, workspaceId, createdAt], map: "vertical_access_notices_scope_idx")
+  @@map("vertical_access_notices")
+}
+
+model VerticalAccessNoticeRead {
+  noticeId String   @map("notice_id")
+  userId   String   @map("user_id")
+  readAt   DateTime @default(now()) @map("read_at")
+
+  @@id([noticeId, userId])
+  @@map("vertical_access_notice_reads")
+}
+
 model ApiToken {
   id          String    @id @default(cuid())
   token       String    @unique
@@ -211,6 +323,54 @@ model ApiToken {
   @@index([tenantId, workspaceId])
   @@index([userId])
   @@map("api_tokens")
+}
+
+model GovernedCase {
+  id            String                @id @default(cuid())
+  tenantId      String                @map("tenant_id")
+  workspaceId   String                @map("workspace_id")
+  schemaVersion String                @map("schema_version")
+  caseType      String                @map("case_type")
+  revision      Int                   @default(1)
+  lifecycle     GovernedCaseLifecycle
+  subject       Json
+  domainState   Json                  @map("domain_state")
+  snapshot      Json
+  snapshotHash  String                @map("snapshot_hash")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
+  workspace Workspace              @relation(fields: [workspaceId], references: [id])
+  revisions GovernedCaseRevision[]
+
+  @@unique([id, tenantId, workspaceId], map: "governed_cases_id_scope_key")
+  @@index([tenantId, workspaceId, caseType, lifecycle, updatedAt], map: "governed_cases_scope_type_lifecycle_updated_idx")
+  @@map("governed_cases")
+}
+
+model GovernedCaseRevision {
+  id             String                 @id @default(cuid())
+  caseId         String                 @map("case_id")
+  tenantId       String                 @map("tenant_id")
+  workspaceId    String                 @map("workspace_id")
+  revision       Int
+  schemaVersion  String                 @map("schema_version")
+  lifecycle      GovernedCaseLifecycle
+  snapshot       Json
+  snapshotHash   String                 @map("snapshot_hash")
+  fromLifecycle  GovernedCaseLifecycle? @map("from_lifecycle")
+  toLifecycle    GovernedCaseLifecycle  @map("to_lifecycle")
+  actorType      String                 @map("actor_type")
+  actorRef       String?                @map("actor_ref")
+  transitionCode String                 @map("transition_code")
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  governedCase GovernedCase @relation(fields: [caseId, tenantId, workspaceId], references: [id, tenantId, workspaceId], onDelete: Restrict)
+
+  @@unique([caseId, revision], map: "governed_case_revisions_case_revision_key")
+  @@index([tenantId, workspaceId, caseId, createdAt], map: "governed_case_revisions_scope_case_created_idx")
+  @@map("governed_case_revisions")
 }
 
 model Run {
@@ -252,12 +412,14 @@ model Run {
   usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
   runArchive           RunArchive?
+  stateTransitions     RunStateTransition[]
   paymentIntents       PaymentIntent[]
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant               Tenant                    @relation(fields: [tenantId], references: [id])
   user                 User?                     @relation(fields: [userId], references: [id])
   workspace            Workspace                 @relation(fields: [workspaceId], references: [id])
 
+  @@unique([id, tenantId, workspaceId], map: "runs_id_tenant_id_workspace_id_key")
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([assignmentId])
   @@index([caseId])
@@ -694,6 +856,32 @@ model TenantBillingAccount {
 
   @@index([tenantId, status])
   @@map("tenant_billing_account")
+}
+
+/// AUTHZ-FIN-1 (proposta, BILLING-003): designação explícita de autoridade financeira por tenant. Nunca é criada por papel, convite ou bootstrap.
+model FinancialAuthorityDesignation {
+  id                   String    @id
+  tenantId             String    @map("tenant_id")
+  beneficiaryUserId    String    @map("beneficiary_user_id")
+  scope                String
+  authorityRole        String    @map("authority_role")
+  limits               Json      @default("{}")
+  grantedByUserId      String    @map("granted_by_user_id")
+  grantorDesignationId String?   @map("grantor_designation_id")
+  evidenceRef          String    @map("evidence_ref")
+  grantedAt            DateTime  @default(now()) @map("granted_at") @db.Timestamptz(3)
+  validUntil           DateTime  @map("valid_until") @db.Timestamptz(3)
+  revokedAt            DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokedByUserId      String?   @map("revoked_by_user_id")
+  revokeReason         String?   @map("revoke_reason")
+  grantAuditEventId    String?   @map("grant_audit_event_id")
+  revokeAuditEventId   String?   @map("revoke_audit_event_id")
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  beneficiary User   @relation(fields: [beneficiaryUserId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, beneficiaryUserId, scope], map: "financial_authority_designation_lookup_idx")
+  @@map("financial_authority_designation")
 }
 
 model TenantQuotaPolicy {
@@ -1139,6 +1327,9 @@ model AgentReputationEvent {
 }
 
 model ApprovalRecord {
+  recordFormat    String           @default("LEGACY") @map("record_format")
+  contextHash     String?          @map("context_hash")
+  governedPayload Json?            @map("governed_payload")
   id              String           @id
   runId           String?          @map("run_id")
   tenantId        String           @map("tenant_id")
@@ -1307,4 +1498,165 @@ model WalletIdentity {
   user          User     @relation(fields: [userId], references: [id])
 
   @@map("wallet_identities")
+}
+
+// CI1 storage. Runtime accesses controlled SQL functions, never these delegates.
+// CHECK constraints, partial approval index and grants live in the SQL migration.
+model OraculoFence {
+  id String @id
+  enabled Boolean @default(true)
+  @@map("oraculo_fences")
+}
+model OraculoAuthority {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  tokenRef String @map("token_ref")
+  actorRef Json @map("actor_ref")
+  active Boolean
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  capabilities String[]
+  @@id([tenantId,workspaceId,tokenRef])
+  @@map("oraculo_authorities")
+}
+model OraculoScope {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  enabled Boolean
+  installed Boolean
+  policy String
+  @@id([tenantId,workspaceId])
+  @@map("oraculo_scopes")
+}
+model OraculoVisit {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  visitId String @map("visit_id")
+  revision Int
+  state String
+  snapshot Json
+  @@id([tenantId,workspaceId,visitId])
+  @@map("oraculo_visits")
+}
+model OraculoObservation {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  observationId String @map("observation_id")
+  payload Json
+  @@id([tenantId,workspaceId,observationId])
+  @@map("oraculo_observations")
+}
+model OraculoIntent {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  intentId String @map("intent_id")
+  hi String
+  actorRef Json @map("actor_ref")
+  payload Json
+  acceptedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("accepted_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(6)
+  result Json?
+  assessment Json?
+  audit OraculoAudit?
+  negativeRecovery OraculoNegativeRecovery?
+  evaluations OraculoEvaluation[]
+  @@id([tenantId,workspaceId,intentId])
+  @@map("oraculo_intents")
+}
+model OraculoContext {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  hd String
+  payload Json
+  @@id([tenantId,workspaceId,hd])
+  @@map("oraculo_contexts")
+}
+model OraculoExecution {
+  backendPid Int @map("backend_pid")
+  transactionId BigInt @map("transaction_id")
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  intentId String @map("intent_id")
+  tokenRef String @map("token_ref")
+  hd String?
+  consumed Boolean @default(false)
+  resolvedSnapshot Json @map("resolved_snapshot")
+  @@id([backendPid,transactionId,tenantId,workspaceId,intentId])
+  @@map("oraculo_executions")
+}
+model OraculoAudit {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  intentId String @map("intent_id")
+  payload Json
+  intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
+  @@id([tenantId,workspaceId,intentId])
+  @@map("oraculo_audits")
+}
+
+model OraculoEvaluation {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  evaluationId String @map("evaluation_id")
+  intentId String @map("intent_id")
+  payload Json
+  intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
+  @@id([tenantId,workspaceId,evaluationId])
+  @@map("oraculo_evaluations")
+}
+
+model OraculoNegativeRecovery {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  intentId String @map("intent_id")
+  payload Json
+  intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
+  @@id([tenantId,workspaceId,intentId])
+  @@map("oraculo_negative_recoveries")
+}
+
+// Proposed additive P1 storage. No existing run is automatically certified.
+model RunStateTransition {
+  id                 String    @id
+  runId              String    @map("run_id")
+  tenantId           String    @map("tenant_id")
+  workspaceId        String    @map("workspace_id")
+  commandId          String    @unique(map: "run_state_transitions_command_id_key") @map("command_id")
+  schemaVersion      String    @map("schema_version")
+  sequence           BigInt
+  previousStatus     RunStatus? @map("previous_status")
+  previousFinishedAt DateTime? @map("previous_finished_at")
+  status             RunStatus
+  finishedAt         DateTime? @map("finished_at")
+  declaredAt         DateTime  @map("declared_at")
+  producerId         String    @map("producer_id")
+  operationRef       String    @map("operation_ref")
+  commandDigest      String    @map("command_digest")
+  recordedAt         DateTime  @default(now()) @map("recorded_at")
+  run                Run       @relation(fields: [runId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  publishIntent      RunPublishOutbox?
+
+  @@unique([runId, sequence], map: "run_state_transitions_run_id_sequence_key")
+  @@unique([runId, tenantId, workspaceId, commandId], map: "run_state_transitions_scope_command_key")
+  @@index([tenantId, workspaceId, recordedAt], map: "run_state_transitions_scope_recorded_idx")
+  @@map("run_state_transitions")
+}
+
+model RunPublishOutbox {
+  id           String    @id
+  commandId    String    @unique(map: "run_publish_outbox_command_id_key") @map("command_id")
+  runId        String    @map("run_id")
+  tenantId     String    @map("tenant_id")
+  workspaceId  String    @map("workspace_id")
+  destination  String
+  payloadRef   String    @map("payload_ref")
+  payload      Json
+  state        String    @default("pending")
+  attempts     Int       @default(0)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  publishedAt  DateTime? @map("published_at")
+  transition   RunStateTransition @relation(fields: [runId, tenantId, workspaceId, commandId], references: [runId, tenantId, workspaceId, commandId])
+
+  @@unique([runId, tenantId, workspaceId, commandId], map: "run_publish_outbox_scope_command_key")
+  @@index([state, createdAt], map: "run_publish_outbox_state_created_at_idx")
+  @@map("run_publish_outbox")
 }

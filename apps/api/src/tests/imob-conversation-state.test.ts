@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createEmptyImobSlots } from "../services/imob/imobConversationContract";
 
 import {
   createNextImobOperationalState,
@@ -10,6 +11,46 @@ import {
   extractMarketScanPropertyTypes,
   normalizeMarketScanGoalCandidates,
 } from "../services/imob/imobConversationState";
+
+for (const [propertyId, offerAmount] of [
+  ["4455", 100000], ["98765", 450000], ["imovel-AB12", 450000],
+  ["4455", 100000.75], ["4455", null], [null, 100000], [null, null],
+] as const) {
+  test(`proposal.create preserva draft estruturado: imóvel=${propertyId}, valor=${offerAmount}`, () => {
+    const previous = {
+      flow: "proposal.create" as const, status: "collecting" as const, pendingFields: [],
+      proposalDraft: {
+        propertyId, offerAmount, buyerName: "Maria", buyerPhone: "47999998888", buyerEmail: null,
+        contractType: "sale" as const, counterofferAmount: null, negotiationStatus: null,
+        approvalRequired: false, approvalStatus: null,
+      },
+    };
+    const next = createNextImobOperationalState(previous, "proposal", "continuar proposta", createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.propertyId, propertyId);
+    assert.equal(next?.proposalDraft?.offerAmount, offerAmount);
+  });
+}
+
+test("proposal.create mantém interpretação textual legada para pedidos livres", () => {
+  const next = createNextImobOperationalState(null, "proposal", "Gerar proposta para lead Maria no imóvel 4455 com oferta de 100000", createEmptyImobSlots());
+  assert.equal(next?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(next?.proposalDraft?.offerAmount, 100000);
+});
+
+test("resposta curta só preenche campos ausentes durante coleta e não interpreta comando ou confirmação como nome", () => {
+  const collecting = createNextImobOperationalState(null, "proposal", "Gerar proposta", createEmptyImobSlots())!;
+  for (const input of ["sim", "ok", "confirmar", "continuar proposta", "Gerar proposta"]) {
+    const next = createNextImobOperationalState(collecting, "proposal", input, createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.buyerName, null, input);
+  }
+  const ready = { ...collecting, status: "ready_for_review" as const, pendingFields: [] };
+  for (const input of ["Carlos", "4455", "100000"]) {
+    const next = createNextImobOperationalState(ready, "proposal", input, createEmptyImobSlots());
+    assert.equal(next?.proposalDraft?.buyerName, null);
+    assert.equal(next?.proposalDraft?.propertyId, null);
+    assert.equal(next?.proposalDraft?.offerAmount, null);
+  }
+});
 
 test("IMOB conversation state extracts structured market scan property types and bedrooms", () => {
   const message = "Quero buscar kitnet, apto 1 quarto, apto 2 quartos e casa para locação em Itajaí e Camboriú";
@@ -299,4 +340,21 @@ test("IMOB conversation state infers cpf document type during document collectio
   assert.equal((result as any)?.documentDraft?.subjectType, "owner");
   assert.deepEqual((result as any)?.documentDraft?.documentTypes, ["cpf"]);
   assert.equal((result as any)?.documentDraft?.deliveryChannel, "upload");
+});
+
+test("'cadastrar mais imóveis no proprietário X' abre cadastro de imóvel com o nome do proprietário, sem criar proprietário", async () => {
+  const { extractOwnerNameHint } = await import("../services/imob/imobConversationState");
+  const slots = { goal: null, city: null, region: null, neighborhood: null, budgetMax: null, bedrooms: null, bathrooms: null, propertyType: null } as any;
+  const result = createNextImobOperationalState(null, "capture", "quero cadastrar mais imóveis no proprietário carlos a merlo", slots);
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.ownerNameHint, "carlos a merlo");
+
+  const kitnets = createNextImobOperationalState(null, "capture", "cadastrar 2 kitnets da proprietária Maria Souza", slots);
+  assert.equal(kitnets?.flow, "property.create");
+
+  const owner = createNextImobOperationalState(null, "capture", "cadastrar proprietário João Silva", slots);
+  assert.equal(owner?.flow, "owner.create");
+
+  assert.equal(extractOwnerNameHint("imóvel do proprietário Carlos Alberto Merlo, em Itapema"), "Carlos Alberto Merlo");
+  assert.equal(extractOwnerNameHint("cadastrar imóvel"), null);
 });

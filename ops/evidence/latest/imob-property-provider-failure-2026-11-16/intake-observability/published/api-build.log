@@ -1,0 +1,40 @@
+
+> @eiah/api@ prebuild <REPO>/apps/api
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/api@ build <REPO>/apps/api
+> pnpm run typecheck && tsup --config tsup.config.ts
+
+
+> @eiah/api@ typecheck <REPO>/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+src/routes/imob.ts(89,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/services/imob/crm/imobCrmTurnEngine.ts(3,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/services/imob/imobAgentContract.ts(10,44): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/imobAgentContract.ts(11,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(3,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_FIELDS'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(3,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,42): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureRequest'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,75): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureResult'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(5,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureDraft'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(5,39): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureProposal'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(59,91): error TS7006: Parameter 'field' implicitly has an 'any' type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(64,125): error TS7006: Parameter 'field' implicitly has an 'any' type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(71,86): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(83,112): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(84,58): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(150,18): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(150,47): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(152,14): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(154,34): error TS18046: 'change.value' is of type 'unknown'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,38): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,69): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,114): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(156,27): error TS18046: 'change.value' is of type 'unknown'.
+ ELIFECYCLE  Command failed with exit code 2.
+<REPO>/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/api@ build: `pnpm run typecheck && tsup --config tsup.config.ts`
+Exit status 2
