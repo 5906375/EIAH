@@ -369,9 +369,18 @@ Preservar integralmente o trabalho das frentes e exigir reconciliação rastreá
 
 Executar o protocolo operacional comum de `IA_EIAH.md`, §8.1, reutilizando instrumentos e evidências existentes. Esta política não concede autorização de intervenção Git ou deployment, não substitui gates e aprovações específicos e não levanta bloqueios operacionais de qualquer frente.
 
+**Governança da propriedade intelectual e da informação (IPIG) — decisão humana aprovada em 27/11/2026**
+
+A IPIG complementa a TWDG como obrigação transversal. A autorização para desenvolver, integrar ou implantar um incremento não equivale automaticamente à autorização para divulgá-lo. Antes da divulgação, identificar classificação da informação, direitos de propriedade intelectual, licenciamento aplicável, finalidade, destino, autoridade humana responsável e identidade da versão autorizada, preservando a integridade desse conteúdo.
+
+Aplicar o protocolo comum de `IA_EIAH.md`, §8.2, às superfícies de divulgação pertinentes, com conferência proporcional do conteúdo, histórico Git e artefatos de distribuição. Conteúdo não autorizado à divulgação não pode ser promovido a `PUBLIC` por localização, inclusão forçada, resultado de CI ou existência de evidência. Preservar originais internos e distinguir suas representações públicas aprovadas. Pendências materiais bloqueiam a publicação afetada, sem interromper automaticamente outras frentes ou modificar direitos anteriormente concedidos.
+
+A direção estratégica híbrida foi aprovada, sem autorizar migração de módulos, mudança de visibilidade, alteração de licença ou implementação de gates. A política não recupera confidencialidade de conteúdo já divulgado, não impede clones ou forks e não levanta freezes, holds ou No-Go Ledgers. A segurança operacional não pode depender exclusivamente da confidencialidade da implementação.
+
 **DoD P0 transversal**
 - Fonte única estável e auditável durante todo o ciclo de execução.
 - Integração e deployment com reconciliação, preflight, autorização humana específica e evidências verificáveis no escopo afetado, conforme TWDG; sem declaração de conformidade global baseada apenas na publicação desta norma.
+- Divulgação com classificação, direitos e licenciamento considerados, autorização humana específica para a versão e o destino e conferência proporcional, conforme IPIG; sem presumir conformidade global ou controle automatizado implementado.
 
 ## 10) Implementado extra (além do escopo normativo v8)
 
