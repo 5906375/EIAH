@@ -1,0 +1,276 @@
+{
+  "builds": {
+    "core": {
+      "command": [
+        "timeout",
+        "120s",
+        "pnpm",
+        "--filter",
+        "@eiah/core",
+        "build"
+      ],
+      "cwd": "<WORKTREE>",
+      "startedAt": "2026-11-25T20:19:57.562555+00:00",
+      "endedAt": "2026-11-25T20:20:03.948440+00:00",
+      "exitCode": 0,
+      "credentials": "variáveis sensíveis removidas; nenhum env-file fornecido",
+      "network": "downloads desabilitados; build somente, sem bootstrap da aplicação",
+      "log": "<EXTERNAL_ARCHIVE>/core-build.log"
+    },
+    "api": {
+      "command": [
+        "timeout",
+        "120s",
+        "pnpm",
+        "--filter",
+        "@eiah/api",
+        "build"
+      ],
+      "cwd": "<WORKTREE>",
+      "startedAt": "2026-11-25T20:20:15.756015+00:00",
+      "endedAt": "2026-11-25T20:20:27.648399+00:00",
+      "exitCode": 0,
+      "credentials": "variáveis sensíveis removidas; nenhum env-file fornecido",
+      "network": "downloads desabilitados; build somente, sem bootstrap da aplicação",
+      "log": "<EXTERNAL_ARCHIVE>/api-build.log"
+    }
+  },
+  "historicalFirstAttempt": [
+    {
+      "harness": "<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs",
+      "original_sha256": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+      "adapted_sha256": "b0917a12c25931980e4a251a928bc10221f44ce682969aa67159b136db479972",
+      "adaptations": [
+        {
+          "old": "const root = fileURLToPath(new URL(\"../../../../../../\", import.meta.url));",
+          "new": "const root = \"<WORKTREE>\";"
+        },
+        {
+          "old": "const here = dirname(fileURLToPath(import.meta.url));",
+          "new": "const here = \"<EXTERNAL_ARCHIVE>\";"
+        },
+        {
+          "old": "resolve(here, \"results.json\")",
+          "new": "\"<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json\""
+        },
+        {
+          "old": "const protectedFiles = [\"CLAUDE.md\", \"CODEX.md\",\n  \"ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff\"];",
+          "new": "const protectedFiles = [\"CLAUDE.md\", \"CODEX.md\", \"packages/core/tsup.config.ts\"];"
+        },
+        {
+          "old": "  for (const path of protectedFiles) assert.equal(protectedBefore[path], historical.protectedFiles[path]);",
+          "new": "  // Historical baseline hashes are not assertions for this authorized baseline; current before/after hashes remain enforced."
+        },
+        {
+          "old": "localHead: \"97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6\"",
+          "new": "localHead: \"b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3\""
+        },
+        {
+          "old": "inspectedMerge: \"f6617e1f2ded9ac0d5c8b0c1336b450b3de6d999\"",
+          "new": "inspectedMerge: \"b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3\""
+        },
+        {
+          "old": "hypothesis: \"CONFIRMED_LOCALLY_BEFORE_FIX\"",
+          "new": "hypothesis: \"HISTORICAL_DIAGNOSIS_REUSED_CURRENT_BASELINE_VALIDATED\""
+        },
+        {
+          "old": "date: \"2026-11-17\"",
+          "new": "date: \"2026-11-25\""
+        },
+        {
+          "old": "import.meta.url",
+          "new": "\"file://<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs\""
+        }
+      ],
+      "baseline": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+      "cwd": "<WORKTREE>/apps/api",
+      "command": [
+        "timeout",
+        "120s",
+        "node",
+        "--input-type=module",
+        "--eval",
+        "<bootstrap original harness in memory; adaptations recorded>"
+      ],
+      "startedAt": "2026-11-25T20:21:53.557861+00:00",
+      "exitCode": 1,
+      "endedAt": "2026-11-25T20:21:53.953457+00:00",
+      "log": "<EXTERNAL_ARCHIVE>/registry-harness.log"
+    }
+  ],
+  "registryInfoAndFailedConsumer": [
+    {
+      "harness": "<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs",
+      "original_sha256": "36285bb1f8d69e39978f810df33ec9c59e5c87bd4c9ad86fe767a2e54ee28637",
+      "adapted_sha256": "b0917a12c25931980e4a251a928bc10221f44ce682969aa67159b136db479972",
+      "adaptations": [
+        {
+          "old": "const root = fileURLToPath(new URL(\"../../../../../../\", import.meta.url));",
+          "new": "const root = \"<WORKTREE>\";"
+        },
+        {
+          "old": "const here = dirname(fileURLToPath(import.meta.url));",
+          "new": "const here = \"<EXTERNAL_ARCHIVE>\";"
+        },
+        {
+          "old": "resolve(here, \"results.json\")",
+          "new": "\"<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/results.json\""
+        },
+        {
+          "old": "const protectedFiles = [\"CLAUDE.md\", \"CODEX.md\",\n  \"ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff\"];",
+          "new": "const protectedFiles = [\"CLAUDE.md\", \"CODEX.md\", \"packages/core/tsup.config.ts\"];"
+        },
+        {
+          "old": "  for (const path of protectedFiles) assert.equal(protectedBefore[path], historical.protectedFiles[path]);",
+          "new": "  // Historical baseline hashes are not assertions for this authorized baseline; current before/after hashes remain enforced."
+        },
+        {
+          "old": "localHead: \"97c23a9bca690f5cd6b0fdc909c7359ed4ea25d6\"",
+          "new": "localHead: \"b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3\""
+        },
+        {
+          "old": "inspectedMerge: \"f6617e1f2ded9ac0d5c8b0c1336b450b3de6d999\"",
+          "new": "inspectedMerge: \"b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3\""
+        },
+        {
+          "old": "hypothesis: \"CONFIRMED_LOCALLY_BEFORE_FIX\"",
+          "new": "hypothesis: \"HISTORICAL_DIAGNOSIS_REUSED_CURRENT_BASELINE_VALIDATED\""
+        },
+        {
+          "old": "date: \"2026-11-17\"",
+          "new": "date: \"2026-11-25\""
+        },
+        {
+          "old": "import.meta.url",
+          "new": "\"file://<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/check.mjs\""
+        }
+      ],
+      "baseline": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+      "cwd": "<WORKTREE>/apps/api",
+      "command": [
+        "timeout",
+        "120s",
+        "node",
+        "--input-type=module",
+        "--eval",
+        "<bootstrap original harness in memory; adaptations recorded>"
+      ],
+      "startedAt": "2026-11-25T20:28:27.551915+00:00",
+      "loggingEnvironment": {
+        "LOG_LEVEL": "info",
+        "LOG_PRETTY": "false"
+      },
+      "exitCode": 0,
+      "endedAt": "2026-11-25T20:28:27.856535+00:00",
+      "log": "<EXTERNAL_ARCHIVE>/registry-harness-info.log"
+    },
+    {
+      "harness": "<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs",
+      "original_sha256": "7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e",
+      "adapted_sha256": "93a24ba53ccb0102e9a140d84d61e88fe3f44b81b76936345bfaad25f0c9d770",
+      "adaptations": [
+        {
+          "old": "const root = fileURLToPath(new URL(\"../../../../../../\", import.meta.url));",
+          "new": "const root = \"<WORKTREE>\";"
+        },
+        {
+          "old": "const here = dirname(fileURLToPath(import.meta.url));",
+          "new": "const here = \"<EXTERNAL_ARCHIVE>\";"
+        },
+        {
+          "old": "from \"typescript\";",
+          "new": "from \"file://<LOCAL_HOME>/projects/EIAH_BUILDER/node_modules/.pnpm/typescript%405.9.3/node_modules/typescript/lib/typescript.js\";"
+        },
+        {
+          "old": "const parentPath = resolve(here, \"../../package-smoke.mjs\");",
+          "new": "const parentPath = \"<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs\";"
+        },
+        {
+          "old": "date:\"2026-11-17\"",
+          "new": "date:\"2026-11-25\""
+        },
+        {
+          "old": "import.meta.url",
+          "new": "\"file://<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs\""
+        }
+      ],
+      "baseline": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+      "cwd": "<WORKTREE>/apps/api",
+      "command": [
+        "timeout",
+        "120s",
+        "node",
+        "--input-type=module",
+        "--eval",
+        "<bootstrap original harness in memory; adaptations recorded>"
+      ],
+      "startedAt": "2026-11-25T20:28:27.863255+00:00",
+      "loggingEnvironment": {
+        "LOG_LEVEL": "info",
+        "LOG_PRETTY": "false"
+      },
+      "exitCode": 1,
+      "endedAt": "2026-11-25T20:28:29.385938+00:00",
+      "log": "<EXTERNAL_ARCHIVE>/consumer-harness-info.log"
+    }
+  ],
+  "consumerFileAttempt": [
+    {
+      "harness": "<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/intake-observability/registry-identity-2026-11-17/consumer-packaging-check.mjs",
+      "original_sha256": "7da4e53bb2ccd5ddec1360e0da0d097ffdbdeeca7f7b7ed654ed15d737e6a01e",
+      "adapted_sha256": "05f0c0cdf28d8cfad9327800ca790de213b58f1c29afadf1f93429cf8812fe3b",
+      "adaptations": [
+        {
+          "old": "const root = fileURLToPath(new URL(\"../../../../../../\", import.meta.url));",
+          "new": "const root = \"<WORKTREE>\";"
+        },
+        {
+          "old": "const here = dirname(fileURLToPath(import.meta.url));",
+          "new": "const here = \"<EXTERNAL_ARCHIVE>\";"
+        },
+        {
+          "old": "from \"typescript\";",
+          "new": "from \"file://<LOCAL_HOME>/projects/EIAH_BUILDER/node_modules/.pnpm/typescript%405.9.3/node_modules/typescript/lib/typescript.js\";"
+        },
+        {
+          "old": "const parentPath = resolve(here, \"../../package-smoke.mjs\");",
+          "new": "const parentPath = \"<LOCAL_HOME>/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs\";"
+        },
+        {
+          "old": "date:\"2026-11-17\"",
+          "new": "date:\"2026-11-25\""
+        }
+      ],
+      "baseline": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+      "cwd": "<WORKTREE>/apps/api",
+      "command": [
+        "timeout",
+        "120s",
+        "node",
+        "--input-type=module",
+        "--eval",
+        "globalThis.resolveFromApi = specifier => import.meta.resolve(specifier);\nawait import(\"file://<TEMP_MODULE>\");\n"
+      ],
+      "startedAt": "2026-11-25T20:34:15.531861+00:00",
+      "loggingEnvironment": {
+        "LOG_LEVEL": "info",
+        "LOG_PRETTY": "false"
+      },
+      "moduleExecution": "Temporary materialization of original adapted harness via file:, no global import.meta.url replacement",
+      "staticPreflight": {
+        "result": "PASS",
+        "syntax": "original/adapted/smoke parsed without execution",
+        "originalAssertionsPreserved": true,
+        "assertionCallSites": 25,
+        "pathsChecked": 6,
+        "harnessScheme": "file:",
+        "smokeRoot": "file://<WORKTREE>/",
+        "smokeRelativeImportMetaRemaining": false
+      },
+      "exitCode": 0,
+      "endedAt": "2026-11-25T20:34:17.161302+00:00",
+      "log": "<EXTERNAL_ARCHIVE>/consumer-harness-file.log",
+      "temporaryMaterializationRemoved": true
+    }
+  ]
+}

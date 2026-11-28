@@ -1,0 +1,17 @@
+{
+  "baseline": "24bba5a7e716f4bcc1671bda5b8052c4f29b07f8",
+  "sha256": {
+    "apps/api/scripts/validateOraculoS1Integrated.ts": "bf99f685c2a11b545e1753c80cef07ed3be61c3deadc7258a5a1393d590fb37d",
+    "apps/api/src/services/logistica/oraculo/ci1.integration.test.ts": "f0080387bcd53fe4a3d3602b5429065f09d820f99915fd592a9bd82fa7845fd0",
+    "apps/api/src/services/logistica/oraculo/negativeMappingProposal.test.ts": "727c715e40f6e5e016d4862d5ee16ab4c98998f4b8e407bd859aca640b1f25f9",
+    "apps/api/src/services/logistica/oraculo/negativeMappingProposal.ts": "e172af5f02bba5c989038e66e53fd2310e9612ea3a3769d55716a06122568f23",
+    "docs/ops/oraculo-ci1.md": "53b5c7a2a94137950206f3bb52573baa7f95ee72be3aba384a96da71a1ebc523",
+    "docs/ops/oraculo-negative-mapper-proposal.md": "9a59595e21fe37d3274deab71731890597f06a1c055f298a85a4a194c1fa6fcb",
+    "docs/ops/reason-codes-catalog.md": "cc92f5579386d25ebd4eda197ee5e4df8070f9df2b975ce3064d0dcc9c502a03",
+    "package.json": "d74973c6571f3721debf63f9e0cb24eeaf495a29606111e24cfb640966d2f267",
+    "packages/core/src/reasons/reasonCatalog.ts": "a62b67a66cba5f7a169f0b73ca4e78fe6941db9c8562d80b53e96884f7f3b9d9",
+    "packages/db/prisma/migrations/20260923090000_oraculo_ci1_context_guard/migration.sql": "6de3c0f379938c2cae8f8c5d955e2c55758884bbdec0efc28633ba3987d69f2f",
+    "scripts/checkEvidenceIndex.ts": "e8d2b52f9664920f3d803b55f88772cc61bd46406dc26b8a9571a8664774c121",
+    "scripts/tests/checkEvidenceIndex.test.ts": "bfaaf9d6d96661403b03e215f5770f76d4cb6d2ee1bf9f58f9f7b9b92bd9268e"
+  }
+}

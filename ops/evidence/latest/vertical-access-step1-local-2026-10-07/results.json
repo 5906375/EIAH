@@ -1,0 +1,185 @@
+{
+  "executedAt": "2026-10-07T15:52:15.380185+00:00",
+  "scope": "local synthetic; no runtime integration",
+  "results": [
+    {
+      "name": "unit",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "apps/api/src/tests/vertical-access-resolver.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "unit.log.txt"
+    },
+    {
+      "name": "regression",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-isolation=none",
+        "apps/api/src/tests/vertical-entitlement-gate.contract.test.ts",
+        "apps/api/src/tests/chat-vertical-registry.test.ts",
+        "apps/api/src/tests/billing.vertical-entitlement.contract.test.ts"
+      ],
+      "exitCode": 9,
+      "log": "regression.log.txt"
+    },
+    {
+      "name": "typecheck",
+      "command": [
+        "pnpm",
+        "exec",
+        "tsc",
+        "--noEmit",
+        "--strict",
+        "--skipLibCheck",
+        "--target",
+        "ES2022",
+        "--module",
+        "ESNext",
+        "--moduleResolution",
+        "Bundler",
+        "--esModuleInterop",
+        "apps/api/src/types/verticalEntitlementGateContract.ts",
+        "apps/api/src/services/products/verticalAccessResolver.ts",
+        "apps/api/src/services/chat/verticalRegistryComposition.ts",
+        "apps/api/src/tests/vertical-access-resolver.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "typecheck.log.txt"
+    },
+    {
+      "name": "orphan",
+      "command": [
+        "pnpm",
+        "check:orphan-tests"
+      ],
+      "exitCode": 0,
+      "log": "orphan.log.txt"
+    },
+    {
+      "name": "launcher",
+      "command": [
+        "pnpm",
+        "check:chat-launcher-render-only"
+      ],
+      "exitCode": 0,
+      "log": "launcher.log.txt"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "log": "diff.log.txt"
+    },
+    {
+      "name": "regression-entitlement",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "apps/api/src/tests/vertical-entitlement-gate.contract.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "regression-entitlement.log.txt"
+    },
+    {
+      "name": "regression-registry",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "apps/api/src/tests/chat-vertical-registry.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "regression-registry.log.txt"
+    },
+    {
+      "name": "regression-billing-contract",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "apps/api/src/tests/billing.vertical-entitlement.contract.test.ts"
+      ],
+      "exitCode": 0,
+      "log": "regression-billing-contract.log.txt"
+    },
+    {
+      "name": "docs",
+      "command": [
+        "pnpm",
+        "check:docs-link-integrity"
+      ],
+      "exitCode": 0,
+      "log": "docs.log.txt"
+    },
+    {
+      "name": "reason-canon",
+      "command": [
+        "pnpm",
+        "check:reason-code-canon"
+      ],
+      "exitCode": 0,
+      "log": "reason-canon.log.txt"
+    },
+    {
+      "name": "evidence-index",
+      "command": [
+        "pnpm",
+        "check:evidence-index"
+      ],
+      "exitCode": 1,
+      "log": "evidence-index.log.txt"
+    },
+    {
+      "name": "final-diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "log": "final-diff.log.txt"
+    },
+    {
+      "name": "git-hygiene",
+      "command": [
+        "pnpm",
+        "check:tracked-ignored-files"
+      ],
+      "exitCode": 0,
+      "log": "git-hygiene.log.txt"
+    },
+    {
+      "command": [
+        "pnpm",
+        "check:evidence-index"
+      ],
+      "execution": "require_escalated; authorized tool execution",
+      "recordSource": "structured summary transcribed from exec/wait tool response, not independent raw log",
+      "exitCode": 0,
+      "testSummary": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0
+      },
+      "checkerOutput": {
+        "ok": true,
+        "check": "check:evidence-index",
+        "file": "docs/EVIDENCE_INDEX.md",
+        "sizeChars": 280427,
+        "roadmap": "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md",
+        "refsChecked": 646
+      }
+    }
+  ]
+}

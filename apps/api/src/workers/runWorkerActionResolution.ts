@@ -10,6 +10,10 @@ export const MCP_RUNTIME_ACTIVE_DENY_REASON_CODES = [
   "DB_SCOPE_MISSING",
   "DB_MODEL_NOT_ALLOWLISTED",
   "DB_INPUT_INVALID",
+  "POLICY_NOT_FOUND",
+  "ACTION_POLICY_SCOPE_DENIED",
+  "ACTION_POLICY_DISABLED",
+  "ACTION_POLICY_STORE_UNAVAILABLE",
 ] as const;
 export type McpRuntimeActiveDenyReasonCode =
   (typeof MCP_RUNTIME_ACTIVE_DENY_REASON_CODES)[number];
@@ -63,16 +67,9 @@ export function mergeActionsForExecution(params: {
   declaredAgentActions?: string[];
 }) {
   const { configured, definitions, dbAllowedCanonical, dbAllowedRaw, declaredAgentActions } = params;
-  const merged: Record<string, RegisteredAction> = { ...configured };
+  const merged: Record<string, RegisteredAction> = {};
 
   for (const actionName of dbAllowedCanonical) {
-    const def = definitions[actionName];
-    if (def) {
-      merged[actionName] = def;
-    }
-  }
-
-  for (const actionName of declaredAgentActions ?? []) {
     const def = definitions[actionName];
     if (def) {
       merged[actionName] = def;
@@ -155,9 +152,9 @@ export function resolveActiveMcpDenyRunFailure(error: unknown) {
 
   const reasonCode = (error as { reasonCode?: unknown }).reasonCode;
   if (
-    reasonCode !== "DB_SCOPE_MISSING" &&
-    reasonCode !== "DB_MODEL_NOT_ALLOWLISTED" &&
-    reasonCode !== "DB_INPUT_INVALID"
+    !MCP_RUNTIME_ACTIVE_DENY_REASON_CODES.includes(
+      reasonCode as McpRuntimeActiveDenyReasonCode,
+    )
   ) {
     return null;
   }

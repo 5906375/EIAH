@@ -1225,7 +1225,7 @@ test("imob overview reply exposes clickable shortcut markdown", () => {
   assert.ok(reply);
   assert.match(reply ?? "", /assistente operacional agent-driven/i);
   assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
-  assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
+  assert.match(reply ?? "", /\[Chat EIAH\]\(\/app\/chat\)/);
   assert.match(reply ?? "", /\[Instalação do IMOB\]\(\/app\/marketplace\/imob\)/);
 });
 
@@ -1233,9 +1233,11 @@ test("imob install reply exposes clickable shortcut markdown", () => {
   const reply = buildDeterministicImobReply("Quero instalar o IMOB no workspace.");
 
   assert.ok(reply);
+  assert.match(reply ?? "", /liberação à EIAH/i, "explica a liberação antes de ativar (ADR-011)");
+  assert.match(buildDeterministicImobReply("como ativar o imob?") ?? "", /Como ativar o IMOB no workspace/);
   assert.match(reply ?? "", /\[Marketplace IMOB\]\(\/app\/marketplace\/imob\)/);
   assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
-  assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
+  assert.match(reply ?? "", /\[Chat EIAH\]\(\/app\/chat\)/);
 });
 
 test("imob workspace onboarding reply explains how to proceed after new client/workspace setup", () => {
@@ -1244,8 +1246,9 @@ test("imob workspace onboarding reply explains how to proceed after new client/w
   assert.ok(reply);
   assert.match(reply ?? "", /workspace novo com IMOB/i);
   assert.match(reply ?? "", /Ativar módulo/i);
+  assert.match(reply ?? "", /liberação à EIAH/i);
   assert.match(reply ?? "", /\[Marketplace IMOB\]\(\/app\/marketplace\/imob\)/);
-  assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
+  assert.match(reply ?? "", /\[Chat EIAH\]\(\/app\/chat\)/);
   assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
   assert.match(reply ?? "", /qualificar lead comprador|captar imóvel|gerar proposta/i);
 });
@@ -1262,7 +1265,7 @@ test("imob workspace onboarding reply accepts natural registration variants", ()
     assert.ok(reply, input);
     assert.match(reply ?? "", /Ativar módulo/i, input);
     assert.match(reply ?? "", /\[Marketplace IMOB\]\(\/app\/marketplace\/imob\)/, input);
-    assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/, input);
+    assert.match(reply ?? "", /\[Chat EIAH\]\(\/app\/chat\)/, input);
   }
 });
 

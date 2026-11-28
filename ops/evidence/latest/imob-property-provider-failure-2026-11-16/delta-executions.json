@@ -1,0 +1,291 @@
+[
+  {
+    "name": "types",
+    "label": "first-types",
+    "command": "node",
+    "args": [
+      "/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-deltas.mjs"
+    ],
+    "env": {},
+    "log": "delta-first-types.log",
+    "startedAt": "2026-11-16T12:35:05.528Z",
+    "finishedAt": "2026-11-16T12:35:06.257Z",
+    "exitCode": 1,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "consumers",
+    "label": "first",
+    "command": "pnpm",
+    "args": [
+      "test:llm-provider-failure"
+    ],
+    "env": {},
+    "log": "delta-first.log",
+    "startedAt": "2026-11-16T12:35:05.528Z",
+    "finishedAt": "2026-11-16T12:35:07.556Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "contracts",
+    "label": "contracts",
+    "command": "pnpm",
+    "args": [
+      "--filter",
+      "@eiah/contracts",
+      "exec",
+      "tsc",
+      "-p",
+      "tsconfig.json",
+      "--noEmit"
+    ],
+    "env": {},
+    "log": "delta-contracts.log",
+    "startedAt": "2026-11-16T12:35:05.528Z",
+    "finishedAt": "2026-11-16T12:35:09.902Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "capability",
+    "label": "capability",
+    "command": "node",
+    "args": [
+      "--import",
+      "tsx",
+      "--test-name-pattern=^executeCapability",
+      "apps/api/src/tests/capability-execution.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json",
+      "DATABASE_URL": "postgresql://synthetic:synthetic@127.0.0.1:1/synthetic"
+    },
+    "log": "delta-capability.log",
+    "startedAt": "2026-11-16T12:36:04.822Z",
+    "finishedAt": "2026-11-16T12:36:11.401Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "core",
+    "label": "core-build",
+    "command": "pnpm",
+    "args": [
+      "--filter",
+      "@eiah/core",
+      "build"
+    ],
+    "env": {},
+    "log": "delta-core-build.log",
+    "startedAt": "2026-11-16T12:36:04.001Z",
+    "finishedAt": "2026-11-16T12:36:35.137Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "types",
+    "label": "outside-types",
+    "command": "node",
+    "args": [
+      "/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-deltas.mjs"
+    ],
+    "env": {},
+    "log": "delta-outside-types.log",
+    "startedAt": "2026-11-16T12:35:55.510Z",
+    "finishedAt": "2026-11-16T12:36:58.118Z",
+    "exitCode": 1,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "providers",
+    "label": "providers-build",
+    "command": "pnpm",
+    "args": [
+      "--filter",
+      "@eiah/providers",
+      "build"
+    ],
+    "env": {},
+    "log": "delta-providers-build.log",
+    "startedAt": "2026-11-16T12:38:58.903Z",
+    "finishedAt": "2026-11-16T12:38:59.933Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "package",
+    "label": "package-smoke",
+    "command": "node",
+    "args": [
+      "/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs"
+    ],
+    "env": {},
+    "log": "delta-package-smoke.log",
+    "startedAt": "2026-11-16T12:39:52.484Z",
+    "finishedAt": "2026-11-16T12:39:52.610Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "ids",
+    "label": "ids-final",
+    "command": "node",
+    "args": [
+      "--import",
+      "tsx",
+      "--test-name-pattern=^(runtime: rate limit|IDs:)",
+      "apps/api/src/tests/llm-provider-failure.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json"
+    },
+    "log": "delta-ids-final.log",
+    "startedAt": "2026-11-16T12:41:07.140Z",
+    "finishedAt": "2026-11-16T12:41:08.597Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "core",
+    "label": "core-final",
+    "command": "pnpm",
+    "args": [
+      "--filter",
+      "@eiah/core",
+      "build"
+    ],
+    "env": {},
+    "log": "delta-core-final.log",
+    "startedAt": "2026-11-16T12:41:07.139Z",
+    "finishedAt": "2026-11-16T12:41:17.457Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "package",
+    "label": "package-final",
+    "command": "node",
+    "args": [
+      "/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/package-smoke.mjs"
+    ],
+    "env": {},
+    "log": "delta-package-final.log",
+    "startedAt": "2026-11-16T12:44:46.949Z",
+    "finishedAt": "2026-11-16T12:44:47.069Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "ci",
+    "label": "ci-final",
+    "command": "node",
+    "args": [
+      "--import",
+      "tsx",
+      "scripts/checkOrphanTests.ts"
+    ],
+    "env": {
+      "ORPHAN_TESTS_COMPARE_REF": "70e66db4e7eea727f0f3567d8291595b1f86243b"
+    },
+    "log": "delta-ci-final.log",
+    "startedAt": "2026-11-16T12:44:46.951Z",
+    "finishedAt": "2026-11-16T12:44:47.543Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "types-final",
+    "label": "final-types",
+    "command": "node",
+    "args": [
+      "/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/ops/evidence/latest/imob-property-provider-failure-2026-11-16/typecheck-deltas.mjs",
+      "--reuse-baseline"
+    ],
+    "env": {},
+    "log": "delta-final-types.log",
+    "startedAt": "2026-11-16T12:45:13.142Z",
+    "finishedAt": "2026-11-16T12:45:26.244Z",
+    "exitCode": 1,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "whitespace",
+    "label": "whitespace",
+    "command": "git",
+    "args": [
+      "diff",
+      "--check"
+    ],
+    "env": {},
+    "log": "delta-whitespace.log",
+    "startedAt": "2026-11-16T12:48:09.678Z",
+    "finishedAt": "2026-11-16T12:48:09.699Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "index",
+    "label": "evidence-index",
+    "command": "node",
+    "args": [
+      "--import",
+      "tsx",
+      "scripts/checkEvidenceIndex.ts"
+    ],
+    "env": {},
+    "log": "delta-evidence-index.log",
+    "startedAt": "2026-11-16T12:48:09.678Z",
+    "finishedAt": "2026-11-16T12:48:09.951Z",
+    "exitCode": 1,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "index",
+    "label": "evidence-index-outside",
+    "command": "node",
+    "args": [
+      "--import",
+      "tsx",
+      "scripts/checkEvidenceIndex.ts"
+    ],
+    "env": {},
+    "log": "delta-evidence-index-outside.log",
+    "startedAt": "2026-11-16T12:50:30.519Z",
+    "finishedAt": "2026-11-16T12:50:30.845Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "whitespace",
+    "label": "whitespace-final",
+    "command": "git",
+    "args": [
+      "diff",
+      "--check"
+    ],
+    "env": {},
+    "log": "delta-whitespace-final.log",
+    "startedAt": "2026-11-16T12:51:25.729Z",
+    "finishedAt": "2026-11-16T12:51:25.744Z",
+    "exitCode": 0,
+    "signal": null,
+    "error": null
+  }
+]

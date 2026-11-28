@@ -1,0 +1,515 @@
+TAP version 13
+# Subtest: A installation only
+not ok 1 - A installation only
+  ---
+  duration_ms: 199.381283
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.start (node:internal/test_runner/test:944:17)
+    startSubtestAfterBootstrap (node:internal/test_runner/harness:296:17)
+  ...
+# Subtest: B P5 only realestate.apply_adjustment
+not ok 2 - B P5 only realestate.apply_adjustment
+  ---
+  duration_ms: 93.022103
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: B P5 only action.realestate.apply_adjustment
+not ok 3 - B P5 only action.realestate.apply_adjustment
+  ---
+  duration_ms: 151.947611
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: B P5 only realestate.register_property
+not ok 4 - B P5 only realestate.register_property
+  ---
+  duration_ms: 55.888436
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: B P5 only realestate.create_contract
+not ok 5 - B P5 only realestate.create_contract
+  ---
+  duration_ms: 42.966047
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: B P5 only realestate.release_commission
+not ok 6 - B P5 only realestate.release_commission
+  ---
+  duration_ms: 36.95489
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: C P7 exclusive realestate.configure_property_rules remains denied
+not ok 7 - C P7 exclusive realestate.configure_property_rules remains denied
+  ---
+  duration_ms: 37.804593
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: C P7 exclusive realestate.search_knowledge_base remains denied
+not ok 8 - C P7 exclusive realestate.search_knowledge_base remains denied
+  ---
+  duration_ms: 39.719212
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: D marketplace only remains allowed
+not ok 9 - D marketplace only remains allowed
+  ---
+  duration_ms: 39.203241
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: E no source remains denied
+not ok 10 - E no source remains denied
+  ---
+  duration_ms: 41.460923
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: F mixed sources and duplicates
+not ok 11 - F mixed sources and duplicates
+  ---
+  duration_ms: 48.227721
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: G tenant-wide grant survives workspace denial
+not ok 12 - G tenant-wide grant survives workspace denial
+  ---
+  duration_ms: 58.513663
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: H false, foreign tenant and foreign workspace excluded
+not ok 13 - H false, foreign tenant and foreign workspace excluded
+  ---
+  duration_ms: 37.312414
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: I P5 and exclusive P7
+not ok 14 - I P5 and exclusive P7
+  ---
+  duration_ms: 47.908665
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: inactive installation remains denied
+not ok 15 - inactive installation remains denied
+  ---
+  duration_ms: 42.189644
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: installation read failure retains fallback
+not ok 16 - installation read failure retains fallback
+  ---
+  duration_ms: 50.810927
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:97:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: J create logging failure preserves complete HTTP allow
+not ok 17 - J create logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 35.572442
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:125:26)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: J create logging failure preserves complete HTTP deny
+not ok 18 - J create logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 34.617354
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:125:26)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: J emit logging failure preserves complete HTTP allow
+not ok 19 - J emit logging failure preserves complete HTTP allow
+  ---
+  duration_ms: 32.271813
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:125:26)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: J emit logging failure preserves complete HTTP deny
+not ok 20 - J emit logging failure preserves complete HTTP deny
+  ---
+  duration_ms: 30.665686
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:125:26)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: existing response trace optional; no correlation generated
+not ok 21 - existing response trace optional; no correlation generated
+  ---
+  duration_ms: 29.931149
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8720'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:133:19)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+# Subtest: K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+not ok 22 - K local pre-edit baseline: identical status and complete HTTP body for all scenarios
+  ---
+  duration_ms: 34.588867
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:9075'
+  failureType: 'testCodeFailure'
+  error: "Cannot read properties of null (reading 'port')"
+  code: 'ERR_TEST_FAILURE'
+  name: 'TypeError'
+  stack: |-
+    Test.serverAddress (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:49:31)
+    new Test (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/lib/test.js:34:14)
+    obj.<computed> [as get] (/home/jusall/projects/EIAH_BUILDER/node_modules/.pnpm/supertest@6.3.4/node_modules/supertest/index.js:43:18)
+    request (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:79:43)
+    TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/session-entitlement-shadow.contract.test.ts:144:28)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+  ...
+1..22
+# Error: Test "A installation only" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "B P5 only realestate.apply_adjustment" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "B P5 only action.realestate.apply_adjustment" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "B P5 only realestate.register_property" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "B P5 only realestate.create_contract" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "B P5 only realestate.release_commission" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "C P7 exclusive realestate.configure_property_rules remains denied" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "C P7 exclusive realestate.search_knowledge_base remains denied" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "D marketplace only remains allowed" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "E no source remains denied" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "F mixed sources and duplicates" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "G tenant-wide grant survives workspace denial" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "H false, foreign tenant and foreign workspace excluded" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "I P5 and exclusive P7" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "inactive installation remains denied" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "installation read failure retains fallback" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:6367 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "J create logging failure preserves complete HTTP allow" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "J create logging failure preserves complete HTTP deny" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "J emit logging failure preserves complete HTTP allow" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "J emit logging failure preserves complete HTTP deny" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8365 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "existing response trace optional; no correlation generated" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:8720 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# Error: Test "K local pre-edit baseline: identical status and complete HTTP body for all scenarios" at apps/api/src/tests/session-entitlement-shadow.contract.test.ts:1:9075 generated asynchronous activity after the test ended. This activity created the error "Error: listen EPERM: operation not permitted 0.0.0.0" and would have caused the test to fail, but instead triggered an uncaughtException event.
+# tests 22
+# suites 0
+# pass 0
+# fail 22
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1242.405586

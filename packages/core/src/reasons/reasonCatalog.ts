@@ -169,6 +169,14 @@ const NOTIFICATION_PROPOSED_CODES = [
   "NOTIFICATION_BLOCKED_RUN_MISSING",
 ] as const;
 
+const ORACULO_PREPARATION_PROPOSED_CODES = [
+  "ORACULO_CONTEXT_DENIED",
+  "ORACULO_PREPARATION_WRITE_DENIED",
+  "ORACULO_PREPARATION_REVISION_CONFLICT",
+  "ORACULO_PREPARATION_INTEGRITY_VIOLATION",
+  "ORACULO_PREPARATION_INPUT_INVALID",
+] as const;
+
 const PRE_DUIMP_VALIDATION_PROPOSED_CODES = [
   "PRE_DUIMP_ACTION_UNKNOWN",
 ] as const;
@@ -217,6 +225,39 @@ function defineReasonCodes<const Codes extends readonly string[]>(
     ...definitionMetadata,
   }));
 }
+
+export const ORACULO_CI1_SIMULATION_CODES = [
+  "ORACULO_INPUT_INVALID",
+  "ORACULO_SCOPE_DENIED",
+  "ORACULO_EXTERNAL_EFFECT_BLOCKED",
+  "ORACULO_VISIT_NOT_RESOLVED",
+  "ORACULO_CONTENT_INTEGRITY_MISMATCH",
+  "ORACULO_ARTIFACT_INTEGRITY_MISMATCH",
+  "ORACULO_INSPECTION_REJECTED",
+  "ORACULO_VALIDITY_EXPIRED",
+  "ORACULO_VALIDITY_NOT_STARTED",
+  "ORACULO_TEMPORAL_POLICY_UNRESOLVED",
+  "ORACULO_STATUS_REVOKED",
+  "ORACULO_STATUS_SUSPENDED",
+  "ORACULO_STATUS_UNKNOWN",
+  "ORACULO_STATUS_STALE",
+  "ORACULO_STATUS_CONFLICT",
+  "ORACULO_SOURCE_AUTHORITY_UNRESOLVED",
+  "ORACULO_HITL_REQUIRED",
+  "ORACULO_APPROVAL_CONTEXT_MISMATCH",
+  "ORACULO_APPROVAL_EXPIRED",
+  "ORACULO_APPROVAL_REJECTED",
+  "ORACULO_INTENT_PAYLOAD_CONFLICT",
+  "ORACULO_VISIT_REVISION_CONFLICT",
+  "ORACULO_VISIT_TRANSITION_DENIED",
+  "ORACULO_EVIDENCE_REQUIRED",
+  "ORACULO_SNAPSHOT_MISMATCH",
+  "ORACULO_COMMIT_OUTCOME_UNKNOWN",
+  "ORACULO_COMMIT_FAILED_NO_EFFECT",
+  "ORACULO_EXECUTION_AUTHORITY_LOST",
+  "ORACULO_VERIFICATION_NOT_SATISFIED",
+  "ORACULO_TEMPORAL_INCOHERENCE"
+] as const;
 
 export const REASON_CODE_CATALOG = [
   ...defineReasonCodes(IMOB_BOOTSTRAP_ACTIVE_CODES, {
@@ -426,6 +467,16 @@ export const REASON_CODE_CATALOG = [
     owner: "Notification governance",
     evidenceRef: "scripts/notify/escalationNotice.ts",
   }),
+  ...defineReasonCodes(ORACULO_PREPARATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "governance",
+    descriptionPrefix: "Oráculo SC preparation persistence; no operational authority",
+    status: "proposed",
+    owner: "Logística governance / Oráculo SC",
+    introducedBy: "ORACULO-PREPARATION-PERSISTENCE-V1",
+    evidenceRef: "apps/api/src/routes/oraculoPreparation.ts",
+  }),
   ...defineReasonCodes(PRE_DUIMP_VALIDATION_PROPOSED_CODES, {
     domain: "log",
     severity: "warning",
@@ -475,6 +526,17 @@ export const REASON_CODE_CATALOG = [
     owner: "Logística governance / PRE_DUIMP",
     introducedBy: "PRE_DUIMP-CUT-5",
     evidenceRef: "apps/api/src/types/preDuimpReplayContract.ts",
+  }),
+  ...defineReasonCodes(ORACULO_CI1_SIMULATION_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "governance",
+    descriptionPrefix: "Oráculo SC simulation-only negative result",
+    status: "active",
+    owner: "Carlos Alberto Merlo / Oráculo SC",
+    approver: { kind: "human", actor: "Carlos Alberto Merlo" },
+    introducedBy: "ORACULO-CI1-NEGATIVE-RATIFICATION",
+    evidenceRef: "docs/ops/oraculo-negative-ratification.md",
   }),
 ] as const;
 

@@ -1,0 +1,31 @@
+.demo-guide-section {
+  min-height: 40px;
+  margin-block: 4px 10px;
+  padding: 6px 12px;
+  color: var(--brand);
+}
+.demo-guide {
+  position: fixed;
+  inset: 0;
+  width: min(42rem, calc(100vw - 24px));
+  max-height: min(46rem, calc(100dvh - 24px));
+  margin: auto;
+  padding: clamp(16px, 4vw, 28px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+}
+.demo-guide::backdrop { background: rgb(8 25 39 / 58%); }
+.demo-guide-header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.demo-guide-header h2 { font-size: clamp(1.25rem, 4vw, 1.65rem); }
+.demo-guide-header .btn { flex: none; white-space: nowrap; }
+.demo-guide-list { margin-top: 12px; }
+.demo-guide-topic > p, .demo-guide-topic > ol { margin-block: 10px; }
+.demo-guide-topic ol { padding-inline-start: 22px; }
+.demo-guide-topic li + li { margin-top: 7px; }
+.demo-guide-topic .context-audio { margin-block: 12px 9px; }
+.demo-guide-topic .context-audio button { min-height: 40px; cursor: pointer; }
+.demo-guide-topic > a { display: inline-block; margin-bottom: 4px; }

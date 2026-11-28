@@ -1,0 +1,29 @@
+{
+  "executedAt": "2026-09-23T15:55:07.876576+00:00",
+  "results": [
+    {
+      "command": [
+        "node",
+        "node_modules/prisma/build/index.js",
+        "validate",
+        "--config",
+        "prisma.oraculo-ci1.config.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "The schema at prisma/schema.prisma is valid \ud83d\ude80\n",
+      "stderr": "Loaded Prisma config from prisma.oraculo-ci1.config.ts.\n\nPrisma schema loaded from prisma/schema.prisma.\n"
+    },
+    {
+      "command": [
+        "node",
+        "node_modules/prisma/build/index.js",
+        "generate",
+        "--config",
+        "prisma.oraculo-ci1.config.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "\n\u2714 Generated Prisma Client (v7.2.0) to ./src/generated/client in 738ms\n\nStart by importing your Prisma Client (See: https://pris.ly/d/importing-client)\n\nTip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate\n\n",
+      "stderr": "Loaded Prisma config from prisma.oraculo-ci1.config.ts.\n\nPrisma schema loaded from prisma/schema.prisma.\n"
+    }
+  ]
+}

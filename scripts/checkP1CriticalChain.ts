@@ -53,7 +53,6 @@ const highActions = JSON.parse(
   ok?: boolean;
   actions?: string[];
   assertions?: {
-    receiptCanonSpec?: string;
     txIdRequired?: boolean;
     tierHigh?: boolean;
   };
@@ -73,11 +72,6 @@ assertContains(governanceRoute, "RECEIPT_CANON_INCONSISTENT", "ledger.fail_close
 assertContains(runsRoute, 'post("/runs/:id/approve"', "approval.route_available");
 
 if (highActions.ok !== true) fail("high_actions_evidence_not_ok");
-if (highActions.assertions?.receiptCanonSpec !== "receipt.canon.v1") {
-  fail("high_actions_receipt_spec_invalid", {
-    got: highActions.assertions?.receiptCanonSpec ?? null,
-  });
-}
 if (highActions.assertions?.txIdRequired !== true) {
   fail("high_actions_txid_required_invalid", {
     got: highActions.assertions?.txIdRequired ?? null,

@@ -1,0 +1,175 @@
+HEAD VIRTUAL BASELINE
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m79[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m79[0m       req.logger?.warn({ event: "auth.missing_bearer" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m88[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m88[0m       req.logger?.warn({ event: "auth.invalid_token" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m96[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m96[0m       req.logger?.warn({ event: "auth.token_expired" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m114[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m114[0m     if (req.logger) {
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m35[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m                                  ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m144[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m144[0m         req.logger?.warn({ error: disconnectError }, "auth.enforce.prisma_disconnect_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m187[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m187[0m         req.logger?.error({ error: ledgerError }, "guardrailLedger.write_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m191[0m:[93m9[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m191[0m     req.logger?.error({ error }, "auth.enforce.failure");
+[7m   [0m [91m        ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m93[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m93[0m   const traceId = req?.traceId?.trim();
+[7m  [0m [91m                       ~~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m127[0m:[93m10[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m127[0m     req?.logger?.error?.({ error }, "imob.access_denied.audit_failed");
+[7m   [0m [91m         ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m129[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m129[0m   if (!req?.logger?.warn) return;
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m130[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m130[0m   req.logger.warn(
+[7m   [0m [91m      ~~~~~~[0m
+[96mapps/api/src/services/imob/imobRevocationGate.ts[0m:[93m48[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m48[0m   req.logger?.warn?.(
+[7m  [0m [91m      ~~~~~~[0m
+[96mapps/web/src/components/agents/eiahTutorContracts.ts[0m:[93m2391[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'vertical' does not exist on type 'IntentLibraryEntryV1'.
+
+[7m2391[0m     (!params.intent || params.intent.vertical !== "core") &&
+[7m    [0m [91m                                     ~~~~~~~~[0m
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m986[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m986[0m     assert.deepEqual(harness.messages().at(-1)?.caseContext?.blockers, ["Aprovação necessária"]);
+[7m   [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m1305[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m1305[0m     assert.deepEqual(harness.messages().at(-1)!.caseContext?.blockers, ["Aprovação necessária"]);
+[7m    [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/hooks/useAgentExecution.ts[0m:[93m99[0m:[93m38[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.
+  Types of property 'agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+[7m99[0m       return apiCreateRunWithHeaders(body, headers);
+[7m  [0m [91m                                     ~~~~[0m
+
+CURRENT TREE
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m79[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m79[0m       req.logger?.warn({ event: "auth.missing_bearer" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m88[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m88[0m       req.logger?.warn({ event: "auth.invalid_token" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m96[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m96[0m       req.logger?.warn({ event: "auth.token_expired" }, "request.unauthorized");
+[7m  [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m114[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m114[0m     if (req.logger) {
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m          ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m115[0m:[93m35[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m115[0m       req.logger = bindLogger(req.logger, {
+[7m   [0m [91m                                  ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m144[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m144[0m         req.logger?.warn({ error: disconnectError }, "auth.enforce.prisma_disconnect_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m187[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m187[0m         req.logger?.error({ error: ledgerError }, "guardrailLedger.write_failed");
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/middlewares/enforceTenant.ts[0m:[93m191[0m:[93m9[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'TenantAwareRequest'.
+
+[7m191[0m     req.logger?.error({ error }, "auth.enforce.failure");
+[7m   [0m [91m        ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m93[0m:[93m24[0m - [91merror[0m[90m TS2339: [0mProperty 'traceId' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m93[0m   const traceId = req?.traceId?.trim();
+[7m  [0m [91m                       ~~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m127[0m:[93m10[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m127[0m     req?.logger?.error?.({ error }, "imob.access_denied.audit_failed");
+[7m   [0m [91m         ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m129[0m:[93m13[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m129[0m   if (!req?.logger?.warn) return;
+[7m   [0m [91m            ~~~~~~[0m
+[96mapps/api/src/services/imob/imobAccessGate.ts[0m:[93m130[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m130[0m   req.logger.warn(
+[7m   [0m [91m      ~~~~~~[0m
+[96mapps/api/src/services/imob/imobRevocationGate.ts[0m:[93m48[0m:[93m7[0m - [91merror[0m[90m TS2339: [0mProperty 'logger' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+
+[7m48[0m   req.logger?.warn?.(
+[7m  [0m [91m      ~~~~~~[0m
+[96mapps/web/src/components/agents/eiahTutorContracts.ts[0m:[93m2391[0m:[93m38[0m - [91merror[0m[90m TS2339: [0mProperty 'vertical' does not exist on type 'IntentLibraryEntryV1'.
+
+[7m2391[0m     (!params.intent || params.intent.vertical !== "core") &&
+[7m    [0m [91m                                     ~~~~~~~~[0m
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m986[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m986[0m     assert.deepEqual(harness.messages().at(-1)?.caseContext?.blockers, ["Aprovação necessária"]);
+[7m   [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/features/imob/structured/createImobStructuredForms.test.ts[0m:[93m1305[0m:[93m62[0m - [91merror[0m[90m TS2551: [0mProperty 'blockers' does not exist on type 'ImobCaseContext'. Did you mean 'blocker'?
+
+[7m1305[0m     assert.deepEqual(harness.messages().at(-1)!.caseContext?.blockers, ["Aprovação necessária"]);
+[7m    [0m [91m                                                             ~~~~~~~~[0m
+
+  [96mapps/web/src/lib/api.ts[0m:[93m3080[0m:[93m3[0m
+    [7m3080[0m   blocker?: string | null;
+    [7m    [0m [96m  ~~~~~~~[0m
+    'blocker' is declared here.
+[96mapps/web/src/hooks/useAgentExecution.ts[0m:[93m99[0m:[93m38[0m - [91merror[0m[90m TS2345: [0mArgument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.
+  Types of property 'agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+
+[7m99[0m       return apiCreateRunWithHeaders(body, headers);
+[7m  [0m [91m                                     ~~~~[0m
+
+{"focusedDiagnostics":2,"dependencyDiagnostics":16,"introduced":0}

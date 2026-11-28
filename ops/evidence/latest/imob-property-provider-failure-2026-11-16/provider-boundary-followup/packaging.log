@@ -1,0 +1,1 @@
+{"ok":true,"scope":"package configuration and test registration paths only; no build or typecheck","productionSourceEntries":5,"testsOutsideProductionInputs":true,"transportDependencyResolves":true,"bothFilesInOfficialCommand":true,"existingCiStepPreserved":true}

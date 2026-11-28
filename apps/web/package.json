@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@eiah/contracts": "workspace:*",
     "@radix-ui/react-select": "^2.0.0",
     "@types/intro.js": "^5.1.5",
     "html2canvas": "^1.4.1",

@@ -1,0 +1,175 @@
+{
+  "recordedAt": "2026-11-25T20:43:18.103872+00:00",
+  "executor": "Codex, sem subagentes",
+  "authorization": "Decisão humana: TWDG — CONSOLIDAR E VERSIONAR A CORREÇÃO CORE VALIDADA, 25/11/2026; somente seleção documental, checks e commit local isolado",
+  "baseline": "b50e7e3759d9fa56bbb9e356d6f3798d2c7e2ed3",
+  "branch": "staging/candidate-20261107-post-imob",
+  "productionDelta": {
+    "path": "packages/core/tsup.config.ts",
+    "before": "splitting: false",
+    "after": "splitting: true",
+    "historicalOrigin": "e22ff58d4c9e5dfd4b74b1572ca51e87649c68a7",
+    "scope": "Única alteração funcional; histórico e22ff58d não integrado por cherry-pick/merge"
+  },
+  "result": "PASS — validação focal local, sem homologação operacional",
+  "builds": {
+    "core": {
+      "command": [
+        "timeout",
+        "120s",
+        "pnpm",
+        "--filter",
+        "@eiah/core",
+        "build"
+      ],
+      "cwd": "<WORKTREE>",
+      "startedAt": "2026-11-25T20:19:57.562555+00:00",
+      "endedAt": "2026-11-25T20:20:03.948440+00:00",
+      "exitCode": 0,
+      "credentials": "variáveis sensíveis removidas; nenhum env-file fornecido",
+      "network": "downloads desabilitados; build somente, sem bootstrap da aplicação",
+      "log": "<EXTERNAL_ARCHIVE>/core-build.log"
+    },
+    "api": {
+      "command": [
+        "timeout",
+        "120s",
+        "pnpm",
+        "--filter",
+        "@eiah/api",
+        "build"
+      ],
+      "cwd": "<WORKTREE>",
+      "startedAt": "2026-11-25T20:20:15.756015+00:00",
+      "endedAt": "2026-11-25T20:20:27.648399+00:00",
+      "exitCode": 0,
+      "credentials": "variáveis sensíveis removidas; nenhum env-file fornecido",
+      "network": "downloads desabilitados; build somente, sem bootstrap da aplicação",
+      "log": "<EXTERNAL_ARCHIVE>/api-build.log"
+    }
+  },
+  "artifactApplicability": {
+    "result": "PASS",
+    "sourceMapsExamined": 181,
+    "projectSourceMatches": 527,
+    "distinctProjectSources": 527,
+    "dependencies": "Lockfile correspondente ao registro anterior; manifests iguais; links de workspace locais preservados; nenhuma instalação/atualização",
+    "newBuildsExecuted": 0,
+    "limitation": "Confirma aplicabilidade ao delta local; não comprova imagem ou versão implantada. Não repete preservação/hashes de Asset/Site."
+  },
+  "registry": {
+    "checks": {
+      "executed": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "exitCode": 0,
+    "syntheticAdapterCalls": 1,
+    "blockedNetworkAttempts": 0,
+    "realProviderCalls": 0,
+    "sharedRegistryChunk": "packages/core/dist/chunk-ZNSZSEHU.js",
+    "artifactHashesRecorded": 43
+  },
+  "consumers": {
+    "checks": {
+      "executed": 7,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "exitCode": 0,
+    "probes": [
+      "Consumer entry paths and named exports",
+      "Transitive core file/chunk graph",
+      "Existing formal-dist smoke adapted for shared constructor",
+      "Four provider subclasses share LLMProvider",
+      "Adapter LLMProviderError identity through registry/router/completion",
+      "RetryExhaustedError identity and completion cause unwrapping",
+      "WorkerTopologyConfigError identity in pure leaf"
+    ],
+    "entries": 25,
+    "modules": 104,
+    "chunks": 78,
+    "bindings": 169,
+    "blockedNetworkAttempts": 0,
+    "realProviderCalls": 0,
+    "serviceStarts": 0,
+    "buildsExecuted": 0,
+    "artifactHashesRecorded": 111
+  },
+  "staticPreflight": {
+    "result": "PASS",
+    "syntax": "original/adapted/smoke parsed without execution",
+    "originalAssertionsPreserved": true,
+    "assertionCallSites": 25,
+    "pathsChecked": 6,
+    "harnessScheme": "file:",
+    "smokeRoot": "file://<WORKTREE>/",
+    "smokeRelativeImportMetaRemaining": false
+  },
+  "dependencyReuse": {
+    "preparation": "Reuso local de dependências existentes; nenhuma instalação, atualização, download ou build de dependências",
+    "source": "<LOCAL_HOME>/projects/EIAH_BUILDER",
+    "target": "<WORKTREE>",
+    "lockfile_sha256": "31478a28da61c43e456e05550561985e4343f09807159adaacc74944c3cdee1c",
+    "manifests_equal": [
+      "packages/core",
+      "apps/api",
+      "packages/contracts",
+      "packages/db",
+      "packages/providers",
+      "packages/mcp-runner"
+    ],
+    "prepared_ignored_paths": [
+      "node_modules",
+      "packages/core/node_modules",
+      "apps/api/node_modules",
+      "packages/contracts/node_modules",
+      "packages/db/node_modules",
+      "packages/providers/node_modules",
+      "packages/mcp-runner/node_modules",
+      "packages/contracts/dist",
+      "packages/db/dist",
+      "packages/providers/dist",
+      "packages/mcp-runner/dist"
+    ],
+    "workspace_links": "redirecionados para esta worktree; store .pnpm existente somente reutilizado",
+    "compiled_dependencies": [
+      "contracts",
+      "db",
+      "providers",
+      "mcp-runner"
+    ],
+    "limits": "Artefatos de dependências reutilizados com fontes/manifests correspondentes; builds novos Core/API ainda não executados. Nenhum artefato histórico tratado como prova desses builds."
+  },
+  "preparationFailures": [
+    {
+      "attempt": "registry com logging silent",
+      "exitCode": 1,
+      "error": "AssertionError: Capture actual formal completion diagnostic",
+      "cause": "LOG_LEVEL=silent configurado pelo executor suprimiu o evento requerido",
+      "resolution": "Rodada autorizada LOG_LEVEL=info; registry 5/5, exit 0"
+    },
+    {
+      "attempt": "consumidor via adaptação global de import.meta.url",
+      "exitCode": 1,
+      "error": "ERR_INVALID_URL; input ../../../../; base data:",
+      "cause": "Substituição global alterou o literal usado para adaptar root do smoke",
+      "resolution": "Conferência estática e execução autorizada por módulo temporário file:, sem substituição global; consumidor 7/7, exit 0"
+    }
+  ],
+  "preservation": "342 arquivos selecionados logicamente preservados e recuperados em etapa anterior; não repetido. Cópias incrementais no mesmo disco D:, sem redundância contra perda física desse disco.",
+  "isolation": "Baseline, branch e stage vazio conferidos; único delta funcional splitting; nenhuma mudança nas outras worktrees. Novas evidências e índice são o delta documental autorizado.",
+  "limits": [
+    "Inspeção estática ampla; execução somente das folhas revisadas com providers/dados sintéticos e bloqueios de rede",
+    "Ausência de homologação da nova imagem Docker",
+    "Ausência de homologação staging",
+    "Ausência de validação operacional",
+    "Ausência de certificação integral de todos os consumidores da plataforma",
+    "Typecheck oficial API não inclui testes; não substitui outras tipagens históricas",
+    "Nenhum novo build, typecheck, harness ou preservação durante a consolidação documental",
+    "Deployment e ativação operacional não autorizados; freezes, holds, No-Go Ledgers e bloqueios específicos preservados"
+  ],
+  "integrationStrategy": "Reutilizar branch/worktree atuais para delta isolado. origin/main local b50e7e37, recência remota não atualizada nesta etapa. PR #541 permanece aberto com escopo misto de 294 caminhos; não é PR isolado reutilizável para esta entrega. Nenhum PR desta branch retornado pela consulta. Publicação/PR dependem de autorização específica e preflight remoto atual; evitar reincorporar deltas IMOB/WhatsApp e reconciliar a correção equivalente do PR #541 sem modificar essa frente agora."
+}

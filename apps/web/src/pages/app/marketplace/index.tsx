@@ -1,9 +1,11 @@
+import { beginSessionContextRequest } from "@/state/sessionContextSync";
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { formatBRL } from "@/lib/formatters";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiErrorMessage,
   apiGetAgentBillingSummary,
   apiGetSessionContext,
   apiGetTenantBillingSummary,
@@ -43,7 +45,7 @@ const VERTICALS: Array<{
     title: "IMOB Network",
     summary: "Chat Operacional + Dashboard + processos auditáveis para imobiliária.",
     status: "ready",
-    routes: ["/app/imob/chat", "/app/imob/dashboard"],
+    routes: ["/app/chat?vertical=imob", "/app/imob/dashboard"],
   },
   {
     product: "LEGAL",
@@ -95,6 +97,7 @@ const MarketplaceIndexPage: React.FC = () => {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    const contextRequest = beginSessionContextRequest();
     try {
       const [installs, context, billing, agents] = await Promise.all([
         apiListMarketplaceInstallations(),
@@ -106,7 +109,7 @@ const MarketplaceIndexPage: React.FC = () => {
       setBillingSummary(billing?.data ?? null);
       setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
-      if (context?.ok && context.data) {
+      if (contextRequest.isCurrent() && context?.ok && context.data) {
         updateSession({
           activeDomain: context.data.activeDomain,
           availableDomains: context.data.availableDomains,
@@ -125,6 +128,7 @@ const MarketplaceIndexPage: React.FC = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao carregar marketplace");
     } finally {
+      contextRequest.finish();
       setLoading(false);
     }
   }, [session.workspaceId]);
@@ -196,7 +200,7 @@ const MarketplaceIndexPage: React.FC = () => {
       await refresh();
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Falha ao ativar IMOB (${err.status}).`);
+        setError(apiErrorMessage(err) ?? `Falha ao ativar IMOB (${err.status}).`);
       } else {
         setError(err instanceof Error ? err.message : "Falha ao ativar IMOB");
       }
@@ -420,7 +424,7 @@ const MarketplaceIndexPage: React.FC = () => {
                   <>
                     <button
                       type="button"
-                      onClick={() => navigate("/app/imob/chat?domain=imob")}
+                      onClick={() => navigate("/app/chat?vertical=imob")}
                       className="rounded-full border border-accent/60 bg-accent/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:border-accent hover:bg-accent/30"
                     >
                       Abrir chat

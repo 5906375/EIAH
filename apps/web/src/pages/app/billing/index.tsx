@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BillingGuideFooter from "@/components/billing/BillingGuideFooter";
 import EconomyPage from "@/pages/app/economy";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -22,6 +22,7 @@ import {
   apiGetWorkspaceAgentAssignments,
   apiPatchTenantQuotas,
   apiPatchTenantWorkspaceGrant,
+  describeFinancialWriteFailure,
   type BillingReconciliationSummary,
   type Run,
   type AgentBillingSummaryItem,
@@ -48,6 +49,42 @@ const formatDateInputValue = (iso?: string | null) => {
 };
 
 const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+
+type FormNotice = { tone: "ok" | "error"; text: string };
+
+// O servidor NEGA o ajuste de ledger (403 BILLING_ADJUSTMENT_APPROVAL_REQUIRED) enquanto não existir um mecanismo ratificado de
+// aprovação por duas pessoas distintas. Esta constante só controla a APRESENTAÇÃO da tela: quem decide é sempre a API. Não existe
+// fila nem registro de "pedido de ajuste": nada é guardado para processamento posterior.
+const ADJUSTMENT_APPROVAL_AVAILABLE: boolean = false;
+
+function NoticeLine({ notice }: { notice: FormNotice | null }) {
+  if (!notice) return null;
+  return (
+    <p
+      role={notice.tone === "error" ? "alert" : "status"}
+      className={`text-xs ${notice.tone === "error" ? "text-amber-300" : "text-emerald-300"}`}
+    >
+      {notice.text}
+    </p>
+  );
+}
+
+// Mesmo formato exigido pelo servidor (AUTHZ-FIN-1, proposta). A validação aqui é só conveniência: quem decide é a API.
+const FINANCIAL_EVIDENCE_REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:/#@-]{2,119}$/;
+
+function validateFinancialJustification(reason: string, evidenceRef: string): string | null {
+  const trimmedReason = reason.trim();
+  if (trimmedReason.length < 3 || trimmedReason.length > 300) return "Informe o motivo da alteração (3 a 300 caracteres).";
+  if (!FINANCIAL_EVIDENCE_REF_PATTERN.test(evidenceRef.trim())) {
+    return "Informe a referência de evidência (3 a 120 caracteres, sem espaços; ex.: FIN-2026-001).";
+  }
+  return null;
+}
+
+function newAdjustmentRequestId() {
+  const uuid = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : null;
+  return uuid ? `adj-${uuid}` : `adj-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 type BillingProfileView = "operacao" | "financeiro" | "executivo";
 
@@ -96,15 +133,23 @@ const BillingPage: React.FC = () => {
     monthlyCostCentsLimit: "",
   });
   const [quotaSaving, setQuotaSaving] = useState(false);
-  const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
+  const [quotaMessage, setQuotaMessage] = useState<FormNotice | null>(null);
 
   const [grantSavingId, setGrantSavingId] = useState<string | null>(null);
+  const [grantMessage, setGrantMessage] = useState<FormNotice | null>(null);
+
+  // Justificativa obrigatória de toda alteração financeira (cotas, concessões e ajuste). O servidor só aplica a alteração
+  // se a pessoa tiver autoridade financeira designada: esta tela não decide nem sugere autoridade.
+  const [financialReason, setFinancialReason] = useState("");
+  const [financialEvidenceRef, setFinancialEvidenceRef] = useState("");
+  // Reutiliza o requestId só quando o MESMO pedido é reenviado após indisponibilidade (503), para o retry ser idempotente.
+  const adjustmentAttemptRef = useRef<{ requestId: string; fingerprint: string } | null>(null);
 
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentDescription, setAdjustmentDescription] = useState("");
   const [adjustmentWorkspaceId, setAdjustmentWorkspaceId] = useState<string>("");
   const [adjustmentSaving, setAdjustmentSaving] = useState(false);
-  const [adjustmentMessage, setAdjustmentMessage] = useState<string | null>(null);
+  const [adjustmentMessage, setAdjustmentMessage] = useState<FormNotice | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -436,6 +481,11 @@ const BillingPage: React.FC = () => {
   }, [billingProfile, entitlementSummary, reconciliation, selectedWorkspace, summary, topWorkspace]);
 
   const onSaveQuotas = async () => {
+    const invalid = validateFinancialJustification(financialReason, financialEvidenceRef);
+    if (invalid) {
+      setQuotaMessage({ tone: "error", text: invalid });
+      return;
+    }
     setQuotaSaving(true);
     setQuotaMessage(null);
     try {
@@ -446,23 +496,38 @@ const BillingPage: React.FC = () => {
         monthlyCostCentsLimit: quotaForm.monthlyCostCentsLimit
           ? Number(quotaForm.monthlyCostCentsLimit)
           : undefined,
+        reason: financialReason.trim(),
+        evidenceRef: financialEvidenceRef.trim(),
+        confirmed: true,
       });
-      setQuotaMessage("Quotas atualizadas.");
+      setQuotaMessage({ tone: "ok", text: "Quotas atualizadas." });
       await loadData();
     } catch (err) {
-      setQuotaMessage(err instanceof Error ? err.message : "Falha ao salvar quotas.");
+      setQuotaMessage({ tone: "error", text: describeFinancialWriteFailure(err).message });
     } finally {
       setQuotaSaving(false);
     }
   };
 
   const onToggleWorkspaceGrant = async (item: TenantBillingWorkspaceItem) => {
+    const invalid = validateFinancialJustification(financialReason, financialEvidenceRef);
+    if (invalid) {
+      setGrantMessage({ tone: "error", text: invalid });
+      return;
+    }
     setGrantSavingId(item.workspaceId);
+    setGrantMessage(null);
     try {
       await apiPatchTenantWorkspaceGrant(item.workspaceId, {
         enabled: item.grant?.enabled === false ? true : false,
+        reason: financialReason.trim(),
+        evidenceRef: financialEvidenceRef.trim(),
+        confirmed: true,
       });
+      setGrantMessage({ tone: "ok", text: `Concessão do workspace ${item.workspaceName} atualizada.` });
       await loadData();
+    } catch (err) {
+      setGrantMessage({ tone: "error", text: describeFinancialWriteFailure(err).message });
     } finally {
       setGrantSavingId(null);
     }
@@ -470,10 +535,21 @@ const BillingPage: React.FC = () => {
 
   const onCreateAdjustment = async () => {
     const amount = Number(adjustmentAmount);
-    if (!Number.isFinite(amount) || amount === 0) {
-      setAdjustmentMessage("Informe um valor (centavos) diferente de zero.");
+    if (!Number.isInteger(amount) || amount === 0) {
+      setAdjustmentMessage({ tone: "error", text: "Informe um valor inteiro (centavos) diferente de zero." });
       return;
     }
+    const invalid = validateFinancialJustification(financialReason, financialEvidenceRef);
+    if (invalid) {
+      setAdjustmentMessage({ tone: "error", text: invalid });
+      return;
+    }
+    const fingerprint = JSON.stringify([amount, adjustmentWorkspaceId, adjustmentDescription, financialReason.trim(), financialEvidenceRef.trim()]);
+    const attempt =
+      adjustmentAttemptRef.current && adjustmentAttemptRef.current.fingerprint === fingerprint
+        ? adjustmentAttemptRef.current
+        : { requestId: newAdjustmentRequestId(), fingerprint };
+    adjustmentAttemptRef.current = attempt;
     setAdjustmentSaving(true);
     setAdjustmentMessage(null);
     try {
@@ -481,17 +557,48 @@ const BillingPage: React.FC = () => {
         amountCents: amount,
         workspaceId: adjustmentWorkspaceId || undefined,
         description: adjustmentDescription || undefined,
+        requestId: attempt.requestId,
+        reason: financialReason.trim(),
+        evidenceRef: financialEvidenceRef.trim(),
+        confirmed: true,
       });
+      adjustmentAttemptRef.current = null;
       setAdjustmentAmount("");
       setAdjustmentDescription("");
-      setAdjustmentMessage("Adjustment registrado no ledger.");
+      setAdjustmentMessage({ tone: "ok", text: "Ajuste registrado no ledger." });
       await loadData();
     } catch (err) {
-      setAdjustmentMessage(err instanceof Error ? err.message : "Falha ao criar adjustment.");
+      const failure = describeFinancialWriteFailure(err);
+      // Só a indisponibilidade (503) admite reenviar o mesmo pedido; negativas e dados inválidos começam um pedido novo.
+      if (failure.kind !== "unavailable") adjustmentAttemptRef.current = null;
+      setAdjustmentMessage({ tone: "error", text: failure.message });
     } finally {
       setAdjustmentSaving(false);
     }
   };
+
+  const financialJustificationFields = (
+    <div className="space-y-2">
+      <p className="text-[11px] text-muted-foreground">
+        Toda alteração financeira exige motivo e referência de evidência. O servidor só aplica a alteração se a sua pessoa
+        tiver autoridade financeira designada; caso contrário, nada é alterado.
+      </p>
+      <input
+        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+        placeholder="Motivo da alteração (3 a 300 caracteres)"
+        maxLength={300}
+        value={financialReason}
+        onChange={(event) => setFinancialReason(event.target.value)}
+      />
+      <input
+        className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+        placeholder="Referência de evidência (ex.: FIN-2026-001)"
+        maxLength={120}
+        value={financialEvidenceRef}
+        onChange={(event) => setFinancialEvidenceRef(event.target.value)}
+      />
+    </div>
+  );
 
   const onApplyPeriodFilter = () => {
     setPeriodFromApplied(periodFromInput);
@@ -1271,6 +1378,7 @@ const BillingPage: React.FC = () => {
                 }
               />
             </div>
+            {financialJustificationFields}
             <button
               type="button"
               className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
@@ -1279,7 +1387,7 @@ const BillingPage: React.FC = () => {
             >
               {quotaSaving ? "Salvando..." : "Salvar quotas"}
             </button>
-            {quotaMessage ? <p className="text-xs text-emerald-300">{quotaMessage}</p> : null}
+            <NoticeLine notice={quotaMessage} />
           </div>
         </div>
       </section>
@@ -1300,6 +1408,10 @@ const BillingPage: React.FC = () => {
             Atualizar
           </button>
         </header>
+        <div className="glass-subtle space-y-3 p-4">
+          {financialJustificationFields}
+          <NoticeLine notice={grantMessage} />
+        </div>
         <div className="grid gap-3 md:grid-cols-4">
           <div className="glass-subtle p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace em foco</p>
@@ -1650,16 +1762,24 @@ const BillingPage: React.FC = () => {
         </div>
         <div className="grid gap-4 md:grid-cols-[0.35fr,0.65fr]">
           <div className="glass-subtle space-y-3 p-4">
-            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Novo adjustment</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Ajuste de ledger</p>
+            {!ADJUSTMENT_APPROVAL_AVAILABLE ? (
+              <p role="status" className="text-xs text-amber-300">
+                Ajuste financeiro indisponível. Ele exige aprovação por duas pessoas distintas e esse mecanismo ainda não
+                está habilitado. Nenhum pedido é registrado nem será processado depois.
+              </p>
+            ) : null}
             <input
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
               placeholder="Valor em centavos (ex: 1500 ou -1500)"
               value={adjustmentAmount}
+              disabled={!ADJUSTMENT_APPROVAL_AVAILABLE}
               onChange={(event) => setAdjustmentAmount(event.target.value)}
             />
             <select
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
               value={adjustmentWorkspaceId}
+              disabled={!ADJUSTMENT_APPROVAL_AVAILABLE}
               onChange={(event) => setAdjustmentWorkspaceId(event.target.value)}
             >
               {workspaceItems.map((item) => (
@@ -1672,17 +1792,19 @@ const BillingPage: React.FC = () => {
               className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
               placeholder="Descrição (opcional)"
               value={adjustmentDescription}
+              disabled={!ADJUSTMENT_APPROVAL_AVAILABLE}
               onChange={(event) => setAdjustmentDescription(event.target.value)}
             />
+            {ADJUSTMENT_APPROVAL_AVAILABLE ? financialJustificationFields : null}
             <button
               type="button"
-              className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+              className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent disabled:cursor-not-allowed disabled:opacity-50"
               onClick={onCreateAdjustment}
-              disabled={adjustmentSaving}
+              disabled={adjustmentSaving || !ADJUSTMENT_APPROVAL_AVAILABLE}
             >
-              {adjustmentSaving ? "Gravando..." : "Criar adjustment"}
+              {!ADJUSTMENT_APPROVAL_AVAILABLE ? "Ajuste indisponível" : adjustmentSaving ? "Gravando..." : "Registrar ajuste"}
             </button>
-            {adjustmentMessage ? <p className="text-xs text-emerald-300">{adjustmentMessage}</p> : null}
+            <NoticeLine notice={adjustmentMessage} />
           </div>
           <div className={`glass-subtle overflow-x-auto p-4 ${isInvestigationMode ? "border border-accent/30" : ""}`}>
             <table className="w-full min-w-[860px] text-left text-xs">

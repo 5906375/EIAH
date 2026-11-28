@@ -1,0 +1,56 @@
+ M .github/workflows/ci.yml
+ M CLAUDE.md
+ M CODEX.md
+ M apps/api/src/index.ts
+ M apps/api/src/queues/imobRunCompletedQueue.ts
+ M apps/api/src/routes/agents.ts
+ M apps/api/src/routes/chatVerticals.ts
+ M apps/api/src/routes/uploads.ts
+ M apps/api/src/routes/verticalAccess.ts
+ M apps/api/src/services/frontDoorAccess.ts
+ M apps/api/src/services/products/productActivation.ts
+ M apps/api/src/services/products/verticalAccessApproval.ts
+ M apps/api/src/services/products/verticalAccessNotices.ts
+ M apps/api/src/tests/imob-post-run-mutation-worker.test.ts
+ M apps/api/src/tests/imob-worker-metrics.test.ts
+ M apps/api/src/workers/imobPostRunMutationWorker.ts
+ M apps/api/src/workers/runWorker.ts
+ M apps/web/src/components/agents/ChatAgentLauncher.tsx
+ M apps/web/src/components/agents/FrontDoorSessionHeader.test.tsx
+ M apps/web/src/components/agents/FrontDoorWaitingIndicator.tsx
+ M apps/web/src/components/agents/chatLauncherEngine.ts
+ M apps/web/src/components/agents/frontDoorBillingEngine.ts
+ M apps/web/src/components/agents/verticalAccessNoticeEngine.ts
+ M apps/web/src/components/agents/verticalActivationEngine.ts
+ M apps/web/src/components/agents/verticalApprovalChatEngine.ts
+ M apps/web/src/features/imob/structured/createImobStructuredForms.test.ts
+ M apps/web/src/lib/api.ts
+ M apps/web/src/pages/app/admin/aprovacoes.tsx
+ M apps/web/src/pages/app/admin/verticalApprovalsView.ts
+ M package.json
+ M packages/db/prisma/schema.prisma
+ M scripts/unit-tests-manifest.txt
+?? apps/api/src/queues/imobRunCompletedQueueContract.ts
+?? apps/api/src/routes/frontDoorIntake.ts
+?? apps/api/src/services/frontDoorIntake.ts
+?? apps/api/src/services/products/verticalEvaluation.ts
+?? apps/api/src/services/products/verticalEvaluationContract.ts
+?? apps/api/src/services/products/verticalEvaluationPlans.ts
+?? apps/api/src/tests/front-door-evaluation-intake.test.ts
+?? apps/api/src/tests/front-door-intake.test.ts
+?? apps/api/src/tests/imob-post-run-evaluation-gate.test.ts
+?? apps/api/src/tests/support/verticalEvaluationRealDb.ts
+?? apps/api/src/tests/vertical-evaluation-contract.test.ts
+?? apps/api/src/tests/vertical-evaluation-guards.test.ts
+?? apps/api/src/tests/vertical-evaluation-service.test.ts
+?? apps/api/src/tests/vertical-evaluation.concurrency.integration.test.ts
+?? apps/api/src/tests/vertical-evaluation.integration.test.ts
+?? apps/web/src/components/agents/frontDoorIntakeEngine.test.ts
+?? apps/web/src/components/agents/frontDoorIntakeEngine.ts
+?? apps/web/src/components/agents/runLifecycle.test.ts
+?? apps/web/src/components/agents/runLifecycle.ts
+?? apps/web/src/components/agents/verticalEvaluationEngine.test.ts
+?? apps/web/src/components/agents/verticalEvaluationEngine.ts
+?? docs/ops/vertical-evaluation-grant.md
+?? packages/db/prisma/migrations/20261113120000_vertical_access_evaluation_grant_v1/
+?? scripts/qa/run-lifecycle.mjs

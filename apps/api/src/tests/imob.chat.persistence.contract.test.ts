@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
 let request: ReturnType<typeof supertest>;
 let closeRunEventStream: () => Promise<unknown>;
@@ -49,6 +50,8 @@ before(async () => {
       revoked: false,
     },
   });
+  // FD-IMOB-HISTORY-AUTHZ-001: o histórico do IMOB exige vínculo ATIVO (fixture pelo serviço existente do workspace).
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
 });
 
 after(async () => {

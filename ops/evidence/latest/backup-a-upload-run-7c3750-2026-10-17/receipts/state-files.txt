@@ -1,0 +1,9 @@
+state/BA-02-worktrees-state.put-attempt
+state/BA-02-worktrees-state.put-ok
+state/BA-02-worktrees-state.verified
+state/BA-06-github-metadata.put-attempt
+state/BA-06-github-metadata.put-ok
+state/BA-06-github-metadata.verified
+state/BA-07-manifests.put-attempt
+state/BA-07-manifests.put-ok
+state/BA-07-manifests.verified

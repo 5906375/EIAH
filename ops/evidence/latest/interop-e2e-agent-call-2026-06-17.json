@@ -5,8 +5,7 @@
   "flow": [
     "agentA -> discovery",
     "agentA -> negotiate",
-    "agentA -> execute",
-    "agentB -> verify receipt"
+    "agentA -> execute"
   ],
   "assertions": {
     "discovery": {
@@ -21,12 +20,13 @@
     "execute": {
       "status": 202,
       "returnsRunId": true
-    },
-    "verifyReceipt": {
-      "status": 200,
-      "invariantStatus": "ok",
-      "receiptCanonSpecVersion": "receipt.canon.v1"
     }
+  },
+  "executionGap": {
+    "flowEndsAt": "execute_accepted_in_queue",
+    "blockedSegment": "execute_202_to_receipt",
+    "status": "handler_not_implemented",
+    "reasonCode": "HANDLER_PENDING_PHASE_4_3"
   },
   "links": {
     "router": "apps/api/src/routes/agents.ts",

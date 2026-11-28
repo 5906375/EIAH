@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: apps/api/src/tests/imob-agent-contract.test.ts
+ok 1 - apps/api/src/tests/imob-agent-contract.test.ts
+  ---
+  duration_ms: 852.040633
+  type: 'test'
+  ...
+# Subtest: apps/api/src/tests/imob-turn-engine-no-db-import.test.ts
+not ok 2 - apps/api/src/tests/imob-turn-engine-no-db-import.test.ts
+  ---
+  duration_ms: 1309.292441
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_IMOB_ASSET_DESTINATION/apps/api/src/tests/imob-turn-engine-no-db-import.test.ts:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: apps/web/src/components/agents/chatLauncherEngine.test.ts
+ok 3 - apps/web/src/components/agents/chatLauncherEngine.test.ts
+  ---
+  duration_ms: 1373.481886
+  type: 'test'
+  ...
+# Subtest: apps/web/src/features/imob/structured/imobCepAutofill.test.ts
+ok 4 - apps/web/src/features/imob/structured/imobCepAutofill.test.ts
+  ---
+  duration_ms: 873.097206
+  type: 'test'
+  ...
+# Subtest: apps/web/src/pages/app/imob/propertyCreateForm.test.ts
+ok 5 - apps/web/src/pages/app/imob/propertyCreateForm.test.ts
+  ---
+  duration_ms: 866.192924
+  type: 'test'
+  ...
+# Subtest: scripts/tests/unitSuiteInventory.test.ts
+ok 6 - scripts/tests/unitSuiteInventory.test.ts
+  ---
+  duration_ms: 651.254053
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 5
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1389.305988

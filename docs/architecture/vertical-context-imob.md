@@ -53,6 +53,7 @@ Nenhuma regra cognitiva, de policy ou de negocio deve nascer no `ChatAgentLaunch
 
 - Redirect de `/app/imob/chat` para `/app/chat` esta bloqueado.
 - PR 1+ permanecem bloqueados ate existir contrato transversal aprovado e autorizacao explicita para implementacao.
+- **Atualização 2026-09-30:** contrato transversal base aprovado e implementação autorizada em PRs sequenciais pela [ADR-010](../adr/ADR-010-unificacao-chat-front-door-verticais.md), que estende a unificação a todas as verticais e produtos; o redirect de `/app/imob/chat` continua bloqueado até decisão própria após paridade comprovada por E2E.
 - Paridade exige continuidade de thread/caso, referencias canonicas, RBAC/entitlements, fail-closed, comportamento read-only e mutacional governado, E2E das jornadas criticas e plano de rollout/rollback.
 - Provider, DB, ledger/audit, intake, run, proof, receipt e bundle reais exigem contratos e gates proprios; este documento nao os habilita.
 

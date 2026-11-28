@@ -8,6 +8,8 @@ import {
   evaluatePreDuimpEntitlementGate,
 } from "../types/preDuimpContextContract";
 
+import { evaluateVerticalEntitlementGate } from "../types/verticalEntitlementGateContract";
+
 test("pre-duimp context contract accepts canonical shadow record for Logística (verticalId=log)", () => {
   const context = buildPreDuimpContextContract({
     tenantId: "tenant-A",
@@ -181,5 +183,34 @@ test("pre-duimp entitlement gate denies with status_denied when the matching ins
   if (!result.allowed) {
     assert.equal(result.reason, "status_denied");
     assert.equal(result.status, "suspended");
+  }
+});
+
+test("PRE_DUIMP literal active retains the existing billing and grace decisions", () => {
+  const installation = { ...ENTITLEMENT_CONTEXT, product: "LOGISTICA", status: "active" };
+  for (const [billingPastDue, gracePeriodActive] of [[false, false], [false, true], [true, false], [true, true]]) {
+    const result = evaluatePreDuimpEntitlementGate({ context: ENTITLEMENT_CONTEXT, installation,
+      billingPastDue, gracePeriodActive });
+    assert.deepEqual(result, billingPastDue && !gracePeriodActive
+      ? { allowed: false, reason: "status_denied", status: "past_due", gateReason: "past_due_block" }
+      : { allowed: true, status: "active" });
+  }
+});
+
+test("PRE_DUIMP preserves suspended classification even when billing and grace flags vary", () => {
+  const installation = { ...ENTITLEMENT_CONTEXT, product: "LOGISTICA", status: "suspended" };
+  for (const [billingPastDue, gracePeriodActive] of [[false, false], [false, true], [true, false], [true, true]]) {
+    assert.deepEqual(evaluatePreDuimpEntitlementGate({ context: ENTITLEMENT_CONTEXT, installation,
+      billingPastDue, gracePeriodActive }),
+    { allowed: false, reason: "status_denied", status: "suspended", gateReason: "suspended_block" });
+  }
+});
+
+test("generic vertical entitlement continues normalizing active status independently of PRE_DUIMP", () => {
+  for (const status of ["active", "ACTIVE", " active "]) {
+    assert.deepEqual(evaluateVerticalEntitlementGate({
+      installation: { ...ENTITLEMENT_CONTEXT, product: "IMOB", status },
+      action: "start_new_execution", billingPastDue: false, gracePeriodActive: false,
+    }), { allowed: true, status: "active", reason: "enabled" });
   }
 });

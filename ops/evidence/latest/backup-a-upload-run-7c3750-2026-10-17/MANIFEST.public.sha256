@@ -1,0 +1,13 @@
+b1f607f600ae168b3884c921d98fb98496b3ed16f6a861080e5a25f51101bc6a  ./UPLOAD.md
+b834ea06eb8987c0d63ffc4c6fcbc5ac2075b4b97daa6c06865fa78342262f70  ./preflight-and-identities.txt
+7fb351c3181e9f48426a0498aa41ec90fa725e8f1ad131f2b33f9d6f79704d45  ./receipts/api/BA-02-worktrees-state.get.json
+b461d3ed0ddc1055ef16141f5f6d476e415efe391d2be6a82ac86c047e88180f  ./receipts/api/BA-02-worktrees-state.put.json
+bab5fcd1b82ef7f601b77f89d4c3a12b2641d60ff501e68a8aa075726632f855  ./receipts/api/BA-06-github-metadata.get.json
+6ae162136323b0b0ced4dbc34543a1c1ab15a861a58f72ffcf23171f1fce4620  ./receipts/api/BA-06-github-metadata.put.json
+cd7c1662bb2dc163de90ec8e144626c3072895d82edb2acfca23e225d80eb8f1  ./receipts/api/BA-07-manifests.get.json
+d180b4b82f98acba811e20d3a64089dd038fdfcb585d5e2dbaf1a3defc51e592  ./receipts/api/BA-07-manifests.put.json
+846150a4be236abe37505bd946434857159c0f3d28bfc24a5fc21df8897c7551  ./receipts/audit-after-upload.log
+c06b610fd9dbc04c63f0b92fef84567616613ec130f08e4b40dce1a9b80927e2  ./receipts/receipts.tsv
+b8353e7e309cf914af4935628bf8dad5ff8711014d2c31dee4f9427ba7ac95e7  ./receipts/state-files.txt
+310c0735949cf6411bb04d16e9cd39c2e43808580aca443e8bde5dde8ee8385e  ./receipts/upload-run-log.txt
+3abbcd446ed3343fe2670aa0fea34037f714aa68fc43c5829ad5607ea729e6b5  ./receipts/uploaded.tsv

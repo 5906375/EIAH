@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "p1-m1-partially-approved.v1",
+  "scenario": "operational",
+  "scope": null,
+  "expectedOperationIds": null,
+  "minCycles": 3,
+  "maxAgeDays": 14,
+  "historicalCycleMaxAgeDays": 28,
+  "requireConsecutiveWindows": true,
+  "requireLatestWindowIsLastClosed": false,
+  "requireLatestWindowIsLastMatured": true,
+  "finalCaptureMaturationDays": 7,
+  "captureToleranceDays": 0,
+  "requireFinalCaptureForNewestWindow": true,
+  "requireClosureForAllRequiredWindows": true,
+  "requireRatification": false,
+  "automaticDiscard": false
+}

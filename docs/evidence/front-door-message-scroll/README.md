@@ -1,0 +1,5 @@
+Investigação de rolagem presa: com 60 mensagens sintéticas longas, rolagem estática por roda e PageDown já passava antes em 320,390,1024,1440 (browser-before.log). Não foi reproduzido bloqueio estático nem acessada a sessão do usuário em staging.
+
+Causa de interferência identificada no código: pushAssistantMessageWithTyping forçava scroll ao fim a cada trecho com smooth, sem respeitar leitura acima. Corrigido acompanhamento condicional: roda para cima, toque e teclas de subida pausam; chegar ao fim retoma; novo envio do usuário retoma. Trechos usam auto para evitar animações sucessivas. Somente apresentação/navegação, sem regra cognitiva nova.
+
+30 testes PASS, incluindo execução da função real de digitação extraída do launcher: com leitura pausada os trechos seguintes não rolam; mantendo leitura no fim, continuam acompanhando. Quatro cenários Chromium PASS com 60 mensagens, roda e teclado em todas as larguras. Não comprova o gatilho específico na sessão do usuário nem streaming real de provider. Capturas scroll-*.png, logs e browser-results.json. Status parcial: CI/deploy e confirmação em staging pendentes.

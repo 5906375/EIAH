@@ -1,0 +1,44 @@
+{
+  "fixture": "synthetic session and restored messages, mocked API, no real mutations",
+  "results": [
+    {
+      "width": 320,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 390,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1440,
+      "status": "pass",
+      "checks": [
+        "Perfil rem scale; mobile controls 16px",
+        "44px controls",
+        "input editing",
+        "hidden scrollbar",
+        "mouse wheel and ArrowDown/ArrowUp scrolling",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    }
+  ]
+}

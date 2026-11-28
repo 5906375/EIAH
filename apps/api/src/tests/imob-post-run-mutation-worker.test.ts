@@ -21,6 +21,7 @@ import {
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher.js";
 import type { ImobRunCompletedJobPayload } from "../queues/imobRunCompletedQueue.js";
 import type { ImobWorkerDeps } from "../workers/imobPostRunMutationWorker.js";
+import { NO_EVALUATION_GRANT } from "../services/products/verticalEvaluationContract.js";
 
 // ─── Helpers for test stub construction ──────────────────────────────────────
 
@@ -125,6 +126,8 @@ function makeDeps(overrides: Partial<ImobWorkerDeps> & {
     getRunFn: overrides.getRunFn ?? (async () => makeRun()),
     prisma,
     mutationServiceFactory: overrides.mutationServiceFactory ?? (mutationServiceFactory as any),
+    // workspace sem avaliação gratuita (legado): o gate real leria o banco, que este dublê de prisma não modela (coberto em imob-post-run-evaluation-gate)
+    evaluationGrantGateFn: async () => NO_EVALUATION_GRANT,
   };
 }
 

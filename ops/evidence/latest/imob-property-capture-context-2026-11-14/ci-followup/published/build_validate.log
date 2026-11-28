@@ -1,0 +1,2270 @@
+﻿2026-11-14T18:12:49.9216181Z Current runner version: '2.338.2'
+2026-11-14T18:12:49.9244333Z ##[group]Runner Image Provisioner
+2026-11-14T18:12:49.9245409Z Hosted Compute Agent
+2026-11-14T18:12:49.9245764Z Version: 20261103.629
+2026-11-14T18:12:49.9246171Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-14T18:12:49.9246611Z Build Date: 2026-11-03T17:26:59Z
+2026-11-14T18:12:49.9247010Z Worker ID: {15a57a99-eb3a-4345-bdcc-68aaeb0546a3}
+2026-11-14T18:12:49.9247504Z Region: centralus
+2026-11-14T18:12:49.9247835Z Cloud: Azure
+2026-11-14T18:12:49.9248208Z ##[endgroup]
+2026-11-14T18:12:49.9249183Z ##[group]Operating System
+2026-11-14T18:12:49.9249545Z Ubuntu
+2026-11-14T18:12:49.9249936Z 26.04.1
+2026-11-14T18:12:49.9250244Z LTS
+2026-11-14T18:12:49.9250546Z ##[endgroup]
+2026-11-14T18:12:49.9250924Z ##[group]Runner Image
+2026-11-14T18:12:49.9251348Z Image: ubuntu-26.04
+2026-11-14T18:12:49.9251829Z Version: 20261111.196.1
+2026-11-14T18:12:49.9252894Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261111.196/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-14T18:12:49.9254162Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261111.196
+2026-11-14T18:12:49.9255067Z ##[endgroup]
+2026-11-14T18:12:49.9257313Z ##[group]GITHUB_TOKEN Permissions
+2026-11-14T18:12:49.9259164Z Actions: write
+2026-11-14T18:12:49.9259600Z ArtifactMetadata: write
+2026-11-14T18:12:49.9259992Z Attestations: write
+2026-11-14T18:12:49.9260360Z Checks: write
+2026-11-14T18:12:49.9260741Z CodeQuality: write
+2026-11-14T18:12:49.9261080Z Contents: write
+2026-11-14T18:12:49.9261477Z CopilotRequests: write
+2026-11-14T18:12:49.9261835Z Deployments: write
+2026-11-14T18:12:49.9262225Z Discussions: write
+2026-11-14T18:12:49.9262608Z Drives: write
+2026-11-14T18:12:49.9262935Z Issues: write
+2026-11-14T18:12:49.9263343Z Metadata: read
+2026-11-14T18:12:49.9263685Z Models: read
+2026-11-14T18:12:49.9264063Z Packages: write
+2026-11-14T18:12:49.9264455Z Pages: write
+2026-11-14T18:12:49.9264966Z PullRequests: write
+2026-11-14T18:12:49.9265351Z RepositoryProjects: write
+2026-11-14T18:12:49.9265726Z SecurityEvents: write
+2026-11-14T18:12:49.9266099Z Statuses: write
+2026-11-14T18:12:49.9266470Z VulnerabilityAlerts: read
+2026-11-14T18:12:49.9266825Z ##[endgroup]
+2026-11-14T18:12:49.9268739Z Secret source: Actions
+2026-11-14T18:12:49.9269599Z Cache mode: write
+2026-11-14T18:12:49.9270442Z Prepare workflow directory
+2026-11-14T18:12:49.9533781Z Prepare all required actions
+2026-11-14T18:12:49.9565871Z Getting action download info
+2026-11-14T18:12:50.1921500Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-14T18:12:50.3018777Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-11-14T18:12:50.7080045Z Download action repository 'actions/cache@v4' (SHA:0057852bfaa89a56745cba8c7296529d2fc39830)
+2026-11-14T18:12:50.8125076Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-14T18:12:50.9522335Z Complete job name: build_validate
+2026-11-14T18:12:51.0158687Z ##[group]Run actions/checkout@v4
+2026-11-14T18:12:51.0159125Z with:
+2026-11-14T18:12:51.0159368Z   repository: 5906375/EIAH
+2026-11-14T18:12:51.0161388Z   token: ***
+2026-11-14T18:12:51.0161629Z   ssh-strict: true
+2026-11-14T18:12:51.0161871Z   ssh-user: git
+2026-11-14T18:12:51.0230605Z   persist-credentials: true
+2026-11-14T18:12:51.0231279Z   clean: true
+2026-11-14T18:12:51.0231653Z   sparse-checkout-cone-mode: true
+2026-11-14T18:12:51.0232146Z   fetch-depth: 1
+2026-11-14T18:12:51.0232532Z   fetch-tags: false
+2026-11-14T18:12:51.0232965Z   show-progress: true
+2026-11-14T18:12:51.0233380Z   lfs: false
+2026-11-14T18:12:51.0233723Z   submodules: false
+2026-11-14T18:12:51.0234091Z   set-safe-directory: true
+2026-11-14T18:12:51.0234508Z   allow-unsafe-pr-checkout: false
+2026-11-14T18:12:51.0236043Z env:
+2026-11-14T18:12:51.0236286Z   NODE_VERSION: 22
+2026-11-14T18:12:51.0236535Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:51.0236791Z ##[endgroup]
+2026-11-14T18:12:51.2560853Z Syncing repository: 5906375/EIAH
+2026-11-14T18:12:51.2562103Z ##[group]Getting Git version info
+2026-11-14T18:12:51.2562649Z Working directory is '/home/runner/work/EIAH/EIAH'
+2026-11-14T18:12:51.2563535Z [command]/usr/bin/git version
+2026-11-14T18:12:51.2569609Z git version 2.56.1
+2026-11-14T18:12:51.2582763Z ##[endgroup]
+2026-11-14T18:12:51.2595374Z Temporarily overriding HOME='/home/runner/work/_temp/632314dd-9c71-4d9c-8540-2e310766f6ea' before making global git config changes
+2026-11-14T18:12:51.2596605Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:12:51.2599479Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+2026-11-14T18:12:51.2696667Z Deleting the contents of '/home/runner/work/EIAH/EIAH'
+2026-11-14T18:12:51.2704778Z ##[group]Initializing the repository
+2026-11-14T18:12:51.2713908Z [command]/usr/bin/git init /home/runner/work/EIAH/EIAH
+2026-11-14T18:12:51.2885188Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-14T18:12:51.2886512Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-14T18:12:51.2887855Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-14T18:12:51.2888669Z hint: call:
+2026-11-14T18:12:51.2889313Z hint:
+2026-11-14T18:12:51.2889896Z hint: 	git config --global init.defaultBranch <name>
+2026-11-14T18:12:51.2890393Z hint:
+2026-11-14T18:12:51.2890749Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-14T18:12:51.2891338Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-14T18:12:51.2891732Z hint:
+2026-11-14T18:12:51.2892025Z hint: 	git branch -m <name>
+2026-11-14T18:12:51.2892298Z hint:
+2026-11-14T18:12:51.2892634Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-14T18:12:51.2895789Z Initialized empty Git repository in /home/runner/work/EIAH/EIAH/.git/
+2026-11-14T18:12:51.2907200Z [command]/usr/bin/git remote add origin https://github.com/5906375/EIAH
+2026-11-14T18:12:51.2966167Z ##[endgroup]
+2026-11-14T18:12:51.2967065Z ##[group]Disabling automatic garbage collection
+2026-11-14T18:12:51.2969829Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-14T18:12:51.3004264Z ##[endgroup]
+2026-11-14T18:12:51.3005057Z ##[group]Setting up auth
+2026-11-14T18:12:51.3011053Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:12:51.3045005Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:12:51.3487150Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:12:51.3517345Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:12:51.3747273Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:12:51.3779429Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:12:51.4010508Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-14T18:12:51.4045674Z ##[endgroup]
+2026-11-14T18:12:51.4046138Z ##[group]Fetching the repository
+2026-11-14T18:12:51.4051683Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +67250024941e64760e577b152f77be15f638dbdf:refs/remotes/pull/536/merge
+2026-11-14T18:12:56.4868705Z From https://github.com/5906375/EIAH
+2026-11-14T18:12:56.4869354Z  * [new ref]         67250024941e64760e577b152f77be15f638dbdf -> pull/536/merge
+2026-11-14T18:12:56.4871129Z ##[endgroup]
+2026-11-14T18:12:56.4872976Z ##[group]Determining the checkout info
+2026-11-14T18:12:56.4873710Z ##[endgroup]
+2026-11-14T18:12:56.4883998Z [command]/usr/bin/git sparse-checkout disable
+2026-11-14T18:12:56.4934043Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-14T18:12:56.4962724Z ##[group]Checking out the ref
+2026-11-14T18:12:56.4965492Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/536/merge
+2026-11-14T18:12:57.0801149Z Note: switching to 'refs/remotes/pull/536/merge'.
+2026-11-14T18:12:57.0801691Z
+2026-11-14T18:12:57.0801975Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-14T18:12:57.0802485Z changes and commit them, and you can discard any commits you make in this
+2026-11-14T18:12:57.0803005Z state without impacting any branches by switching back to a branch.
+2026-11-14T18:12:57.0803309Z
+2026-11-14T18:12:57.0803545Z If you want to create a new branch to retain commits you create, you may
+2026-11-14T18:12:57.0804035Z do so (now or later) by using -c with the switch command. Example:
+2026-11-14T18:12:57.0804399Z
+2026-11-14T18:12:57.0804531Z   git switch -c <new-branch-name>
+2026-11-14T18:12:57.0804949Z
+2026-11-14T18:12:57.0805103Z Or undo this operation with:
+2026-11-14T18:12:57.0805277Z
+2026-11-14T18:12:57.0815728Z   git switch -
+2026-11-14T18:12:57.0815937Z
+2026-11-14T18:12:57.0816151Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-14T18:12:57.0816355Z
+2026-11-14T18:12:57.0816598Z HEAD is now at 6725002 Merge 780eafb8abef0630d0ae1c9cafe69decfe3a1726 into 751cbc3c7e23bc92db5a986136e221178af0c24b
+2026-11-14T18:12:57.0861036Z ##[endgroup]
+2026-11-14T18:12:57.0912349Z [command]/usr/bin/git log -1 --format=%H
+2026-11-14T18:12:57.0937758Z 67250024941e64760e577b152f77be15f638dbdf
+2026-11-14T18:12:57.1132533Z ##[group]Run pnpm/action-setup@v4
+2026-11-14T18:12:57.1132746Z with:
+2026-11-14T18:12:57.1132902Z   version: 10.12.4
+2026-11-14T18:12:57.1133055Z   run_install: false
+2026-11-14T18:12:57.1133215Z   dest: ~/setup-pnpm
+2026-11-14T18:12:57.1133383Z   cache: false
+2026-11-14T18:12:57.1133539Z   cache_dependency_path: pnpm-lock.yaml
+2026-11-14T18:12:57.1133751Z   package_json_file: package.json
+2026-11-14T18:12:57.1133923Z   standalone: false
+2026-11-14T18:12:57.1134068Z env:
+2026-11-14T18:12:57.1134207Z   NODE_VERSION: 22
+2026-11-14T18:12:57.1134362Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:57.1134519Z ##[endgroup]
+2026-11-14T18:12:57.2090807Z ##[group]Running self-installer...
+2026-11-14T18:12:57.4742448Z (node:2199) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:12:57.4743172Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:12:57.6306670Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:12:57.6374077Z Packages: +1
+2026-11-14T18:12:57.6379239Z +
+2026-11-14T18:12:57.9189419Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-11-14T18:12:57.9627922Z
+2026-11-14T18:12:57.9628441Z dependencies:
+2026-11-14T18:12:57.9628793Z + pnpm 10.12.4 (12.18.0 is available)
+2026-11-14T18:12:57.9628987Z
+2026-11-14T18:12:57.9647709Z Done in 635ms
+2026-11-14T18:12:57.9850931Z ##[endgroup]
+2026-11-14T18:12:57.9923294Z Installation Completed!
+2026-11-14T18:12:57.9974970Z ##[group]Run pnpm config set store-dir ~/.pnpm-store
+2026-11-14T18:12:57.9975318Z pnpm config set store-dir ~/.pnpm-store
+2026-11-14T18:12:58.0022003Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:12:58.0022184Z env:
+2026-11-14T18:12:58.0022307Z   NODE_VERSION: 22
+2026-11-14T18:12:58.0022442Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:58.0022621Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:12:58.0022810Z ##[endgroup]
+2026-11-14T18:12:58.6222912Z ##[group]Run actions/cache@v4
+2026-11-14T18:12:58.6223093Z with:
+2026-11-14T18:12:58.6223216Z   path: ~/.pnpm-store
+2026-11-14T18:12:58.6223456Z   key: Linux-pnpm-store-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:12:58.6224034Z   restore-keys: Linux-pnpm-store-
+
+2026-11-14T18:12:58.6224200Z   enableCrossOsArchive: false
+2026-11-14T18:12:58.6224347Z   fail-on-cache-miss: false
+2026-11-14T18:12:58.6224486Z   lookup-only: false
+2026-11-14T18:12:58.6224938Z   save-always: false
+2026-11-14T18:12:58.6225130Z env:
+2026-11-14T18:12:58.6225272Z   NODE_VERSION: 22
+2026-11-14T18:12:58.6225394Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:58.6225554Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:12:58.6225764Z ##[endgroup]
+2026-11-14T18:12:58.6957997Z (node:2243) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-14T18:12:58.6958754Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:12:58.8492348Z Cache hit for: Linux-pnpm-store-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:12:58.8593462Z (node:2243) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:12:59.9462521Z Received 108450329 of 108450329 (100.0%), 108.5 MBs/sec
+2026-11-14T18:12:59.9463499Z Cache Size: ~103 MB (108450329 B)
+2026-11-14T18:12:59.9516712Z [command]/usr/bin/tar -xf /home/runner/work/_temp/3e76960c-4d34-427e-bf6b-de9cd630ab82/cache.tzst -P -C /home/runner/work/EIAH/EIAH --use-compress-program unzstd
+2026-11-14T18:13:01.1630393Z Cache restored successfully
+2026-11-14T18:13:01.1727645Z Cache restored from key: Linux-pnpm-store-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:13:01.2308774Z ##[group]Run actions/setup-node@v4
+2026-11-14T18:13:01.2308954Z with:
+2026-11-14T18:13:01.2309077Z   node-version: 22
+2026-11-14T18:13:01.2309203Z   cache: pnpm
+2026-11-14T18:13:01.2309345Z   cache-dependency-path: pnpm-lock.yaml
+2026-11-14T18:13:01.2309528Z   always-auth: false
+2026-11-14T18:13:01.2309659Z   check-latest: false
+2026-11-14T18:13:01.2310926Z   token: ***
+2026-11-14T18:13:01.2311044Z env:
+2026-11-14T18:13:01.2311158Z   NODE_VERSION: 22
+2026-11-14T18:13:01.2311284Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:01.2311448Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:01.2311627Z ##[endgroup]
+2026-11-14T18:13:01.3287984Z (node:2261) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-14T18:13:01.3288572Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:13:01.3299889Z Found in cache @ /opt/hostedtoolcache/node/22.23.4/x64
+2026-11-14T18:13:01.3300494Z ##[group]Environment details
+2026-11-14T18:13:01.6825468Z node: v22.23.4
+2026-11-14T18:13:01.6825789Z npm: 10.9.9
+2026-11-14T18:13:01.6825989Z yarn: 1.22.22
+2026-11-14T18:13:01.6826593Z ##[endgroup]
+2026-11-14T18:13:01.6839142Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-11-14T18:13:01.9215991Z /home/runner/.pnpm-store/v10
+2026-11-14T18:13:02.0801309Z Cache hit for: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:13:02.0901706Z (node:2261) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:13:03.2333408Z Received 108495825 of 108495825 (100.0%), 107.3 MBs/sec
+2026-11-14T18:13:03.2333821Z Cache Size: ~103 MB (108495825 B)
+2026-11-14T18:13:03.2378392Z [command]/usr/bin/tar -xf /home/runner/work/_temp/1cb153e6-de08-4364-985c-63a62840c006/cache.tzst -P -C /home/runner/work/EIAH/EIAH --use-compress-program unzstd
+2026-11-14T18:13:04.6575883Z Cache restored successfully
+2026-11-14T18:13:04.6628515Z Cache restored from key: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:13:04.6849562Z ##[group]Run test ! -f package-lock.json || (echo "package-lock.json is forbidden; use pnpm-lock.yaml" && exit 1)
+2026-11-14T18:13:04.6850065Z test ! -f package-lock.json || (echo "package-lock.json is forbidden; use pnpm-lock.yaml" && exit 1)
+2026-11-14T18:13:04.6850536Z test ! -f yarn.lock || (echo "yarn.lock is forbidden; use pnpm-lock.yaml" && exit 1)
+2026-11-14T18:13:04.6850857Z test ! -f bun.lockb || (echo "bun.lockb is forbidden; use pnpm-lock.yaml" && exit 1)
+2026-11-14T18:13:04.6851258Z test ! -f bun.lock || (echo "bun.lock is forbidden; use pnpm-lock.yaml" && exit 1)
+2026-11-14T18:13:04.6851673Z EXTRA_PNPM_LOCKFILES=$(find . -path './node_modules' -prune -o -name 'pnpm-lock.yaml' -print | grep -v '^./pnpm-lock.yaml$' || true)
+2026-11-14T18:13:04.6852267Z test -z "$EXTRA_PNPM_LOCKFILES" || (echo "extra pnpm lockfiles are forbidden in workspace packages:" && echo "$EXTRA_PNPM_LOCKFILES" && exit 1)
+2026-11-14T18:13:04.6901085Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:04.6901248Z env:
+2026-11-14T18:13:04.6901367Z   NODE_VERSION: 22
+2026-11-14T18:13:04.6901503Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:04.6901668Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:04.6901860Z ##[endgroup]
+2026-11-14T18:13:04.7081403Z ##[group]Run pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:13:04.7081708Z pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:13:04.7123937Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:04.7124100Z env:
+2026-11-14T18:13:04.7124222Z   NODE_VERSION: 22
+2026-11-14T18:13:04.7124351Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:04.7124522Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:04.7124855Z ##[endgroup]
+2026-11-14T18:13:04.9065382Z Scope: all 12 workspace projects
+2026-11-14T18:13:04.9529850Z Lockfile is up to date, resolution step is skipped
+2026-11-14T18:13:04.9842712Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:13:05.0506030Z Packages: +812
+2026-11-14T18:13:05.0510550Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-11-14T18:13:05.9851076Z Progress: resolved 812, reused 811, downloaded 0, added 383
+2026-11-14T18:13:06.7246190Z Progress: resolved 812, reused 811, downloaded 0, added 812, done
+2026-11-14T18:13:07.1079819Z
+2026-11-14T18:13:07.1080512Z dependencies:
+2026-11-14T18:13:07.1080759Z + @prisma/client 7.2.0
+2026-11-14T18:13:07.1080944Z + prisma 7.2.0
+2026-11-14T18:13:07.1081028Z
+2026-11-14T18:13:07.1081139Z devDependencies:
+2026-11-14T18:13:07.1081283Z + @eslint/js 9.39.2
+2026-11-14T18:13:07.1081449Z + @prisma/config 7.2.0
+2026-11-14T18:13:07.1081599Z + @types/node 25.0.3
+2026-11-14T18:13:07.1081791Z + @typescript-eslint/eslint-plugin 8.50.0
+2026-11-14T18:13:07.1082009Z + @typescript-eslint/parser 8.50.0
+2026-11-14T18:13:07.1082209Z + @typescript-eslint/utils 8.50.0
+2026-11-14T18:13:07.1082374Z + eslint 9.39.2
+2026-11-14T18:13:07.1082535Z + eslint-config-prettier 10.1.8
+2026-11-14T18:13:07.1082764Z + eslint-plugin-import 2.32.0
+2026-11-14T18:13:07.1082965Z + eslint-plugin-unused-imports 4.3.0
+2026-11-14T18:13:07.1083146Z + playwright 1.61.1
+2026-11-14T18:13:07.1083280Z + tsx 4.21.0
+2026-11-14T18:13:07.1083419Z + typescript 5.9.3
+2026-11-14T18:13:07.1083503Z
+2026-11-14T18:13:07.1241964Z Done in 2.3s using pnpm v10.12.4
+2026-11-14T18:13:07.1452873Z ##[group]Run pnpm lint
+2026-11-14T18:13:07.1453144Z pnpm lint
+2026-11-14T18:13:07.1500531Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:07.1500698Z env:
+2026-11-14T18:13:07.1500822Z   NODE_VERSION: 22
+2026-11-14T18:13:07.1500959Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:07.1501135Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:07.1501412Z ##[endgroup]
+2026-11-14T18:13:07.3511906Z
+2026-11-14T18:13:07.3512860Z > eiah-builder@ lint /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:07.3513450Z > echo "Run linting via individual packages"
+2026-11-14T18:13:07.3513735Z
+2026-11-14T18:13:07.3538693Z Run linting via individual packages
+2026-11-14T18:13:07.3667034Z ##[group]Run pnpm --filter @eiah/contracts build
+2026-11-14T18:13:07.3667303Z pnpm --filter @eiah/contracts build
+2026-11-14T18:13:07.3667485Z pnpm --filter @repo/db build
+2026-11-14T18:13:07.3667662Z pnpm --filter @eiah/core build
+2026-11-14T18:13:07.3667842Z pnpm --filter @eiah/providers build
+2026-11-14T18:13:07.3711440Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:07.3711605Z env:
+2026-11-14T18:13:07.3711733Z   NODE_VERSION: 22
+2026-11-14T18:13:07.3711874Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:07.3712046Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:07.3712237Z ##[endgroup]
+2026-11-14T18:13:07.5737682Z
+2026-11-14T18:13:07.5738850Z > @eiah/contracts@1.0.1 prebuild /home/runner/work/EIAH/EIAH/packages/contracts
+2026-11-14T18:13:07.5739486Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:13:07.5739798Z
+2026-11-14T18:13:07.5823663Z
+2026-11-14T18:13:07.5824548Z > @eiah/contracts@1.0.1 build /home/runner/work/EIAH/EIAH/packages/contracts
+2026-11-14T18:13:07.5825012Z > tsc -p tsconfig.json
+2026-11-14T18:13:07.5825111Z
+2026-11-14T18:13:11.0045388Z
+2026-11-14T18:13:11.0048592Z > @repo/db@1.0.0 prebuild /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:11.0049095Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:13:11.0049283Z
+2026-11-14T18:13:11.0153256Z
+2026-11-14T18:13:11.0154287Z > @repo/db@1.0.0 build /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:11.0154916Z > pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts
+2026-11-14T18:13:11.0155090Z
+2026-11-14T18:13:11.1893769Z
+2026-11-14T18:13:11.1894526Z > @repo/db@1.0.0 generate /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:11.1895009Z > pnpm prisma generate
+2026-11-14T18:13:11.1895103Z
+2026-11-14T18:13:11.3640688Z
+2026-11-14T18:13:11.3641615Z > @repo/db@1.0.0 prisma /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:11.3642075Z > prisma generate
+2026-11-14T18:13:11.3642258Z
+2026-11-14T18:13:11.9633414Z Loaded Prisma config from prisma.config.ts.
+2026-11-14T18:13:11.9633943Z
+2026-11-14T18:13:12.3849242Z Prisma schema loaded from prisma/schema.prisma.
+2026-11-14T18:13:12.9718086Z
+2026-11-14T18:13:12.9719218Z ✔ Generated Prisma Client (v7.2.0) to ./src/generated/client in 310ms
+2026-11-14T18:13:12.9719459Z
+2026-11-14T18:13:12.9719673Z Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+2026-11-14T18:13:12.9719870Z
+2026-11-14T18:13:12.9720144Z Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+2026-11-14T18:13:12.9720327Z
+2026-11-14T18:13:13.2765531Z CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+2026-11-14T18:13:13.2776765Z CLI Using tsconfig: tsconfig.json
+2026-11-14T18:13:13.2777359Z CLI tsup v8.5.1
+2026-11-14T18:13:13.2778094Z CLI Using tsup config: /home/runner/work/EIAH/EIAH/packages/db/tsup.config.ts
+2026-11-14T18:13:13.2786131Z CLI Target: es2022
+2026-11-14T18:13:13.2792971Z CLI Cleaning output folder
+2026-11-14T18:13:13.2802291Z ESM Build start
+2026-11-14T18:13:13.2873399Z ESM dist/client.js                 2.21 KB
+2026-11-14T18:13:13.2874136Z ESM dist/middleware/tenantGuard.js 3.74 KB
+2026-11-14T18:13:13.2874825Z ESM dist/index.js                  407.00 B
+2026-11-14T18:13:13.2875271Z ESM ⚡️ Build success in 7ms
+2026-11-14T18:13:13.4619948Z
+2026-11-14T18:13:13.4620919Z > @repo/db@1.0.0 build:dts /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:13.4621581Z > tsc --build tsconfig.json --force
+2026-11-14T18:13:13.4621790Z
+2026-11-14T18:13:16.8106476Z
+2026-11-14T18:13:16.8107181Z > @repo/db@1.0.0 postbuild /home/runner/work/EIAH/EIAH/packages/db
+2026-11-14T18:13:16.8107543Z > node ./scripts/copy-publish-artifacts.mjs
+2026-11-14T18:13:16.8107675Z
+2026-11-14T18:13:17.0514135Z
+2026-11-14T18:13:17.0516004Z > @eiah/core@0.1.0 prebuild /home/runner/work/EIAH/EIAH/packages/core
+2026-11-14T18:13:17.0516514Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:13:17.0516696Z
+2026-11-14T18:13:17.0617557Z
+2026-11-14T18:13:17.0618299Z > @eiah/core@0.1.0 build /home/runner/work/EIAH/EIAH/packages/core
+2026-11-14T18:13:17.0618825Z > pnpm run clean && pnpm exec tsc -p tsconfig.json --emitDeclarationOnly && pnpm exec tsup --config tsup.config.ts
+2026-11-14T18:13:17.0619069Z
+2026-11-14T18:13:17.2385272Z
+2026-11-14T18:13:17.2386002Z > @eiah/core@0.1.0 clean /home/runner/work/EIAH/EIAH/packages/core
+2026-11-14T18:13:17.2386629Z > node -e "require('fs').rmSync('dist', { recursive: true, force: true })"
+2026-11-14T18:13:17.2386851Z
+2026-11-14T18:13:21.5698550Z CLI Building entry: src/index.ts, src/actions/actionRegistry.ts, src/actions/billing.ts, src/actions/defi.ts, src/actions/finance.ts, src/actions/guardian.ts, src/actions/guardianChecklistTools.ts, src/actions/guardrails.ts, src/actions/index.ts, src/actions/knowledge.ts, src/actions/notifications.ts, src/actions/risk.ts, src/billing/reconciliation.ts, src/catalog/apeWeeklyCycleV3.test.ts, src/catalog/apeWeeklyCycleV3.ts, src/catalog/apeWeeklyCycleV3Validator.test.ts, src/catalog/apeWeeklyCycleV3Validator.ts, src/catalog/governedOperationCatalog.test.ts, src/catalog/governedOperationCatalog.ts, src/catalog/versionedActionRegistry.ts, src/catalog/workspaceActionPolicyProvisioning.ts, src/catalog/workspaceAgentProvisioning.test.ts, src/catalog/workspaceAgentProvisioning.ts, src/events/redisPublisher.ts, src/llm/LLMProvider.ts, src/llm/LLMRegistry.ts, src/llm/LLMRouter.ts, src/llm/completionEngine.ts, src/llm/types.ts, src/logging/index.ts, src/logging/logger.ts, src/policy/TenantPolicyStore.ts, src/queue/actionQueue.ts, src/queue/connection.test.ts, src/queue/connection.ts, src/queue/maintenanceQueue.ts, src/queue/redrive.ts, src/queue/runAtivoUniversalDLQ.ts, src/queue/runAtivoUniversalQueue.ts, src/queue/runQueue.ts, src/queue/snapshot.ts, src/queue/workerOwnershipLease.test.ts, src/queue/workerOwnershipLease.ts, src/queue/workerTopology.test.ts, src/queue/workerTopology.ts, src/reasons/index.ts, src/reasons/reasonCatalog.ts, src/security/killSwitch.ts, src/services/guardrailLedgerStore.ts, src/services/ledgerService.ts, src/services/mcpGovernanceEnv.test.ts, src/services/mcpGovernanceEnv.ts, src/services/planStepStore.ts, src/services/reconcileLedgerService.ts, src/services/sclLedger.ts, src/services/tenantInvoiceService.ts, src/services/workspaceProvenanceClassifier.test.ts, src/services/workspaceProvenanceClassifier.ts, src/services/workspaceProvenanceFacts.ts, src/taxonomy/publicProductTaxonomy.ts, src/utils/canonicalDigest.test.ts, src/utils/canonicalDigest.ts, src/utils/normalizeMessages.ts, src/utils/retry.ts, src/utils/timeout.ts, src/actions/agents/aadvAction.ts, src/actions/agents/defiOneAction.ts, src/actions/agents/diariasAction.ts, src/actions/agents/eiahAction.ts, src/actions/agents/finNexusAction.ts, src/actions/agents/flowOrchestratorAction.ts, src/actions/agents/guardianAction.ts, src/actions/agents/iBCAction.ts, src/actions/agents/imageNftDiariasAction.ts, src/actions/agents/index.ts, src/actions/agents/j360Action.ts, src/actions/agents/mktAction.ts, src/actions/agents/nftPyAction.ts, src/actions/agents/onchainMonitorAction.ts, src/actions/agents/pitchAction.ts, src/actions/agents/registry.ts, src/actions/agents/resolveLegalSpecialtyContext.ts, src/actions/agents/riskAnalyzerAction.ts, src/actions/agents/types.ts, src/actions/registry/TenantActionResolver.ts, src/actions/registry/VersionedActionRegistry.ts, src/actions/reporting/guardianReportRenderer.ts, src/actions/reporting/guardianReportSchema.ts, src/actions/reporting/index.ts, src/actions/reporting/j360LegalReportRenderer.ts, src/actions/reporting/j360LegalReportSchema.ts, src/actions/reporting/mktCampaignReportRenderer.ts, src/actions/reporting/mktCampaignReportSchema.ts, src/actions/reporting/recipeOrchestrationRenderer.ts, src/actions/reporting/recipeOrchestrationSchema.ts, src/actions/reporting/runAtivoSchema.ts
+2026-11-14T18:13:21.5710913Z CLI Using tsconfig: tsconfig.json
+2026-11-14T18:13:21.5711392Z CLI tsup v8.5.1
+2026-11-14T18:13:21.5712129Z CLI Using tsup config: /home/runner/work/EIAH/EIAH/packages/core/tsup.config.ts
+2026-11-14T18:13:21.5712693Z CLI Target: node20
+2026-11-14T18:13:21.5718889Z ESM Build start
+2026-11-14T18:13:21.7129888Z ESM dist/actions/billing.js                                   10.74 KB
+2026-11-14T18:13:21.7131179Z ESM dist/actions/actionRegistry.js                            20.36 KB
+2026-11-14T18:13:21.7132031Z ESM dist/actions/defi.js                                      6.62 KB
+2026-11-14T18:13:21.7132921Z ESM dist/actions/finance.js                                   18.50 KB
+2026-11-14T18:13:21.7133804Z ESM dist/actions/guardian.js                                  17.08 KB
+2026-11-14T18:13:21.7152683Z ESM dist/actions/guardianChecklistTools.js                    2.54 KB
+2026-11-14T18:13:21.7153533Z ESM dist/actions/guardrails.js                                4.06 KB
+2026-11-14T18:13:21.7154155Z ESM dist/index.js                                             503.47 KB
+2026-11-14T18:13:21.7162644Z ESM dist/actions/notifications.js                             8.54 KB
+2026-11-14T18:13:21.7163379Z ESM dist/actions/risk.js                                      3.54 KB
+2026-11-14T18:13:21.7163996Z ESM dist/actions/knowledge.js                                 5.97 KB
+2026-11-14T18:13:21.7164839Z ESM dist/billing/reconciliation.js                            6.57 KB
+2026-11-14T18:13:21.7165515Z ESM dist/catalog/apeWeeklyCycleV3.test.js                     11.15 KB
+2026-11-14T18:13:21.7166243Z ESM dist/catalog/apeWeeklyCycleV3Validator.js                 12.26 KB
+2026-11-14T18:13:21.7166950Z ESM dist/catalog/apeWeeklyCycleV3Validator.test.js            24.56 KB
+2026-11-14T18:13:21.7167640Z ESM dist/catalog/apeWeeklyCycleV3.js                          4.72 KB
+2026-11-14T18:13:21.7168378Z ESM dist/catalog/governedOperationCatalog.test.js             9.22 KB
+2026-11-14T18:13:21.7169079Z ESM dist/catalog/governedOperationCatalog.js                  4.12 KB
+2026-11-14T18:13:21.7169770Z ESM dist/catalog/versionedActionRegistry.js                   549.00 B
+2026-11-14T18:13:21.7170487Z ESM dist/catalog/workspaceActionPolicyProvisioning.js         1.21 KB
+2026-11-14T18:13:21.7171198Z ESM dist/catalog/workspaceAgentProvisioning.test.js           2.99 KB
+2026-11-14T18:13:21.7171884Z ESM dist/llm/LLMProvider.js                                   120.00 B
+2026-11-14T18:13:21.7172544Z ESM dist/catalog/workspaceAgentProvisioning.js                1.28 KB
+2026-11-14T18:13:21.7173214Z ESM dist/actions/index.js                                     325.98 KB
+2026-11-14T18:13:21.7173863Z ESM dist/llm/LLMRegistry.js                                   525.00 B
+2026-11-14T18:13:21.7174543Z ESM dist/events/redisPublisher.js                             2.41 KB
+2026-11-14T18:13:21.7175365Z ESM dist/llm/LLMRouter.js                                     1.06 KB
+2026-11-14T18:13:21.7176012Z ESM dist/llm/completionEngine.js                              6.13 KB
+2026-11-14T18:13:21.7176653Z ESM dist/logging/index.js                                     1.90 KB
+2026-11-14T18:13:21.7177799Z ESM dist/llm/types.js                                         33.00 B
+2026-11-14T18:13:21.7178424Z ESM dist/logging/logger.js                                    1.90 KB
+2026-11-14T18:13:21.7179089Z ESM dist/policy/TenantPolicyStore.js                          6.68 KB
+2026-11-14T18:13:21.7179768Z ESM dist/queue/connection.test.js                             3.88 KB
+2026-11-14T18:13:21.7180427Z ESM dist/queue/actionQueue.js                                 9.33 KB
+2026-11-14T18:13:21.7181076Z ESM dist/queue/connection.js                                  2.79 KB
+2026-11-14T18:13:21.7181734Z ESM dist/queue/maintenanceQueue.js                            7.99 KB
+2026-11-14T18:13:21.7182388Z ESM dist/queue/redrive.js                                     2.04 KB
+2026-11-14T18:13:21.7183060Z ESM dist/queue/runAtivoUniversalDLQ.js                        3.79 KB
+2026-11-14T18:13:21.7183736Z ESM dist/queue/runQueue.js                                    10.71 KB
+2026-11-14T18:13:21.7184403Z ESM dist/queue/runAtivoUniversalQueue.js                      4.05 KB
+2026-11-14T18:13:21.7185215Z ESM dist/queue/snapshot.js                                    13.60 KB
+2026-11-14T18:13:21.7185878Z ESM dist/queue/workerOwnershipLease.js                        2.82 KB
+2026-11-14T18:13:21.7186570Z ESM dist/queue/workerTopology.test.js                         7.16 KB
+2026-11-14T18:13:21.7187248Z ESM dist/queue/workerTopology.js                              3.81 KB
+2026-11-14T18:13:21.7187900Z ESM dist/reasons/index.js                                     16.65 KB
+2026-11-14T18:13:21.7188586Z ESM dist/queue/workerOwnershipLease.test.js                   12.72 KB
+2026-11-14T18:13:21.7189331Z ESM dist/reasons/reasonCatalog.js                             16.66 KB
+2026-11-14T18:13:21.7190082Z ESM dist/services/guardrailLedgerStore.js                     1.84 KB
+2026-11-14T18:13:21.7190806Z ESM dist/security/killSwitch.js                               5.18 KB
+2026-11-14T18:13:21.7191507Z ESM dist/services/ledgerService.js                            6.92 KB
+2026-11-14T18:13:21.7192256Z ESM dist/services/mcpGovernanceEnv.js                         757.00 B
+2026-11-14T18:13:21.7192997Z ESM dist/services/mcpGovernanceEnv.test.js                    2.68 KB
+2026-11-14T18:13:21.7193757Z ESM dist/services/planStepStore.js                            612.00 B
+2026-11-14T18:13:21.7194522Z ESM dist/services/reconcileLedgerService.js                   4.16 KB
+2026-11-14T18:13:21.7195351Z ESM dist/services/sclLedger.js                                14.73 KB
+2026-11-14T18:13:21.7196091Z ESM dist/services/tenantInvoiceService.js                     9.11 KB
+2026-11-14T18:13:21.7196874Z ESM dist/services/workspaceProvenanceClassifier.js            22.67 KB
+2026-11-14T18:13:21.7197690Z ESM dist/services/workspaceProvenanceClassifier.test.js       49.24 KB
+2026-11-14T18:13:21.7198479Z ESM dist/utils/canonicalDigest.test.js                        2.45 KB
+2026-11-14T18:13:21.7199400Z ESM dist/services/workspaceProvenanceFacts.js                 34.28 KB
+2026-11-14T18:13:21.7200230Z ESM dist/utils/canonicalDigest.js                             642.00 B
+2026-11-14T18:13:21.7201252Z ESM dist/utils/retry.js                                       1.19 KB
+2026-11-14T18:13:21.7202019Z ESM dist/taxonomy/publicProductTaxonomy.js                    23.90 KB
+2026-11-14T18:13:21.7202772Z ESM dist/utils/normalizeMessages.js                           334.00 B
+2026-11-14T18:13:21.7203528Z ESM dist/utils/timeout.js                                     390.00 B
+2026-11-14T18:13:21.7204254Z ESM dist/actions/agents/aadvAction.js                         9.67 KB
+2026-11-14T18:13:21.7205117Z ESM dist/actions/agents/defiOneAction.js                      8.10 KB
+2026-11-14T18:13:21.7205844Z ESM dist/actions/agents/diariasAction.js                      2.24 KB
+2026-11-14T18:13:21.7206589Z ESM dist/actions/agents/eiahAction.js                         17.88 KB
+2026-11-14T18:13:21.7207370Z ESM dist/actions/agents/finNexusAction.js                     6.61 KB
+2026-11-14T18:13:21.7208146Z ESM dist/actions/agents/guardianAction.js                     15.42 KB
+2026-11-14T18:13:21.7208932Z ESM dist/actions/agents/flowOrchestratorAction.js             2.65 KB
+2026-11-14T18:13:21.7209711Z ESM dist/actions/agents/imageNftDiariasAction.js              2.34 KB
+2026-11-14T18:13:21.7210486Z ESM dist/actions/agents/iBCAction.js                          2.28 KB
+2026-11-14T18:13:21.7211224Z ESM dist/actions/agents/j360Action.js                         12.48 KB
+2026-11-14T18:13:21.7211994Z ESM dist/actions/agents/mktAction.js                          2.51 KB
+2026-11-14T18:13:21.7213181Z ESM dist/actions/agents/nftPyAction.js                        2.40 KB
+2026-11-14T18:13:21.7214211Z ESM dist/actions/agents/onchainMonitorAction.js               8.60 KB
+2026-11-14T18:13:21.7215078Z ESM dist/actions/agents/index.js                              109.60 KB
+2026-11-14T18:13:21.7216702Z ESM dist/actions/agents/pitchAction.js                        11.19 KB
+2026-11-14T18:13:21.7217491Z ESM dist/actions/agents/resolveLegalSpecialtyContext.js       2.60 KB
+2026-11-14T18:13:21.7219125Z ESM dist/actions/agents/riskAnalyzerAction.js                 2.57 KB
+2026-11-14T18:13:21.7220819Z ESM dist/actions/agents/registry.js                           101.70 KB
+2026-11-14T18:13:21.7222879Z ESM dist/actions/agents/types.js                              201.00 B
+2026-11-14T18:13:21.7223665Z ESM dist/actions/registry/TenantActionResolver.js             665.00 B
+2026-11-14T18:13:21.7224441Z ESM dist/actions/reporting/guardianReportSchema.js            3.44 KB
+2026-11-14T18:13:21.7225317Z ESM dist/actions/registry/VersionedActionRegistry.js          1.56 KB
+2026-11-14T18:13:21.7227006Z ESM dist/actions/reporting/guardianReportRenderer.js          35.53 KB
+2026-11-14T18:13:21.7227748Z ESM dist/actions/reporting/j360LegalReportSchema.js           5.48 KB
+2026-11-14T18:13:21.7228587Z ESM dist/actions/reporting/mktCampaignReportRenderer.js       38.84 KB
+2026-11-14T18:13:21.7229333Z ESM dist/actions/reporting/recipeOrchestrationRenderer.js     14.96 KB
+2026-11-14T18:13:21.7230060Z ESM dist/actions/reporting/index.js                           135.90 KB
+2026-11-14T18:13:21.7231021Z ESM dist/actions/reporting/mktCampaignReportSchema.js         7.83 KB
+2026-11-14T18:13:21.7231884Z ESM dist/actions/reporting/j360LegalReportRenderer.js         49.12 KB
+2026-11-14T18:13:21.7232604Z ESM dist/actions/reporting/recipeOrchestrationSchema.js       4.58 KB
+2026-11-14T18:13:21.7233314Z ESM dist/actions/reporting/runAtivoSchema.js                  22.36 KB
+2026-11-14T18:13:21.7234008Z ESM dist/actions/actionRegistry.js.map                        40.49 KB
+2026-11-14T18:13:21.7234846Z ESM dist/actions/defi.js.map                                  38.15 KB
+2026-11-14T18:13:21.7235574Z ESM dist/actions/guardianChecklistTools.js.map                3.75 KB
+2026-11-14T18:13:21.7236362Z ESM dist/actions/billing.js.map                               47.28 KB
+2026-11-14T18:13:21.7237067Z ESM dist/actions/guardrails.js.map                            8.48 KB
+2026-11-14T18:13:21.7237794Z ESM dist/actions/finance.js.map                               63.71 KB
+2026-11-14T18:13:21.7238512Z ESM dist/actions/guardian.js.map                              49.69 KB
+2026-11-14T18:13:21.7239209Z ESM dist/actions/notifications.js.map                         41.55 KB
+2026-11-14T18:13:21.7239910Z ESM dist/actions/risk.js.map                                  33.46 KB
+2026-11-14T18:13:21.7240577Z ESM dist/billing/reconciliation.js.map                        18.56 KB
+2026-11-14T18:13:21.7241015Z ESM dist/actions/knowledge.js.map                             37.12 KB
+2026-11-14T18:13:21.7241446Z ESM dist/catalog/apeWeeklyCycleV3.test.js.map                 27.71 KB
+2026-11-14T18:13:21.7241935Z ESM dist/catalog/apeWeeklyCycleV3Validator.js.map             44.08 KB
+2026-11-14T18:13:21.7242429Z ESM dist/catalog/apeWeeklyCycleV3.js.map                      16.42 KB
+2026-11-14T18:13:21.7242913Z ESM dist/catalog/apeWeeklyCycleV3Validator.test.js.map        66.60 KB
+2026-11-14T18:13:21.7243428Z ESM dist/catalog/governedOperationCatalog.js.map              11.83 KB
+2026-11-14T18:13:21.7243914Z ESM dist/catalog/workspaceActionPolicyProvisioning.js.map     3.05 KB
+2026-11-14T18:13:21.7244411Z ESM dist/catalog/governedOperationCatalog.test.js.map         21.05 KB
+2026-11-14T18:13:21.7245074Z ESM dist/catalog/versionedActionRegistry.js.map               992.00 B
+2026-11-14T18:13:21.7245540Z ESM dist/llm/LLMProvider.js.map                               380.00 B
+2026-11-14T18:13:21.7246008Z ESM dist/catalog/workspaceAgentProvisioning.js.map            3.30 KB
+2026-11-14T18:13:21.7246510Z ESM dist/catalog/workspaceAgentProvisioning.test.js.map       6.49 KB
+2026-11-14T18:13:21.7246986Z ESM dist/llm/LLMRegistry.js.map                               1012.00 B
+2026-11-14T18:13:21.7247421Z ESM dist/llm/LLMRouter.js.map                                 2.16 KB
+2026-11-14T18:13:21.7247868Z ESM dist/events/redisPublisher.js.map                         4.43 KB
+2026-11-14T18:13:21.7248289Z ESM dist/llm/types.js.map                                     71.00 B
+2026-11-14T18:13:21.7248734Z ESM dist/llm/completionEngine.js.map                          13.05 KB
+2026-11-14T18:13:21.7249181Z ESM dist/logging/index.js.map                                 3.93 KB
+2026-11-14T18:13:21.7249748Z ESM dist/queue/connection.test.js.map                         7.64 KB
+2026-11-14T18:13:21.7250303Z ESM dist/logging/logger.js.map                                3.93 KB
+2026-11-14T18:13:21.7250748Z ESM dist/queue/actionQueue.js.map                             18.80 KB
+2026-11-14T18:13:21.7251190Z ESM dist/queue/connection.js.map                              5.38 KB
+2026-11-14T18:13:21.7251651Z ESM dist/policy/TenantPolicyStore.js.map                      12.53 KB
+2026-11-14T18:13:21.7252103Z ESM dist/queue/redrive.js.map                                 4.90 KB
+2026-11-14T18:13:21.7252628Z ESM dist/queue/maintenanceQueue.js.map                        16.46 KB
+2026-11-14T18:13:21.7253171Z ESM dist/queue/runAtivoUniversalDLQ.js.map                    8.32 KB
+2026-11-14T18:13:21.7253699Z ESM dist/queue/runAtivoUniversalQueue.js.map                  7.90 KB
+2026-11-14T18:13:21.7254165Z ESM dist/queue/runQueue.js.map                                21.39 KB
+2026-11-14T18:13:21.7254763Z ESM dist/queue/workerOwnershipLease.js.map                    5.83 KB
+2026-11-14T18:13:21.7255206Z ESM dist/queue/snapshot.js.map                                41.88 KB
+2026-11-14T18:13:21.7255656Z ESM dist/queue/workerTopology.js.map                          7.54 KB
+2026-11-14T18:13:21.7256116Z ESM dist/queue/workerTopology.test.js.map                     13.52 KB
+2026-11-14T18:13:21.7256595Z ESM dist/queue/workerOwnershipLease.test.js.map               26.39 KB
+2026-11-14T18:13:21.7257050Z ESM dist/reasons/index.js.map                                 27.00 KB
+2026-11-14T18:13:21.7257510Z ESM dist/services/guardrailLedgerStore.js.map                 3.87 KB
+2026-11-14T18:13:21.7257999Z ESM dist/reasons/reasonCatalog.js.map                         27.00 KB
+2026-11-14T18:13:21.7258470Z ESM dist/security/killSwitch.js.map                           9.89 KB
+2026-11-14T18:13:21.7258936Z ESM dist/services/mcpGovernanceEnv.js.map                     1.71 KB
+2026-11-14T18:13:21.7259404Z ESM dist/services/ledgerService.js.map                        13.53 KB
+2026-11-14T18:13:21.7259882Z ESM dist/services/mcpGovernanceEnv.test.js.map                5.16 KB
+2026-11-14T18:13:21.7260367Z ESM dist/services/planStepStore.js.map                        1.26 KB
+2026-11-14T18:13:21.7260912Z ESM dist/services/reconcileLedgerService.js.map               8.46 KB
+2026-11-14T18:13:21.7261474Z ESM dist/services/tenantInvoiceService.js.map                 17.14 KB
+2026-11-14T18:13:21.7262030Z ESM dist/services/sclLedger.js.map                            28.93 KB
+2026-11-14T18:13:21.7262584Z ESM dist/services/workspaceProvenanceClassifier.js.map        47.97 KB
+2026-11-14T18:13:21.7263042Z ESM dist/utils/canonicalDigest.test.js.map                    5.42 KB
+2026-11-14T18:13:21.7263492Z ESM dist/services/workspaceProvenanceFacts.js.map             71.19 KB
+2026-11-14T18:13:21.7263963Z ESM dist/services/workspaceProvenanceClassifier.test.js.map   98.86 KB
+2026-11-14T18:13:21.7264406Z ESM dist/utils/canonicalDigest.js.map                         2.06 KB
+2026-11-14T18:13:21.7265099Z ESM dist/utils/normalizeMessages.js.map                       611.00 B
+2026-11-14T18:13:21.7266056Z ESM dist/utils/timeout.js.map                                 770.00 B
+2026-11-14T18:13:21.7266806Z ESM dist/utils/retry.js.map                                   2.20 KB
+2026-11-14T18:13:21.7267230Z ESM dist/taxonomy/publicProductTaxonomy.js.map                38.12 KB
+2026-11-14T18:13:21.7267662Z ESM dist/actions/agents/aadvAction.js.map                     21.12 KB
+2026-11-14T18:13:21.7268116Z ESM dist/actions/agents/defiOneAction.js.map                  20.46 KB
+2026-11-14T18:13:21.7268547Z ESM dist/actions/agents/finNexusAction.js.map                 16.46 KB
+2026-11-14T18:13:21.7268979Z ESM dist/actions/agents/eiahAction.js.map                     31.52 KB
+2026-11-14T18:13:21.7269414Z ESM dist/actions/agents/guardianAction.js.map                 26.99 KB
+2026-11-14T18:13:21.7269869Z ESM dist/actions/agents/flowOrchestratorAction.js.map         10.61 KB
+2026-11-14T18:13:21.7270313Z ESM dist/actions/agents/imageNftDiariasAction.js.map          10.23 KB
+2026-11-14T18:13:21.7270748Z ESM dist/actions/agents/iBCAction.js.map                      10.34 KB
+2026-11-14T18:13:21.7271173Z ESM dist/actions/agents/j360Action.js.map                     22.63 KB
+2026-11-14T18:13:21.7271602Z ESM dist/actions/agents/diariasAction.js.map                  10.15 KB
+2026-11-14T18:13:21.7272037Z ESM dist/actions/agents/mktAction.js.map                      10.58 KB
+2026-11-14T18:13:21.7272462Z ESM dist/actions/agents/nftPyAction.js.map                    10.40 KB
+2026-11-14T18:13:21.7272903Z ESM dist/actions/agents/onchainMonitorAction.js.map           21.32 KB
+2026-11-14T18:13:21.7273341Z ESM dist/actions/agents/pitchAction.js.map                    19.66 KB
+2026-11-14T18:13:21.7273782Z ESM dist/actions/agents/resolveLegalSpecialtyContext.js.map   4.98 KB
+2026-11-14T18:13:21.7274225Z ESM dist/actions/agents/riskAnalyzerAction.js.map             10.65 KB
+2026-11-14T18:13:21.7275395Z ESM dist/actions/agents/types.js.map                          7.30 KB
+2026-11-14T18:13:21.7276152Z ESM dist/actions/reporting/guardianReportSchema.js.map        6.39 KB
+2026-11-14T18:13:21.7276871Z ESM dist/actions/registry/TenantActionResolver.js.map         1.25 KB
+2026-11-14T18:13:21.7277587Z ESM dist/actions/registry/VersionedActionRegistry.js.map      3.09 KB
+2026-11-14T18:13:21.7278313Z ESM dist/actions/agents/index.js.map                          184.48 KB
+2026-11-14T18:13:21.7279042Z ESM dist/actions/reporting/j360LegalReportSchema.js.map       9.94 KB
+2026-11-14T18:13:21.7279828Z ESM dist/actions/reporting/guardianReportRenderer.js.map      56.02 KB
+2026-11-14T18:13:21.7280599Z ESM dist/actions/reporting/recipeOrchestrationRenderer.js.map 24.10 KB
+2026-11-14T18:13:21.7281366Z ESM dist/actions/reporting/mktCampaignReportRenderer.js.map   62.54 KB
+2026-11-14T18:13:21.7282108Z ESM dist/actions/reporting/mktCampaignReportSchema.js.map     14.42 KB
+2026-11-14T18:13:21.7282857Z ESM dist/actions/reporting/recipeOrchestrationSchema.js.map   7.79 KB
+2026-11-14T18:13:21.7283602Z ESM dist/actions/reporting/j360LegalReportRenderer.js.map     75.81 KB
+2026-11-14T18:13:21.7284444Z ESM dist/actions/reporting/runAtivoSchema.js.map              44.68 KB
+2026-11-14T18:13:21.7285413Z ESM dist/actions/agents/registry.js.map                       151.72 KB
+2026-11-14T18:13:21.7285862Z ESM dist/actions/reporting/index.js.map                       244.79 KB
+2026-11-14T18:13:21.7286281Z ESM dist/index.js.map                                         851.50 KB
+2026-11-14T18:13:21.7286731Z ESM dist/actions/index.js.map                                 539.58 KB
+2026-11-14T18:13:21.7287059Z ESM ⚡️ Build success in 143ms
+2026-11-14T18:13:21.9523570Z
+2026-11-14T18:13:21.9524410Z > @eiah/providers@0.1.0 prebuild /home/runner/work/EIAH/EIAH/packages/providers
+2026-11-14T18:13:21.9524903Z > bash ../../scripts/prebuild-check.sh
+2026-11-14T18:13:21.9525020Z
+2026-11-14T18:13:21.9611747Z
+2026-11-14T18:13:21.9612407Z > @eiah/providers@0.1.0 build /home/runner/work/EIAH/EIAH/packages/providers
+2026-11-14T18:13:21.9612723Z > tsc -p tsconfig.json
+2026-11-14T18:13:21.9612864Z
+2026-11-14T18:13:22.6421449Z ##[group]Run pnpm test:action-runner-gates
+2026-11-14T18:13:22.6421689Z pnpm test:action-runner-gates
+2026-11-14T18:13:22.6464177Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:22.6464339Z env:
+2026-11-14T18:13:22.6464463Z   NODE_VERSION: 22
+2026-11-14T18:13:22.6464750Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:22.6464954Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:22.6465647Z   DATABASE_URL: ***127.0.0.1:5432/eiah_ci?schema=public
+2026-11-14T18:13:22.6465834Z ##[endgroup]
+2026-11-14T18:13:22.8307231Z
+2026-11-14T18:13:22.8307872Z > eiah-builder@ test:action-runner-gates /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:22.8308276Z > node --import tsx --test apps/workers/action-runner/src/index.test.ts
+2026-11-14T18:13:22.8308445Z
+2026-11-14T18:13:22.8622583Z TAP version 13
+2026-11-14T18:13:23.3848942Z # {"level":30,"time":"2026-11-14T18:13:23.383Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","msg":"action.received"}
+2026-11-14T18:13:23.3884060Z # Subtest: action runner blocks job when trust score is below threshold
+2026-11-14T18:13:23.3890176Z ok 1 - action runner blocks job when trust score is below threshold
+2026-11-14T18:13:23.3890955Z   ---
+2026-11-14T18:13:23.3891228Z   duration_ms: 1.959139
+2026-11-14T18:13:23.3891459Z   type: 'test'
+2026-11-14T18:13:23.3891664Z   ...
+2026-11-14T18:13:23.3892031Z # Subtest: action runner fails closed when tenant action is not authorized
+2026-11-14T18:13:23.3893287Z ok 2 - action runner fails closed when tenant action is not authorized
+2026-11-14T18:13:23.3893646Z   ---
+2026-11-14T18:13:23.3893847Z   duration_ms: 0.279501
+2026-11-14T18:13:23.3894083Z   type: 'test'
+2026-11-14T18:13:23.3894278Z   ...
+2026-11-14T18:13:23.3896292Z # Subtest: action runner denies missing ToolContract with active reasonCode before execution
+2026-11-14T18:13:23.3897799Z ok 3 - action runner denies missing ToolContract with active reasonCode before execution
+2026-11-14T18:13:23.3898336Z   ---
+2026-11-14T18:13:23.3898553Z   duration_ms: 0.480854
+2026-11-14T18:13:23.3898827Z   type: 'test'
+2026-11-14T18:13:23.3899029Z   ...
+2026-11-14T18:13:23.3899546Z # Subtest: action runner preserves DB_INPUT_INVALID as nonRetryable with masked failure audit
+2026-11-14T18:13:23.3900246Z ok 4 - action runner preserves DB_INPUT_INVALID as nonRetryable with masked failure audit
+2026-11-14T18:13:23.3900688Z   ---
+2026-11-14T18:13:23.3900894Z   duration_ms: 0.88298
+2026-11-14T18:13:23.3901152Z   type: 'test'
+2026-11-14T18:13:23.3901349Z   ...
+2026-11-14T18:13:23.3903959Z # {"level":40,"time":"2026-11-14T18:13:23.384Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","message":"Trust score too low (10 < 40)","msg":"action.trust_gate.blocked"}
+2026-11-14T18:13:23.3906897Z # {"level":30,"time":"2026-11-14T18:13:23.385Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","msg":"action.received"}
+2026-11-14T18:13:23.3909035Z # {"level":50,"time":"2026-11-14T18:13:23.385Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","error":"Action \\"tool.test\\" denied by tenant policy","reasonCode":"POLICY_NOT_FOUND","msg":"action.rejected"}
+2026-11-14T18:13:23.3911219Z # {"level":30,"time":"2026-11-14T18:13:23.385Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","msg":"action.received"}
+2026-11-14T18:13:23.3913690Z # {"level":50,"time":"2026-11-14T18:13:23.385Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","message":"ToolContract missing: tool.test@1.0.0","msg":"action.mcp.contract_missing"}
+2026-11-14T18:13:23.3915626Z # {"level":30,"time":"2026-11-14T18:13:23.386Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","msg":"action.received"}
+2026-11-14T18:13:23.3917350Z # {"level":50,"time":"2026-11-14T18:13:23.386Z","service":"eiah","env":"development","component":"action-runner","jobId":"job-1","actionKind":"tool.test","runId":"run-test","tenantId":"tenant-test","workspaceId":"workspace-test","stepId":"step-1","err":{"type":"Object","message":"DB where must be an object","stack":"","name":"Error","reasonCode":"DB_INPUT_INVALID"},"message":"DB where must be an object","reasonCode":"DB_INPUT_INVALID","retryable":false,"msg":"action.mcp.failed"}
+2026-11-14T18:13:23.4146230Z 1..4
+2026-11-14T18:13:23.4146505Z # tests 4
+2026-11-14T18:13:23.4146700Z # suites 0
+2026-11-14T18:13:23.4146939Z # pass 4
+2026-11-14T18:13:23.4147065Z # fail 0
+2026-11-14T18:13:23.4147189Z # cancelled 0
+2026-11-14T18:13:23.4147333Z # skipped 0
+2026-11-14T18:13:23.4147448Z # todo 0
+2026-11-14T18:13:23.4147593Z # duration_ms 560.876284
+2026-11-14T18:13:23.4310633Z ##[group]Run TEST_FILES="$(find packages/core/src -name '*.test.ts' -type f)"
+2026-11-14T18:13:23.4310970Z TEST_FILES="$(find packages/core/src -name '*.test.ts' -type f)"
+2026-11-14T18:13:23.4311186Z if [ -n "$TEST_FILES" ]; then
+2026-11-14T18:13:23.4311400Z   echo "$TEST_FILES" | tr '\n' '\0' | xargs -0 node --test --import tsx
+2026-11-14T18:13:23.4311606Z else
+2026-11-14T18:13:23.4311772Z   echo "No @eiah/core tests found. Skipping root test step."
+2026-11-14T18:13:23.4311983Z fi
+2026-11-14T18:13:23.4352071Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:23.4352224Z env:
+2026-11-14T18:13:23.4352343Z   NODE_VERSION: 22
+2026-11-14T18:13:23.4352476Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:23.4352638Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:23.4353078Z   DATABASE_URL: ***127.0.0.1:5432/eiah_ci?schema=public
+2026-11-14T18:13:23.4353270Z   REDIS_URL: redis://127.0.0.1:6379
+2026-11-14T18:13:23.4353491Z   TSX_TSCONFIG_PATH: packages/core/tsconfig.test.json
+2026-11-14T18:13:23.4353668Z ##[endgroup]
+2026-11-14T18:13:23.4868811Z TAP version 13
+2026-11-14T18:13:23.6804179Z # Subtest: guardian checklist tools resolve repository root from workspace
+2026-11-14T18:13:23.6856746Z ok 1 - guardian checklist tools resolve repository root from workspace
+2026-11-14T18:13:23.6895561Z   ---
+2026-11-14T18:13:23.6921368Z   duration_ms: 0.787005
+2026-11-14T18:13:23.6933578Z   type: 'test'
+2026-11-14T18:13:23.6935779Z   ...
+2026-11-14T18:13:23.6936504Z # Subtest: guardian checklist tools expose canonical go-live artifacts
+2026-11-14T18:13:23.6936837Z ok 2 - guardian checklist tools expose canonical go-live artifacts
+2026-11-14T18:13:23.6937075Z   ---
+2026-11-14T18:13:23.6937245Z   duration_ms: 0.197207
+2026-11-14T18:13:23.6937394Z   type: 'test'
+2026-11-14T18:13:23.6937515Z   ...
+2026-11-14T18:13:23.6938038Z # Subtest: guardian checklist tools expose environment segregation and edge protection artifacts
+2026-11-14T18:13:23.6938627Z ok 3 - guardian checklist tools expose environment segregation and edge protection artifacts
+2026-11-14T18:13:23.6939093Z   ---
+2026-11-14T18:13:23.6941025Z   duration_ms: 0.17289
+2026-11-14T18:13:23.6941178Z   type: 'test'
+2026-11-14T18:13:23.6941299Z   ...
+2026-11-14T18:13:23.7173716Z # Subtest: createLedgerBackedIdempotencyStore
+2026-11-14T18:13:23.7246159Z     # Subtest: registers the first call and rejects duplicates (sequential)
+2026-11-14T18:13:23.7256734Z     ok 1 - registers the first call and rejects duplicates (sequential)
+2026-11-14T18:13:23.7298652Z       ---
+2026-11-14T18:13:23.7320848Z       duration_ms: 0.779925
+2026-11-14T18:13:23.7321937Z       type: 'test'
+2026-11-14T18:13:23.7322485Z       ...
+2026-11-14T18:13:23.7323218Z     # Subtest: only accepts one concurrent registration per key
+2026-11-14T18:13:23.7323823Z     ok 2 - only accepts one concurrent registration per key
+2026-11-14T18:13:23.7324247Z       ---
+2026-11-14T18:13:23.7324813Z       duration_ms: 0.681576
+2026-11-14T18:13:23.7325216Z       type: 'test'
+2026-11-14T18:13:23.7325531Z       ...
+2026-11-14T18:13:23.7325946Z     # Subtest: propagates non-unique errors from the adapter
+2026-11-14T18:13:23.7326717Z     ok 3 - propagates non-unique errors from the adapter
+2026-11-14T18:13:23.7327128Z       ---
+2026-11-14T18:13:23.7327439Z       duration_ms: 0.432491
+2026-11-14T18:13:23.7327790Z       type: 'test'
+2026-11-14T18:13:23.7328204Z       ...
+2026-11-14T18:13:23.7328568Z     # Subtest: runs cleanup when ttl is positive
+2026-11-14T18:13:23.7329030Z     ok 4 - runs cleanup when ttl is positive
+2026-11-14T18:13:23.7329394Z       ---
+2026-11-14T18:13:23.7329820Z       duration_ms: 0.167422
+2026-11-14T18:13:23.7330161Z       type: 'test'
+2026-11-14T18:13:23.7330461Z       ...
+2026-11-14T18:13:23.7330748Z     1..4
+2026-11-14T18:13:23.7331237Z ok 4 - createLedgerBackedIdempotencyStore
+2026-11-14T18:13:23.7331623Z   ---
+2026-11-14T18:13:23.7331938Z   duration_ms: 2.966567
+2026-11-14T18:13:23.7332267Z   type: 'suite'
+2026-11-14T18:13:23.7333197Z   ...
+2026-11-14T18:13:24.0339004Z # Subtest: P2 global HIGH coverage: billing/finance/notifications actions execute successfully
+2026-11-14T18:13:24.0386394Z ok 5 - P2 global HIGH coverage: billing/finance/notifications actions execute successfully
+2026-11-14T18:13:24.0425822Z   ---
+2026-11-14T18:13:24.0428386Z   duration_ms: 5.222192
+2026-11-14T18:13:24.0428750Z   type: 'test'
+2026-11-14T18:13:24.0428949Z   ...
+2026-11-14T18:13:24.0741899Z # Subtest: fallback to default version
+2026-11-14T18:13:24.0766312Z ok 6 - fallback to default version
+2026-11-14T18:13:24.0796132Z   ---
+2026-11-14T18:13:24.0796750Z   duration_ms: 0.658001
+2026-11-14T18:13:24.0823450Z   type: 'test'
+2026-11-14T18:13:24.0824147Z   ...
+2026-11-14T18:13:24.0824782Z # Subtest: tenant loads specific version
+2026-11-14T18:13:24.0825309Z ok 7 - tenant loads specific version
+2026-11-14T18:13:24.0825700Z   ---
+2026-11-14T18:13:24.0826190Z   duration_ms: 0.165479
+2026-11-14T18:13:24.0826565Z   type: 'test'
+2026-11-14T18:13:24.0826949Z   ...
+2026-11-14T18:13:24.0827356Z # Subtest: overrides override correctly
+2026-11-14T18:13:24.0827985Z ok 8 - overrides override correctly
+2026-11-14T18:13:24.0828372Z   ---
+2026-11-14T18:13:24.0828711Z   duration_ms: 0.128894
+2026-11-14T18:13:24.0829080Z   type: 'test'
+2026-11-14T18:13:24.0829591Z   ...
+2026-11-14T18:13:24.1505440Z # Subtest: guardian landing page renderer avoids prohibited commercial terms
+2026-11-14T18:13:24.1556716Z ok 9 - guardian landing page renderer avoids prohibited commercial terms
+2026-11-14T18:13:24.1577067Z   ---
+2026-11-14T18:13:24.1605649Z   duration_ms: 25.343977
+2026-11-14T18:13:24.1609400Z   type: 'test'
+2026-11-14T18:13:24.1629272Z   ...
+2026-11-14T18:13:24.1630027Z # Subtest: guardian pdf renderer stays printable and fail-closed on missing payload
+2026-11-14T18:13:24.1631770Z ok 10 - guardian pdf renderer stays printable and fail-closed on missing payload
+2026-11-14T18:13:24.1632302Z   ---
+2026-11-14T18:13:24.1632633Z   duration_ms: 0.447864
+2026-11-14T18:13:24.1633027Z   type: 'test'
+2026-11-14T18:13:24.1633348Z   ...
+2026-11-14T18:13:24.1633766Z # Subtest: guardian payload fixture matches schema v1
+2026-11-14T18:13:24.1634281Z ok 11 - guardian payload fixture matches schema v1
+2026-11-14T18:13:24.1634796Z   ---
+2026-11-14T18:13:24.1635179Z   duration_ms: 0.413101
+2026-11-14T18:13:24.1635520Z   type: 'test'
+2026-11-14T18:13:24.1635833Z   ...
+2026-11-14T18:13:24.3161588Z # Subtest: shouldUseJ360LegalRenderer activates for J_360 payload
+2026-11-14T18:13:24.3188179Z ok 12 - shouldUseJ360LegalRenderer activates for J_360 payload
+2026-11-14T18:13:24.3188956Z   ---
+2026-11-14T18:13:24.3189311Z   duration_ms: 2.950903
+2026-11-14T18:13:24.3189661Z   type: 'test'
+2026-11-14T18:13:24.3189980Z   ...
+2026-11-14T18:13:24.3190462Z # Subtest: buildJ360LandingPageHtml renders clear legal sections
+2026-11-14T18:13:24.3191076Z ok 13 - buildJ360LandingPageHtml renders clear legal sections
+2026-11-14T18:13:24.3191531Z   ---
+2026-11-14T18:13:24.3191874Z   duration_ms: 3.518037
+2026-11-14T18:13:24.3192263Z   type: 'test'
+2026-11-14T18:13:24.3192598Z   ...
+2026-11-14T18:13:24.3193021Z # Subtest: buildJ360PdfHtml renders coverage matrix
+2026-11-14T18:13:24.3193541Z ok 14 - buildJ360PdfHtml renders coverage matrix
+2026-11-14T18:13:24.3193962Z   ---
+2026-11-14T18:13:24.3194268Z   duration_ms: 1.080146
+2026-11-14T18:13:24.3194791Z   type: 'test'
+2026-11-14T18:13:24.3225936Z   ...
+2026-11-14T18:13:24.3442489Z # Subtest: shouldUseMktCampaignRenderer activates for MKT campaign payload
+2026-11-14T18:13:24.3449539Z ok 15 - shouldUseMktCampaignRenderer activates for MKT campaign payload
+2026-11-14T18:13:24.3450314Z   ---
+2026-11-14T18:13:24.3450645Z   duration_ms: 3.334761
+2026-11-14T18:13:24.3451006Z   type: 'test'
+2026-11-14T18:13:24.3451321Z   ...
+2026-11-14T18:13:24.3451807Z # Subtest: buildMktLandingPageHtml renders campaign-only html
+2026-11-14T18:13:24.3452417Z ok 16 - buildMktLandingPageHtml renders campaign-only html
+2026-11-14T18:13:24.3452872Z   ---
+2026-11-14T18:13:24.3453635Z   duration_ms: 2.292912
+2026-11-14T18:13:24.3454024Z   type: 'test'
+2026-11-14T18:13:24.3454339Z   ...
+2026-11-14T18:13:24.3481007Z # Subtest: buildMktPdfHtml renders printable campaign-only pdf html
+2026-11-14T18:13:24.3481640Z ok 17 - buildMktPdfHtml renders printable campaign-only pdf html
+2026-11-14T18:13:24.3482004Z   ---
+2026-11-14T18:13:24.3482218Z   duration_ms: 0.749859
+2026-11-14T18:13:24.3482456Z   type: 'test'
+2026-11-14T18:13:24.3482654Z   ...
+2026-11-14T18:13:24.4499260Z # Subtest: mkt campaign report schema accepts structured campaign payload
+2026-11-14T18:13:24.4514532Z ok 18 - mkt campaign report schema accepts structured campaign payload
+2026-11-14T18:13:24.4515488Z   ---
+2026-11-14T18:13:24.4515889Z   duration_ms: 5.701174
+2026-11-14T18:13:24.4516261Z   type: 'test'
+2026-11-14T18:13:24.4516595Z   ...
+2026-11-14T18:13:24.4517119Z # Subtest: run ativo reporting input accepts optional mkt campaign report
+2026-11-14T18:13:24.4517862Z ok 19 - run ativo reporting input accepts optional mkt campaign report
+2026-11-14T18:13:24.4518352Z   ---
+2026-11-14T18:13:24.4518697Z   duration_ms: 0.546863
+2026-11-14T18:13:24.4519051Z   type: 'test'
+2026-11-14T18:13:24.4519380Z   ...
+2026-11-14T18:13:24.6779079Z # Subtest: generic landing/pdf render recipe orchestrator section when recipe payload exists
+2026-11-14T18:13:24.6792077Z ok 20 - generic landing/pdf render recipe orchestrator section when recipe payload exists
+2026-11-14T18:13:24.6792576Z   ---
+2026-11-14T18:13:24.6792879Z   duration_ms: 4.517061
+2026-11-14T18:13:24.6793507Z   type: 'test'
+2026-11-14T18:13:24.6794707Z   ...
+2026-11-14T18:13:24.6843685Z # Subtest: guardian landing renderer also includes recipe orchestrator section
+2026-11-14T18:13:24.6867674Z ok 21 - guardian landing renderer also includes recipe orchestrator section
+2026-11-14T18:13:24.6959604Z   ---
+2026-11-14T18:13:24.6994870Z   duration_ms: 1.544846
+2026-11-14T18:13:24.6995858Z   type: 'test'
+2026-11-14T18:13:24.7025724Z   ...
+2026-11-14T18:13:24.7206493Z # Subtest: buildCycleEvidenceV3: sets schemaVersion to ape.weekly-cycle.v3
+2026-11-14T18:13:24.7256478Z ok 22 - buildCycleEvidenceV3: sets schemaVersion to ape.weekly-cycle.v3
+2026-11-14T18:13:24.7259740Z   ---
+2026-11-14T18:13:24.7260271Z   duration_ms: 1.656564
+2026-11-14T18:13:24.7288619Z   type: 'test'
+2026-11-14T18:13:24.7329505Z   ...
+2026-11-14T18:13:24.7355713Z # Subtest: buildCycleEvidenceV3: aggregates auditGap and duplicateSideEffects as Sigma over measurements
+2026-11-14T18:13:24.7385800Z ok 23 - buildCycleEvidenceV3: aggregates auditGap and duplicateSideEffects as Sigma over measurements
+2026-11-14T18:13:24.7459040Z   ---
+2026-11-14T18:13:24.7497627Z   duration_ms: 0.541425
+2026-11-14T18:13:24.7525329Z   type: 'test'
+2026-11-14T18:13:24.7561199Z   ...
+2026-11-14T18:13:24.7606283Z # Subtest: buildCycleEvidenceV3: measuredUniverse only includes operations with measurementStatus=measured
+2026-11-14T18:13:24.7635884Z ok 24 - buildCycleEvidenceV3: measuredUniverse only includes operations with measurementStatus=measured
+2026-11-14T18:13:24.7700640Z   ---
+2026-11-14T18:13:24.7755703Z   duration_ms: 0.756769
+2026-11-14T18:13:24.7826091Z   type: 'test'
+2026-11-14T18:13:24.7896032Z   ...
+2026-11-14T18:13:24.7966668Z # Subtest: buildCycleEvidenceV3: evidenceDigest is internally consistent and reproducible
+2026-11-14T18:13:24.7995814Z ok 25 - buildCycleEvidenceV3: evidenceDigest is internally consistent and reproducible
+2026-11-14T18:13:24.8035536Z   ---
+2026-11-14T18:13:24.8065629Z   duration_ms: 0.361013
+2026-11-14T18:13:24.8066235Z   type: 'test'
+2026-11-14T18:13:24.8095825Z   ...
+2026-11-14T18:13:24.8125807Z # Subtest: buildCycleEvidenceV3: mutating any measured field changes the evidenceDigest
+2026-11-14T18:13:24.8153989Z ok 26 - buildCycleEvidenceV3: mutating any measured field changes the evidenceDigest
+2026-11-14T18:13:24.8154802Z   ---
+2026-11-14T18:13:24.8155112Z   duration_ms: 0.246411
+2026-11-14T18:13:24.8155463Z   type: 'test'
+2026-11-14T18:13:24.8155775Z   ...
+2026-11-14T18:13:24.8156846Z # Subtest: buildCycleEvidenceV3: evidenceDigest changes when the underlying rawReceiptDigest changes
+2026-11-14T18:13:24.8157721Z ok 27 - buildCycleEvidenceV3: evidenceDigest changes when the underlying rawReceiptDigest changes
+2026-11-14T18:13:24.8158255Z   ---
+2026-11-14T18:13:24.8158545Z   duration_ms: 0.242845
+2026-11-14T18:13:24.8158864Z   type: 'test'
+2026-11-14T18:13:24.8159154Z   ...
+2026-11-14T18:13:24.8159673Z # Subtest: assertValidCycleEvidenceV3Shape: accepts a well-formed evidence object
+2026-11-14T18:13:24.8160365Z ok 28 - assertValidCycleEvidenceV3Shape: accepts a well-formed evidence object
+2026-11-14T18:13:24.8160943Z   ---
+2026-11-14T18:13:24.8161232Z   duration_ms: 0.419552
+2026-11-14T18:13:24.8161538Z   type: 'test'
+2026-11-14T18:13:24.8161837Z   ...
+2026-11-14T18:13:24.8162314Z # Subtest: assertValidCycleEvidenceV3Shape: rejects unsupported schemaVersion
+2026-11-14T18:13:24.8162978Z ok 29 - assertValidCycleEvidenceV3Shape: rejects unsupported schemaVersion
+2026-11-14T18:13:24.8163431Z   ---
+2026-11-14T18:13:24.8163739Z   duration_ms: 0.501596
+2026-11-14T18:13:24.8164055Z   type: 'test'
+2026-11-14T18:13:24.8164358Z   ...
+2026-11-14T18:13:24.8165028Z # Subtest: assertValidCycleEvidenceV3Shape: rejects invalid measurementStatus enum value
+2026-11-14T18:13:24.8165801Z ok 30 - assertValidCycleEvidenceV3Shape: rejects invalid measurementStatus enum value
+2026-11-14T18:13:24.8166325Z   ---
+2026-11-14T18:13:24.8166623Z   duration_ms: 0.363418
+2026-11-14T18:13:24.8166950Z   type: 'test'
+2026-11-14T18:13:24.8167261Z   ...
+2026-11-14T18:13:24.8167790Z # Subtest: assertValidCycleEvidenceV3Shape: rejects invalid coverageStatus enum value
+2026-11-14T18:13:24.8168786Z ok 31 - assertValidCycleEvidenceV3Shape: rejects invalid coverageStatus enum value
+2026-11-14T18:13:24.8169296Z   ---
+2026-11-14T18:13:24.8169596Z   duration_ms: 0.481435
+2026-11-14T18:13:24.8169926Z   type: 'test'
+2026-11-14T18:13:24.8170235Z   ...
+2026-11-14T18:13:24.8170768Z # Subtest: assertValidCycleEvidenceV3Shape: rejects missing required field (cycleId)
+2026-11-14T18:13:24.8171523Z ok 32 - assertValidCycleEvidenceV3Shape: rejects missing required field (cycleId)
+2026-11-14T18:13:24.8172014Z   ---
+2026-11-14T18:13:24.8172322Z   duration_ms: 0.220492
+2026-11-14T18:13:24.8172648Z   type: 'test'
+2026-11-14T18:13:24.8172955Z   ...
+2026-11-14T18:13:24.8173552Z # Subtest: assertValidCycleEvidenceV3Shape: rejects a measured operation without a raw receipt reference
+2026-11-14T18:13:24.8174419Z ok 33 - assertValidCycleEvidenceV3Shape: rejects a measured operation without a raw receipt reference
+2026-11-14T18:13:24.8175105Z   ---
+2026-11-14T18:13:24.8175397Z   duration_ms: 0.208855
+2026-11-14T18:13:24.8175711Z   type: 'test'
+2026-11-14T18:13:24.8175988Z   ...
+2026-11-14T18:13:24.8176569Z # Subtest: assertValidCycleEvidenceV3Shape: rejects a digest that was tampered with after construction
+2026-11-14T18:13:24.8177371Z ok 34 - assertValidCycleEvidenceV3Shape: rejects a digest that was tampered with after construction
+2026-11-14T18:13:24.8177921Z   ---
+2026-11-14T18:13:24.8178225Z   duration_ms: 0.233071
+2026-11-14T18:13:24.8178543Z   type: 'test'
+2026-11-14T18:13:24.8178844Z   ...
+2026-11-14T18:13:24.8179385Z # Subtest: buildCycleRatificationV3: binds to the evidence by digest, never copies metrics
+2026-11-14T18:13:24.8180121Z ok 35 - buildCycleRatificationV3: binds to the evidence by digest, never copies metrics
+2026-11-14T18:13:24.8180611Z   ---
+2026-11-14T18:13:24.8180917Z   duration_ms: 0.50528
+2026-11-14T18:13:24.8181255Z   type: 'test'
+2026-11-14T18:13:24.8181547Z   ...
+2026-11-14T18:13:24.8182068Z # Subtest: buildCycleRatificationV3: requires a non-empty human ratifiedBy identity
+2026-11-14T18:13:24.8182786Z ok 36 - buildCycleRatificationV3: requires a non-empty human ratifiedBy identity
+2026-11-14T18:13:24.8183271Z   ---
+2026-11-14T18:13:24.8183570Z   duration_ms: 0.160963
+2026-11-14T18:13:24.8183901Z   type: 'test'
+2026-11-14T18:13:24.8215245Z   ...
+2026-11-14T18:13:24.8250981Z # Subtest: buildCycleRatificationV3: supports pending/approved/rejected as the only ratificationStatus values
+2026-11-14T18:13:24.8266457Z ok 37 - buildCycleRatificationV3: supports pending/approved/rejected as the only ratificationStatus values
+2026-11-14T18:13:24.8325488Z   ---
+2026-11-14T18:13:24.8326131Z   duration_ms: 0.193201
+2026-11-14T18:13:24.8355558Z   type: 'test'
+2026-11-14T18:13:24.8385285Z   ...
+2026-11-14T18:13:24.8395759Z # Subtest: module purity: neither the contract module nor this test import node:fs (no Evidence Index write path)
+2026-11-14T18:13:24.8406608Z ok 38 - module purity: neither the contract module nor this test import node:fs (no Evidence Index write path)
+2026-11-14T18:13:24.8415483Z   ---
+2026-11-14T18:13:24.8415850Z   duration_ms: 0.924842
+2026-11-14T18:13:24.8416306Z   type: 'test'
+2026-11-14T18:13:24.8416709Z   ...
+2026-11-14T18:13:24.8417324Z # Subtest: passes for a well-formed, honestly-backed billing cycle
+2026-11-14T18:13:24.8418112Z ok 39 - passes for a well-formed, honestly-backed billing cycle
+2026-11-14T18:13:24.8418683Z   ---
+2026-11-14T18:13:24.8419073Z   duration_ms: 3.392807
+2026-11-14T18:13:24.8419446Z   type: 'test'
+2026-11-14T18:13:24.8419761Z   ...
+2026-11-14T18:13:24.8420239Z # Subtest: rejects an evidence object with an unsupported schemaVersion
+2026-11-14T18:13:24.8420919Z ok 40 - rejects an evidence object with an unsupported schemaVersion
+2026-11-14T18:13:24.8421372Z   ---
+2026-11-14T18:13:24.8421684Z   duration_ms: 0.512192
+2026-11-14T18:13:24.8422056Z   type: 'test'
+2026-11-14T18:13:24.8422403Z   ...
+2026-11-14T18:13:24.8423045Z # Subtest: rejects a structurally invalid evidence object (missing raw receipt ref on a measured operation)
+2026-11-14T18:13:24.8424388Z ok 41 - rejects a structurally invalid evidence object (missing raw receipt ref on a measured operation)
+2026-11-14T18:13:24.8425094Z   ---
+2026-11-14T18:13:24.8425387Z   duration_ms: 0.360333
+2026-11-14T18:13:24.8425745Z   type: 'test'
+2026-11-14T18:13:24.8426049Z   ...
+2026-11-14T18:13:24.8426603Z # Subtest: rejects evidence whose evidenceDigest was tampered with after construction
+2026-11-14T18:13:24.8427344Z ok 42 - rejects evidence whose evidenceDigest was tampered with after construction
+2026-11-14T18:13:24.8427838Z   ---
+2026-11-14T18:13:24.8428150Z   duration_ms: 0.241995
+2026-11-14T18:13:24.8428478Z   type: 'test'
+2026-11-14T18:13:24.8428790Z   ...
+2026-11-14T18:13:24.8429431Z # Subtest: rejects when the raw receipt digest referenced by the measurement does not match the actual receipt digest
+2026-11-14T18:13:24.8430327Z ok 43 - rejects when the raw receipt digest referenced by the measurement does not match the actual receipt digest
+2026-11-14T18:13:24.8430908Z   ---
+2026-11-14T18:13:24.8431210Z   duration_ms: 0.248053
+2026-11-14T18:13:24.8431532Z   type: 'test'
+2026-11-14T18:13:24.8431833Z   ...
+2026-11-14T18:13:24.8432306Z # Subtest: rejects when the raw receipt reference cannot be resolved at all
+2026-11-14T18:13:24.8432945Z ok 44 - rejects when the raw receipt reference cannot be resolved at all
+2026-11-14T18:13:24.8433398Z   ---
+2026-11-14T18:13:24.8433698Z   duration_ms: 0.168544
+2026-11-14T18:13:24.8434043Z   type: 'test'
+2026-11-14T18:13:24.8434345Z   ...
+2026-11-14T18:13:24.8435077Z # Subtest: expectedUniverse is validated against the Governed Operation Catalog, not accepted as declared
+2026-11-14T18:13:24.8435910Z ok 45 - expectedUniverse is validated against the Governed Operation Catalog, not accepted as declared
+2026-11-14T18:13:24.8436456Z   ---
+2026-11-14T18:13:24.8436745Z   duration_ms: 0.240753
+2026-11-14T18:13:24.8437070Z   type: 'test'
+2026-11-14T18:13:24.8437367Z   ...
+2026-11-14T18:13:24.8437965Z # Subtest: producer cannot widen the universe with an operation absent from the catalog
+2026-11-14T18:13:24.8438649Z ok 46 - producer cannot widen the universe with an operation absent from the catalog
+2026-11-14T18:13:24.8439112Z   ---
+2026-11-14T18:13:24.8439403Z   duration_ms: 0.277608
+2026-11-14T18:13:24.8439714Z   type: 'test'
+2026-11-14T18:13:24.8440014Z   ...
+2026-11-14T18:13:24.8440541Z # Subtest: a domain-scoped (billing-only) cycle can never validate as evidenceClass=systemic
+2026-11-14T18:13:24.8441576Z ok 47 - a domain-scoped (billing-only) cycle can never validate as evidenceClass=systemic
+2026-11-14T18:13:24.8442068Z   ---
+2026-11-14T18:13:24.8442353Z   duration_ms: 0.454003
+2026-11-14T18:13:24.8442662Z   type: 'test'
+2026-11-14T18:13:24.8442959Z   ...
+2026-11-14T18:13:24.8443458Z # Subtest: accepts a correctly declared non-zero auditGap that matches the raw receipt
+2026-11-14T18:13:24.8444167Z ok 48 - accepts a correctly declared non-zero auditGap that matches the raw receipt
+2026-11-14T18:13:24.8444755Z   ---
+2026-11-14T18:13:24.8445070Z   duration_ms: 0.475987
+2026-11-14T18:13:24.8445393Z   type: 'test'
+2026-11-14T18:13:24.8445683Z   ...
+2026-11-14T18:13:24.8446299Z # Subtest: rejects when the producer fabricates a zero auditGap that the raw receipt does not support
+2026-11-14T18:13:24.8447117Z ok 49 - rejects when the producer fabricates a zero auditGap that the raw receipt does not support
+2026-11-14T18:13:24.8447639Z   ---
+2026-11-14T18:13:24.8447944Z   duration_ms: 0.253942
+2026-11-14T18:13:24.8448315Z   type: 'test'
+2026-11-14T18:13:24.8448612Z   ...
+2026-11-14T18:13:24.8449173Z # Subtest: rejects a fabricated duplicateSideEffects value that diverges from the raw receipt
+2026-11-14T18:13:24.8449954Z ok 50 - rejects a fabricated duplicateSideEffects value that diverges from the raw receipt
+2026-11-14T18:13:24.8450513Z   ---
+2026-11-14T18:13:24.8450808Z   duration_ms: 1.282051
+2026-11-14T18:13:24.8451132Z   type: 'test'
+2026-11-14T18:13:24.8451431Z   ...
+2026-11-14T18:13:24.8452086Z # Subtest: independent recalculation detects divergence even when the declared aggregate happens to match by coincidence
+2026-11-14T18:13:24.8453330Z ok 51 - independent recalculation detects divergence even when the declared aggregate happens to match by coincidence
+2026-11-14T18:13:24.8453951Z   ---
+2026-11-14T18:13:24.8454328Z   duration_ms: 0.178769
+2026-11-14T18:13:24.8455003Z   type: 'test'
+2026-11-14T18:13:24.8455296Z   ...
+2026-11-14T18:13:24.8455842Z # Subtest: measurementStatus=error is a valid fact but is never silently promoted to passed coverage
+2026-11-14T18:13:24.8456645Z ok 52 - measurementStatus=error is a valid fact but is never silently promoted to passed coverage
+2026-11-14T18:13:24.8457189Z   ---
+2026-11-14T18:13:24.8457485Z   duration_ms: 0.129324
+2026-11-14T18:13:24.8457816Z   type: 'test'
+2026-11-14T18:13:24.8458116Z   ...
+2026-11-14T18:13:24.8458754Z # Subtest: declaring coverageStatus=complete when sampleSize is effectively zero is rejected, not silently accepted
+2026-11-14T18:13:24.8459674Z ok 53 - declaring coverageStatus=complete when sampleSize is effectively zero is rejected, not silently accepted
+2026-11-14T18:13:24.8460265Z   ---
+2026-11-14T18:13:24.8460561Z   duration_ms: 0.117156
+2026-11-14T18:13:24.8460888Z   type: 'test'
+2026-11-14T18:13:24.8461190Z   ...
+2026-11-14T18:13:24.8461746Z # Subtest: a rejected validationStatus is never promotable regardless of other passing checks
+2026-11-14T18:13:24.8462510Z ok 54 - a rejected validationStatus is never promotable regardless of other passing checks
+2026-11-14T18:13:24.8463016Z   ---
+2026-11-14T18:13:24.8463313Z   duration_ms: 0.097477
+2026-11-14T18:13:24.8463641Z   type: 'test'
+2026-11-14T18:13:24.8463938Z   ...
+2026-11-14T18:13:24.8464470Z # Subtest: rejects when producerIdentity equals validatorIdentity (self-validation)
+2026-11-14T18:13:24.8465355Z ok 55 - rejects when producerIdentity equals validatorIdentity (self-validation)
+2026-11-14T18:13:24.8465843Z   ---
+2026-11-14T18:13:24.8466147Z   duration_ms: 0.113471
+2026-11-14T18:13:24.8466484Z   type: 'test'
+2026-11-14T18:13:24.8466797Z   ...
+2026-11-14T18:13:24.8467282Z # Subtest: validator never creates or returns a raw receipt of its own
+2026-11-14T18:13:24.8467870Z ok 56 - validator never creates or returns a raw receipt of its own
+2026-11-14T18:13:24.8468313Z   ---
+2026-11-14T18:13:24.8468609Z   duration_ms: 0.094953
+2026-11-14T18:13:24.8468933Z   type: 'test'
+2026-11-14T18:13:24.8469238Z   ...
+2026-11-14T18:13:24.8470462Z # Subtest: validator result is a plain read-only report — it never contains a mutated copy of the evidence
+2026-11-14T18:13:24.8471448Z ok 57 - validator result is a plain read-only report — it never contains a mutated copy of the evidence
+2026-11-14T18:13:24.8472005Z   ---
+2026-11-14T18:13:24.8472307Z   duration_ms: 0.089615
+2026-11-14T18:13:24.8472640Z   type: 'test'
+2026-11-14T18:13:24.8473095Z   ...
+2026-11-14T18:13:24.8473628Z # Subtest: validator result never contains a ratification decision (validator cannot ratify)
+2026-11-14T18:13:24.8474392Z ok 58 - validator result never contains a ratification decision (validator cannot ratify)
+2026-11-14T18:13:24.8475015Z   ---
+2026-11-14T18:13:24.8475320Z   duration_ms: 0.087802
+2026-11-14T18:13:24.8475641Z   type: 'test'
+2026-11-14T18:13:24.8475945Z   ...
+2026-11-14T18:13:24.8476387Z # Subtest: rejects evidence older than the configured freshness window
+2026-11-14T18:13:24.8476997Z ok 59 - rejects evidence older than the configured freshness window
+2026-11-14T18:13:24.8477431Z   ---
+2026-11-14T18:13:24.8477752Z   duration_ms: 0.114472
+2026-11-14T18:13:24.8478082Z   type: 'test'
+2026-11-14T18:13:24.8478391Z   ...
+2026-11-14T18:13:24.8479018Z # Subtest: a legacy v2-shaped object (no schemaVersion, hardcoded zeros, no raw receipt) never validates as passed
+2026-11-14T18:13:24.8479916Z ok 60 - a legacy v2-shaped object (no schemaVersion, hardcoded zeros, no raw receipt) never validates as passed
+2026-11-14T18:13:24.8480477Z   ---
+2026-11-14T18:13:24.8480777Z   duration_ms: 0.124077
+2026-11-14T18:13:24.8481106Z   type: 'test'
+2026-11-14T18:13:24.8481925Z   ...
+2026-11-14T18:13:24.8488873Z # Subtest: evidence with no declared scope validates exactly as before (backward compatible)
+2026-11-14T18:13:24.8489666Z ok 61 - evidence with no declared scope validates exactly as before (backward compatible)
+2026-11-14T18:13:24.8490193Z   ---
+2026-11-14T18:13:24.8490514Z   duration_ms: 0.122544
+2026-11-14T18:13:24.8490838Z   type: 'test'
+2026-11-14T18:13:24.8491143Z   ...
+2026-11-14T18:13:24.8491615Z # Subtest: evidence scope matching the raw receipt's own scope passes
+2026-11-14T18:13:24.8492226Z ok 62 - evidence scope matching the raw receipt's own scope passes
+2026-11-14T18:13:24.8492647Z   ---
+2026-11-14T18:13:24.8492950Z   duration_ms: 0.163256
+2026-11-14T18:13:24.8493270Z   type: 'test'
+2026-11-14T18:13:24.8493558Z   ...
+2026-11-14T18:13:24.8494135Z # Subtest: evidence tenantId disagreeing with the raw receipt's tenantId is rejected (scope_mismatch)
+2026-11-14T18:13:24.8495205Z ok 63 - evidence tenantId disagreeing with the raw receipt's tenantId is rejected (scope_mismatch)
+2026-11-14T18:13:24.8495752Z   ---
+2026-11-14T18:13:24.8496053Z   duration_ms: 0.109755
+2026-11-14T18:13:24.8496379Z   type: 'test'
+2026-11-14T18:13:24.8496674Z   ...
+2026-11-14T18:13:24.8497276Z # Subtest: evidence workspaceId disagreeing with the raw receipt's workspaceId is rejected (scope_mismatch)
+2026-11-14T18:13:24.8498119Z ok 64 - evidence workspaceId disagreeing with the raw receipt's workspaceId is rejected (scope_mismatch)
+2026-11-14T18:13:24.8498670Z   ---
+2026-11-14T18:13:24.8498962Z   duration_ms: 0.101172
+2026-11-14T18:13:24.8499285Z   type: 'test'
+2026-11-14T18:13:24.8499580Z   ...
+2026-11-14T18:13:24.8500213Z # Subtest: evidence scope declared but raw receipt has no scope: skipped, not rejected (backward compatible with older receipts)
+2026-11-14T18:13:24.8501180Z ok 65 - evidence scope declared but raw receipt has no scope: skipped, not rejected (backward compatible with older receipts)
+2026-11-14T18:13:24.8501777Z   ---
+2026-11-14T18:13:24.8502097Z   duration_ms: 0.105258
+2026-11-14T18:13:24.8502430Z   type: 'test'
+2026-11-14T18:13:24.8502724Z   ...
+2026-11-14T18:13:24.8503404Z # Subtest: the validator module performs no filesystem I/O (structural guarantee against legacy artifact reads and Evidence Index writes)
+2026-11-14T18:13:24.8504427Z ok 66 - the validator module performs no filesystem I/O (structural guarantee against legacy artifact reads and Evidence Index writes)
+2026-11-14T18:13:24.8505183Z   ---
+2026-11-14T18:13:24.8505912Z   duration_ms: 23.803749
+2026-11-14T18:13:24.8506315Z   type: 'test'
+2026-11-14T18:13:24.8506690Z   ...
+2026-11-14T18:13:24.9567591Z # Subtest: T1: billing reference operation can be resolved
+2026-11-14T18:13:24.9607075Z ok 67 - T1: billing reference operation can be resolved
+2026-11-14T18:13:24.9612650Z   ---
+2026-11-14T18:13:24.9613099Z   duration_ms: 0.858248
+2026-11-14T18:13:24.9613485Z   type: 'test'
+2026-11-14T18:13:24.9613817Z   ...
+2026-11-14T18:13:24.9614431Z # Subtest: T2: unknown operationId fails closed instead of returning a default
+2026-11-14T18:13:24.9615371Z ok 68 - T2: unknown operationId fails closed instead of returning a default
+2026-11-14T18:13:24.9615895Z   ---
+2026-11-14T18:13:24.9616234Z   duration_ms: 0.390686
+2026-11-14T18:13:24.9616585Z   type: 'test'
+2026-11-14T18:13:24.9616917Z   ...
+2026-11-14T18:13:24.9617307Z # Subtest: T3: reference operation domain is billing
+2026-11-14T18:13:24.9617811Z ok 69 - T3: reference operation domain is billing
+2026-11-14T18:13:24.9618232Z   ---
+2026-11-14T18:13:24.9618568Z   duration_ms: 0.083137
+2026-11-14T18:13:24.9618903Z   type: 'test'
+2026-11-14T18:13:24.9619208Z   ...
+2026-11-14T18:13:24.9619656Z # Subtest: T4: reference operation effectType is debit
+2026-11-14T18:13:24.9620212Z ok 70 - T4: reference operation effectType is debit
+2026-11-14T18:13:24.9620627Z   ---
+2026-11-14T18:13:24.9620943Z   duration_ms: 0.061925
+2026-11-14T18:13:24.9621292Z   type: 'test'
+2026-11-14T18:13:24.9621601Z   ...
+2026-11-14T18:13:24.9622086Z # Subtest: T5: terminality is represented via Run.finishedAt IS NOT NULL
+2026-11-14T18:13:24.9623179Z ok 71 - T5: terminality is represented via Run.finishedAt IS NOT NULL
+2026-11-14T18:13:24.9623692Z   ---
+2026-11-14T18:13:24.9624009Z   duration_ms: 0.069436
+2026-11-14T18:13:24.9624364Z   type: 'test'
+2026-11-14T18:13:24.9625101Z   ...
+2026-11-14T18:13:24.9625569Z # Subtest: T6: effect expectation source is RunUsageBreakdown
+2026-11-14T18:13:24.9626142Z ok 72 - T6: effect expectation source is RunUsageBreakdown
+2026-11-14T18:13:24.9626590Z   ---
+2026-11-14T18:13:24.9626897Z   duration_ms: 0.05882
+2026-11-14T18:13:24.9627228Z   type: 'test'
+2026-11-14T18:13:24.9627529Z   ...
+2026-11-14T18:13:24.9628048Z # Subtest: T7: breakdown-absent and breakdown-present-summing-zero are distinct
+2026-11-14T18:13:24.9628784Z ok 73 - T7: breakdown-absent and breakdown-present-summing-zero are distinct
+2026-11-14T18:13:24.9629279Z   ---
+2026-11-14T18:13:24.9629587Z   duration_ms: 0.717915
+2026-11-14T18:13:24.9629916Z   type: 'test'
+2026-11-14T18:13:24.9630213Z   ...
+2026-11-14T18:13:24.9630794Z # Subtest: T8: idempotency classification stays SEMANTIC_IDEMPOTENCY_KEY_PARTIAL
+2026-11-14T18:13:24.9631482Z ok 74 - T8: idempotency classification stays SEMANTIC_IDEMPOTENCY_KEY_PARTIAL
+2026-11-14T18:13:24.9631977Z   ---
+2026-11-14T18:13:24.9632290Z   duration_ms: 0.083026
+2026-11-14T18:13:24.9632622Z   type: 'test'
+2026-11-14T18:13:24.9632928Z   ...
+2026-11-14T18:13:24.9633405Z # Subtest: T9: outcome authority is INTERNAL_CONFIRMED, not EXTERNAL_CONFIRMED
+2026-11-14T18:13:24.9634055Z ok 75 - T9: outcome authority is INTERNAL_CONFIRMED, not EXTERNAL_CONFIRMED
+2026-11-14T18:13:24.9665423Z   ---
+2026-11-14T18:13:24.9668626Z   duration_ms: 0.19051
+2026-11-14T18:13:24.9669621Z   type: 'test'
+2026-11-14T18:13:24.9669942Z   ...
+2026-11-14T18:13:24.9670513Z # Subtest: T10: blocked lifecycle-terminal does not auto-declare an audit gap
+2026-11-14T18:13:24.9671200Z ok 76 - T10: blocked lifecycle-terminal does not auto-declare an audit gap
+2026-11-14T18:13:24.9671684Z   ---
+2026-11-14T18:13:24.9672002Z   duration_ms: 0.279316
+2026-11-14T18:13:24.9672371Z   type: 'test'
+2026-11-14T18:13:24.9672675Z   ...
+2026-11-14T18:13:24.9673166Z # Subtest: T11: no blocked category declares runtime-proven independent authority
+2026-11-14T18:13:24.9673849Z ok 77 - T11: no blocked category declares runtime-proven independent authority
+2026-11-14T18:13:24.9674314Z   ---
+2026-11-14T18:13:24.9674783Z   duration_ms: 0.106282
+2026-11-14T18:13:24.9675117Z   type: 'test'
+2026-11-14T18:13:24.9684251Z   ...
+2026-11-14T18:13:24.9685052Z # Subtest: T12: definition scope is GLOBAL, no concrete tenant/workspace values
+2026-11-14T18:13:24.9685767Z ok 78 - T12: definition scope is GLOBAL, no concrete tenant/workspace values
+2026-11-14T18:13:24.9735993Z   ---
+2026-11-14T18:13:24.9800117Z   duration_ms: 0.648749
+2026-11-14T18:13:24.9816489Z   type: 'test'
+2026-11-14T18:13:24.9830872Z   ...
+2026-11-14T18:13:24.9831728Z # Subtest: T13: catalog coverage is billing-only, never system-complete
+2026-11-14T18:13:24.9843469Z ok 79 - T13: catalog coverage is billing-only, never system-complete
+2026-11-14T18:13:24.9846918Z   ---
+2026-11-14T18:13:24.9847243Z   duration_ms: 0.12473
+2026-11-14T18:13:24.9847565Z   type: 'test'
+2026-11-14T18:13:24.9847937Z   ...
+2026-11-14T18:13:24.9848485Z # Subtest: T14: reference operation effectiveFrom is 2026-09-03
+2026-11-14T18:13:24.9849070Z ok 80 - T14: reference operation effectiveFrom is 2026-09-03
+2026-11-14T18:13:24.9849480Z   ---
+2026-11-14T18:13:24.9849744Z   duration_ms: 0.05899
+2026-11-14T18:13:24.9850043Z   type: 'test'
+2026-11-14T18:13:24.9850304Z   ...
+2026-11-14T18:13:24.9850634Z # Subtest: catalog version is a positive integer
+2026-11-14T18:13:24.9851040Z ok 81 - catalog version is a positive integer
+2026-11-14T18:13:24.9851366Z   ---
+2026-11-14T18:13:24.9851609Z   duration_ms: 0.056256
+2026-11-14T18:13:24.9851889Z   type: 'test'
+2026-11-14T18:13:24.9852134Z   ...
+2026-11-14T18:13:24.9852575Z # Subtest: T15: GUARDRAIL_BLOCK does not statically prove valid governance authority
+2026-11-14T18:13:24.9853186Z ok 82 - T15: GUARDRAIL_BLOCK does not statically prove valid governance authority
+2026-11-14T18:13:24.9854006Z   ---
+2026-11-14T18:13:24.9854252Z   duration_ms: 0.0654
+2026-11-14T18:13:24.9854531Z   type: 'test'
+2026-11-14T18:13:24.9854902Z   ...
+2026-11-14T18:13:24.9855344Z # Subtest: T16: GUARDRAIL_BLOCK requires authority resolution before deciding no-gap
+2026-11-14T18:13:24.9855953Z ok 83 - T16: GUARDRAIL_BLOCK requires authority resolution before deciding no-gap
+2026-11-14T18:13:24.9856379Z   ---
+2026-11-14T18:13:24.9856623Z   duration_ms: 0.05916
+2026-11-14T18:13:24.9856894Z   type: 'test'
+2026-11-14T18:13:24.9857141Z   ...
+2026-11-14T18:13:24.9857678Z # Subtest: T17: catalog semantics alone cannot produce a healthy/no-gap conclusion for any blocked category
+2026-11-14T18:13:24.9858456Z ok 84 - T17: catalog semantics alone cannot produce a healthy/no-gap conclusion for any blocked category
+2026-11-14T18:13:24.9858941Z   ---
+2026-11-14T18:13:24.9859187Z   duration_ms: 0.082466
+2026-11-14T18:13:24.9859473Z   type: 'test'
+2026-11-14T18:13:24.9859730Z   ...
+2026-11-14T18:13:24.9951143Z # Subtest: catalog version is explicit
+2026-11-14T18:13:24.9968800Z ok 85 - catalog version is explicit
+2026-11-14T18:13:24.9988618Z   ---
+2026-11-14T18:13:24.9991813Z   duration_ms: 0.731956
+2026-11-14T18:13:24.9992209Z   type: 'test'
+2026-11-14T18:13:24.9992484Z   ...
+2026-11-14T18:13:24.9992877Z # Subtest: front door provisions only the EIAH agent
+2026-11-14T18:13:24.9993417Z ok 86 - front door provisions only the EIAH agent
+2026-11-14T18:13:24.9993779Z   ---
+2026-11-14T18:13:24.9994052Z   duration_ms: 0.661919
+2026-11-14T18:13:24.9994344Z   type: 'test'
+2026-11-14T18:13:24.9995115Z   ...
+2026-11-14T18:13:24.9995678Z # Subtest: IMOB provisions EIAH and imob-chat-audit, with catalog metadata only for the non-core agent
+2026-11-14T18:13:24.9996432Z ok 87 - IMOB provisions EIAH and imob-chat-audit, with catalog metadata only for the non-core agent
+2026-11-14T18:13:24.9996900Z   ---
+2026-11-14T18:13:24.9997166Z   duration_ms: 0.179504
+2026-11-14T18:13:24.9997466Z   type: 'test'
+2026-11-14T18:13:24.9997728Z   ...
+2026-11-14T18:13:24.9998140Z # Subtest: product lookup is case-insensitive for approved products
+2026-11-14T18:13:24.9998777Z ok 88 - product lookup is case-insensitive for approved products
+2026-11-14T18:13:24.9999197Z   ---
+2026-11-14T18:13:24.9999485Z   duration_ms: 0.080112
+2026-11-14T18:13:24.9999766Z   type: 'test'
+2026-11-14T18:13:25.0000028Z   ...
+2026-11-14T18:13:25.0000893Z # Subtest: IMOB and context-only LOGISTICA have explicit maps
+2026-11-14T18:13:25.0001591Z ok 89 - IMOB and context-only LOGISTICA have explicit maps
+2026-11-14T18:13:25.0001957Z   ---
+2026-11-14T18:13:25.0002211Z   duration_ms: 0.159693
+2026-11-14T18:13:25.0002485Z   type: 'test'
+2026-11-14T18:13:25.0002773Z   ...
+2026-11-14T18:13:25.0003196Z # Subtest: products without an approved map are rejected (fail-closed)
+2026-11-14T18:13:25.0003747Z ok 90 - products without an approved map are rejected (fail-closed)
+2026-11-14T18:13:25.0004125Z   ---
+2026-11-14T18:13:25.0004387Z   duration_ms: 0.402183
+2026-11-14T18:13:25.0004799Z   type: 'test'
+2026-11-14T18:13:25.0005056Z   ...
+2026-11-14T18:13:25.0005388Z # Subtest: catalog entries are immutable
+2026-11-14T18:13:25.0005803Z ok 91 - catalog entries are immutable
+2026-11-14T18:13:25.0006403Z   ---
+2026-11-14T18:13:25.0006667Z   duration_ms: 0.125542
+2026-11-14T18:13:25.0006979Z   type: 'test'
+2026-11-14T18:13:25.0007260Z   ...
+2026-11-14T18:13:25.2466957Z # Subtest: importing the publisher module without Redis env does not instantiate Redis
+2026-11-14T18:13:25.2499350Z ok 92 - importing the publisher module without Redis env does not instantiate Redis
+2026-11-14T18:13:25.2505588Z   ---
+2026-11-14T18:13:25.2506090Z   duration_ms: 122.732477
+2026-11-14T18:13:25.2506498Z   type: 'test'
+2026-11-14T18:13:25.2506824Z   ...
+2026-11-14T18:13:25.7515154Z # Subtest: importing the core barrel without Redis env does not instantiate Redis
+2026-11-14T18:13:25.7517259Z ok 93 - importing the core barrel without Redis env does not instantiate Redis
+2026-11-14T18:13:25.7526930Z   ---
+2026-11-14T18:13:25.7527274Z   duration_ms: 511.072158
+2026-11-14T18:13:25.7527542Z   type: 'test'
+2026-11-14T18:13:25.7527758Z   ...
+2026-11-14T18:13:25.7586932Z # [RedisPublisher] Falha ao publicar evento: ConnectionPolicyError: redisPublisher: REDIS_URL_REQUIRED — Redis URL must be configured explicitly. Set REDIS_URL (or the service-specific variable) in your environment. Localhost fallback is forbidden in runtime.
+2026-11-14T18:13:25.7613052Z #     at requireRedisUrl (/home/runner/work/EIAH/EIAH/packages/core/src/config/redis.ts:20:11)
+2026-11-14T18:13:25.7638658Z #     at resolveRedisPublisherUrl (/home/runner/work/EIAH/EIAH/packages/core/src/events/redisPublisher.ts:17:10)
+2026-11-14T18:13:25.7665990Z #     at getRedisPublisher (/home/runner/work/EIAH/EIAH/packages/core/src/events/redisPublisher.ts:25:44)
+2026-11-14T18:13:25.7695818Z #     at Module.publishEvent (/home/runner/work/EIAH/EIAH/packages/core/src/events/redisPublisher.ts:49:11)
+2026-11-14T18:13:25.7724182Z #     at <anonymous> (/home/runner/work/EIAH/EIAH/packages/core/src/events/redisPublisher.test.ts:58:27)
+2026-11-14T18:13:25.7755696Z #     at waitForActual (node:assert:630:21)
+2026-11-14T18:13:25.7766730Z #     at Function.rejects (node:assert:767:31)
+2026-11-14T18:13:25.7767696Z #     at TestContext.<anonymous> (/home/runner/work/EIAH/EIAH/packages/core/src/events/redisPublisher.test.ts:57:16)
+2026-11-14T18:13:25.7768508Z #     at async Test.run (node:internal/test_runner/test:1054:7)
+2026-11-14T18:13:25.7769171Z #     at async Test.processPendingSubtests (node:internal/test_runner/test:744:7) {
+2026-11-14T18:13:25.7769747Z #   reasonCode: 'REDIS_URL_REQUIRED'
+2026-11-14T18:13:25.7770145Z # }
+2026-11-14T18:13:25.7770670Z # Subtest: publishEvent without Redis env fails closed
+2026-11-14T18:13:25.7771237Z ok 94 - publishEvent without Redis env fails closed
+2026-11-14T18:13:25.7771659Z   ---
+2026-11-14T18:13:25.7772026Z   duration_ms: 6.798539
+2026-11-14T18:13:25.7772425Z   type: 'test'
+2026-11-14T18:13:25.7772817Z   ...
+2026-11-14T18:13:25.7773408Z # Subtest: publishEvent uses explicit RUN_EVENTS_REDIS_URL before REDIS_URL
+2026-11-14T18:13:25.7774031Z ok 95 - publishEvent uses explicit RUN_EVENTS_REDIS_URL before REDIS_URL
+2026-11-14T18:13:25.7774493Z   ---
+2026-11-14T18:13:25.7774924Z   duration_ms: 9.76825
+2026-11-14T18:13:25.7775847Z   type: 'test'
+2026-11-14T18:13:25.7776156Z   ...
+2026-11-14T18:13:25.7776983Z # Subtest: closeRedisPublisher resets the singleton
+2026-11-14T18:13:25.7777462Z ok 96 - closeRedisPublisher resets the singleton
+2026-11-14T18:13:25.7777821Z   ---
+2026-11-14T18:13:25.7778115Z   duration_ms: 3.86379
+2026-11-14T18:13:25.7778419Z   type: 'test'
+2026-11-14T18:13:25.7778713Z   ...
+2026-11-14T18:13:25.7984787Z # Subtest: guardrails: placeholderTemplate blocks
+2026-11-14T18:13:25.8038287Z ok 97 - guardrails: placeholderTemplate blocks
+2026-11-14T18:13:25.8039305Z   ---
+2026-11-14T18:13:25.8078412Z   duration_ms: 1.873035
+2026-11-14T18:13:25.8081729Z   type: 'test'
+2026-11-14T18:13:25.8082143Z   ...
+2026-11-14T18:13:25.8082700Z # Subtest: guardrails: evidenceRequired blocks on high-risk without evidence
+2026-11-14T18:13:25.8083441Z ok 98 - guardrails: evidenceRequired blocks on high-risk without evidence
+2026-11-14T18:13:25.8083894Z   ---
+2026-11-14T18:13:25.8084201Z   duration_ms: 1.464913
+2026-11-14T18:13:25.8084537Z   type: 'test'
+2026-11-14T18:13:25.8085064Z   ...
+2026-11-14T18:13:25.8085589Z # Subtest: guardrails: evidenceRequired allows when evidence present in JSON
+2026-11-14T18:13:25.8086282Z ok 99 - guardrails: evidenceRequired allows when evidence present in JSON
+2026-11-14T18:13:25.8086756Z   ---
+2026-11-14T18:13:25.8087059Z   duration_ms: 0.195549
+2026-11-14T18:13:25.8087382Z   type: 'test'
+2026-11-14T18:13:25.8087715Z   ...
+2026-11-14T18:13:25.8088270Z # Subtest: guardrails: toolUseRequired blocks when implies tool usage but plan has no actions
+2026-11-14T18:13:25.8089049Z ok 100 - guardrails: toolUseRequired blocks when implies tool usage but plan has no actions
+2026-11-14T18:13:25.8089980Z   ---
+2026-11-14T18:13:25.8090281Z   duration_ms: 0.290513
+2026-11-14T18:13:25.8090615Z   type: 'test'
+2026-11-14T18:13:25.8090921Z   ...
+2026-11-14T18:13:25.8091390Z # Subtest: guardrails: toolUseRequired allows when plan has an action
+2026-11-14T18:13:25.8092021Z ok 101 - guardrails: toolUseRequired allows when plan has an action
+2026-11-14T18:13:25.8092482Z   ---
+2026-11-14T18:13:25.8092792Z   duration_ms: 0.194206
+2026-11-14T18:13:25.8093138Z   type: 'test'
+2026-11-14T18:13:25.8093457Z   ...
+2026-11-14T18:13:25.8093983Z # Subtest: MemorySyncJob promove short-term, trunca excedente e persiste snapshot
+2026-11-14T18:13:25.8094798Z ok 102 - MemorySyncJob promove short-term, trunca excedente e persiste snapshot
+2026-11-14T18:13:25.8095251Z   ---
+2026-11-14T18:13:25.8095545Z   duration_ms: 1.120509
+2026-11-14T18:13:25.8095865Z   type: 'test'
+2026-11-14T18:13:25.8096171Z   ...
+2026-11-14T18:13:25.8096715Z # Subtest: KnowledgeBackfillJob envia apenas registros com embeddings para o vector store
+2026-11-14T18:13:25.8097432Z ok 103 - KnowledgeBackfillJob envia apenas registros com embeddings para o vector store
+2026-11-14T18:13:25.8097939Z   ---
+2026-11-14T18:13:25.8098234Z   duration_ms: 0.826611
+2026-11-14T18:13:25.8098577Z   type: 'test'
+2026-11-14T18:13:25.8098878Z   ...
+2026-11-14T18:13:25.8099451Z # Subtest: PostgresVectorMemoryStore returns equivalent ordering for pgvector and JS fallback
+2026-11-14T18:13:25.8100256Z ok 104 - PostgresVectorMemoryStore returns equivalent ordering for pgvector and JS fallback
+2026-11-14T18:13:25.8100781Z   ---
+2026-11-14T18:13:25.8101076Z   duration_ms: 1.756859
+2026-11-14T18:13:25.8101411Z   type: 'test'
+2026-11-14T18:13:25.8101709Z   ...
+2026-11-14T18:13:25.8102191Z # Subtest: AgentOrchestrator respects maxSteps and persists plan/act steps
+2026-11-14T18:13:25.8102842Z ok 105 - AgentOrchestrator respects maxSteps and persists plan/act steps
+2026-11-14T18:13:25.8103319Z   ---
+2026-11-14T18:13:25.8103620Z   duration_ms: 1.890762
+2026-11-14T18:13:25.8103954Z   type: 'test'
+2026-11-14T18:13:25.8104250Z   ...
+2026-11-14T18:13:25.8104825Z # Subtest: AgentOrchestrator enforces stepTimeoutMs for act()
+2026-11-14T18:13:25.8105382Z ok 106 - AgentOrchestrator enforces stepTimeoutMs for act()
+2026-11-14T18:13:25.8105808Z   ---
+2026-11-14T18:13:25.8106111Z   duration_ms: 12.545234
+2026-11-14T18:13:25.8106444Z   type: 'test'
+2026-11-14T18:13:25.8106736Z   ...
+2026-11-14T18:13:25.8107455Z # Subtest: AgentOrchestrator enforces dependsOn with skip strategy
+2026-11-14T18:13:25.8108048Z ok 107 - AgentOrchestrator enforces dependsOn with skip strategy
+2026-11-14T18:13:25.8108478Z   ---
+2026-11-14T18:13:25.8108771Z   duration_ms: 0.928806
+2026-11-14T18:13:25.8109089Z   type: 'test'
+2026-11-14T18:13:25.8109392Z   ...
+2026-11-14T18:13:25.8109897Z # Subtest: AgentOrchestrator can replan dynamically when shouldReplan returns true
+2026-11-14T18:13:25.8110605Z ok 108 - AgentOrchestrator can replan dynamically when shouldReplan returns true
+2026-11-14T18:13:25.8111081Z   ---
+2026-11-14T18:13:25.8111385Z   duration_ms: 1.14101
+2026-11-14T18:13:25.8111701Z   type: 'test'
+2026-11-14T18:13:25.8112008Z   ...
+2026-11-14T18:13:25.9276921Z # Subtest: risk tier policy preserves the immutable original markdown baseline item by item
+2026-11-14T18:13:25.9327973Z ok 109 - risk tier policy preserves the immutable original markdown baseline item by item
+2026-11-14T18:13:25.9346601Z   ---
+2026-11-14T18:13:25.9347192Z   duration_ms: 0.843025
+2026-11-14T18:13:25.9347663Z   type: 'test'
+2026-11-14T18:13:25.9348041Z   ...
+2026-11-14T18:13:25.9348693Z # Subtest: risk tier policy loads the canonical JSON without embedding the matrix in TypeScript
+2026-11-14T18:13:25.9349642Z ok 110 - risk tier policy loads the canonical JSON without embedding the matrix in TypeScript
+2026-11-14T18:13:25.9350194Z   ---
+2026-11-14T18:13:25.9350563Z   duration_ms: 0.903197
+2026-11-14T18:13:25.9350964Z   type: 'test'
+2026-11-14T18:13:25.9351309Z   ...
+2026-11-14T18:13:25.9351853Z # Subtest: risk tier policy fails closed for unknown actions and malformed policy
+2026-11-14T18:13:25.9353103Z ok 111 - risk tier policy fails closed for unknown actions and malformed policy
+2026-11-14T18:13:25.9353635Z   ---
+2026-11-14T18:13:25.9353971Z   duration_ms: 0.392538
+2026-11-14T18:13:25.9354347Z   type: 'test'
+2026-11-14T18:13:25.9354827Z   ...
+2026-11-14T18:13:25.9355357Z # Subtest: high-risk gate inventory is derived from validated policy rules
+2026-11-14T18:13:25.9356083Z ok 112 - high-risk gate inventory is derived from validated policy rules
+2026-11-14T18:13:25.9356609Z   ---
+2026-11-14T18:13:25.9356952Z   duration_ms: 0.167675
+2026-11-14T18:13:25.9357315Z   type: 'test'
+2026-11-14T18:13:25.9357653Z   ...
+2026-11-14T18:13:25.9916524Z # Subtest: importing the queue connection module without Redis env does not throw
+2026-11-14T18:13:25.9917624Z ok 113 - importing the queue connection module without Redis env does not throw
+2026-11-14T18:13:25.9918236Z   ---
+2026-11-14T18:13:25.9918444Z   duration_ms: 6.270419
+2026-11-14T18:13:25.9919178Z   type: 'test'
+2026-11-14T18:13:25.9937605Z   ...
+2026-11-14T18:13:26.4046554Z # Subtest: importing the core barrel without Redis env does not throw after lazy queue connection
+2026-11-14T18:13:26.4047876Z ok 114 - importing the core barrel without Redis env does not throw after lazy queue connection
+2026-11-14T18:13:26.4073356Z   ---
+2026-11-14T18:13:26.4073917Z   duration_ms: 407.676103
+2026-11-14T18:13:26.4074365Z   type: 'test'
+2026-11-14T18:13:26.4074760Z   ...
+2026-11-14T18:13:26.4119785Z # Subtest: using getRedisConnection without Redis env fails closed
+2026-11-14T18:13:26.4130561Z ok 115 - using getRedisConnection without Redis env fails closed
+2026-11-14T18:13:26.4131077Z   ---
+2026-11-14T18:13:26.4131393Z   duration_ms: 11.379708
+2026-11-14T18:13:26.4131741Z   type: 'test'
+2026-11-14T18:13:26.4132074Z   ...
+2026-11-14T18:13:26.4146023Z # Subtest: using getRedisConnection with unresolved Redis placeholder fails closed clearly
+2026-11-14T18:13:26.4148395Z ok 116 - using getRedisConnection with unresolved Redis placeholder fails closed clearly
+2026-11-14T18:13:26.4149432Z   ---
+2026-11-14T18:13:26.4149769Z   duration_ms: 4.771834
+2026-11-14T18:13:26.4150118Z   type: 'test'
+2026-11-14T18:13:26.4150431Z   ...
+2026-11-14T18:13:26.4185847Z # Subtest: using the lazy connection facade without Redis env fails closed on property access
+2026-11-14T18:13:26.4220340Z ok 117 - using the lazy connection facade without Redis env fails closed on property access
+2026-11-14T18:13:26.4221569Z   ---
+2026-11-14T18:13:26.4221942Z   duration_ms: 3.79787
+2026-11-14T18:13:26.4222295Z   type: 'test'
+2026-11-14T18:13:26.4222598Z   ...
+2026-11-14T18:13:26.4223129Z # Subtest: getRedisConnection uses explicit Redis env when configured
+2026-11-14T18:13:26.4223760Z ok 118 - getRedisConnection uses explicit Redis env when configured
+2026-11-14T18:13:26.4224186Z   ---
+2026-11-14T18:13:26.4224502Z   duration_ms: 2.540523
+2026-11-14T18:13:26.4225002Z   type: 'test'
+2026-11-14T18:13:26.4225323Z   ...
+2026-11-14T18:13:26.4606670Z # Subtest: acquire returns acquired=true when no lease exists
+2026-11-14T18:13:26.4656991Z ok 119 - acquire returns acquired=true when no lease exists
+2026-11-14T18:13:26.4659287Z   ---
+2026-11-14T18:13:26.4659788Z   duration_ms: 1.717578
+2026-11-14T18:13:26.4660150Z   type: 'test'
+2026-11-14T18:13:26.4660595Z   ...
+2026-11-14T18:13:26.4661228Z # Subtest: acquire returns acquired=false when another instance holds the lease
+2026-11-14T18:13:26.4662026Z ok 120 - acquire returns acquired=false when another instance holds the lease
+2026-11-14T18:13:26.4662602Z   ---
+2026-11-14T18:13:26.4662906Z   duration_ms: 0.34137
+2026-11-14T18:13:26.4663231Z   type: 'test'
+2026-11-14T18:13:26.4663650Z   ...
+2026-11-14T18:13:26.4664800Z # Subtest: acquire is independent per queue — runs and run-ativo-universal do not conflict
+2026-11-14T18:13:26.4665765Z ok 121 - acquire is independent per queue — runs and run-ativo-universal do not conflict
+2026-11-14T18:13:26.4666383Z   ---
+2026-11-14T18:13:26.4666680Z   duration_ms: 0.319787
+2026-11-14T18:13:26.4667509Z   type: 'test'
+2026-11-14T18:13:26.4667925Z   ...
+2026-11-14T18:13:26.4668406Z # Subtest: release removes both lease and meta keys atomically (Lua CAS)
+2026-11-14T18:13:26.4668998Z ok 122 - release removes both lease and meta keys atomically (Lua CAS)
+2026-11-14T18:13:26.4669424Z   ---
+2026-11-14T18:13:26.4669725Z   duration_ms: 0.318435
+2026-11-14T18:13:26.4670058Z   type: 'test'
+2026-11-14T18:13:26.4670355Z   ...
+2026-11-14T18:13:26.4670784Z # Subtest: Lua CAS release: non-owner cannot delete owner's lease
+2026-11-14T18:13:26.4671332Z ok 123 - Lua CAS release: non-owner cannot delete owner's lease
+2026-11-14T18:13:26.4671746Z   ---
+2026-11-14T18:13:26.4672062Z   duration_ms: 0.219043
+2026-11-14T18:13:26.4672387Z   type: 'test'
+2026-11-14T18:13:26.4672697Z   ...
+2026-11-14T18:13:26.4673166Z # Subtest: renewal succeeds while owner holds the lease (no onLeaseLost)
+2026-11-14T18:13:26.4673771Z ok 124 - renewal succeeds while owner holds the lease (no onLeaseLost)
+2026-11-14T18:13:26.4674213Z   ---
+2026-11-14T18:13:26.4674530Z   duration_ms: 61.401112
+2026-11-14T18:13:26.4675030Z   type: 'test'
+2026-11-14T18:13:26.4675341Z   ...
+2026-11-14T18:13:26.4675801Z # Subtest: onLeaseLost is called when lease key disappears during renewal
+2026-11-14T18:13:26.4676867Z ok 125 - onLeaseLost is called when lease key disappears during renewal
+2026-11-14T18:13:26.4677323Z   ---
+2026-11-14T18:13:26.4677627Z   duration_ms: 70.324244
+2026-11-14T18:13:26.4677959Z   type: 'test'
+2026-11-14T18:13:26.4678281Z   ...
+2026-11-14T18:13:26.4678721Z # Subtest: stop() cancels renewal timer without calling onLeaseLost
+2026-11-14T18:13:26.4679484Z ok 126 - stop() cancels renewal timer without calling onLeaseLost
+2026-11-14T18:13:26.4679939Z   ---
+2026-11-14T18:13:26.4680259Z   duration_ms: 71.097322
+2026-11-14T18:13:26.4680597Z   type: 'test'
+2026-11-14T18:13:26.4680915Z   ...
+2026-11-14T18:13:26.4681419Z # Subtest: getLeaseState returns owned=false for unknown (environmentId, queue)
+2026-11-14T18:13:26.4682123Z ok 127 - getLeaseState returns owned=false for unknown (environmentId, queue)
+2026-11-14T18:13:26.4682614Z   ---
+2026-11-14T18:13:26.4682946Z   duration_ms: 0.471018
+2026-11-14T18:13:26.4683391Z   type: 'test'
+2026-11-14T18:13:26.4683698Z   ...
+2026-11-14T18:13:26.4684324Z # Subtest: duplicateSideEffects=0: two concurrent instances for the same (environmentId, queue), only one acquires
+2026-11-14T18:13:26.4686853Z ok 128 - duplicateSideEffects=0: two concurrent instances for the same (environmentId, queue), only one acquires # SKIP EIAH_RUN_REDIS_REAL_TESTS=true and REDIS_URL are required — Redis-real duplicateSideEffects gate skipped; coverage is PARTIAL
+2026-11-14T18:13:26.4687991Z   ---
+2026-11-14T18:13:26.4688417Z   duration_ms: 0.32781
+2026-11-14T18:13:26.4688746Z   type: 'test'
+2026-11-14T18:13:26.4689158Z   ...
+2026-11-14T18:13:26.4689649Z # Subtest: fails closed when required production configuration is missing
+2026-11-14T18:13:26.4690394Z ok 129 - fails closed when required production configuration is missing
+2026-11-14T18:13:26.4690975Z   ---
+2026-11-14T18:13:26.4691269Z   duration_ms: 1.214912
+2026-11-14T18:13:26.4691711Z   type: 'test'
+2026-11-14T18:13:26.4692009Z   ...
+2026-11-14T18:13:26.4692494Z # Subtest: rejects invalid enum values
+2026-11-14T18:13:26.4693063Z ok 130 - rejects invalid enum values
+2026-11-14T18:13:26.4693525Z   ---
+2026-11-14T18:13:26.4694054Z   duration_ms: 0.183811
+2026-11-14T18:13:26.4694702Z   type: 'test'
+2026-11-14T18:13:26.4695051Z   ...
+2026-11-14T18:13:26.4695708Z # Subtest: allows API embedded ownership of runs only
+2026-11-14T18:13:26.4696498Z ok 131 - allows API embedded ownership of runs only
+2026-11-14T18:13:26.4697002Z   ---
+2026-11-14T18:13:26.4697307Z   duration_ms: 0.644422
+2026-11-14T18:13:26.4697746Z   type: 'test'
+2026-11-14T18:13:26.4698048Z   ...
+2026-11-14T18:13:26.4698527Z # Subtest: allows standalone ownership of runs only
+2026-11-14T18:13:26.4699022Z ok 132 - allows standalone ownership of runs only
+2026-11-14T18:13:26.4699515Z   ---
+2026-11-14T18:13:26.4699823Z   duration_ms: 0.148857
+2026-11-14T18:13:26.4700472Z   type: 'test'
+2026-11-14T18:13:26.4700894Z   ...
+2026-11-14T18:13:26.4701355Z # Subtest: allows maintenance ownership of run-ativo-universal only
+2026-11-14T18:13:26.4702086Z ok 133 - allows maintenance ownership of run-ativo-universal only
+2026-11-14T18:13:26.4702634Z   ---
+2026-11-14T18:13:26.4702937Z   duration_ms: 0.173996
+2026-11-14T18:13:26.4703372Z   type: 'test'
+2026-11-14T18:13:26.4703687Z   ...
+2026-11-14T18:13:26.4704242Z # Subtest: rejects queue ownership that conflicts with the service role
+2026-11-14T18:13:26.4705077Z ok 134 - rejects queue ownership that conflicts with the service role
+2026-11-14T18:13:26.4705642Z   ---
+2026-11-14T18:13:26.4705953Z   duration_ms: 0.217151
+2026-11-14T18:13:26.4706386Z   type: 'test'
+2026-11-14T18:13:26.4706688Z   ...
+2026-11-14T18:13:26.4707260Z # Subtest: forbids API and standalone from consuming run-ativo-universal
+2026-11-14T18:13:26.4707990Z ok 135 - forbids API and standalone from consuming run-ativo-universal
+2026-11-14T18:13:26.4708450Z   ---
+2026-11-14T18:13:26.4708885Z   duration_ms: 0.15085
+2026-11-14T18:13:26.4709204Z   type: 'test'
+2026-11-14T18:13:26.4709635Z   ...
+2026-11-14T18:13:26.4710025Z # Subtest: uses non-consuming defaults only in tests
+2026-11-14T18:13:26.4710667Z ok 136 - uses non-consuming defaults only in tests
+2026-11-14T18:13:26.4711175Z   ---
+2026-11-14T18:13:26.4711493Z   duration_ms: 0.172923
+2026-11-14T18:13:26.4711972Z   type: 'test'
+2026-11-14T18:13:26.4712281Z   ...
+2026-11-14T18:13:26.4778000Z # Subtest: Smoke 1 - Não repetir adotadas
+2026-11-14T18:13:26.4806230Z ok 137 - Smoke 1 - Não repetir adotadas
+2026-11-14T18:13:26.4823181Z   ---
+2026-11-14T18:13:26.4823700Z   duration_ms: 1.613219
+2026-11-14T18:13:26.4824089Z   type: 'test'
+2026-11-14T18:13:26.4824432Z   ...
+2026-11-14T18:13:26.4825033Z # Subtest: Smoke 2 - Evitar rejeitadas
+2026-11-14T18:13:26.4825453Z ok 138 - Smoke 2 - Evitar rejeitadas
+2026-11-14T18:13:26.4825796Z   ---
+2026-11-14T18:13:26.4826088Z   duration_ms: 0.307458
+2026-11-14T18:13:26.4826482Z   type: 'test'
+2026-11-14T18:13:26.4826779Z   ...
+2026-11-14T18:13:26.4828814Z # Subtest: keeps the ratified administrative scope names canonical and unique
+2026-11-14T18:13:26.4830013Z ok 139 - keeps the ratified administrative scope names canonical and unique
+2026-11-14T18:13:26.4830385Z   ---
+2026-11-14T18:13:26.4835459Z   duration_ms: 1.113738
+2026-11-14T18:13:26.4835828Z   type: 'test'
+2026-11-14T18:13:26.4836135Z   ...
+2026-11-14T18:13:26.4837867Z # Subtest: requires ratification metadata on every administrative scope
+2026-11-14T18:13:26.4838429Z ok 140 - requires ratification metadata on every administrative scope
+2026-11-14T18:13:26.4838775Z   ---
+2026-11-14T18:13:26.4838986Z   duration_ms: 0.180806
+2026-11-14T18:13:26.4839219Z   type: 'test'
+2026-11-14T18:13:26.4839420Z   ...
+2026-11-14T18:13:26.4846954Z # Subtest: keeps the documentation synchronized with the canonical source
+2026-11-14T18:13:26.4847646Z ok 141 - keeps the documentation synchronized with the canonical source
+2026-11-14T18:13:26.4848134Z   ---
+2026-11-14T18:13:26.4848447Z   duration_ms: 0.252945
+2026-11-14T18:13:26.4848777Z   type: 'test'
+2026-11-14T18:13:26.4849070Z   ...
+2026-11-14T18:13:26.4849748Z # Subtest: adopts marketplace.subscribe as a distinct commercial scope with no default grant and no claimed formal ratification
+2026-11-14T18:13:26.4850768Z ok 142 - adopts marketplace.subscribe as a distinct commercial scope with no default grant and no claimed formal ratification
+2026-11-14T18:13:26.4851411Z   ---
+2026-11-14T18:13:26.4851733Z   duration_ms: 0.272745
+2026-11-14T18:13:26.4852066Z   type: 'test'
+2026-11-14T18:13:26.4852361Z   ...
+2026-11-14T18:13:26.4852875Z # Subtest: reserves every canonical scope name against Marketplace item names
+2026-11-14T18:13:26.4853535Z ok 143 - reserves every canonical scope name against Marketplace item names
+2026-11-14T18:13:26.4854005Z   ---
+2026-11-14T18:13:26.4854289Z   duration_ms: 0.182037
+2026-11-14T18:13:26.4854817Z   type: 'test'
+2026-11-14T18:13:26.4855116Z   ...
+2026-11-14T18:13:26.4855982Z # Subtest: proposes the financial scopes as distinct, never-granted, NOT ratified, and reserves their names
+2026-11-14T18:13:26.4856947Z ok 144 - proposes the financial scopes as distinct, never-granted, NOT ratified, and reserves their names
+2026-11-14T18:13:26.4857656Z   ---
+2026-11-14T18:13:26.4857969Z   duration_ms: 0.308961
+2026-11-14T18:13:26.4858317Z   type: 'test'
+2026-11-14T18:13:26.4858618Z   ...
+2026-11-14T18:13:26.6916095Z # Subtest: TenantPolicyStore allows scope when workspace policy is explicitly enabled
+2026-11-14T18:13:26.6951520Z ok 145 - TenantPolicyStore allows scope when workspace policy is explicitly enabled
+2026-11-14T18:13:26.7002470Z   ---
+2026-11-14T18:13:26.7048314Z   duration_ms: 5.886894
+2026-11-14T18:13:26.7095905Z   type: 'test'
+2026-11-14T18:13:26.7114336Z   ...
+2026-11-14T18:13:26.7146042Z # Subtest: TenantPolicyStore fails closed when policy is missing for tenant/workspace
+2026-11-14T18:13:26.7224148Z ok 146 - TenantPolicyStore fails closed when policy is missing for tenant/workspace
+2026-11-14T18:13:26.7225319Z   ---
+2026-11-14T18:13:26.7225698Z   duration_ms: 7.724946
+2026-11-14T18:13:26.7226081Z   type: 'test'
+2026-11-14T18:13:26.7226412Z   ...
+2026-11-14T18:13:26.7226984Z # Subtest: TenantPolicyStore fails closed on workspace mismatch
+2026-11-14T18:13:26.7227708Z ok 147 - TenantPolicyStore fails closed on workspace mismatch
+2026-11-14T18:13:26.7228162Z   ---
+2026-11-14T18:13:26.7228471Z   duration_ms: 7.533484
+2026-11-14T18:13:26.7228855Z   type: 'test'
+2026-11-14T18:13:26.7229189Z   ...
+2026-11-14T18:13:26.7229679Z # Subtest: TenantPolicyStore fails closed when scope is explicitly disabled
+2026-11-14T18:13:26.7230359Z ok 148 - TenantPolicyStore fails closed when scope is explicitly disabled
+2026-11-14T18:13:26.7230854Z   ---
+2026-11-14T18:13:26.7231151Z   duration_ms: 2.809633
+2026-11-14T18:13:26.7231523Z   type: 'test'
+2026-11-14T18:13:26.7231850Z   ...
+2026-11-14T18:13:26.7232304Z # Subtest: TenantPolicyStore fails closed when store access is unavailable
+2026-11-14T18:13:26.7233030Z ok 149 - TenantPolicyStore fails closed when store access is unavailable
+2026-11-14T18:13:26.7233519Z   ---
+2026-11-14T18:13:26.7233825Z   duration_ms: 2.930858
+2026-11-14T18:13:26.7234195Z   type: 'test'
+2026-11-14T18:13:26.7234543Z   ...
+2026-11-14T18:13:26.7235332Z # Subtest: TenantPolicyStore fails closed when workspace policy authority is duplicated
+2026-11-14T18:13:26.7236558Z ok 150 - TenantPolicyStore fails closed when workspace policy authority is duplicated
+2026-11-14T18:13:26.7237138Z   ---
+2026-11-14T18:13:26.7237449Z   duration_ms: 1.798842
+2026-11-14T18:13:26.7237817Z   type: 'test'
+2026-11-14T18:13:26.7238162Z   ...
+2026-11-14T18:13:26.7238703Z # Subtest: TenantPolicyStore fails closed when tenant-wide policy authority is duplicated
+2026-11-14T18:13:26.7239517Z ok 151 - TenantPolicyStore fails closed when tenant-wide policy authority is duplicated
+2026-11-14T18:13:26.7240073Z   ---
+2026-11-14T18:13:26.7240381Z   duration_ms: 1.720923
+2026-11-14T18:13:26.7240753Z   type: 'test'
+2026-11-14T18:13:26.7241099Z   ...
+2026-11-14T18:13:26.7241517Z # Subtest: TenantPolicyStore fails closed when scope is blank
+2026-11-14T18:13:26.7242117Z ok 152 - TenantPolicyStore fails closed when scope is blank
+2026-11-14T18:13:26.7242574Z   ---
+2026-11-14T18:13:26.7242887Z   duration_ms: 0.206745
+2026-11-14T18:13:26.7243249Z   type: 'test'
+2026-11-14T18:13:26.7243597Z   ...
+2026-11-14T18:13:26.7244151Z # Subtest: TenantPolicyStore legacy isScopeAllowed returns true when scope decision is allowed
+2026-11-14T18:13:26.7245134Z ok 153 - TenantPolicyStore legacy isScopeAllowed returns true when scope decision is allowed
+2026-11-14T18:13:26.7245699Z   ---
+2026-11-14T18:13:26.7245998Z   duration_ms: 1.811462
+2026-11-14T18:13:26.7246422Z   type: 'test'
+2026-11-14T18:13:26.7246806Z   ...
+2026-11-14T18:13:26.7247388Z # Subtest: TenantPolicyStore legacy isScopeAllowed returns false when scope decision is denied
+2026-11-14T18:13:26.7248296Z ok 154 - TenantPolicyStore legacy isScopeAllowed returns false when scope decision is denied
+2026-11-14T18:13:26.7249203Z   ---
+2026-11-14T18:13:26.7249636Z   duration_ms: 2.073151
+2026-11-14T18:13:26.7250083Z   type: 'test'
+2026-11-14T18:13:26.7250436Z   ...
+2026-11-14T18:13:26.7250947Z # Subtest: exact-workspace policy resolution allows one explicit workspace grant
+2026-11-14T18:13:26.7251737Z ok 155 - exact-workspace policy resolution allows one explicit workspace grant
+2026-11-14T18:13:26.7252253Z   ---
+2026-11-14T18:13:26.7252567Z   duration_ms: 2.240766
+2026-11-14T18:13:26.7252930Z   type: 'test'
+2026-11-14T18:13:26.7253270Z   ...
+2026-11-14T18:13:26.7253841Z # Subtest: exact-workspace policy resolution constrains tenant, workspace and pilot scope without ledgers
+2026-11-14T18:13:26.7254943Z ok 156 - exact-workspace policy resolution constrains tenant, workspace and pilot scope without ledgers
+2026-11-14T18:13:26.7255630Z   ---
+2026-11-14T18:13:26.7255945Z   duration_ms: 2.266575
+2026-11-14T18:13:26.7256314Z   type: 'test'
+2026-11-14T18:13:26.7256720Z   ...
+2026-11-14T18:13:26.7257212Z # Subtest: exact-workspace policy resolution ignores a tenant-wide grant
+2026-11-14T18:13:26.7257874Z ok 157 - exact-workspace policy resolution ignores a tenant-wide grant
+2026-11-14T18:13:26.7258358Z   ---
+2026-11-14T18:13:26.7258700Z   duration_ms: 1.41073
+2026-11-14T18:13:26.7259088Z   type: 'test'
+2026-11-14T18:13:26.7259444Z   ...
+2026-11-14T18:13:26.7260047Z # Subtest: exact-workspace policy resolution denies false, duplicate and unavailable authority
+2026-11-14T18:13:26.7260913Z ok 158 - exact-workspace policy resolution denies false, duplicate and unavailable authority
+2026-11-14T18:13:26.7261518Z   ---
+2026-11-14T18:13:26.7261902Z   duration_ms: 3.493376
+2026-11-14T18:13:26.7262296Z   type: 'test'
+2026-11-14T18:13:26.7262663Z   ...
+2026-11-14T18:13:26.7316531Z # Subtest: exact-workspace policy resolution isolates tenants and sibling workspaces
+2026-11-14T18:13:26.7318975Z ok 159 - exact-workspace policy resolution isolates tenants and sibling workspaces
+2026-11-14T18:13:26.7319535Z   ---
+2026-11-14T18:13:26.7321712Z   duration_ms: 7.304425
+2026-11-14T18:13:26.7322018Z   type: 'test'
+2026-11-14T18:13:26.7322338Z   ...
+2026-11-14T18:13:26.7380047Z # Subtest: RBAC deny persists a guardrail ledger event with tenant/workspace/scope/reasonCode
+2026-11-14T18:13:26.7381014Z ok 160 - RBAC deny persists a guardrail ledger event with tenant/workspace/scope/reasonCode
+2026-11-14T18:13:26.7381562Z   ---
+2026-11-14T18:13:26.7382318Z   duration_ms: 8.550345
+2026-11-14T18:13:26.7382680Z   type: 'test'
+2026-11-14T18:13:26.7382980Z   ...
+2026-11-14T18:13:26.7411739Z # Subtest: RBAC deny writes exactly one GuardrailLedger record for a single decision
+2026-11-14T18:13:26.7464210Z ok 161 - RBAC deny writes exactly one GuardrailLedger record for a single decision
+2026-11-14T18:13:26.7488652Z   ---
+2026-11-14T18:13:26.7549137Z   duration_ms: 2.304203
+2026-11-14T18:13:26.7555775Z   type: 'test'
+2026-11-14T18:13:26.7556261Z   ...
+2026-11-14T18:13:26.7556985Z # Subtest: RBAC deny writes exactly one GuardrailAuditLedger record for a single decision
+2026-11-14T18:13:26.7557883Z ok 162 - RBAC deny writes exactly one GuardrailAuditLedger record for a single decision
+2026-11-14T18:13:26.7558482Z   ---
+2026-11-14T18:13:26.7558794Z   duration_ms: 5.11002
+2026-11-14T18:13:26.7559139Z   type: 'test'
+2026-11-14T18:13:26.7559446Z   ...
+2026-11-14T18:13:26.7560020Z # Subtest: RBAC allow persists a guardrail ledger event when scope is granted
+2026-11-14T18:13:26.7560773Z ok 163 - RBAC allow persists a guardrail ledger event when scope is granted
+2026-11-14T18:13:26.7561237Z   ---
+2026-11-14T18:13:26.7561549Z   duration_ms: 3.020925
+2026-11-14T18:13:26.7562015Z   type: 'test'
+2026-11-14T18:13:26.7562328Z   ...
+2026-11-14T18:13:26.7562840Z # Subtest: RBAC allow writes exactly one GuardrailLedger record for a single decision
+2026-11-14T18:13:26.7563677Z ok 164 - RBAC allow writes exactly one GuardrailLedger record for a single decision
+2026-11-14T18:13:26.7564170Z   ---
+2026-11-14T18:13:26.7564479Z   duration_ms: 5.062017
+2026-11-14T18:13:26.7565441Z   type: 'test'
+2026-11-14T18:13:26.7565753Z   ...
+2026-11-14T18:13:26.7583727Z # Subtest: RBAC allow writes exactly one GuardrailAuditLedger record for a single decision
+2026-11-14T18:13:26.7643184Z ok 165 - RBAC allow writes exactly one GuardrailAuditLedger record for a single decision
+2026-11-14T18:13:26.7675580Z   ---
+2026-11-14T18:13:26.7695275Z   duration_ms: 3.613449
+2026-11-14T18:13:26.7715917Z   type: 'test'
+2026-11-14T18:13:26.7716427Z   ...
+2026-11-14T18:13:26.7717049Z # guardrailLedger RBAC log failed: Error: ledger unavailable
+2026-11-14T18:13:26.7718112Z #     at Object.guardrailLedger.log (/home/runner/work/EIAH/EIAH/packages/core/src/security/rbac.fail-closed.test.ts:401:11)
+2026-11-14T18:13:26.7719133Z #     at checkScopePermission (/home/runner/work/EIAH/EIAH/packages/core/src/security/rbac.ts:50:27)
+2026-11-14T18:13:26.7720183Z #     at async TestContext.<anonymous> (/home/runner/work/EIAH/EIAH/packages/core/src/security/rbac.fail-closed.test.ts:405:22)
+2026-11-14T18:13:26.7721056Z #     at async Test.run (node:internal/test_runner/test:1054:7)
+2026-11-14T18:13:26.7721763Z #     at async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+2026-11-14T18:13:26.7722533Z # Subtest: RBAC deny remains deny when guardrail ledger persistence fails
+2026-11-14T18:13:26.7723210Z ok 166 - RBAC deny remains deny when guardrail ledger persistence fails
+2026-11-14T18:13:26.7723680Z   ---
+2026-11-14T18:13:26.7724006Z   duration_ms: 6.843092
+2026-11-14T18:13:26.7724374Z   type: 'test'
+2026-11-14T18:13:26.7724821Z   ...
+2026-11-14T18:13:26.7854904Z # Subtest: parseMcpEnforceContractsEnv: defaults to true when unset
+2026-11-14T18:13:26.7855904Z ok 167 - parseMcpEnforceContractsEnv: defaults to true when unset
+2026-11-14T18:13:26.7856387Z   ---
+2026-11-14T18:13:26.7856712Z   duration_ms: 0.863056
+2026-11-14T18:13:26.7857053Z   type: 'test'
+2026-11-14T18:13:26.7857369Z   ...
+2026-11-14T18:13:26.7857824Z # Subtest: parseMcpProxyAllActionsEnv: defaults to false when unset
+2026-11-14T18:13:26.7858486Z ok 168 - parseMcpProxyAllActionsEnv: defaults to false when unset
+2026-11-14T18:13:26.7858928Z   ---
+2026-11-14T18:13:26.7859232Z   duration_ms: 0.166574
+2026-11-14T18:13:26.7859565Z   type: 'test'
+2026-11-14T18:13:26.7859871Z   ...
+2026-11-14T18:13:26.7860343Z # Subtest: parseMcpDefaultVersionEnv: defaults to 1.0.0 when unset
+2026-11-14T18:13:26.7860955Z ok 169 - parseMcpDefaultVersionEnv: defaults to 1.0.0 when unset
+2026-11-14T18:13:26.7861777Z   ---
+2026-11-14T18:13:26.7862106Z   duration_ms: 0.096627
+2026-11-14T18:13:26.7862443Z   type: 'test'
+2026-11-14T18:13:26.7862752Z   ...
+2026-11-14T18:13:26.7863267Z # Subtest: parseMcpDefaultVersionEnv: defaults to 1.0.0 when set to empty/whitespace
+2026-11-14T18:13:26.7863974Z ok 170 - parseMcpDefaultVersionEnv: defaults to 1.0.0 when set to empty/whitespace
+2026-11-14T18:13:26.7864464Z   ---
+2026-11-14T18:13:26.7864934Z   duration_ms: 0.093393
+2026-11-14T18:13:26.7865268Z   type: 'test'
+2026-11-14T18:13:26.7865573Z   ...
+2026-11-14T18:13:26.7866043Z # Subtest: parseMcpEnforceContractsEnv: accepts "1" as truthy
+2026-11-14T18:13:26.7866620Z ok 171 - parseMcpEnforceContractsEnv: accepts "1" as truthy
+2026-11-14T18:13:26.7867049Z   ---
+2026-11-14T18:13:26.7867355Z   duration_ms: 0.077298
+2026-11-14T18:13:26.7867683Z   type: 'test'
+2026-11-14T18:13:26.7867981Z   ...
+2026-11-14T18:13:26.7868397Z # Subtest: parseMcpProxyAllActionsEnv: accepts "1" as truthy
+2026-11-14T18:13:26.7868965Z ok 172 - parseMcpProxyAllActionsEnv: accepts "1" as truthy
+2026-11-14T18:13:26.7869398Z   ---
+2026-11-14T18:13:26.7869698Z   duration_ms: 0.067132
+2026-11-14T18:13:26.7870026Z   type: 'test'
+2026-11-14T18:13:26.7870318Z   ...
+2026-11-14T18:13:26.7870755Z # Subtest: parseMcpEnforceContractsEnv: accepts "true" as truthy
+2026-11-14T18:13:26.7871339Z ok 173 - parseMcpEnforceContractsEnv: accepts "true" as truthy
+2026-11-14T18:13:26.7871765Z   ---
+2026-11-14T18:13:26.7872062Z   duration_ms: 0.128396
+2026-11-14T18:13:26.7872386Z   type: 'test'
+2026-11-14T18:13:26.7872933Z   ...
+2026-11-14T18:13:26.7873371Z # Subtest: parseMcpProxyAllActionsEnv: accepts "true" as truthy
+2026-11-14T18:13:26.7873947Z ok 174 - parseMcpProxyAllActionsEnv: accepts "true" as truthy
+2026-11-14T18:13:26.7874380Z   ---
+2026-11-14T18:13:26.7875503Z   duration_ms: 0.056737
+2026-11-14T18:13:26.7875838Z   type: 'test'
+2026-11-14T18:13:26.7876144Z   ...
+2026-11-14T18:13:26.7876582Z # Subtest: parseMcpEnforceContractsEnv: accepts "on" as truthy
+2026-11-14T18:13:26.7877219Z ok 175 - parseMcpEnforceContractsEnv: accepts "on" as truthy
+2026-11-14T18:13:26.7877642Z   ---
+2026-11-14T18:13:26.7877946Z   duration_ms: 0.212103
+2026-11-14T18:13:26.7878274Z   type: 'test'
+2026-11-14T18:13:26.7878584Z   ...
+2026-11-14T18:13:26.7879025Z # Subtest: parseMcpProxyAllActionsEnv: accepts "on" as truthy
+2026-11-14T18:13:26.7879607Z ok 176 - parseMcpProxyAllActionsEnv: accepts "on" as truthy
+2026-11-14T18:13:26.7880023Z   ---
+2026-11-14T18:13:26.7880330Z   duration_ms: 0.270883
+2026-11-14T18:13:26.7880659Z   type: 'test'
+2026-11-14T18:13:26.7880977Z   ...
+2026-11-14T18:13:26.7881471Z # Subtest: parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "TRUE"
+2026-11-14T18:13:26.7882246Z ok 177 - parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "TRUE"
+2026-11-14T18:13:26.7882730Z   ---
+2026-11-14T18:13:26.7883029Z   duration_ms: 0.094183
+2026-11-14T18:13:26.7883369Z   type: 'test'
+2026-11-14T18:13:26.7883674Z   ...
+2026-11-14T18:13:26.7884165Z # Subtest: parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "On"
+2026-11-14T18:13:26.7885002Z ok 178 - parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "On"
+2026-11-14T18:13:26.7885491Z   ---
+2026-11-14T18:13:26.7885785Z   duration_ms: 0.053281
+2026-11-14T18:13:26.7886113Z   type: 'test'
+2026-11-14T18:13:26.7886409Z   ...
+2026-11-14T18:13:26.7886883Z # Subtest: parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "1"
+2026-11-14T18:13:26.7887545Z ok 179 - parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "1"
+2026-11-14T18:13:26.7888010Z   ---
+2026-11-14T18:13:26.7888321Z   duration_ms: 0.04585
+2026-11-14T18:13:26.7888658Z   type: 'test'
+2026-11-14T18:13:26.7888960Z   ...
+2026-11-14T18:13:26.7889460Z # Subtest: parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "tRuE"
+2026-11-14T18:13:26.7890142Z ok 180 - parseMcpEnforceContractsEnv: accepts uppercase/mixed-case "tRuE"
+2026-11-14T18:13:26.7890628Z   ---
+2026-11-14T18:13:26.7890933Z   duration_ms: 0.03961
+2026-11-14T18:13:26.7891271Z   type: 'test'
+2026-11-14T18:13:26.7891784Z   ...
+2026-11-14T18:13:26.7892275Z # Subtest: parseMcpEnforceContractsEnv: trims surrounding whitespace
+2026-11-14T18:13:26.7892911Z ok 181 - parseMcpEnforceContractsEnv: trims surrounding whitespace
+2026-11-14T18:13:26.7893391Z   ---
+2026-11-14T18:13:26.7893699Z   duration_ms: 0.06565
+2026-11-14T18:13:26.7894028Z   type: 'test'
+2026-11-14T18:13:26.7894348Z   ...
+2026-11-14T18:13:26.7895195Z # Subtest: parseMcpEnforceContractsEnv: rejects "false" as falsy
+2026-11-14T18:13:26.7895800Z ok 182 - parseMcpEnforceContractsEnv: rejects "false" as falsy
+2026-11-14T18:13:26.7896247Z   ---
+2026-11-14T18:13:26.7896560Z   duration_ms: 0.062716
+2026-11-14T18:13:26.7896896Z   type: 'test'
+2026-11-14T18:13:26.7897210Z   ...
+2026-11-14T18:13:26.7897661Z # Subtest: parseMcpProxyAllActionsEnv: rejects "false" as falsy
+2026-11-14T18:13:26.7898242Z ok 183 - parseMcpProxyAllActionsEnv: rejects "false" as falsy
+2026-11-14T18:13:26.7898675Z   ---
+2026-11-14T18:13:26.7898987Z   duration_ms: 0.05953
+2026-11-14T18:13:26.7899330Z   type: 'test'
+2026-11-14T18:13:26.7899638Z   ...
+2026-11-14T18:13:26.7900081Z # Subtest: parseMcpEnforceContractsEnv: rejects "0" as falsy
+2026-11-14T18:13:26.7900654Z ok 184 - parseMcpEnforceContractsEnv: rejects "0" as falsy
+2026-11-14T18:13:26.7901085Z   ---
+2026-11-14T18:13:26.7901398Z   duration_ms: 0.049906
+2026-11-14T18:13:26.7901733Z   type: 'test'
+2026-11-14T18:13:26.7902050Z   ...
+2026-11-14T18:13:26.7902492Z # Subtest: parseMcpProxyAllActionsEnv: rejects "0" as falsy
+2026-11-14T18:13:26.7903066Z ok 185 - parseMcpProxyAllActionsEnv: rejects "0" as falsy
+2026-11-14T18:13:26.7903688Z   ---
+2026-11-14T18:13:26.7903996Z   duration_ms: 0.048674
+2026-11-14T18:13:26.7904320Z   type: 'test'
+2026-11-14T18:13:26.7904777Z   ...
+2026-11-14T18:13:26.7905228Z # Subtest: parseMcpEnforceContractsEnv: rejects "off" as falsy
+2026-11-14T18:13:26.7905816Z ok 186 - parseMcpEnforceContractsEnv: rejects "off" as falsy
+2026-11-14T18:13:26.7906253Z   ---
+2026-11-14T18:13:26.7906559Z   duration_ms: 0.053902
+2026-11-14T18:13:26.7906908Z   type: 'test'
+2026-11-14T18:13:26.7907211Z   ...
+2026-11-14T18:13:26.7907669Z # Subtest: parseMcpProxyAllActionsEnv: rejects "off" as falsy
+2026-11-14T18:13:26.7908223Z ok 187 - parseMcpProxyAllActionsEnv: rejects "off" as falsy
+2026-11-14T18:13:26.7908656Z   ---
+2026-11-14T18:13:26.7908964Z   duration_ms: 0.039921
+2026-11-14T18:13:26.7909297Z   type: 'test'
+2026-11-14T18:13:26.7909602Z   ...
+2026-11-14T18:13:26.7910053Z # Subtest: parseMcpEnforceContractsEnv: rejects "yes" as falsy
+2026-11-14T18:13:26.7910632Z ok 188 - parseMcpEnforceContractsEnv: rejects "yes" as falsy
+2026-11-14T18:13:26.7911065Z   ---
+2026-11-14T18:13:26.7911369Z   duration_ms: 0.038709
+2026-11-14T18:13:26.7911714Z   type: 'test'
+2026-11-14T18:13:26.7912022Z   ...
+2026-11-14T18:13:26.7912461Z # Subtest: parseMcpProxyAllActionsEnv: rejects "yes" as falsy
+2026-11-14T18:13:26.7913025Z ok 189 - parseMcpProxyAllActionsEnv: rejects "yes" as falsy
+2026-11-14T18:13:26.7913458Z   ---
+2026-11-14T18:13:26.7913837Z   duration_ms: 0.038839
+2026-11-14T18:13:26.7914163Z   type: 'test'
+2026-11-14T18:13:26.7914473Z   ...
+2026-11-14T18:13:26.7915050Z # Subtest: parseMcpEnforceContractsEnv: rejects "" as falsy
+2026-11-14T18:13:26.7915630Z ok 190 - parseMcpEnforceContractsEnv: rejects "" as falsy
+2026-11-14T18:13:26.7916057Z   ---
+2026-11-14T18:13:26.7916378Z   duration_ms: 0.040582
+2026-11-14T18:13:26.7916705Z   type: 'test'
+2026-11-14T18:13:26.7917117Z   ...
+2026-11-14T18:13:26.7917760Z # Subtest: parseMcpProxyAllActionsEnv: rejects "" as falsy
+2026-11-14T18:13:26.7918324Z ok 191 - parseMcpProxyAllActionsEnv: rejects "" as falsy
+2026-11-14T18:13:26.7918743Z   ---
+2026-11-14T18:13:26.7919061Z   duration_ms: 0.036615
+2026-11-14T18:13:26.7919403Z   type: 'test'
+2026-11-14T18:13:26.7919714Z   ...
+2026-11-14T18:13:26.7920211Z # Subtest: parseMcpEnforceContractsEnv: rejects "lixo-invalido" as falsy
+2026-11-14T18:13:26.7920874Z ok 192 - parseMcpEnforceContractsEnv: rejects "lixo-invalido" as falsy
+2026-11-14T18:13:26.7921354Z   ---
+2026-11-14T18:13:26.7921899Z   duration_ms: 0.040632
+2026-11-14T18:13:26.7922243Z   type: 'test'
+2026-11-14T18:13:26.7922562Z   ...
+2026-11-14T18:13:26.7923069Z # Subtest: parseMcpProxyAllActionsEnv: rejects "lixo-invalido" as falsy
+2026-11-14T18:13:26.7923757Z ok 193 - parseMcpProxyAllActionsEnv: rejects "lixo-invalido" as falsy
+2026-11-14T18:13:26.7924240Z   ---
+2026-11-14T18:13:26.7924560Z   duration_ms: 0.034663
+2026-11-14T18:13:26.7925056Z   type: 'test'
+2026-11-14T18:13:26.7925370Z   ...
+2026-11-14T18:13:26.8186481Z # Subtest: 20 cenários do protótipo (admissão/privilégio) + revisão humana
+2026-11-14T18:13:26.8204485Z ok 194 - 20 cenários do protótipo (admissão/privilégio) + revisão humana
+2026-11-14T18:13:26.8208540Z   ---
+2026-11-14T18:13:26.8208891Z   duration_ms: 18.95457
+2026-11-14T18:13:26.8209234Z   type: 'test'
+2026-11-14T18:13:26.8209537Z   ...
+2026-11-14T18:13:26.8210403Z # Subtest: O-1: tenant.onboarded cobre só o workspace inicial; criador sem admissão no workspace adicional não é raiz nem membro
+2026-11-14T18:13:26.8211531Z ok 195 - O-1: tenant.onboarded cobre só o workspace inicial; criador sem admissão no workspace adicional não é raiz nem membro
+2026-11-14T18:13:26.8212104Z   ---
+2026-11-14T18:13:26.8212421Z   duration_ms: 0.538261
+2026-11-14T18:13:26.8212757Z   type: 'test'
+2026-11-14T18:13:26.8213062Z   ...
+2026-11-14T18:13:26.8213644Z # Subtest: cadeia de convites: profundidade limitada a 5; além disso não enraíza
+2026-11-14T18:13:26.8214385Z ok 196 - cadeia de convites: profundidade limitada a 5; além disso não enraíza
+2026-11-14T18:13:26.8215471Z   ---
+2026-11-14T18:13:26.8215773Z   duration_ms: 0.571331
+2026-11-14T18:13:26.8216108Z   type: 'test'
+2026-11-14T18:13:26.8216413Z   ...
+2026-11-14T18:13:26.8217117Z # Subtest: concedente desconhecido (inviter NULL) e convite com dados incompletos não são prova nem conflito
+2026-11-14T18:13:26.8218068Z ok 197 - concedente desconhecido (inviter NULL) e convite com dados incompletos não são prova nem conflito
+2026-11-14T18:13:26.8218624Z   ---
+2026-11-14T18:13:26.8218940Z   duration_ms: 2.573038
+2026-11-14T18:13:26.8219275Z   type: 'test'
+2026-11-14T18:13:26.8219576Z   ...
+2026-11-14T18:13:26.8220278Z # Subtest: convite aceito sobre vínculo já existente (reativação/sobrescrita) é sinalizado e exige revisão
+2026-11-14T18:13:26.8221284Z ok 198 - convite aceito sobre vínculo já existente (reativação/sobrescrita) é sinalizado e exige revisão
+2026-11-14T18:13:26.8251248Z   ---
+2026-11-14T18:13:26.8251651Z   duration_ms: 0.529227
+2026-11-14T18:13:26.8252014Z   type: 'test'
+2026-11-14T18:13:26.8252368Z   ...
+2026-11-14T18:13:26.8253376Z # Subtest: O-3: o papel derivado de perfil e a promoção atingem só o eixo de privilégio de QUEM foi observado; não há rebaixamento em bloco
+2026-11-14T18:13:26.8254873Z ok 199 - O-3: o papel derivado de perfil e a promoção atingem só o eixo de privilégio de QUEM foi observado; não há rebaixamento em bloco
+2026-11-14T18:13:26.8255554Z   ---
+2026-11-14T18:13:26.8255863Z   duration_ms: 0.604321
+2026-11-14T18:13:26.8256223Z   type: 'test'
+2026-11-14T18:13:26.8256529Z   ...
+2026-11-14T18:13:26.8257145Z # Subtest: evidência de bootstrap registrada DEPOIS do vínculo ou ANTES da sua existência
+2026-11-14T18:13:26.8257946Z ok 200 - evidência de bootstrap registrada DEPOIS do vínculo ou ANTES da sua existência
+2026-11-14T18:13:26.8258451Z   ---
+2026-11-14T18:13:26.8258768Z   duration_ms: 2.392667
+2026-11-14T18:13:26.8259097Z   type: 'test'
+2026-11-14T18:13:26.8259396Z   ...
+2026-11-14T18:13:26.8260136Z # Subtest: fonte opcional ausente ou com erro: limitação explícita, sem prova positiva nem negativa
+2026-11-14T18:13:26.8260975Z ok 201 - fonte opcional ausente ou com erro: limitação explícita, sem prova positiva nem negativa
+2026-11-14T18:13:26.8261530Z   ---
+2026-11-14T18:13:26.8261817Z   duration_ms: 0.590631
+2026-11-14T18:13:26.8262166Z   type: 'test'
+2026-11-14T18:13:26.8262486Z   ...
+2026-11-14T18:13:26.8263021Z # Subtest: evidências contraditórias => CONFLICTING (conservador)
+2026-11-14T18:13:26.8264127Z ok 202 - evidências contraditórias => CONFLICTING (conservador)
+2026-11-14T18:13:26.8264742Z   ---
+2026-11-14T18:13:26.8265074Z   duration_ms: 0.560143
+2026-11-14T18:13:26.8265430Z   type: 'test'
+2026-11-14T18:13:26.8265771Z   ...
+2026-11-14T18:13:26.8266404Z # Subtest: fusos: a ordem usa instantes absolutos (offsets diferentes), não o texto local
+2026-11-14T18:13:26.8267289Z ok 203 - fusos: a ordem usa instantes absolutos (offsets diferentes), não o texto local
+2026-11-14T18:13:26.8267822Z   ---
+2026-11-14T18:13:26.8268157Z   duration_ms: 0.560004
+2026-11-14T18:13:26.8268524Z   type: 'test'
+2026-11-14T18:13:26.8268858Z   ...
+2026-11-14T18:13:26.8269524Z # Subtest: dados incompletos: papel/permissões malformados e eventos sem referências não viram prova
+2026-11-14T18:13:26.8270496Z ok 204 - dados incompletos: papel/permissões malformados e eventos sem referências não viram prova
+2026-11-14T18:13:26.8271080Z   ---
+2026-11-14T18:13:26.8271422Z   duration_ms: 0.238153
+2026-11-14T18:13:26.8271783Z   type: 'test'
+2026-11-14T18:13:26.8272112Z   ...
+2026-11-14T18:13:26.8272795Z # Subtest: O-2: atribuição legada, sozinha ou combinada, nunca produz VERIFIED por si
+2026-11-14T18:13:26.8273659Z ok 205 - O-2: atribuição legada, sozinha ou combinada, nunca produz VERIFIED por si
+2026-11-14T18:13:26.8274191Z   ---
+2026-11-14T18:13:26.8274496Z   duration_ms: 0.305796
+2026-11-14T18:13:26.8277172Z   type: 'test'
+2026-11-14T18:13:26.8277533Z   ...
+2026-11-14T18:13:26.8278744Z # Subtest: vínculo ativo não é prova: sozinho => INSUFFICIENT_EVIDENCE; criador em workspace padrão reservado pode ser founder; fora dele, founder excede a evidência
+2026-11-14T18:13:26.8280543Z ok 206 - vínculo ativo não é prova: sozinho => INSUFFICIENT_EVIDENCE; criador em workspace padrão reservado pode ser founder; fora dele, founder excede a evidência
+2026-11-14T18:13:26.8281274Z   ---
+2026-11-14T18:13:26.8281579Z   duration_ms: 0.677092
+2026-11-14T18:13:26.8281901Z   type: 'test'
+2026-11-14T18:13:26.8282198Z   ...
+2026-11-14T18:13:26.8283013Z # Subtest: backfill de migração: products.activate acima do convite só é explicado por ativador + aprovação de migração
+2026-11-14T18:13:26.8284010Z ok 207 - backfill de migração: products.activate acima do convite só é explicado por ativador + aprovação de migração
+2026-11-14T18:13:26.8284573Z   ---
+2026-11-14T18:13:26.8285004Z   duration_ms: 0.341811
+2026-11-14T18:13:26.8285316Z   type: 'test'
+2026-11-14T18:13:26.8285604Z   ...
+2026-11-14T18:13:26.8286119Z # Subtest: isolamento entre tenants, determinismo, ordem de entrada e imutabilidade dos fatos
+2026-11-14T18:13:26.8286844Z ok 208 - isolamento entre tenants, determinismo, ordem de entrada e imutabilidade dos fatos
+2026-11-14T18:13:26.8287345Z   ---
+2026-11-14T18:13:26.8287638Z   duration_ms: 2.480091
+2026-11-14T18:13:26.8287946Z   type: 'test'
+2026-11-14T18:13:26.8288240Z   ...
+2026-11-14T18:13:26.8289014Z # Subtest: saída: sem identificadores pessoais nem credenciais; agregados e aprovador elegível
+2026-11-14T18:13:26.8307067Z ok 209 - saída: sem identificadores pessoais nem credenciais; agregados e aprovador elegível
+2026-11-14T18:13:26.8307690Z   ---
+2026-11-14T18:13:26.8308047Z   duration_ms: 0.656761
+2026-11-14T18:13:26.8308423Z   type: 'test'
+2026-11-14T18:13:26.8308804Z   ...
+2026-11-14T18:13:26.9139756Z # Subtest: stableSort: sorts object keys recursively regardless of insertion order
+2026-11-14T18:13:26.9148769Z ok 210 - stableSort: sorts object keys recursively regardless of insertion order
+2026-11-14T18:13:26.9149454Z   ---
+2026-11-14T18:13:26.9149806Z   duration_ms: 0.971691
+2026-11-14T18:13:26.9150189Z   type: 'test'
+2026-11-14T18:13:26.9150595Z   ...
+2026-11-14T18:13:26.9151175Z # Subtest: stableSort: preserves array order (order is semantically meaningful for arrays)
+2026-11-14T18:13:26.9152074Z ok 211 - stableSort: preserves array order (order is semantically meaningful for arrays)
+2026-11-14T18:13:26.9152610Z   ---
+2026-11-14T18:13:26.9152988Z   duration_ms: 0.211021
+2026-11-14T18:13:26.9153367Z   type: 'test'
+2026-11-14T18:13:26.9153695Z   ...
+2026-11-14T18:13:26.9154878Z # Subtest: stableSort: leaves primitives and null untouched
+2026-11-14T18:13:26.9155466Z ok 212 - stableSort: leaves primitives and null untouched
+2026-11-14T18:13:26.9155905Z   ---
+2026-11-14T18:13:26.9156257Z   duration_ms: 0.102577
+2026-11-14T18:13:26.9156624Z   type: 'test'
+2026-11-14T18:13:26.9156996Z   ...
+2026-11-14T18:13:26.9157607Z # Subtest: canonicalDigest: same logical payload with different key order produces the same digest
+2026-11-14T18:13:26.9158535Z ok 213 - canonicalDigest: same logical payload with different key order produces the same digest
+2026-11-14T18:13:26.9159157Z   ---
+2026-11-14T18:13:26.9159502Z   duration_ms: 0.391417
+2026-11-14T18:13:26.9159922Z   type: 'test'
+2026-11-14T18:13:26.9160274Z   ...
+2026-11-14T18:13:26.9160884Z # Subtest: canonicalDigest: mutating any field produces a different digest
+2026-11-14T18:13:26.9161648Z ok 214 - canonicalDigest: mutating any field produces a different digest
+2026-11-14T18:13:26.9162191Z   ---
+2026-11-14T18:13:26.9162540Z   duration_ms: 0.174716
+2026-11-14T18:13:26.9162896Z   type: 'test'
+2026-11-14T18:13:26.9163210Z   ...
+2026-11-14T18:13:26.9163778Z # Subtest: canonicalDigest: nested arrays and objects are covered by the digest
+2026-11-14T18:13:26.9164484Z ok 215 - canonicalDigest: nested arrays and objects are covered by the digest
+2026-11-14T18:13:26.9165229Z   ---
+2026-11-14T18:13:26.9165529Z   duration_ms: 0.182769
+2026-11-14T18:13:26.9165866Z   type: 'test'
+2026-11-14T18:13:26.9166174Z   ...
+2026-11-14T18:13:26.9166678Z # Subtest: canonicalDigest: produces a 64-character hex SHA-256 digest
+2026-11-14T18:13:26.9167672Z ok 216 - canonicalDigest: produces a 64-character hex SHA-256 digest
+2026-11-14T18:13:26.9168142Z   ---
+2026-11-14T18:13:26.9168495Z   duration_ms: 0.268218
+2026-11-14T18:13:26.9168883Z   type: 'test'
+2026-11-14T18:13:26.9169202Z   ...
+2026-11-14T18:13:26.9296033Z 1..216
+2026-11-14T18:13:26.9296690Z # tests 219
+2026-11-14T18:13:26.9297101Z # suites 1
+2026-11-14T18:13:26.9297432Z # pass 218
+2026-11-14T18:13:26.9297778Z # fail 0
+2026-11-14T18:13:26.9298137Z # cancelled 0
+2026-11-14T18:13:26.9298469Z # skipped 1
+2026-11-14T18:13:26.9298802Z # todo 0
+2026-11-14T18:13:26.9299126Z # duration_ms 3461.156567
+2026-11-14T18:13:26.9399820Z ##[group]Run pnpm check:src-dist-route-parity
+2026-11-14T18:13:26.9400213Z pnpm check:src-dist-route-parity
+2026-11-14T18:13:26.9446976Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:26.9447259Z env:
+2026-11-14T18:13:26.9447458Z   NODE_VERSION: 22
+2026-11-14T18:13:26.9447675Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:26.9447941Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:26.9448264Z ##[endgroup]
+2026-11-14T18:13:27.1242323Z
+2026-11-14T18:13:27.1243150Z > eiah-builder@ check:src-dist-route-parity /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:27.1243713Z > pnpm exec tsx scripts/checkSrcDistRouteParity.ts
+2026-11-14T18:13:27.1243944Z
+2026-11-14T18:13:27.4747060Z {
+2026-11-14T18:13:27.4747589Z   "ok": true,
+2026-11-14T18:13:27.4748170Z   "check": "check:src-dist-route-parity",
+2026-11-14T18:13:27.4748643Z   "mode": "src_only_dist_missing",
+2026-11-14T18:13:27.4749092Z   "routes": [
+2026-11-14T18:13:27.4749454Z     {
+2026-11-14T18:13:27.4749930Z       "key": "ledger_txid_route",
+2026-11-14T18:13:27.4750364Z       "src": true,
+2026-11-14T18:13:27.4750745Z       "dist": null
+2026-11-14T18:13:27.4751121Z     },
+2026-11-14T18:13:27.4751468Z     {
+2026-11-14T18:13:27.4751864Z       "key": "run_bundle_route",
+2026-11-14T18:13:27.4752290Z       "src": true,
+2026-11-14T18:13:27.4752670Z       "dist": null
+2026-11-14T18:13:27.4753055Z     }
+2026-11-14T18:13:27.4753418Z   ]
+2026-11-14T18:13:27.4753758Z }
+2026-11-14T18:13:27.5121387Z ##[group]Run pnpm check:ledger-bundle-smoke
+2026-11-14T18:13:27.5121767Z pnpm check:ledger-bundle-smoke
+2026-11-14T18:13:27.5179157Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:27.5179356Z env:
+2026-11-14T18:13:27.5179483Z   NODE_VERSION: 22
+2026-11-14T18:13:27.5179623Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:27.5179798Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:27.5179988Z ##[endgroup]
+2026-11-14T18:13:27.6952514Z
+2026-11-14T18:13:27.6953227Z > eiah-builder@ check:ledger-bundle-smoke /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:27.6953571Z > pnpm exec tsx scripts/checkLedgerBundleSmoke.ts
+2026-11-14T18:13:27.6953701Z
+2026-11-14T18:13:28.0463370Z {
+2026-11-14T18:13:28.0475740Z   "ok": true,
+2026-11-14T18:13:28.0476371Z   "check": "check:ledger-bundle-smoke",
+2026-11-14T18:13:28.0476987Z   "checks": [
+2026-11-14T18:13:28.0477320Z     "ledger_route_exists",
+2026-11-14T18:13:28.0477704Z     "ledger_invalid_txid_code",
+2026-11-14T18:13:28.0478081Z     "ledger_not_found_code",
+2026-11-14T18:13:28.0478438Z     "ledger_inconsistent_code",
+2026-11-14T18:13:28.0486246Z     "bundle_route_exists",
+2026-11-14T18:13:28.0486738Z     "bundle_not_found_code",
+2026-11-14T18:13:28.0487214Z     "ledger_contract_exists",
+2026-11-14T18:13:28.0487679Z     "bundle_contract_exists"
+2026-11-14T18:13:28.0488128Z   ]
+2026-11-14T18:13:28.0488494Z }
+2026-11-14T18:13:28.0856972Z ##[group]Run pnpm check:rbac-fail-closed
+2026-11-14T18:13:28.0857352Z pnpm check:rbac-fail-closed
+2026-11-14T18:13:28.0900161Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:28.0900328Z env:
+2026-11-14T18:13:28.0900454Z   NODE_VERSION: 22
+2026-11-14T18:13:28.0900589Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:28.0900760Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:28.0900948Z ##[endgroup]
+2026-11-14T18:13:28.2681121Z
+2026-11-14T18:13:28.2681917Z > eiah-builder@ check:rbac-fail-closed /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:28.2682650Z > node --import tsx scripts/checkRbacFailClosed.ts
+2026-11-14T18:13:28.2682784Z
+2026-11-14T18:13:28.3861872Z {
+2026-11-14T18:13:28.3862260Z   "ok": true,
+2026-11-14T18:13:28.3862551Z   "check": "check:rbac-fail-closed",
+2026-11-14T18:13:28.3868558Z   "summary": {
+2026-11-14T18:13:28.3868842Z     "tenantPolicyRuntimeGuarded": true,
+2026-11-14T18:13:28.3869208Z     "tenantPolicyBuildArtifactGuarded": true,
+2026-11-14T18:13:28.3869676Z     "requiredFailClosedTestsPresent": true
+2026-11-14T18:13:28.3869981Z   }
+2026-11-14T18:13:28.3870157Z }
+2026-11-14T18:13:28.4104212Z ##[group]Run pnpm check:redis-fail-closed
+2026-11-14T18:13:28.4104827Z pnpm check:redis-fail-closed
+2026-11-14T18:13:28.4145911Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:28.4146076Z env:
+2026-11-14T18:13:28.4146198Z   NODE_VERSION: 22
+2026-11-14T18:13:28.4146343Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:28.4146509Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:28.4146712Z ##[endgroup]
+2026-11-14T18:13:28.5941417Z
+2026-11-14T18:13:28.5941936Z > eiah-builder@ check:redis-fail-closed /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:28.5942432Z > node --import tsx --test scripts/tests/checkRedisFailClosed.test.ts && node --import tsx scripts/checkRedisFailClosed.ts
+2026-11-14T18:13:28.5942695Z
+2026-11-14T18:13:28.6262319Z TAP version 13
+2026-11-14T18:13:28.7587037Z # Subtest: Redis fail-closed detector still rejects a real localhost fallback
+2026-11-14T18:13:28.7599522Z ok 1 - Redis fail-closed detector still rejects a real localhost fallback
+2026-11-14T18:13:28.7600167Z   ---
+2026-11-14T18:13:28.7600625Z   duration_ms: 0.860095
+2026-11-14T18:13:28.7600898Z   type: 'test'
+2026-11-14T18:13:28.7601101Z   ...
+2026-11-14T18:13:28.7601550Z # Subtest: Redis fail-closed detector accepts prescriptive prohibition wording
+2026-11-14T18:13:28.7602151Z ok 2 - Redis fail-closed detector accepts prescriptive prohibition wording
+2026-11-14T18:13:28.7602513Z   ---
+2026-11-14T18:13:28.7602739Z   duration_ms: 0.559984
+2026-11-14T18:13:28.7602956Z   type: 'test'
+2026-11-14T18:13:28.7603162Z   ...
+2026-11-14T18:13:28.7603496Z # Subtest: prescriptive comment cannot hide a real localhost fallback
+2026-11-14T18:13:28.7603802Z ok 3 - prescriptive comment cannot hide a real localhost fallback
+2026-11-14T18:13:28.7604006Z   ---
+2026-11-14T18:13:28.7604136Z   duration_ms: 0.109956
+2026-11-14T18:13:28.7604279Z   type: 'test'
+2026-11-14T18:13:28.7604478Z   ...
+2026-11-14T18:13:28.7730134Z 1..3
+2026-11-14T18:13:28.7730840Z # tests 3
+2026-11-14T18:13:28.7738052Z # suites 0
+2026-11-14T18:13:28.7739245Z # pass 3
+2026-11-14T18:13:28.7743249Z # fail 0
+2026-11-14T18:13:28.7743717Z # cancelled 0
+2026-11-14T18:13:28.7743988Z # skipped 0
+2026-11-14T18:13:28.7744172Z # todo 0
+2026-11-14T18:13:28.7744410Z # duration_ms 155.072827
+2026-11-14T18:13:28.9496190Z {
+2026-11-14T18:13:28.9496476Z   "ok": true,
+2026-11-14T18:13:28.9496684Z   "check": "check:redis-fail-closed",
+2026-11-14T18:13:28.9496881Z   "scannedRoots": [
+2026-11-14T18:13:28.9497068Z     "packages",
+2026-11-14T18:13:28.9497201Z     "apps"
+2026-11-14T18:13:28.9497321Z   ],
+2026-11-14T18:13:28.9497452Z   "scannedFiles": 867,
+2026-11-14T18:13:28.9497593Z   "summary": {
+2026-11-14T18:13:28.9497744Z     "localhostFallbacksDetected": 0,
+2026-11-14T18:13:28.9498036Z     "topLevelRedisConstructorsDetected": 0
+2026-11-14T18:13:28.9498284Z   }
+2026-11-14T18:13:28.9498456Z }
+2026-11-14T18:13:28.9703332Z ##[group]Run pnpm check:guardrail-ledger-noop
+2026-11-14T18:13:28.9703581Z pnpm check:guardrail-ledger-noop
+2026-11-14T18:13:28.9745250Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:28.9745408Z env:
+2026-11-14T18:13:28.9745527Z   NODE_VERSION: 22
+2026-11-14T18:13:28.9745658Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:28.9745829Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:28.9746012Z ##[endgroup]
+2026-11-14T18:13:29.1525321Z
+2026-11-14T18:13:29.1526171Z > eiah-builder@ check:guardrail-ledger-noop /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:29.1526925Z > node --import tsx scripts/checkGuardrailLedgerNoop.ts
+2026-11-14T18:13:29.1527075Z
+2026-11-14T18:13:29.2731450Z {
+2026-11-14T18:13:29.2731986Z   "ok": true,
+2026-11-14T18:13:29.2732309Z   "check": "check:guardrail-ledger-noop",
+2026-11-14T18:13:29.2732990Z   "summary": {
+2026-11-14T18:13:29.2733296Z     "guardrailLedgerRuntimeGuarded": true,
+2026-11-14T18:13:29.2733831Z     "persistentStoreCallsPresent": true,
+2026-11-14T18:13:29.2734265Z     "ledgerCoveragePresent": true
+2026-11-14T18:13:29.2754787Z   }
+2026-11-14T18:13:29.2755024Z }
+2026-11-14T18:13:29.2992265Z ##[group]Run pnpm check:worker-topology
+2026-11-14T18:13:29.2992501Z pnpm check:worker-topology
+2026-11-14T18:13:29.3034353Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:29.3034514Z env:
+2026-11-14T18:13:29.3034757Z   NODE_VERSION: 22
+2026-11-14T18:13:29.3034965Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:29.3035138Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:29.3035322Z ##[endgroup]
+2026-11-14T18:13:29.4905528Z
+2026-11-14T18:13:29.4906298Z > eiah-builder@ check:worker-topology /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:29.4906707Z > node --import tsx scripts/checkWorkerTopology.ts
+2026-11-14T18:13:29.4906845Z
+2026-11-14T18:13:29.6801763Z {
+2026-11-14T18:13:29.6802016Z   "ok": true,
+2026-11-14T18:13:29.6802221Z   "check": "check:worker-topology",
+2026-11-14T18:13:29.6802412Z   "topology": {
+2026-11-14T18:13:29.6802543Z     "runs": [
+2026-11-14T18:13:29.6802679Z       "api-embedded",
+2026-11-14T18:13:29.6802821Z       "standalone"
+2026-11-14T18:13:29.6803038Z     ],
+2026-11-14T18:13:29.6803174Z     "runAtivoUniversal": [
+2026-11-14T18:13:29.6803337Z       "maintenance-worker"
+2026-11-14T18:13:29.6803477Z     ]
+2026-11-14T18:13:29.6803589Z   },
+2026-11-14T18:13:29.6803717Z   "p0b2": {
+2026-11-14T18:13:29.6803927Z     "leaseModule": "packages/core/src/queue/workerOwnershipLease.ts",
+2026-11-14T18:13:29.6804153Z     "integrations": [
+2026-11-14T18:13:29.6804307Z       "apps/api/src/index.ts",
+2026-11-14T18:13:29.6804504Z       "apps/workers/run-worker/src/index.ts",
+2026-11-14T18:13:29.6804916Z       "apps/workers/maintenance-worker/src/index.ts"
+2026-11-14T18:13:29.6805138Z     ],
+2026-11-14T18:13:29.6805407Z     "leaseKey": "eiah:worker-ownership:<environmentId>:<queue>",
+2026-11-14T18:13:29.6805826Z     "metaKey": "eiah:worker-ownership:<environmentId>:<queue>:meta"
+2026-11-14T18:13:29.6806039Z   }
+2026-11-14T18:13:29.6806150Z }
+2026-11-14T18:13:29.7033565Z ##[group]Run pnpm --filter @eiah/web build
+2026-11-14T18:13:29.7033875Z pnpm --filter @eiah/web build
+2026-11-14T18:13:29.7073927Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:29.7074181Z env:
+2026-11-14T18:13:29.7074359Z   NODE_VERSION: 22
+2026-11-14T18:13:29.7074805Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:29.7075040Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:29.7075293Z   TMPDIR: /tmp
+2026-11-14T18:13:29.7075520Z   TMP: /tmp
+2026-11-14T18:13:29.7075726Z   TEMP: /tmp
+2026-11-14T18:13:29.7075978Z   ESBUILD_TMPDIR: /tmp
+2026-11-14T18:13:29.7076173Z   NODE_ENV: production
+2026-11-14T18:13:29.7076407Z ##[endgroup]
+2026-11-14T18:13:29.8979673Z
+2026-11-14T18:13:29.8980612Z > @eiah/web@0.1.0 build /home/runner/work/EIAH/EIAH/apps/web
+2026-11-14T18:13:29.8981033Z > cross-env TMPDIR=/tmp TEMP=/tmp vite build
+2026-11-14T18:13:29.8981197Z
+2026-11-14T18:13:30.0438367Z ▲ [WARNING] Unrecognized target environment "ES2024" [tsconfig.json]
+2026-11-14T18:13:30.0438801Z
+2026-11-14T18:13:30.0438997Z     ../../tsconfig.json:5:18:
+2026-11-14T18:13:30.0439494Z       5 │         "target": "ES2024",
+2026-11-14T18:13:30.0439928Z         ╵                   ~~~~~~~~
+2026-11-14T18:13:30.0440167Z
+2026-11-14T18:13:30.0687681Z vite v5.4.21 building for production...
+2026-11-14T18:13:30.1090768Z transforming...
+2026-11-14T18:13:30.2724365Z Browserslist: browsers data (caniuse-lite) is 11 months old. Please run:
+2026-11-14T18:13:30.2725363Z   npx update-browserslist-db@latest
+2026-11-14T18:13:30.2726827Z   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+2026-11-14T18:13:32.5517187Z [plugin:vite:esbuild] [plugin vite:esbuild] ../../packages/utils/src/index.ts: Unrecognized target environment "ES2024"
+2026-11-14T18:13:32.5545824Z 1  |  export * from './masking/index';
+2026-11-14T18:13:32.5546380Z    |                               ^
+2026-11-14T18:13:32.5575560Z 2  |
+2026-11-14T18:13:32.5606234Z
+2026-11-14T18:13:32.7245225Z [plugin:vite:esbuild] [plugin vite:esbuild] ../../packages/utils/src/masking/index.ts: Unrecognized target environment "ES2024"
+2026-11-14T18:13:32.7246014Z 1  |  /**
+2026-11-14T18:13:32.7246280Z 2  |   * PII Masking Utility - EIAH_Builder
+2026-11-14T18:13:32.7246552Z    |                           ^
+2026-11-14T18:13:32.7246973Z 3  |   * FASE 3: Governança Cognitiva & Compliance
+2026-11-14T18:13:32.7247218Z 4  |   */
+2026-11-14T18:13:32.7247472Z
+2026-11-14T18:13:32.8896398Z ✓ 896 modules transformed.
+2026-11-14T18:13:32.8907175Z x Build failed in 2.81s
+2026-11-14T18:13:32.8907865Z error during build:
+2026-11-14T18:13:32.8908912Z src/components/agents/chatLauncherEngine.ts (30:9): "IMOB_PROPERTY_CAPTURE_POLICY" is not exported by "../../packages/contracts/src/browser.ts", imported by "src/components/agents/chatLauncherEngine.ts".
+2026-11-14T18:13:32.8909727Z file: /home/runner/work/EIAH/EIAH/apps/web/src/components/agents/chatLauncherEngine.ts:30:9
+2026-11-14T18:13:32.8910099Z
+2026-11-14T18:13:32.8910380Z 28: } from "@/components/agents/frontDoorBillingEngine";
+2026-11-14T18:13:32.8910808Z 29: import type { FrontDoorIntakeRequest } from "@/components/agents/frontDoorIntakeEngine";
+2026-11-14T18:13:32.8911262Z 30: import { IMOB_PROPERTY_CAPTURE_POLICY } from "@eiah/contracts";
+2026-11-14T18:13:32.8911518Z              ^
+2026-11-14T18:13:32.8911891Z 31: import {
+2026-11-14T18:13:32.8912093Z 32:   resolveNoticeAckStep,
+2026-11-14T18:13:32.8912283Z
+2026-11-14T18:13:32.8912622Z     at getRollupError (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+2026-11-14T18:13:32.8913141Z     at error (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+2026-11-14T18:13:32.8914172Z     at Module.error (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:17022:16)
+2026-11-14T18:13:32.8914960Z     at Module.traceVariable (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:17478:29)
+2026-11-14T18:13:32.8916095Z     at ModuleScope.findVariable (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:15141:39)
+2026-11-14T18:13:32.8916978Z     at FunctionScope.findVariable (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+2026-11-14T18:13:32.8917977Z     at FunctionBodyScope.findVariable (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:5688:38)
+2026-11-14T18:13:32.8918828Z     at MemberExpression.bind (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:7406:49)
+2026-11-14T18:13:32.8919813Z     at BinaryExpression.bind (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+2026-11-14T18:13:32.8920974Z     at LogicalExpression.bind (file:///home/runner/work/EIAH/EIAH/node_modules/.pnpm/rollup@4.54.0/node_modules/rollup/dist/es/shared/node-entry.js:2829:23)
+2026-11-14T18:13:32.9487020Z /home/runner/work/EIAH/EIAH/apps/web:
+2026-11-14T18:13:32.9487845Z  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/web@0.1.0 build: `cross-env TMPDIR=/tmp TEMP=/tmp vite build`
+2026-11-14T18:13:32.9488556Z Exit status 1
+2026-11-14T18:13:32.9694988Z ##[error]Process completed with exit code 1.
+2026-11-14T18:13:32.9760464Z Post job cleanup.
+2026-11-14T18:13:33.0707083Z Pruning is unnecessary.
+2026-11-14T18:13:33.0834223Z Post job cleanup.
+2026-11-14T18:13:33.1464903Z [command]/usr/bin/git version
+2026-11-14T18:13:33.1503157Z git version 2.56.1
+2026-11-14T18:13:33.1530527Z Temporarily overriding HOME='/home/runner/work/_temp/c576ac75-81a2-4e34-86c1-1a32bf767be8' before making global git config changes
+2026-11-14T18:13:33.1531351Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:13:33.1534715Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:33.1578996Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:13:33.1615708Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:13:33.1901506Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:13:33.1927281Z http.https://github.com/.extraheader
+2026-11-14T18:13:33.1936961Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-14T18:13:33.1982630Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:13:33.2229205Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:13:33.2257914Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:13:33.2619346Z Cleaning up orphan processes
+2026-11-14T18:13:33.2871757Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/cache@v4, actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

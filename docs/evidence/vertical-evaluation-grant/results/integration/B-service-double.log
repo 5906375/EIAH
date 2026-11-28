@@ -1,0 +1,118 @@
+TAP version 13
+# Subtest: ativação: relê e trava a concessão DENTRO da transação; o início do prazo é o instante capturado DEPOIS da trava
+ok 1 - ativação: relê e trava a concessão DENTRO da transação; o início do prazo é o instante capturado DEPOIS da trava
+  ---
+  duration_ms: 5.958042
+  type: 'test'
+  ...
+# Subtest: ativação: mudança concorrente dos termos entre a checagem e a trava NEGA e não escreve nada
+ok 2 - ativação: mudança concorrente dos termos entre a checagem e a trava NEGA e não escreve nada
+  ---
+  duration_ms: 1.434819
+  type: 'test'
+  ...
+# Subtest: ativação: configuração incompleta ou decisões obrigatórias pendentes (chamada interna) não concedem nada
+ok 3 - ativação: configuração incompleta ou decisões obrigatórias pendentes (chamada interna) não concedem nada
+  ---
+  duration_ms: 1.252401
+  type: 'test'
+  ...
+# Subtest: ativação: aprovação humana sem aceite não ativa
+ok 4 - ativação: aprovação humana sem aceite não ativa
+  ---
+  duration_ms: 0.550594
+  type: 'test'
+  ...
+# Subtest: ativação repetida: só é sucesso com instalação ATIVA e grant válido; instalação inativa reinstala sem tocar no grant
+ok 5 - ativação repetida: só é sucesso com instalação ATIVA e grant válido; instalação inativa reinstala sem tocar no grant
+  ---
+  duration_ms: 2.017399
+  type: 'test'
+  ...
+# Subtest: ativação: conflito concorrente só é sucesso idempotente com instalação ATIVA e grant efetivamente válido
+ok 6 - ativação: conflito concorrente só é sucesso idempotente com instalação ATIVA e grant efetivamente válido
+  ---
+  duration_ms: 6.618371
+  type: 'test'
+  ...
+# Subtest: ativação: acesso sem grant de avaliação segue o caminho legado (aprovado ativa; demais negam)
+ok 7 - ativação: acesso sem grant de avaliação segue o caminho legado (aprovado ativa; demais negam)
+  ---
+  duration_ms: 0.833916
+  type: 'test'
+  ...
+# Subtest: pedido de avaliação: oferta desligada/bloqueada (chamada interna) não grava nada
+ok 8 - pedido de avaliação: oferta desligada/bloqueada (chamada interna) não grava nada
+  ---
+  duration_ms: 0.462756
+  type: 'test'
+  ...
+# Subtest: novo pedido após avaliação ENCERRADA mantém a restrição (modo efetivo gravado) e arquiva o grant; não restaura acesso
+ok 9 - novo pedido após avaliação ENCERRADA mantém a restrição (modo efetivo gravado) e arquiva o grant; não restaura acesso
+  ---
+  duration_ms: 1.291744
+  type: 'test'
+  ...
+# Subtest: pedido sobre acesso aprovado/pago nunca reescreve a linha
+ok 10 - pedido sobre acesso aprovado/pago nunca reescreve a linha
+  ---
+  duration_ms: 0.579337
+  type: 'test'
+  ...
+# Subtest: fechamento: relê com trava, reavalia e só fecha a VERSÃO avaliada do grant; grant renovado não é fechado por avaliação antiga
+ok 11 - fechamento: relê com trava, reavalia e só fecha a VERSÃO avaliada do grant; grant renovado não é fechado por avaliação antiga
+  ---
+  duration_ms: 1.227336
+  type: 'test'
+  ...
+# Subtest: decisão: aprovar propõe termos (pre_ativacao, sem aceite, sem ativação); oferta bloqueada não concede; UPDATE condicional
+ok 12 - decisão: aprovar propõe termos (pre_ativacao, sem aceite, sem ativação); oferta bloqueada não concede; UPDATE condicional
+  ---
+  duration_ms: 1.123003
+  type: 'test'
+  ...
+# Subtest: decisão e aceite: UPDATE sem linha afetada vira CONFLICT, sem evento nem aviso
+ok 13 - decisão e aceite: UPDATE sem linha afetada vira CONFLICT, sem evento nem aviso
+  ---
+  duration_ms: 1.029038
+  type: 'test'
+  ...
+# Subtest: aceite: idempotente para o mesmo hash/usuário, só do solicitante, só do hash vigente, e NÃO ativa (nenhuma instalação)
+ok 14 - aceite: idempotente para o mesmo hash/usuário, só do solicitante, só do hash vigente, e NÃO ativa (nenhuma instalação)
+  ---
+  duration_ms: 1.033773
+  type: 'test'
+  ...
+# Subtest: pedido: pedido ABERTO (inclusive pre_ativacao) nunca é reescrito, com ou sem avaliação
+ok 15 - pedido: pedido ABERTO (inclusive pre_ativacao) nunca é reescrito, com ou sem avaliação
+  ---
+  duration_ms: 1.540044
+  type: 'test'
+  ...
+# Subtest: pedido: termos INCONSISTENTES (linha crua ainda 'aprovado', validade futura) encerram e o novo pedido mantém o bloqueio total
+ok 16 - pedido: termos INCONSISTENTES (linha crua ainda 'aprovado', validade futura) encerram e o novo pedido mantém o bloqueio total
+  ---
+  duration_ms: 1.169052
+  type: 'test'
+  ...
+# Subtest: pedido: se a linha mudou depois da leitura, o resultado segue o planejador (não um rótulo genérico)
+ok 17 - pedido: se a linha mudou depois da leitura, o resultado segue o planejador (não um rótulo genérico)
+  ---
+  duration_ms: 1.845305
+  type: 'test'
+  ...
+# Subtest: pedido: acesso SEM grant segue o fluxo legado (recusado/revogado reabrem; modo de revogação mantido)
+ok 18 - pedido: acesso SEM grant segue o fluxo legado (recusado/revogado reabrem; modo de revogação mantido)
+  ---
+  duration_ms: 1.894002
+  type: 'test'
+  ...
+1..18
+# tests 18
+# suites 0
+# pass 18
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 662.676262

@@ -1,0 +1,8 @@
+
+> @eiah/providers@0.1.0 prebuild <REPO>/packages/providers
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/providers@0.1.0 build <REPO>/packages/providers
+> tsc -p tsconfig.json
+

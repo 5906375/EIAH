@@ -1,0 +1,99 @@
+{
+  "status": "PARCIAL",
+  "scope": "ProviderBoundary follow-up only; test ownership and registration, no production change",
+  "baseHead": "aee16965f6de0829a105ce4a17a856851e2ad860",
+  "branch": "fix/llm-provider-failure-propagation",
+  "gateUnchanged": true,
+  "ciWorkflowUnchanged": true,
+  "unitManifestUnchanged": true,
+  "ciRegistration": "Existing build_validate step invokes test:llm-provider-failure, whose explicit two-file aggregate now executes both owners; both recognized as blocking by official orphan gate",
+  "coverage": {
+    "providersFile": "packages/providers/tests/openai-provider-failure.test.ts",
+    "providerCasesDeclared": 4,
+    "apiFile": "apps/api/src/tests/llm-provider-failure.test.ts",
+    "apiCasesDeclared": 5,
+    "apiInjection": "Existing llmRegistry public LLMProvider contract; no concrete adapter or transport imports",
+    "providerExecution": "Real adapter and generateText source, synthetic injected transport; no actual provider call",
+    "apiExecution": "Real executor/runtime/intake/capability with provider contract and financial writer doubles",
+    "compositionLimit": "Separate ownership tests; not a single new integrated concrete-adapter-to-intake execution"
+  },
+  "results": {
+    "boundarySandbox": {
+      "log": "boundary.log",
+      "exitCode": 1,
+      "result": "BLOQUEADO",
+      "cause": "listen EPERM at tsx IPC before gate test ran"
+    },
+    "boundaryOutside": {
+      "log": "boundary-outside.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "executed": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    },
+    "movedAndChangedTests": {
+      "log": "tests.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "reportedFileEntries": 2,
+      "passedFileEntries": 2,
+      "failedFileEntries": 0,
+      "skippedFileEntries": 0,
+      "individualCaseCountsReported": false,
+      "note": "Runner reports 2 file entries; do not promote 4+5 declared cases to a reported 9/9 execution"
+    },
+    "registration": {
+      "log": "registration.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "newOrphans": [],
+      "previousOrphans": 92,
+      "currentOrphans": 92
+    },
+    "packagingConfig": {
+      "log": "packaging.log",
+      "exitCode": 0,
+      "result": "APROVADO",
+      "productionSourceEntries": 5,
+      "testsOutsideProductionInputs": true,
+      "scope": "Read-only package config/dependency resolution, not new build or typecheck"
+    }
+  },
+  "fixtureMove": {
+    "from": "apps/api/src/tests/fixtures/openai-credit-balance-exhausted.json",
+    "to": "packages/providers/tests/fixtures/openai-credit-balance-exhausted.json",
+    "sha256": "2ed341ba4cb248568f62fad53d1feffaf0a5efd9e3c70c5503cc5394cee8955b",
+    "bytesUnchanged": true,
+    "historicalEvidenceRefs": "Resolve previous reports against aee16965; their paths/hashes describe execution before this move and are preserved unchanged"
+  },
+  "reused": [
+    "Official core/providers builds and packaged-module smoke from parent evidence; production sources and provider build inputs unchanged",
+    "Contract/adaptor/intake results for unchanged files, with original recorded scope"
+  ],
+  "notRerun": [
+    "builds",
+    "typecheck",
+    "HTTP/database/browser/real-provider tests",
+    "P1"
+  ],
+  "typecheckLimit": "Prior focal exit 1 with 2 old focused diagnostics and 16 dependency diagnostics is historical; no new typecheck of rewritten tests; not a current clean typecheck certification",
+  "actualProviderCalls": 0,
+  "financialChanges": false,
+  "domainWrites": 0,
+  "gitStageCommitPush": false,
+  "remoteCiRevalidation": false,
+  "draftChanged": false,
+  "p1Ratification": "Preserved, not reinvestigated",
+  "evaluationOffer": "Unchanged/disabled",
+  "executions": "executions.json",
+  "evidencePhase": "Local validation before corrective publication; gitStageCommitPush and remoteCiRevalidation describe that recorded phase",
+  "publicationPreparation": {
+    "newTestWhitespaceFirstExitCode": 3,
+    "cause": "One extra blank line at EOF of packages/providers/tests/openai-provider-failure.test.ts",
+    "treatment": "Removed exactly one trailing LF; no assertion or behavior change; no original log changed",
+    "testsReused": true,
+    "fullTypecheckStillNotCertified": true
+  }
+}

@@ -1,0 +1,342 @@
+{
+  "date": "2026-11-14",
+  "branch": "fix/imob-property-draft-context",
+  "head": "d60655c4fd344dca39fbbdb90d2e46bbd44a3b78",
+  "status": "parcial",
+  "executor": "Codex; no subagents",
+  "paidCalls": false,
+  "realWrites": false,
+  "providerRealValidated": false,
+  "browserValidated": false,
+  "httpDatabaseValidated": false,
+  "stagingInvalidResponseRootCause": "not_proven",
+  "p1Ratification": "weekly_cycle_evidence_too_old preserved; not re-investigated",
+  "modelTestEnvironment": "OPENAI_API_KEY= ANTHROPIC_API_KEY= GEMINI_API_KEY= DEEPSEEK_API_KEY=; injected model fixtures, no paid calls",
+  "checks": [
+    {
+      "log": "published/intake-first.log",
+      "exitCode": 1,
+      "tests": 12,
+      "passed": 11,
+      "failed": 1,
+      "skipped": 0,
+      "note": "Initial failure: expected Vagas instead of canonical Vagas de garagem; 11 passing cases reused",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx apps/api/src/tests/imob-property-capture-intake.test.ts"
+    },
+    {
+      "log": "intake-reproduction.log",
+      "exitCode": 0,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Only corrected assertion case rerun",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro guiado: reprodução' apps/api/src/tests/imob-property-capture-intake.test.ts"
+    },
+    {
+      "log": "intake-withdrawal.log",
+      "exitCode": 0,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Recovered completed process 30348; no rerun",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro guiado: correção que retira' apps/api/src/tests/imob-property-capture-intake.test.ts"
+    },
+    {
+      "log": "published/forms-first.log",
+      "exitCode": 1,
+      "tests": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Fixture compile failure: duplicate variable; no tests executed",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro' apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+    },
+    {
+      "log": "forms-second.log",
+      "exitCode": 0,
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Affected property draft adapter tests",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro' apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+    },
+    {
+      "log": "adapter-confirmation-guards.log",
+      "exitCode": 0,
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Partial/expanded/previous-ref patches and in-flight manual edit/revert",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro guiado: (adaptador rejeita|edição manual durante)' apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+    },
+    {
+      "log": "adapter-withdrawal.log",
+      "exitCode": 0,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Recovered completed process 11399; no rerun",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='^cadastro guiado: correção sem diferenças' apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+    },
+    {
+      "log": "review-correlation-regression.log",
+      "exitCode": 0,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "note": "Shared existing review hash helper regression",
+      "command": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test-name-pattern='FDC-03A (revisão Sim:|pergunta inválida \\((reference|workspace|tenant|draft_changed)\\))' apps/api/src/tests/imob-crm-turn-engine.test.ts"
+    }
+  ],
+  "currentSelectiveCoverage": {
+    "intake": 13,
+    "adapter": 14,
+    "existingReviewCorrelation": 5,
+    "notAnEntireSuiteRerun": true
+  },
+  "contractsTypecheck": {
+    "command": "pnpm exec tsc -p packages/contracts/tsconfig.json --noEmit",
+    "log": "contracts-typecheck.log",
+    "exitCode": 0
+  },
+  "focusedTypecheck": {
+    "command": "node ops/evidence/latest/imob-property-capture-context-2026-11-14/typecheck-focused.mjs",
+    "log": "typecheck-final.log",
+    "exitCode": 0,
+    "roots": 12,
+    "includesViteEnv": true,
+    "focusedDiagnostics": 0,
+    "excludedDependencyDiagnostics": 17,
+    "wholeRepositoryCertified": false,
+    "previousLog": "typecheck-first.log",
+    "lastSessionRecovered": 36804
+  },
+  "build": {
+    "command": "pnpm --filter @eiah/web build",
+    "log": "published/web-build.log",
+    "exitCode": 0,
+    "modules": 897,
+    "warnings": [
+      "Unrecognized target ES2024",
+      "Browserslist data old",
+      "chunks over 500kB"
+    ],
+    "reusedAfterLastEdit": "Last production edit only affects server intake; browser build inputs unchanged"
+  },
+  "reusedFromPreviousPackage": {
+    "base": "../imob-property-capture-context-2026-11-14/",
+    "forms-tests.log": {
+      "exitCode": 0,
+      "tests": 180,
+      "passed": 180,
+      "scope": "Previous tree; 7 affected cases replaced/revalidated here; 173 untouched cases not rerun"
+    },
+    "no-db-gate.log": {
+      "exitCode": 0,
+      "tests": 2,
+      "passed": 2,
+      "scope": "Previously authorized outside sandbox; no new DB dependency in intake/engine closure"
+    },
+    "launcher-gate.log": {
+      "exitCode": 0,
+      "ok": true,
+      "scope": "Launcher and gate unchanged"
+    },
+    "entrypoint-gate.log": {
+      "exitCode": 0,
+      "ok": true,
+      "scope": "Launcher and gate unchanged"
+    },
+    "snapshot-gate.log": {
+      "exitCode": 0,
+      "ok": true,
+      "scope": "Schema/baseline unchanged, declared source paths still exist; does not validate new behavior"
+    }
+  },
+  "lastEdit": {
+    "cause": "Removing all proposed differences left the prior proposal pending",
+    "fix": "Return proposal:null without patch and clear adapter state",
+    "proof": [
+      "intake-withdrawal.log",
+      "adapter-withdrawal.log"
+    ],
+    "laterConfirmation": "clarify, no patch, no field overwrite"
+  },
+  "codeFiles": [
+    "packages/contracts/src/imobPropertyCapture.ts",
+    "apps/api/src/services/imob/imobAgentContract.ts",
+    "apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts",
+    "apps/api/src/services/imob/crm/imobProposalReviewContinuity.ts",
+    "apps/api/src/routes/imob.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.ts",
+    "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+    "apps/web/src/features/imob/structured/types.ts",
+    "apps/api/src/tests/imob-property-capture-intake.test.ts",
+    "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts"
+  ],
+  "documentation": [
+    "README.md",
+    "results.json",
+    "source-hashes.json",
+    "changes.diff.gz",
+    "../../../../docs/EVIDENCE_INDEX.md",
+    "../imob-property-capture-context-2026-11-14/stage-commit-plan.md"
+  ],
+  "artifacts": {
+    "purpose": "Audit evidence created by this task",
+    "preservedOriginalLogs": true,
+    "sanitized": true,
+    "cleanup": "No deletion. Original logs and raw changes.diff preserved locally; three explicitly sanitized copies and lossless compressed diff prepared for delivery; derived build directory excluded."
+  },
+  "git": {
+    "stageEmpty": true,
+    "mutationsPerformed": false,
+    "preexistingInstructionHashes": {
+      "CLAUDE.md": "66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37",
+      "CODEX.md": "2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525"
+    }
+  },
+  "diffCheck": {
+    "exitCode": 0,
+    "log": "diff-check.log"
+  },
+  "evidenceIndex": "Updated after physical artifacts; new paths checked by reading; index gate suite not repeated",
+  "packaging": {
+    "purpose": "Prepare explicit stage/commit plan only; no staging or commit performed",
+    "plan": "ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md",
+    "normalPaths": [
+      "apps/api/src/routes/imob.ts",
+      "apps/api/src/services/imob/crm/imobProposalReviewContinuity.ts",
+      "apps/api/src/services/imob/imobAgentContract.ts",
+      "apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts",
+      "apps/api/src/tests/imob-property-capture-intake.test.ts",
+      "apps/web/src/components/agents/chatLauncherEngine.ts",
+      "apps/web/src/features/imob/structured/createImobStructuredForms.test.ts",
+      "apps/web/src/features/imob/structured/types.ts",
+      "apps/web/src/features/imob/structured/useImobFrontDoorForms.ts",
+      "docs/EVIDENCE_INDEX.md",
+      "ops/evidence/latest/imob-property-capture-context-2026-11-14/stage-commit-plan.md",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/README.md",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff.gz",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/results.json",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/source-hashes.json",
+      "packages/contracts/src/imobPropertyCapture.ts"
+    ],
+    "forcedPaths": [
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/adapter-confirmation-guards.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/adapter-withdrawal.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/contracts-typecheck.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/diff-check.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/forms-second.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/intake-reproduction.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/intake-withdrawal.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/forms-first.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/intake-first.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/web-build.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/review-correlation-regression.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/typecheck-final.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/typecheck-first.log"
+    ],
+    "normalCount": 16,
+    "forcedCount": 13,
+    "totalUnique": 29,
+    "excludedPreexisting": [
+      "CLAUDE.md",
+      "CODEX.md"
+    ],
+    "excludedLocalOriginals": [
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/intake-first.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/forms-first.log",
+      "ops/evidence/latest/imob-property-guided-draft-2026-11-14/web-build.log"
+    ],
+    "alreadyTrackedReusedEvidence": "Previous package logs and typecheck-focused.mjs exist in HEAD; do not add again",
+    "diff": {
+      "delivered": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff.gz",
+      "originalLocal": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff",
+      "originalSha256": "4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2",
+      "compression": "gzip level 9 mtime=0; decompressed bytes identical to raw git diff; no whitespace normalization"
+    },
+    "sanitizedLogs": [
+      {
+        "original": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/intake-first.log",
+        "delivered": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/intake-first.log",
+        "originalSha256": "c9e0fd041b5355ec2fbb16973cb6920b74058c50a9621caee718437859946267",
+        "deliveredSha256": "2a61fbcc9b20fba9de09a6caff07604c04787f4feda5416066d2e47d5dc32494",
+        "workspacePrefixReplacements": 2,
+        "linesWithTrailingSpacesRemoved": 2,
+        "treatment": "Replace exact workspace absolute path with [WORKSPACE]; remove trailing spaces/tabs only; preserve line order, test output, statuses, counts and failure text. Original untouched."
+      },
+      {
+        "original": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/forms-first.log",
+        "delivered": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/forms-first.log",
+        "originalSha256": "91b32694c54a98c92f1fda772a7b62aa4bd512fb148b4b266a8953b0e18eb9cc",
+        "deliveredSha256": "e9d3b869cddc883ceb5b6501e8c76044db759114dfcd97c96b22d77c024ff08d",
+        "workspacePrefixReplacements": 6,
+        "linesWithTrailingSpacesRemoved": 0,
+        "treatment": "Replace exact workspace absolute path with [WORKSPACE]; remove trailing spaces/tabs only; preserve line order, test output, statuses, counts and failure text. Original untouched."
+      },
+      {
+        "original": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/web-build.log",
+        "delivered": "ops/evidence/latest/imob-property-guided-draft-2026-11-14/published/web-build.log",
+        "originalSha256": "5a403c8e128e7a956f6e633aa09f7c3bf28884baeb62221a43321f9db9a89e7d",
+        "deliveredSha256": "85337d36b744a11dbb70063f0f4e6fbe4a87311580e82af80543db5115ea3d92",
+        "workspacePrefixReplacements": 1,
+        "linesWithTrailingSpacesRemoved": 1,
+        "treatment": "Replace exact workspace absolute path with [WORKSPACE]; remove trailing spaces/tabs only; preserve line order, test output, statuses, counts and failure text. Original untouched."
+      }
+    ],
+    "sensitivityScan": {
+      "scope": "10 code/test files, Evidence Index and current evidence artifacts; later package derivatives also checked",
+      "patterns": [
+        "private key headers",
+        "provider/GitHub/AWS token formats",
+        "Bearer values",
+        "long literal secret assignments",
+        "credentialed database URIs",
+        "email addresses",
+        "local home paths"
+      ],
+      "realCredentialFindings": 0,
+      "classifiedFixture": "OPENAI_API_KEY = synthetic-test-only in existing unchanged test helper; not a real key or added line",
+      "localPaths": "3 logs sanitized by exact replacement; originals excluded from delivery",
+      "limitations": "Pattern scan plus inspection; not a complete secrets audit"
+    },
+    "ciRegistration": {
+      "newTestFiles": false,
+      "manifest": "scripts/unit-tests-manifest.txt",
+      "lines": [
+        233,
+        280
+      ],
+      "script": "test:ci-unit-suite",
+      "workflow": ".github/workflows/ci.yml:820",
+      "filesAlreadyRegistered": true,
+      "ciFilesModified": false
+    },
+    "hashScope": "source-hashes.json now covers delivery paths except itself. Preexisting instruction hashes remain only in git.preexistingInstructionHashes. Raw original hashes are explicit provenance, not delivered artifact requirements.",
+    "testsOrBuildsRepeated": false,
+    "postAuthorization": "Check exact 29 staged paths, no CLAUDE/CODEX, staged bytes/hashes/references/sensitivity and git diff --cached --check; normal hooks, no bypass.",
+    "preparedDate": "2026-11-16",
+    "verification": {
+      "date": "2026-11-16",
+      "expectedHeadConfirmed": true,
+      "stageEmpty": true,
+      "normalPaths": 16,
+      "forcedPaths": 13,
+      "totalUnique": 29,
+      "sourceHashTargets": 28,
+      "newAndReusedReferencesResolved": true,
+      "originalLogsAndDiffPreserved": true,
+      "proposedCommandsMatchSelection": true,
+      "whitespaceCheckExitCode": 0,
+      "testsAndBuildsRepeated": false
+    }
+  }
+}

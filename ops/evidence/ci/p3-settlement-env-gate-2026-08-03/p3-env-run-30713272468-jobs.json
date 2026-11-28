@@ -1,0 +1,1817 @@
+[
+  {
+    "name": "ProviderBoundary",
+    "databaseId": 91404418078,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:08Z",
+    "completedAt": "2026-08-01T18:46:26Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418078",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check provider boundary enforcement",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ChatAgentOnboarding",
+    "databaseId": 91404418093,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:02Z",
+    "completedAt": "2026-08-01T18:46:16Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418093",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check chat agent onboarding gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "CiUnitSuite",
+    "databaseId": 91404418101,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:58Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418101",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Build @repo/db for CI unit suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Build @eiah/core for CI unit suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Run unit test suite (Grupo B, sem services)",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 16,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "build_validate",
+    "databaseId": 91404418103,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:11Z",
+    "completedAt": "2026-08-01T18:47:07Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418103",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup pnpm store path",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Cache pnpm store",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Enforce lockfile policy",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Run Lint",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Prepare workspace artifacts for tests",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Run action-runner MCP gate-ordering test",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Run Tests",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Check src/dist route parity",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Check ledger/bundle smoke contracts",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Check RBAC fail-closed anti-regression gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 16,
+        "name": "Check Redis fail-closed anti-regression gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Check GuardrailLedger anti-noop gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 18,
+        "name": "Check worker topology ownership",
+        "conclusion": "success"
+      },
+      {
+        "number": 19,
+        "name": "Build Web Application (Hardened)",
+        "conclusion": "success"
+      },
+      {
+        "number": 35,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 36,
+        "name": "Post Cache pnpm store",
+        "conclusion": "success"
+      },
+      {
+        "number": 37,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 38,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 39,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "PublicHealthContract",
+    "databaseId": 91404418104,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:08Z",
+    "completedAt": "2026-08-01T18:46:21Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418104",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Verify public health contract",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "EvidenceIndex",
+    "databaseId": 91404418106,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:02Z",
+    "completedAt": "2026-08-01T18:46:19Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418106",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check Public Product Taxonomy anti-drift",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check docs link integrity",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Check tracked ignored files hygiene",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Check IMOB Knowledge Base integrity",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Check reason-code canon consistency",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Check Evidence Index",
+        "conclusion": "success"
+      },
+      {
+        "number": 20,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 21,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 22,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 23,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "HelpPlaybookDrift",
+    "databaseId": 91404418115,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:22Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418115",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check Help Playbook anti-drift",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "AgentProtocolCompat",
+    "databaseId": 91404418124,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:16Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418124",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check Agent Protocol Compatibility",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check Agent Protocol Compatibility Matrix",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ChatEngineRegression",
+    "databaseId": 91404418125,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:23Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418125",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run chat launcher render-only gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Run chat runtime entrypoint debt gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Run presentation snapshot contract gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Run ARCH chat physical contracts gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Run chat vertical handoff snapshot test",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Run chat engine regression suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 20,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 21,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 22,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 23,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ImobFrontdoorRegression",
+    "databaseId": 91404418126,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:09Z",
+    "completedAt": "2026-08-01T18:46:24Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418126",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run IMOB front door regression gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ImobLeadContinuityScoped",
+    "databaseId": 91404418138,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:29Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418138",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run scoped IMOB lead continuity suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Run scoped web chat launcher suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Check evidence index after scoped suite",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 16,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P0CriticalityAudit",
+    "databaseId": 91404418142,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:25Z",
+    "completedAt": "2026-08-01T18:46:41Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418142",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Audit criticality coverage",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "AgentsPolicyFailClosed",
+    "databaseId": 91404418146,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:23Z",
+    "completedAt": "2026-08-01T18:46:41Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418146",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Verify interop policy fail-closed guard",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ReceiptCanonCompat",
+    "databaseId": 91404418147,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:02Z",
+    "completedAt": "2026-08-01T18:46:22Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418147",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check Receipt Canon Compatibility",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "SelfServiceDedupGuards",
+    "databaseId": 91404418151,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:25Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418151",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check self-service runtime graph",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check frontend duplication guard",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "RbacGuardrailRegression",
+    "databaseId": 91404418158,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:23Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418158",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run RBAC fail-closed gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Run GuardrailLedger anti-noop gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "OrphanTestsRegression",
+    "databaseId": 91404418162,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:04Z",
+    "completedAt": "2026-08-01T18:46:27Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418162",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Run runWorker governed failure boundary regression",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Run orphan tests gate unit test",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Run orphan tests regression gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Run IMOB static harness contract gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Run MCP contract drift gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 18,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 19,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 20,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 21,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "W4NonRegression",
+    "databaseId": 91404418169,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:03Z",
+    "completedAt": "2026-08-01T18:46:22Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418169",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check W4 Non Regression Gates",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "ImobFrontdoorMobileSmokeInformative",
+    "databaseId": 91404418183,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:10Z",
+    "completedAt": "2026-08-01T18:47:12Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418183",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Initialize containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Prepare artifact directory",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Build IMOB front door for preview",
+        "conclusion": "success"
+      },
+      {
+        "number": 9,
+        "name": "Start IMOB front door preview",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Healthcheck IMOB front door route",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Run informative mobile smoke",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Write healthcheck failure report",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 13,
+        "name": "Stop IMOB front door preview",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Upload informative mobile smoke artifacts",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Evaluate informative mobile smoke result",
+        "conclusion": "success"
+      },
+      {
+        "number": 27,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 28,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 29,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 30,
+        "name": "Stop containers",
+        "conclusion": "success"
+      },
+      {
+        "number": 31,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "SettlementContractDrift",
+    "databaseId": 91404418190,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:19Z",
+    "completedAt": "2026-08-01T18:46:38Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418190",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check Settlement Contract Drift",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P2AuditInterop",
+    "databaseId": 91404418203,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:30Z",
+    "completedAt": "2026-08-01T18:46:49Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418203",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Generate fresh P2 interop/HIGH evidence",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check P2 Audit/Interop gate",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P3SettlementSupportByEnv",
+    "databaseId": 91404418214,
+    "conclusion": "failure",
+    "startedAt": "2026-08-01T18:46:28Z",
+    "completedAt": "2026-08-01T18:46:51Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418214",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Generate P3 economy evidence",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check P3 evidence recency",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Check P3 settlement support matrix by env",
+        "conclusion": "failure"
+      },
+      {
+        "number": 14,
+        "name": "Post Setup Node.js",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 15,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 16,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P1CriticalChain",
+    "databaseId": 91404418222,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:25Z",
+    "completedAt": "2026-08-01T18:46:39Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418222",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check P1 critical governance chain",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P2HighGlobalCoverage",
+    "databaseId": 91404418226,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:18Z",
+    "completedAt": "2026-08-01T18:46:40Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418226",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check P2 high global coverage inventory",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check P2 HIGH evidence recency",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P1ReconciliationRecurring",
+    "databaseId": 91404418233,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:25Z",
+    "completedAt": "2026-08-01T18:46:46Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418233",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Check P1 recurring reconciliation stability",
+        "conclusion": "success"
+      },
+      {
+        "number": 10,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 11,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 12,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 13,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  {
+    "name": "P3EconomyHardening",
+    "databaseId": 91404418261,
+    "conclusion": "success",
+    "startedAt": "2026-08-01T18:46:24Z",
+    "completedAt": "2026-08-01T18:46:38Z",
+    "url": "https://github.com/5906375/EIAH/actions/runs/30713272468/job/91404418261",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "number": 2,
+        "name": "Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 3,
+        "name": "Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 4,
+        "name": "Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 5,
+        "name": "Install dependencies",
+        "conclusion": "success"
+      },
+      {
+        "number": 6,
+        "name": "Generate P3 economy evidence",
+        "conclusion": "success"
+      },
+      {
+        "number": 7,
+        "name": "Check P3 evidence recency",
+        "conclusion": "success"
+      },
+      {
+        "number": 8,
+        "name": "Check P3 economy hardening",
+        "conclusion": "success"
+      },
+      {
+        "number": 14,
+        "name": "Post Setup Node.js",
+        "conclusion": "success"
+      },
+      {
+        "number": 15,
+        "name": "Post Setup PNPM",
+        "conclusion": "success"
+      },
+      {
+        "number": 16,
+        "name": "Post Checkout repository",
+        "conclusion": "success"
+      },
+      {
+        "number": 17,
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+ok 1 - cadastro guiado: reprodução e variações propõem sem alterar formulário incompleto e recebem contexto mínimo
+  ---
+  duration_ms: 6.731687
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15.575193

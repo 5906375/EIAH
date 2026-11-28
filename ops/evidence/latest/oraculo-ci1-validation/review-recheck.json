@@ -1,0 +1,29 @@
+{
+  "executedAt": "2026-09-23T15:36:49.899751+00:00",
+  "results": [
+    {
+      "command": "node --import tsx --test scripts/tests/checkEvidenceIndex.test.ts",
+      "exitCode": 0,
+      "stdout": "TAP version 13\n# Subtest: rejects local and temporary evidenceRef locations\nok 1 - rejects local and temporary evidenceRef locations\n  ---\n  duration_ms: 1.140687\n  type: 'test'\n  ...\n# Subtest: allows repository paths, commit anchors, and remote HTTP artifacts\nok 2 - allows repository paths, commit anchors, and remote HTTP artifacts\n  ---\n  duration_ms: 0.158756\n  type: 'test'\n  ...\n# Subtest: checks artifact cells, not historical path mentions in proof prose\nok 3 - checks artifact cells, not historical path mentions in proof prose\n  ---\n  duration_ms: 0.627437\n  type: 'test'\n  ...\n# Subtest: still checks a missing artifact and explicit links inside proof prose\nok 4 - still checks a missing artifact and explicit links inside proof prose\n  ---\n  duration_ms: 0.20809\n  type: 'test'\n  ...\n# Subtest: unrecognized tables and references outside tables stay fail-closed\nok 5 - unrecognized tables and references outside tables stay fail-closed\n  ---\n  duration_ms: 0.193543\n  type: 'test'\n  ...\n# Subtest: table parser preserves pipes within code and resets between tables\nok 6 - table parser preserves pipes within code and resets between tables\n  ---\n  duration_ms: 0.160567\n  type: 'test'\n  ...\n# Subtest: explicit evidenceRef locations remain checked inside narrative cells\nok 7 - explicit evidenceRef locations remain checked inside narrative cells\n  ---\n  duration_ms: 0.153813\n  type: 'test'\n  ...\n# Subtest: commit-pinned references are checked against the named Git object\nok 8 - commit-pinned references are checked against the named Git object\n  ---\n  duration_ms: 19.376423\n  type: 'test'\n  ...\n1..8\n# tests 8\n# suites 0\n# pass 8\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 214.752027\n",
+      "stderr": ""
+    },
+    {
+      "command": "node --import tsx scripts/checkEvidenceIndex.ts",
+      "exitCode": 0,
+      "stdout": "{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 270878,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 605\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": "node --import tsx scripts/checkReasonCodeCanon.ts",
+      "exitCode": 0,
+      "stdout": "{\"ok\":true,\"check\":\"reason-code-canon-v1\",\"catalogSize\":122,\"targets\":[\"packages/core/src/reasons/reasonCatalog.ts\",\"docs/ops/reason-codes-catalog.md\",\"apps/api/src/services/imob/control/imobReasonCodeCatalog.ts\",\"apps/api/src/routes/imobCrmSchemas.ts\",\"apps/api/src/types/chatVerticalHandoffV2Contract.ts\",\"contracts/chat/vertical.reason_codes.v1.json\",\"apps/api/src/services/runGovernanceMetadata.ts\",\"scripts/tests/checkReasonCodeCanon.test.ts\"],\"enforcement\":\"informational-until-ruleset-ratification\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

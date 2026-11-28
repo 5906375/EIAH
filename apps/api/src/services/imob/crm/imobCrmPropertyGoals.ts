@@ -52,3 +52,16 @@ export function getImobCrmPropertyGoalLabel(value: string | null | undefined) {
   return IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === normalized)?.label ?? null;
 }
 
+
+/**
+ * Destinação inicial do ATIVO (imóvel/unidade). Fonte única da regra:
+ * `@eiah/contracts` (imobAssetDestination). Diferente de `ImobCrmPropertyGoal`
+ * (objetivo de lead/busca, que continua com 3 valores), a destinação inclui
+ * permuta, uso próprio, manutenção e sem destinação. `null` = não informada.
+ */
+export {
+  IMOB_ASSET_DESTINATION_OPTIONS as IMOB_CRM_PROPERTY_DESTINATION_OPTIONS,
+  normalizeImobAssetDestination as normalizeImobCrmPropertyDestination,
+  getImobAssetDestinationLabel as getImobCrmPropertyDestinationLabel,
+} from "@eiah/contracts";
+export type { ImobAssetDestination as ImobCrmPropertyDestination } from "@eiah/contracts";

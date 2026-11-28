@@ -1,0 +1,446 @@
+{
+  "tenantId": "sim-tenant",
+  "workspaceId": "sim-workspace",
+  "mode": "SIMULATION",
+  "evaluatedAt": "2026-09-16T12:00:00.000Z",
+  "policy": "sim-return-basic.v1",
+  "intent": {
+    "tenantId": "sim-tenant",
+    "workspaceId": "sim-workspace",
+    "mode": "SIMULATION",
+    "schemaVersion": "oraculo.gate-intent.v1",
+    "intentId": "sim-intent",
+    "operationId": "sim-op",
+    "visitId": "sim-visit",
+    "locationRef": {
+      "kind": "LOCATION",
+      "id": "sim-yard",
+      "revision": 1
+    },
+    "direction": "IN",
+    "expectedRevision": 1,
+    "credentialRefs": [
+      {
+        "credentialId": "sim-credential-0",
+        "revision": 1,
+        "contentHash": "sha256:8af434ca3653b8055c879f9cbd9256171767b5cc227c00a0f07fd148e7837c2d"
+      },
+      {
+        "credentialId": "sim-credential-1",
+        "revision": 1,
+        "contentHash": "sha256:6ff91f0ef1c80d4dc34c559000ee3cd7f07602881a9cf4fa2ff7d999b1461ab6"
+      },
+      {
+        "credentialId": "sim-credential-2",
+        "revision": 1,
+        "contentHash": "sha256:8ca6e2fc95cfe9cc221e5cb61770d74fc5edac0d44d601cb74ba12a57f4cfa6a"
+      }
+    ],
+    "actorRef": {
+      "id": "sim-requester",
+      "revision": 1
+    },
+    "receivedAt": "2026-09-16T12:00:00.000Z"
+  },
+  "visit": {
+    "tenantId": "sim-tenant",
+    "workspaceId": "sim-workspace",
+    "caseId": "sim-case",
+    "visitId": "sim-visit",
+    "operationId": "sim-op",
+    "revision": 1,
+    "state": "NOT_ENTERED",
+    "locationRef": {
+      "kind": "LOCATION",
+      "id": "sim-yard",
+      "revision": 1
+    },
+    "driverRef": {
+      "kind": "DRIVER",
+      "id": "sim-subject-0",
+      "revision": 1
+    },
+    "vehicleRef": {
+      "kind": "VEHICLE",
+      "id": "sim-subject-1",
+      "revision": 1
+    },
+    "companyRef": {
+      "kind": "COMPANY",
+      "id": "sim-subject-2",
+      "revision": 1
+    },
+    "containerRef": {
+      "kind": "CONTAINER",
+      "id": "sim-container",
+      "revision": 1
+    }
+  },
+  "credentials": [
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-content.v1",
+      "credentialId": "sim-credential-0",
+      "revision": 1,
+      "purpose": "SIMULATED_EMPTY_RETURN",
+      "credentialType": "DRIVER_LICENSE_CHECK",
+      "issuerRef": {
+        "kind": "SOURCE",
+        "id": "sim-driver-source",
+        "revision": 1
+      },
+      "subjectRef": {
+        "kind": "DRIVER",
+        "id": "sim-subject-0",
+        "revision": 1
+      },
+      "validity": {
+        "kind": "INTERVAL",
+        "startsAt": "2026-09-16T11:00:00.000Z",
+        "endsAt": "2026-09-16T21:00:00.000Z"
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-0",
+            "sourceId": "sim-driver-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:a7dd18725d2037729ddd727c43a8ef53c77c90868ac8bba4a22d163c393958ac"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "contentHash": "sha256:8af434ca3653b8055c879f9cbd9256171767b5cc227c00a0f07fd148e7837c2d",
+      "claims": {
+        "documentRef": {
+          "kind": "DOCUMENT",
+          "id": "sim-doc-0",
+          "revision": 1
+        },
+        "verificationResult": "VERIFIED",
+        "authorizedActivity": "SIMULATED_YARD_DRIVING",
+        "verifiedAt": "2026-09-16T12:00:00.000Z"
+      }
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-content.v1",
+      "credentialId": "sim-credential-1",
+      "revision": 1,
+      "purpose": "SIMULATED_EMPTY_RETURN",
+      "credentialType": "VEHICLE_INSPECTION",
+      "issuerRef": {
+        "kind": "SOURCE",
+        "id": "sim-inspection-source",
+        "revision": 1
+      },
+      "subjectRef": {
+        "kind": "VEHICLE",
+        "id": "sim-subject-1",
+        "revision": 1
+      },
+      "validity": {
+        "kind": "INTERVAL",
+        "startsAt": "2026-09-16T11:00:00.000Z",
+        "endsAt": "2026-09-16T21:00:00.000Z"
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-1",
+            "sourceId": "sim-inspection-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:26eb2a6a852cd65d3d90b94078b9568197cf4622b4c2322ca303b60634973f1e"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "contentHash": "sha256:6ff91f0ef1c80d4dc34c559000ee3cd7f07602881a9cf4fa2ff7d999b1461ab6",
+      "claims": {
+        "inspectedAt": "2026-09-16T12:00:00.000Z",
+        "inspectionResult": "APPROVED",
+        "criteriaRef": {
+          "kind": "CRITERIA",
+          "id": "sim-empty-return-criteria",
+          "revision": 1
+        },
+        "inspectorRef": {
+          "kind": "SOURCE",
+          "id": "sim-inspection-source",
+          "revision": 1
+        }
+      }
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-content.v1",
+      "credentialId": "sim-credential-2",
+      "revision": 1,
+      "purpose": "SIMULATED_EMPTY_RETURN",
+      "credentialType": "COMPANY_LICENSE_CHECK",
+      "issuerRef": {
+        "kind": "SOURCE",
+        "id": "sim-company-source",
+        "revision": 1
+      },
+      "subjectRef": {
+        "kind": "COMPANY",
+        "id": "sim-subject-2",
+        "revision": 1
+      },
+      "validity": {
+        "kind": "INTERVAL",
+        "startsAt": "2026-09-16T11:00:00.000Z",
+        "endsAt": "2026-09-16T21:00:00.000Z"
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-2",
+            "sourceId": "sim-company-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:ec409569584ac58b7109ec35832f100854e2933a6d5de022ba9944c1d90ca1f7"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "contentHash": "sha256:8ca6e2fc95cfe9cc221e5cb61770d74fc5edac0d44d601cb74ba12a57f4cfa6a",
+      "claims": {
+        "documentRef": {
+          "kind": "DOCUMENT",
+          "id": "sim-doc-2",
+          "revision": 1
+        },
+        "verificationResult": "VERIFIED",
+        "permittedActivity": "SIMULATED_EMPTY_RETURN",
+        "verifiedAt": "2026-09-16T12:00:00.000Z"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-status-observation.v1",
+      "observationId": "sim-observation-0",
+      "credentialRef": {
+        "credentialId": "sim-credential-0",
+        "revision": 1,
+        "contentHash": "sha256:8af434ca3653b8055c879f9cbd9256171767b5cc227c00a0f07fd148e7837c2d"
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-driver-source",
+        "revision": 1
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-0",
+            "sourceId": "sim-driver-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:a7dd18725d2037729ddd727c43a8ef53c77c90868ac8bba4a22d163c393958ac"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "declaredStatus": "ACTIVE",
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "freshnessPolicyRef": {
+        "policyId": "sim-return-basic.v1",
+        "policyVersion": "1"
+      }
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-status-observation.v1",
+      "observationId": "sim-observation-1",
+      "credentialRef": {
+        "credentialId": "sim-credential-1",
+        "revision": 1,
+        "contentHash": "sha256:6ff91f0ef1c80d4dc34c559000ee3cd7f07602881a9cf4fa2ff7d999b1461ab6"
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-inspection-source",
+        "revision": 1
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-1",
+            "sourceId": "sim-inspection-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:26eb2a6a852cd65d3d90b94078b9568197cf4622b4c2322ca303b60634973f1e"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "declaredStatus": "ACTIVE",
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "freshnessPolicyRef": {
+        "policyId": "sim-return-basic.v1",
+        "policyVersion": "1"
+      }
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "mode": "SIMULATION",
+      "schemaVersion": "oraculo.credential-status-observation.v1",
+      "observationId": "sim-observation-2",
+      "credentialRef": {
+        "credentialId": "sim-credential-2",
+        "revision": 1,
+        "contentHash": "sha256:8ca6e2fc95cfe9cc221e5cb61770d74fc5edac0d44d601cb74ba12a57f4cfa6a"
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-company-source",
+        "revision": 1
+      },
+      "provenance": {
+        "schemaVersion": "provenance.v1",
+        "sourceSnapshots": [
+          {
+            "schemaVersion": "source-snapshot-ref.v1",
+            "snapshotId": "sim-snapshot-2",
+            "sourceId": "sim-company-source",
+            "sourceRole": "CASE_INPUT",
+            "authorityClass": "PRIMARY",
+            "capturedAt": "2026-09-16T12:00:00.000Z",
+            "sourceVersion": "1",
+            "contentHash": "sha256:ec409569584ac58b7109ec35832f100854e2933a6d5de022ba9944c1d90ca1f7"
+          }
+        ],
+        "derivation": {
+          "method": "DIRECT",
+          "methodVersion": "sim.v1",
+          "inputFactIds": [],
+          "authorityDecisionIds": []
+        }
+      },
+      "declaredStatus": "ACTIVE",
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "freshnessPolicyRef": {
+        "policyId": "sim-return-basic.v1",
+        "policyVersion": "1"
+      }
+    }
+  ],
+  "origins": [
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "credentialId": "sim-credential-0",
+      "credentialRevision": 1,
+      "originRef": {
+        "kind": "DOCUMENT",
+        "id": "sim-doc-0",
+        "revision": 1
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-driver-source",
+        "revision": 1
+      },
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "credentialId": "sim-credential-1",
+      "credentialRevision": 1,
+      "originRef": {
+        "kind": "DOCUMENT",
+        "id": "sim-doc-1",
+        "revision": 1
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-inspection-source",
+        "revision": 1
+      },
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "status": "ACTIVE"
+    },
+    {
+      "tenantId": "sim-tenant",
+      "workspaceId": "sim-workspace",
+      "credentialId": "sim-credential-2",
+      "credentialRevision": 1,
+      "originRef": {
+        "kind": "DOCUMENT",
+        "id": "sim-doc-2",
+        "revision": 1
+      },
+      "sourceRef": {
+        "kind": "SOURCE",
+        "id": "sim-company-source",
+        "revision": 1
+      },
+      "observedAt": "2026-09-16T12:00:00.000Z",
+      "status": "ACTIVE"
+    }
+  ]
+}

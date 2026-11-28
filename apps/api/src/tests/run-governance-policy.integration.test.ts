@@ -75,9 +75,8 @@ after(async () => {
 
   await prismaGlobal.runEvent.deleteMany({ where: { runId } });
   await prismaGlobal.tenantActionPolicy.deleteMany({ where: { tenantId } });
-  await prismaGlobal.run.deleteMany({ where: { id: runId } });
-  await prismaGlobal.workspace.deleteMany({ where: { id: workspaceId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  // Run/tenant/workspace are intentionally retained because governed failure
+  // evidence is append-only and must not be deleted by integration cleanup.
   await closeTenantPolicyStoreResources();
   await closeRunEventStream();
   await closeRunEventsTransport();
@@ -157,19 +156,17 @@ test("worker evaluates Action Policy from TenantPolicyStore and persists the dec
     action: canonicalAction,
     policyVersion: "v11",
     reasonCode: "ACTION_POLICY_DISABLED",
-    enforcementApplied: false,
+    enforcementApplied: true,
   });
 
   const persistedRun = await prismaGlobal.run.findUniqueOrThrow({
     where: { id: runId },
-    select: { status: true },
+    select: { status: true, errorCode: true },
   });
-  assert.equal(persistedRun.status, "running", "Action Policy remains observational in A0b-R");
+  assert.equal(persistedRun.status, "error");
+  assert.equal(persistedRun.errorCode, "ACTION_POLICY_DISABLED");
 
-  assert.equal(finalizedMetadata.length, 1);
-  assert.equal(finalizedMetadata[0]?.actionPolicyDecision?.decision, "denied");
-  assert.equal(finalizedMetadata[0]?.governanceContext?.policyDecision, "not_evaluated");
-  assert.equal(JSON.stringify(finalizedMetadata[0]).includes("malicious.action"), false);
+  assert.equal(finalizedMetadata.length, 0);
 });
 
 test("worker does not persist events for a valid runId with mismatched workspace scope", async () => {

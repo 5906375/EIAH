@@ -12,6 +12,12 @@ import {
   PRE_DUIMP_PILOT_ACCESS_SCOPE,
 } from "../types/preDuimpAccessContract";
 
+import {
+  authorizePreDuimpAction,
+  PreDuimpActionRejectedError,
+  resolvePreDuimpServerAuthoritySnapshot,
+} from "../services/logistica/control/preDuimpActionCatalog";
+
 const IDENTITY = { tenantId: "tenant-a", workspaceId: "workspace-a" };
 const INSTALLATION = {
   ...IDENTITY,
@@ -237,3 +243,47 @@ test("session context projects the canonical capability and the POST adapter res
   assert.match(adapterSource, /deps\.resolveAccess\(\{/);
   assert.match(adapterSource, /actionDecision: scopeDecision/);
 });
+
+// Compare capability and final create authorization using the same installation facts.
+// Runtime, workspace pilot and action policy remain valid so only installation status varies.
+for (const status of ["active", "ACTIVE", " active ", "inactive", "suspended"] as const) {
+  test(`PRE_DUIMP installation status parity: ${JSON.stringify(status)}`, async () => {
+    const installation = { ...INSTALLATION, status };
+    const access = await createPreDuimpAccessResolver(
+      createDeps({ findInstallation: async () => installation }),
+    )({ identity: IDENTITY });
+    const authority = resolvePreDuimpServerAuthoritySnapshot({
+      requester: IDENTITY,
+      runtimeEnabled: access.runtimeEnabled,
+      pilotAccessAllowed: access.pilotDecision.allowed,
+      pilotAccessReasonCode: access.pilotAccessReasonCode,
+      grantedScopes: access.actionDecision.allowed ? [PRE_DUIMP_CREATE_SCOPE] : [],
+      installation: access.installation,
+      billingPastDue: false,
+      gracePeriodActive: false,
+      hitlApproval: null,
+    });
+
+    assert.equal(authority.installation, access.installation);
+    assert.equal(access.capability.allowed, status === "active");
+    let authorized = false;
+    try {
+      const result = authorizePreDuimpAction({
+        action: PRE_DUIMP_CREATE_SCOPE,
+        context: { ...IDENTITY, verticalId: "log", recordType: "log.comex_duimp_context",
+          recordId: "status-parity-synthetic" },
+      }, authority);
+      authorized = true;
+      assert.equal(result.context.mode, "shadow");
+      assert.equal(result.context.externalTransmissionAllowed, false);
+    } catch (error) {
+      assert.ok(error instanceof PreDuimpActionRejectedError);
+      assert.equal(error.reasonCode, "PRE_DUIMP_ENTITLEMENT_DENIED");
+      assert.equal(error.subreason, "status_denied");
+      assert.equal(error.context.status, status === "suspended" ? "suspended" : "inactive");
+      assert.equal(error.context.gateReason, status === "suspended" ? "suspended_block" : "inactive_block");
+    }
+    assert.equal(authorized, access.capability.allowed,
+      `Final authorization and capability disagree for installation status ${JSON.stringify(status)}`);
+  });
+}

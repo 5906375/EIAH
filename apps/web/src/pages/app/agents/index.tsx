@@ -876,7 +876,13 @@ const AgentsPage: React.FC = () => {
   }, [location.search]);
   const launcherDomainHint = useMemo(() => {
     const params = new URLSearchParams(location.search);
-    return params.get("domain")?.trim().toLowerCase() ?? null;
+    // `vertical` is a navigation intent for the engine; legacy `domain` remains compatible.
+    return (params.get("vertical") ?? params.get("domain"))?.trim().toLowerCase() ?? null;
+  }, [location.search]);
+  // Intenção de entrada (menu Pré-DUIMP / redirecionamento legado): SÓ o valor allowlisted é transportado; nada mais da URL vira intenção.
+  const launcherEntryHint = useMemo(() => {
+    const value = new URLSearchParams(location.search).get("entry")?.trim().toLowerCase();
+    return value === "pre_duimp" ? value : null;
   }, [location.search]);
   const showImobFixturePreview = useMemo(
     () => shouldRenderImobPilot2FixturePreview(location.search),
@@ -1020,11 +1026,12 @@ const AgentsPage: React.FC = () => {
 
   return (
     <>
-      <div className="glass-panel p-8">
-        <div className="grid gap-6 lg:grid-cols-1 lg:items-start">
-          <div className="space-y-2">
-            <div className="mt-6" id="chat-agent-launcher">
+      <div className="front-door-page min-w-0">
+        <div className="grid min-w-0 lg:grid-cols-1 lg:items-start">
+          <div className="min-w-0 space-y-2">
+            <div className="min-w-0" id="chat-agent-launcher">
               <ChatAgentLauncher
+                historyScope="conversation"
                 activeAgentId={agentId}
                 onAgentChangeRequest={setAgentId}
                 onPlaybookClick={agentId ? handlePlaybookClick : undefined}
@@ -1041,6 +1048,7 @@ const AgentsPage: React.FC = () => {
                   topic: launcherTopic,
                   planHint: launcherPlanHint,
                   domainHint: launcherDomainHint,
+                  entryHint: launcherEntryHint,
                 }}
               />
             </div>

@@ -4,6 +4,7 @@ import type {
   ImobCommercialHomeWidget,
   ImobResolvedBackingSpecialist,
   ImobPresentationWidget,
+  ImobTransversalCapability,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "./propertyTypes";
 import { ImobContractIntakeDraftCard } from "./ImobContractIntakeDraftCard";
@@ -18,6 +19,8 @@ type WidgetAction = {
 type Props = {
   widget: ImobPresentationWidget;
   onAction: (action: WidgetAction) => void;
+  /** Retorno à conversa de origem informado pela página hospedeira (somente navegação). Sem ele, só o Front Door é reconhecido. */
+  returnTo?: string;
 };
 
 function formatPriorityCaseDetail(item: ImobCase) {
@@ -32,30 +35,161 @@ function getSpecialistBadgeTone(urgency?: ImobResolvedBackingSpecialist["urgency
   return "text-muted-foreground border-white/10 bg-black/10";
 }
 
+/** Apenas apresenta o estado já resolvido pelo backend; sem regra de elegibilidade própria. Valor desconhecido = não verificado. */
+function normalizeSpecialistAvailability(availability?: string | null): "available" | "unavailable" | "unverified" {
+  return availability === "available" || availability === "unavailable" ? availability : "unverified";
+}
+
+function getSpecialistAvailabilityNote(availability: "available" | "unavailable" | "unverified") {
+  if (availability === "available") return null;
+  if (availability === "unavailable") return "Indisponível neste workspace. Este apoio não será acionado.";
+  return "Disponibilidade não verificada. Este apoio não será acionado.";
+}
+
 function renderSpecialists(specialists: ImobResolvedBackingSpecialist[]) {
   if (!specialists.length) return null;
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Apoios contextuais</p>
-      {specialists.map((item) => (
-        <div key={item.key} className="rounded-lg border border-white/10 bg-black/20 p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs font-medium text-foreground">{item.primaryAgentId}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{item.responsibility}</p>
+      {specialists.map((item) => {
+        const availability = normalizeSpecialistAvailability(item.availability);
+        return (
+          <div key={item.key} data-availability={availability} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">{item.primaryAgentId}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">{item.responsibility}</p>
+              </div>
+              {item.urgency ? (
+                <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${getSpecialistBadgeTone(item.urgency)}`}>
+                  {item.urgency}
+                </span>
+              ) : null}
             </div>
-            {item.urgency ? (
-              <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${getSpecialistBadgeTone(item.urgency)}`}>
-                {item.urgency}
-              </span>
+            <p className="mt-2 text-xs text-foreground/90">{item.rationale}</p>
+            {availability === "available" && item.suggestedAction ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Ação sugerida: {item.suggestedAction}</p>
+            ) : null}
+            {getSpecialistAvailabilityNote(availability) ? (
+              <p className="mt-2 text-[11px] text-amber-200/90">{getSpecialistAvailabilityNote(availability)}</p>
             ) : null}
           </div>
-          <p className="mt-2 text-xs text-foreground/90">{item.rationale}</p>
-          {item.suggestedAction ? (
-            <p className="mt-2 text-[11px] text-muted-foreground">Ação sugerida: {item.suggestedAction}</p>
-          ) : null}
-        </div>
-      ))}
+        );
+      })}
+    </div>
+  );
+}
+
+const TRANSVERSAL_STATE_LABEL = {
+  habilitado: "Habilitado neste workspace",
+  habilitavel: "Habilitável (ainda não habilitado)",
+  indisponivel: "Indisponível neste workspace",
+  nao_verificado: "Não verificado",
+} as const;
+
+/** Único destino aceito para os detalhes comerciais de um agente: o Self-service, identificando item e workspace. */
+const SELF_SERVICE_DETAILS_PREFIX = "/self-service?marketplaceItem=";
+
+export function isSelfServiceDetailsPath(path: unknown): path is string {
+  return typeof path === "string" && path.startsWith(SELF_SERVICE_DETAILS_PREFIX) && !path.includes("//") && !/[\s<>"']/.test(path);
+}
+
+/**
+ * Acrescenta o retorno à conversa atual (somente navegação; nunca vale como autoridade). Este componente vive dentro do Front Door e só
+ * reconhece o próprio Front Door como destino; uma página hospedeira de outra superfície informa o seu retorno em `hostReturnTo`.
+ */
+export function withImobReturnTo(path: string, hostReturnTo?: string): string {
+  if (typeof window === "undefined") return path;
+  const here = hostReturnTo || `${window.location.pathname}${window.location.search}`;
+  return hostReturnTo || /^\/app\/chat(?:[?#]|$)/.test(here) ? `${path}&returnTo=${encodeURIComponent(here)}` : path;
+}
+
+/**
+ * Apenas apresenta o que o backend descobriu (somente leitura). Estado desconhecido vale "não verificado" e autoridade
+ * ausente ou desconhecida vale "somente consulta". Com autoridade (resolvida pelo servidor) o link leva aos detalhes
+ * comerciais do agente no Self-service; sem autoridade o link é só de consulta. Nenhum dos dois contrata: a assinatura
+ * é um passo separado e a API reaplica a autoridade. Esta tela não contrata, não habilita e não solicita aprovação.
+ * Habilitar um AGENTE não é convidar uma PESSOA para o workspace.
+ */
+function renderTransversalCapabilities(items?: ImobTransversalCapability[], returnTo?: string) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Especialistas transversais</p>
+      {items.map((item) => {
+        const state = item.state in TRANSVERSAL_STATE_LABEL ? item.state : "nao_verificado";
+        const authorized = item.authority?.status === "contratacao_autorizada";
+        const next = item.nextAction;
+        const detailsHref = state !== "habilitavel"
+          ? null
+          : authorized && next?.kind === "open_commercial_details" && isSelfServiceDetailsPath(next.path)
+            ? next.path
+            : !authorized && next?.kind === "request_approval" && isSelfServiceDetailsPath(next.detailsPath)
+              ? next.detailsPath
+              : null;
+        const agentId = item.provider?.agentId ?? "o agente";
+        const declared = (item.provider?.declaredCapabilities ?? []).slice(0, 3);
+        const recipes = item.recipes ?? { status: "nao_aplicavel", items: [] };
+        return (
+          <div key={item.need.needId} data-capability-state={state} data-capability-authority={authorized ? "contratacao_autorizada" : "somente_consulta"} data-capability-domain={item.need.domain} className="rounded-lg border border-white/10 bg-black/20 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-foreground">{item.need.label ?? `${item.need.domain} · ${item.need.capability}`}</p>
+                {item.provider ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">{item.provider.name} ({item.provider.agentId})</p>
+                ) : null}
+              </div>
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                {TRANSVERSAL_STATE_LABEL[state]}
+              </span>
+            </div>
+            {declared.length > 0 ? (
+              <ul className="mt-2 list-disc pl-4 text-[11px] text-muted-foreground">
+                {declared.map((entry) => <li key={entry}>{entry}</li>)}
+              </ul>
+            ) : null}
+            {recipes.status === "ok" ? (
+              recipes.items.length > 0 ? (
+                <div className="mt-2 text-[11px] text-foreground/90">
+                  <p>Modelos homologados neste workspace:</p>
+                  <ul className="list-disc pl-4">
+                    {recipes.items.slice(0, 3).map((recipe) => <li key={recipe.id}>{recipe.title}</li>)}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-2 text-[11px] text-muted-foreground">Nenhum modelo homologado disponível para este workspace.</p>
+              )
+            ) : recipes.status === "nao_verificado" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Não foi possível consultar os modelos homologados agora. Nenhum modelo está sendo tratado como homologado.</p>
+            ) : null}
+            {state === "habilitavel" && authorized ? (
+              <div className="mt-2 text-[11px]">
+                {(item.enablement?.conditions ?? []).slice(0, 4).map((condition) => (
+                  <p key={condition} className="text-muted-foreground">{condition}</p>
+                ))}
+                {detailsHref ? (
+                  <a href={withImobReturnTo(detailsHref, returnTo)} className="mt-2 inline-block underline text-foreground">Ver os detalhes comerciais de {agentId} no Self-service</a>
+                ) : null}
+                <p className="mt-1 text-muted-foreground">Você tem autoridade comercial neste workspace. Nada foi contratado: a assinatura é um passo separado, que só acontece com a sua confirmação no Self-service. Habilitar um agente não é convidar uma pessoa para o workspace.</p>
+              </div>
+            ) : state === "habilitavel" ? (
+              <div className="mt-2 text-[11px] text-muted-foreground">
+                <p>Recomendação: este agente pode ser habilitado neste workspace, mas ainda não está contratado.</p>
+                <p className="mt-1">A decisão de contratar cabe a um responsável comercial autorizado deste workspace. Você pode consultar os detalhes, mas não contratar. Esta conversa não contrata nem habilita agentes.</p>
+                {detailsHref ? (
+                  <a href={withImobReturnTo(detailsHref, returnTo)} className="mt-2 inline-block underline text-foreground">Ver os detalhes de {agentId} (somente consulta)</a>
+                ) : null}
+              </div>
+            ) : state === "habilitado" ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">Agente habilitado. O encaminhamento operacional ainda não está disponível nesta versão.</p>
+            ) : state === "indisponivel" ? (
+              <p className="mt-2 text-[11px] text-amber-200/90">Esta capacidade não pode ser acionada neste workspace.</p>
+            ) : (
+              <p className="mt-2 text-[11px] text-amber-200/90">Não foi possível verificar esta capacidade. Nenhuma ação é oferecida.</p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -81,7 +215,7 @@ export function buildImobCommercialHomeWidget(params: {
   };
 }
 
-export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
+export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction, returnTo }) => {
   if (widget.kind === "commercial_home") {
     return (
       <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
@@ -182,6 +316,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
           </div>
         ) : null}
         {renderSpecialists(widget.specialists)}
+        {renderTransversalCapabilities(widget.transversalCapabilities, returnTo)}
       </div>
     );
   }
@@ -221,6 +356,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
       {widget.blocker ? <p className="mt-3 text-xs text-rose-200">Bloqueio: {widget.blocker}</p> : null}
       {widget.nextStep ? <p className="mt-2 text-xs text-muted-foreground">Próximo passo: {widget.nextStep}</p> : null}
       {renderSpecialists(widget.specialists)}
+      {renderTransversalCapabilities(widget.transversalCapabilities, returnTo)}
     </div>
   );
 };

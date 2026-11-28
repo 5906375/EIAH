@@ -1,0 +1,3 @@
+Linha entre painel e mensagens: borda de 1px branca com 13% de opacidade na lateral direita do painel em desktop (>=1024px), com respiro interno de 0,75rem. Acompanha painel expandido/recolhido. Layout empilhado usa borda inferior e respiro de 0,5rem. Não muda largura da conversa ou lógica dos controles.
+
+QA Chromium com conversa longa e API sintéticas em 320,390,1024,1440: verifica borda vertical desktop/horizontal mobile, navegação, Nova conversa, ausência de lista salva, roda/teclado e ausência de overflow. Logs/capturas em browser.log, browser-results.json e scroll-*.png. Status parcial: CI/deploy pendentes.

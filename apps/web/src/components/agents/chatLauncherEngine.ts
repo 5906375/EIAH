@@ -3,12 +3,51 @@ import {
   apiQueryEiahHelp,
   type Agent,
   type EiahHelpQueryHit,
+  type ImobThreadConversationState,
 } from "@/lib/api";
+import { hasPendingProposalReview, resolveProposalTurnContinuation } from "@/pages/app/imob/proposalForm";
 import {
   fetchImobRuntimeShadowState,
   type ImobRuntimeShadowEngineRequest,
   type ImobRuntimeShadowFetchResult,
 } from "@/features/imob/imobRuntimeShadowClient";
+import type { ChatVerticalHandoffResult } from "@/lib/api";
+import {
+  resolveVerticalActivationStep,
+  type VerticalActivationRequest,
+  type VerticalActivationSnapshot,
+} from "@/components/agents/verticalActivationEngine";
+import { describeAccessCreationHint, isAccessCreationRequest } from "@/components/agents/frontDoorAccessEngine";
+import {
+  isInterpretableBilling,
+  resolveActivationLeaveStep,
+  resolveFrontDoorBillingStep,
+  type ActivationPending,
+  type FrontDoorBillingRequest,
+  type FrontDoorBillingSnapshot,
+} from "@/components/agents/frontDoorBillingEngine";
+import type { FrontDoorIntakeRequest } from "@/components/agents/frontDoorIntakeEngine";
+import {
+  resolveNoticeAckStep,
+  type VerticalAccessNoticeAckRequest,
+  type VerticalAccessNoticeSnapshot,
+} from "@/components/agents/verticalAccessNoticeEngine";
+import {
+  resolveVerticalApprovalChatStep,
+  type VerticalApprovalChatRequest,
+  type VerticalApprovalChatSnapshot,
+} from "@/components/agents/verticalApprovalChatEngine";
+import {
+  canonicalVerticalId,
+  IMOB_CRM_HANDOFF_REQUEST,
+  isImobOperationalRequest,
+  resolveExplicitVerticalHandoffRequest,
+  resolveLogisticaEntryRequest,
+  type VerticalHandoffRequest,
+} from "@/components/agents/verticalHandoffEngine";
+import { isPreDuimpEntryRequest } from "@/components/agents/preDuimpConversationEngine";
+import { isImobManagementRequest } from "@/components/agents/imobManagementConversationEngine";
+import { isImobHistoryRequest } from "@/components/agents/imobHistoryConversationEngine";
 import type { RoleProfile } from "@/lib/roles";
 import { PRICING_PLANS, quotePlan } from "@/config/pricing";
 import {
@@ -235,6 +274,8 @@ export type SpecialistDecision = {
 export type LauncherLocalDecision = {
   kind: string;
   shouldCreateRun: boolean;
+  /** O adapter da vertical já apresentou o turno; não duplicar resposta nem criar run. */
+  turnConsumed?: boolean;
   content?: string;
   resolvedQuickReplies?: string[];
   journeyContext?: {
@@ -260,6 +301,33 @@ export type LauncherLocalDecision = {
   };
   agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
   conversationState?: ConversationState | null;
+  /** Pedido de handoff para uma vertical, avaliado no servidor antes de exibir. */
+  verticalHandoffRequest?: VerticalHandoffRequest;
+  verticalHandoff?: ChatVerticalHandoffResult;
+  verticalHandoffForwardInput?: string;
+  verticalHandoffSessionSync?: "synced" | "failed";
+  /** Ativação de vertical pela conversa: proposta, confirmação explícita ou cancelamento (ADR-010, etapa F). */
+  verticalActivationRequest?: VerticalActivationRequest;
+  verticalActivation?: VerticalActivationSnapshot;
+  /** Decisão de liberação pelo administrador EIAH na conversa (ADR-011 §2.3). */
+  verticalApprovalChatRequest?: VerticalApprovalChatRequest;
+  verticalApprovalChat?: VerticalApprovalChatSnapshot;
+  /** "Entendi" de um aviso da liberação EIAH na conversa (ADR-011 §2.4). */
+  verticalAccessNoticeAck?: VerticalAccessNoticeAckRequest;
+  verticalAccessNotice?: VerticalAccessNoticeSnapshot;
+  /** Abre o cartão "Criar acesso" na conversa (ADR-011 §2.7). */
+  frontDoorAccessCard?: boolean;
+  /** Abre o cartão do Pré-DUIMP (modo shadow) na conversa; o acesso é decidido pelo servidor no próprio cartão. */
+  preDuimpCard?: boolean;
+  /** Abre o cartão "Gestão IMOB" (leitura e ações já existentes do IMOB) NA conversa; a API autoriza. */
+  imobManagementCard?: boolean;
+  /** Abre o cartão "Histórico IMOB" (chat IMOB persistido) NA conversa; a API autoriza. */
+  imobHistoryCard?: boolean;
+  /** Conta de billing e primeira mensalidade simulada antes do pedido de liberação (ADR-011 §2.8). */
+  frontDoorBillingRequest?: FrontDoorBillingRequest;
+  frontDoorBilling?: FrontDoorBillingSnapshot;
+  /** Pergunta livre durante a escolha de plano: interpretada no contexto pelo runtime central (engine de intake), sem efeito. */
+  frontDoorIntakeRequest?: FrontDoorIntakeRequest;
 };
 
 export function fallbackHelpMarkdown() {
@@ -297,7 +365,7 @@ export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
   roleProfile?: RoleProfile | null;
-  activeDomain?: "core" | "imob" | null;
+  activeDomain?: "core" | "imob" | "logistica" | null;
   installedProducts?: string[] | null;
   entitlements?: {
     REAL_ESTATE_CORE?: boolean;
@@ -307,7 +375,7 @@ export type LauncherAccessContext = {
 
 type ResolvedEiahJourneyContract = {
   roleProfile: NonNullable<LauncherAccessContext["roleProfile"]>;
-  activeDomain: "core" | "imob";
+  activeDomain: "core" | "imob" | "logistica";
   frontDoorSurface: string;
   frontDoorLabel: string;
   firstStepLabel: string;
@@ -2016,6 +2084,43 @@ export async function resolveLauncherProposalDecision(params: {
   }
 }
 
+/** Navigation is an entry intent, never entitlement or a fabricated user turn (ADR-010). */
+export async function resolveLauncherNavigationDecision(params: {
+  domainHint?: string | null;
+  /** FD-LEGACY-CLOSURE-001: intenção de entrada explícita e allowlisted (hoje só `pre_duimp`); nunca texto livre da URL. */
+  entryHint?: string | null;
+  isUnifiedEiah: boolean;
+  continuation?: {
+    threadState?: ImobThreadConversationState | null;
+    consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
+  };
+}): Promise<LauncherLocalDecision | null> {
+  // Entrada Pré-DUIMP (menu/redirecionamento legado): abre o cartão NA conversa; o acesso é decidido pelo servidor no cartão (fail-closed).
+  if (params.isUnifiedEiah && params.entryHint === "pre_duimp") {
+    return {
+      kind: "pre_duimp_entry", shouldCreateRun: false,
+      content: "Abro o Pré-DUIMP aqui na conversa, em modo shadow: nada é transmitido ao Siscomex/Portal Único e o acesso é conferido pelo servidor neste cartão.",
+      launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "simple_help", resolvedQuickReplies: [],
+      persistIntent: { intent: "pre_duimp_entry", confidenceFloor: 0.8 }, preDuimpCard: true,
+    };
+  }
+  const hint = params.domainHint?.trim().toLowerCase() ?? "";
+  const verticalId = params.isUnifiedEiah && hint ? canonicalVerticalId(hint) : null;
+  if (verticalId !== "imob" && verticalId !== "log") return null;
+  if (params.continuation?.threadState?.operational) await params.continuation.consume("release", "");
+  return {
+    kind: "vertical_handoff", shouldCreateRun: false,
+    content: verticalId === "imob" ? "Verificando o atendimento IMOB neste workspace." : "Verificando o acesso a Logística & Comex neste workspace.",
+    launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "handoff",
+    verticalHandoffRequest: { verticalId, mode: "read_only" },
+  };
+}
+
+/** Decisões locais do Front Door que são palpites genéricos (podem ceder a uma vertical); as demais são respostas exatas de plataforma. */
+const VERTICAL_CLAIMABLE_LOCAL_KINDS = new Set<string>([
+  "contextual_fallback", "clarification", "confidence", "orchestrator_guidance", "legal_context_entry", "legal_data_collection",
+]);
+
 export async function resolveLauncherTurnDecision(params: {
   input: string;
   trimmedInput: string;
@@ -2030,14 +2135,252 @@ export async function resolveLauncherTurnDecision(params: {
   previousUserMessage?: string | null;
   previousAssistantMessage?: string | null;
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+  /** Etapa de billing pendente da CONVERSA (não só da última mensagem); ausente = usa o snapshot da última mensagem do assistente. */
+  pendingFrontDoorBilling?: FrontDoorBillingSnapshot | null;
+  /** Proposta de ativação / pedido de liberação pendente SEM cartão de billing (da conversa, não só da última mensagem). */
+  pendingFrontDoorActivation?: ActivationPending | null;
   accessContext?: LauncherAccessContext | null;
+  imobOperationalContinuation?: {
+    propertyCaptureContext?: "active" | "paused" | null;
+    threadState?: ImobThreadConversationState | null;
+    available: boolean;
+    consume: (action: "continue" | "cancel" | "release" | "claim", input: string) => Promise<boolean | void>;
+  };
 }): Promise<LauncherLocalDecision | null> {
+  // O contrato operacional do IMOB precede a classificação isolada do Front Door.
+  // Intenções explícitas usam os mesmos catálogos de help; fallback não encerra coleta.
+  const activationStep = params.isUnifiedEiah
+    ? resolveVerticalActivationStep(params.input, params.previousAssistantSnapshot?.verticalActivation) : null;
+  const pendingBilling = params.pendingFrontDoorBilling !== undefined
+    ? params.pendingFrontDoorBilling : params.previousAssistantSnapshot?.frontDoorBilling;
+  const billingStep = params.isUnifiedEiah
+    ? (resolveFrontDoorBillingStep(params.input, pendingBilling) ?? resolveActivationLeaveStep(params.input, params.pendingFrontDoorActivation))
+    : null;
+  const approvalChatStep = params.isUnifiedEiah
+    ? resolveVerticalApprovalChatStep(params.input, params.previousAssistantSnapshot?.verticalApprovalChat) : null;
+  const noticeAck = params.isUnifiedEiah
+    ? resolveNoticeAckStep(params.input, params.previousAssistantSnapshot?.verticalAccessNotice) : null;
+  let continuation = params.imobOperationalContinuation;
+  // An open property form belongs to IMOB before isolated help/legal/handoff heuristics.
+  // Semantic continuation (including topic changes) is resolved by the contextual provider intake in the vertical engine.
+  if (continuation?.available && continuation.propertyCaptureContext) {
+    const consumed = await continuation.consume("continue", params.trimmedInput);
+    if (consumed !== false) return { kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+      launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow" };
+    continuation = undefined; // The paused IMOB intake released this subject; use the existing governed routing.
+  }
+  const explicitVerticalTransfer = params.isUnifiedEiah || hasPendingProposalReview(continuation?.threadState)
+    ? resolveExplicitVerticalHandoffRequest(params.input) : null;
+  if (continuation?.threadState?.operational) {
+    const help = resolveHelpDictionarySnapshot({ input: params.trimmedInput, routeIntent: params.routeIntent,
+      accessContext: params.accessContext, includeFallback: false });
+    const verticalContext = resolveConversationVerticalContext(params.trimmedInput);
+    const reviewing = hasPendingProposalReview(continuation.threadState);
+    const explicitTopicChange = explicitVerticalTransfer || (reviewing ? (activationStep || billingStep || approvalChatStep || noticeAck
+      || isAccessCreationRequest(params.input) || resolveAgentSwitchDecision(params)
+      || isLegalRoutingQuestion(params.trimmedInput, true)
+      || hasExactEiahTutorIntentMatch(params.trimmedInput, true)
+      || Boolean(help && help.responseType === "resolved" && help.intent.scopeHint !== "vertical")) : !verticalContext && (
+      hasExactEiahTutorIntentMatch(params.trimmedInput, true)
+      || Boolean(help && help.responseType === "resolved" && help.intent.scopeHint !== "vertical")
+      || isLegalRoutingQuestion(params.trimmedInput)
+      || isImobOperationalRequest(params.trimmedInput)
+    ));
+    const action = resolveProposalTurnContinuation({ input: params.trimmedInput, threadState: continuation.threadState,
+      activeDomain: params.accessContext?.activeDomain === "logistica" ? "core" : params.accessContext?.activeDomain, available: continuation.available, explicitTopicChange: Boolean(explicitTopicChange) });
+    if (action) {
+      await continuation.consume(action, params.trimmedInput);
+      if (action !== "release") return {
+        kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+        launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow",
+      };
+    }
+  }
+  if (explicitVerticalTransfer) return {
+    kind: "vertical_handoff", shouldCreateRun: false,
+    content: "Verificando a transferência de contexto neste workspace.",
+    launcherRouteIntent: "help", presentationRouteIntent: "help", eiahMode: "help", renderVariant: "handoff",
+    verticalHandoffRequest: explicitVerticalTransfer,
+    persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+  };
   const agentSwitchDecision = resolveAgentSwitchDecision({
     input: params.input,
     previousAssistantSnapshot: params.previousAssistantSnapshot,
   });
   if (agentSwitchDecision) {
     return agentSwitchDecision;
+  }
+  // "Entendi" de um aviso da liberação EIAH entregue na conversa (ADR-011 §2.4).
+  if (noticeAck) {
+    return {
+      kind: "vertical_access_notice_ack",
+      shouldCreateRun: false,
+      content: "Marcando o aviso como lido.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "vertical_access_notice", confidenceFloor: 0.8 },
+      verticalAccessNoticeAck: noticeAck,
+    };
+  }
+  // Billing antes do pedido de liberação (ADR-011 §2.8): só os botões do cartão pendente valem.
+  if (billingStep) {
+    return {
+      kind: `front_door_billing_${billingStep.step}`,
+      shouldCreateRun: false,
+      content: "Verificando o billing deste workspace.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_billing", confidenceFloor: 0.8 },
+      frontDoorBillingRequest: billingStep,
+    };
+  }
+  // Fila de liberações do administrador EIAH: nada é decidido sem confirmação explícita (ADR-011 §2.3).
+  if (approvalChatStep) {
+    return {
+      kind: `vertical_approval_chat_${approvalChatStep.step}`,
+      shouldCreateRun: false,
+      content: "Verificando a fila de liberações.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "vertical_approval_chat", confidenceFloor: 0.8 },
+      verticalApprovalChatRequest: approvalChatStep,
+    };
+  }
+  // Criação de acessos (ADR-011 §2.7): o cartão abre na conversa; o e-mail não passa pelo texto.
+  if (params.isUnifiedEiah && isAccessCreationRequest(params.input)) {
+    return {
+      kind: "front_door_access_hint",
+      shouldCreateRun: false,
+      content: describeAccessCreationHint(),
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_access", confidenceFloor: 0.8 },
+      frontDoorAccessCard: true,
+    };
+  }
+  // Ativação de vertical pela conversa: nada é ativado sem a confirmação explícita logo após a proposta (ADR-010, etapa F).
+  // A rota "imob" (placeholder, respostas e resumo shadow do IMOB) só vale para o IMOB; outras verticais seguem como ajuda.
+  if (activationStep) {
+    const activationRoute = activationStep.verticalId === "imob" ? "imob" : "help";
+    return {
+      kind: `vertical_activation_${activationStep.step}`,
+      shouldCreateRun: false,
+      content: activationStep.step.startsWith("evaluation_")
+        ? "Analisando sua mensagem sobre a avaliação do IMOB."
+        : `Verificando a ativação de ${activationStep.verticalId === "log" ? "Logística & Comex" : "IMOB"} neste workspace.`,
+      launcherRouteIntent: activationRoute,
+      presentationRouteIntent: activationRoute,
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_activation", confidenceFloor: 0.8 },
+      verticalActivationRequest: activationStep,
+    };
+  }
+  // Pedido claro de trabalhar na Logística & Comex (vocabulário declarado no engine de handoff): só pede o handoff de leitura,
+  // avaliado pelo servidor (fail-closed). Reconhecer não instala, não libera e não concede política.
+  const logisticaEntry = params.isUnifiedEiah && params.routeIntent !== "proposal" ? resolveLogisticaEntryRequest(params.input) : null;
+  if (logisticaEntry) {
+    return {
+      kind: "vertical_handoff",
+      shouldCreateRun: false,
+      content: "Verificando o acesso a Logística & Comex neste workspace.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+      verticalHandoffRequest: logisticaEntry,
+    };
+  }
+  // FD-PREDUIMP-001: pedido claro de preparar o Pré-DUIMP (vocabulário controlado; nunca operações aduaneiras reais): o cartão abre na conversa.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isPreDuimpEntryRequest(params.input)) {
+    return {
+      kind: "pre_duimp_entry",
+      shouldCreateRun: false,
+      content: "Abro o Pré-DUIMP aqui na conversa, em modo shadow: nada é transmitido ao Siscomex/Portal Único e o acesso é conferido pelo servidor neste cartão.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "pre_duimp_entry", confidenceFloor: 0.8 },
+      preDuimpCard: true,
+    };
+  }
+  // FD-IMOB-PERSISTENCE-001: pedido claro de ver o histórico do IMOB (vocabulário controlado): o cartão abre na conversa; a API autoriza.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobHistoryRequest(params.input)) {
+    return {
+      kind: "imob_history_entry",
+      shouldCreateRun: false,
+      content: "Abro o histórico do IMOB aqui na conversa. As conversas e threads seguem as permissões do IMOB neste workspace; nada é exibido sem acesso.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "imob_history_entry", confidenceFloor: 0.8 },
+      imobHistoryCard: true,
+    };
+  }
+  // FD-SINGLE-ENTRY-001: pedido claro de ver a gestão do IMOB (vocabulário controlado): o cartão abre na conversa; a API autoriza os dados.
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobManagementRequest(params.input)) {
+    return {
+      kind: "imob_management_entry",
+      shouldCreateRun: false,
+      content: "Abro a gestão do IMOB aqui na conversa. Os dados e as ações seguem as permissões do IMOB neste workspace; nada é exibido sem acesso.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "imob_management_entry", confidenceFloor: 0.8 },
+      imobManagementCard: true,
+    };
+  }
+  // Pedido operacional de IMOB (cadastrar, encerrar, gerar contrato…): handoff na mesma conversa (ADR-010).
+  if (params.isUnifiedEiah && params.routeIntent !== "proposal" && isImobOperationalRequest(params.input)) {
+    return {
+      kind: "vertical_handoff",
+      shouldCreateRun: false,
+      content: "Verificando o acesso ao IMOB neste workspace.",
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "handoff",
+      persistIntent: { intent: "vertical_handoff", confidenceFloor: 0.8 },
+      verticalHandoffRequest: { ...IMOB_CRM_HANDOFF_REQUEST },
+      verticalHandoffForwardInput: params.input,
+    };
+  }
+  // Pergunta livre durante a escolha de plano: o intake contextual interpreta (provider pelo runtime central), a API responde com o
+  // catálogo autorizado. Sem regex, sem lista de frases e sem ajuda genérica: não é palavra-chave, é "há etapa de billing pendente".
+  // Fica depois dos passos exatos e dos pedidos explícitos de transição acima, que continuam valendo.
+  // Etapa pendente interpretável: billing ou, se não há billing, a proposta de ativação/pedido de liberação sem cartão de billing.
+  const pendingForIntake = isInterpretableBilling(pendingBilling) ? pendingBilling : (params.pendingFrontDoorActivation ?? null);
+  if (params.isUnifiedEiah && pendingForIntake && params.trimmedInput.trim()) {
+    return {
+      kind: "front_door_intake",
+      shouldCreateRun: false,
+      content: "Entendendo sua pergunta no contexto da escolha de plano.",
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      resolvedQuickReplies: [],
+      persistIntent: { intent: "front_door_intake", confidenceFloor: 0.8 },
+      frontDoorIntakeRequest: { message: params.trimmedInput.trim(), pending: pendingForIntake },
+    };
   }
   const localDecision = resolveLauncherLocalDecision({
     input: params.input,
@@ -2050,6 +2393,21 @@ export async function resolveLauncherTurnDecision(params: {
     intentUnknown: params.intentUnknown,
     accessContext: params.accessContext,
   });
+  // P11: a vertical reivindica o turno (consulta SOMENTE LEITURA no servidor, com acesso governado) quando a resposta local do Front
+  // Door é apenas um palpite genérico (fallback, esclarecimento ou roteamento por palavra), nunca uma resposta exata de plataforma.
+  // Nenhuma regra de vertical vive aqui: o servidor decide se o turno é dele; sem reivindicação o fluxo segue igual.
+  // Não vale durante a revisão de proposta (FDC-03A).
+  const verticalClaim = params.imobOperationalContinuation;
+  // O produto instalado basta para perguntar (o servidor aplica registry/entitlement/permissão): a conversa pode estar ainda no EIAH.
+  if (verticalClaim && params.isUnifiedEiah && params.routeIntent !== "proposal"
+    && (verticalClaim.available || params.accessContext?.entitlements?.IMOB_INSTALLED === true)
+    && !hasPendingProposalReview(verticalClaim.threadState)
+    && (!localDecision || VERTICAL_CLAIMABLE_LOCAL_KINDS.has(localDecision.kind))) {
+    if (await verticalClaim.consume("claim", params.trimmedInput) === true) return {
+      kind: "imob_operational_continuation", turnConsumed: true, shouldCreateRun: false,
+      launcherRouteIntent: "imob", presentationRouteIntent: "imob", eiahMode: "help", renderVariant: "guided_flow",
+    };
+  }
   if (localDecision && !localDecision.shouldCreateRun && localDecision.content) {
     return localDecision;
   }

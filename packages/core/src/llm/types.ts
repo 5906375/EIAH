@@ -31,12 +31,18 @@ export interface ChatCompletionUsage {
 }
 
 export interface ChatCompletionResponse {
+  /** Legacy completion identity; empty when the provider did not supply one. */
   id: string;
   output: string;
   raw: any;
   finishReason: string;
   provider: string;
+  /** Requested model; does not prove generation by this model. */
   model: string;
+  completionId?: string;
+  providerRequestId?: string;
+  modelUsed?: string;
+  /** Existing accounting reference (completion ID preferred). Not a provider request ID. */
   requestId?: string;
   usage?: ChatCompletionUsage | null;
 }

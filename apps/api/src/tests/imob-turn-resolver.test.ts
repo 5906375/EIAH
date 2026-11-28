@@ -2,6 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
+import type { ImobProposalDraft } from "../services/imob/imobConversationContract";
+
+test("draft e formulário recebem unidades já resolvidas pelo intake, inclusive singular", () => {
+  for (const unitLabels of [["Kitnet 102", "Kitnet 103", "Kitnet 104"], ["unidade do fundo"]]) {
+    const result = resolveImobTurn({ message: "cadastrar imóvel", propertyUnitIntake: { status: "resolved", source: "openai", unitLabels },
+      access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } } });
+    assert.deepEqual(result.conversationState.operational?.propertyDraft?.unitLabels, unitLabels);
+    assert.equal(result.presentation.form?.fields.find((field) => field.name === "unitLabel")?.value, unitLabels.join(", "));
+  }
+});
 
 test("IMOB turn resolver returns consult mode for broad rental discovery", () => {
   const result = resolveImobTurn({
@@ -526,11 +536,15 @@ test("IMOB turn resolver builds explicit owner.create operational state", () => 
   assert.equal(result.presentation.text, "");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["ownerName", "ownerPhone", "ownerEmail", "ownerDocument"],
+    ["personType", "ownerName", "ownerDocument", "ownerPhone", "ownerEmail"],
   );
-  const ownerDocumentField = result.presentation.form?.fields.find((field) => field.name === "ownerDocument");
-  assert.equal(ownerDocumentField?.allowAttachment, true);
-  assert.equal(ownerDocumentField?.attachmentLabel, "Anexar documento");
+  // Formulário estruturado: grava direto em POST /imob/owners; só o nome é obrigatório.
+  assert.equal(result.presentation.form?.submitTarget, "imob.owners.create");
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["ownerName"],
+  );
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerName")?.value, "Joao Silva");
 });
 
 test("IMOB turn resolver keeps generic new-conversation owner phrasing from becoming a real owner name", () => {
@@ -563,7 +577,7 @@ test("IMOB turn resolver builds guided form for vendedor on owner.create", () =>
   assert.equal(result.conversationState.operational?.ownerDraft?.ownerPersona, "vendedor");
   assert.equal(result.presentation.form?.entity, "vendedor");
   assert.equal(result.presentation.form?.label, "Cadastrar vendedor");
-  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerDocument")?.allowAttachment, true);
+  assert.equal(result.presentation.form?.submitTarget, "imob.owners.create");
 });
 
 test("IMOB turn resolver builds guided form for locador on owner.create", () => {
@@ -591,9 +605,19 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.label, "Cadastrar imóvel");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["propertyType", "goal", "cep", "city", "address"],
+    [
+      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "city", "address", "neighborhood", "cep",
+      "areaM2", "bedrooms", "bathrooms", "garageSpots",
+    ],
   );
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "cep")?.lookup?.kind, "cep");
+  assert.equal(result.presentation.form?.submitTarget, "imob.properties.create");
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerId")?.optionsSource, "imob_owners");
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    // Destinação é opcional (vazio = ainda não informada); só tipo, cidade e endereço são obrigatórios.
+    ["propertyType", "city", "address"],
+  );
 });
 
 test("IMOB turn resolver keeps chips and free-text capture prompts behaviorally equivalent", () => {
@@ -1376,8 +1400,29 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
 
   assert.equal(result.mode, "execute");
   assert.equal(result.executionRequest?.operation, "lead.qualify");
-  assert.equal(result.presentation.form?.entity, "locatario");
-  assert.equal(result.presentation.form?.label, "Cadastrar locatário");
+  assert.equal(result.presentation.form?.entity, "locacao");
+  assert.equal(result.presentation.form?.label, "Cadastrar locação");
+  assert.equal(result.threadLabel, "Locação");
+  assert.deepEqual(
+    result.presentation.form?.fields.map((field) => field.name),
+    [
+      "propertyId", "leaseState", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
+      "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
+      "guaranteeType", "guaranteeAmount", "iptu", "condominio", "condominioAmount",
+      "endedOn", "closeReason",
+    ],
+  );
+  // Situação da locação tem padrão "vigente"; encerrada exige saída e motivo (validado no cliente e na API).
+  const leaseState = result.presentation.form?.fields.find((field) => field.name === "leaseState");
+  assert.equal(leaseState?.value, "vigente");
+  assert.deepEqual(leaseState?.options?.map((option) => option.value), ["vigente", "encerrada"]);
+  const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");
+  assert.equal(propertyField?.optionsSource, "imob_properties");
+  assert.equal(propertyField?.required, true);
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["propertyId", "tenantName"],
+  );
 });
 
 test("IMOB turn resolver accepts form-style lead budget labels", () => {
@@ -1633,9 +1678,124 @@ test("IMOB turn resolver builds explicit proposal.create operational state", () 
   assert.equal(result.executionRequest?.operation, "proposal.create");
   assert.equal(result.conversationState.operational?.flow, "proposal.create");
   assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(result.executionRequest?.input.propertyId, "property-4455");
   assert.equal(result.conversationState.operational?.proposalDraft?.offerAmount, 750000);
   assert.ok(result.conversationState.operational?.pendingFields.includes("buyerPhone"));
   assert.match(result.presentation.text, /proposta agora/i);
+});
+
+function resolveProposalFromDraft(draft: Partial<ImobProposalDraft>) {
+  const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };
+  const initial = resolveImobTurn({ message: "Gerar proposta", access });
+  const threadState = structuredClone(initial.conversationState);
+  Object.assign(threadState.operational!.proposalDraft!, {
+    propertyId: "4455",
+    offerAmount: 2000000,
+    buyerName: "carlos teste",
+    buyerPhone: "47999999999",
+    ...draft,
+  });
+  return resolveImobTurn({ message: "continuar proposta", threadState, access });
+}
+
+test("proposal.create keeps an empty collecting execution request partial without inventing a property", () => {
+  const turn = resolveImobTurn({
+    message: "Gerar proposta",
+    access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, null);
+  assert.ok(turn.conversationState.operational?.pendingFields.includes("propertyId"));
+  assert.equal(turn.executionRequest?.operation, "proposal.create");
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  assert.equal(turn.executionRequest?.input.buyerPhone, null);
+  assert.equal(turn.executionRequest?.input.offerAmount, null);
+  assert.doesNotMatch(turn.executionRequest?.prompt ?? "", /property-|\bnull\b/);
+});
+
+test("proposal.create ready request uses the collected property, amount and buyer from the draft", () => {
+  const turn = resolveProposalFromDraft({});
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, []);
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 2000000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.equal(turn.executionRequest?.input.clientRef, "carlos teste");
+  assert.match(turn.executionRequest?.prompt ?? "", /para 4455\./);
+});
+
+test("proposal.create preserves an alphanumeric property reference exactly in the request", () => {
+  const turn = resolveProposalFromDraft({ propertyId: "APT-4455-A" });
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, "APT-4455-A");
+  assert.equal(turn.executionRequest?.input.propertyId, "APT-4455-A");
+});
+
+test("proposal.create rebuilds the request from the updated property instead of retaining a stale reference", () => {
+  const first = resolveProposalFromDraft({ propertyId: "4455" });
+  const threadState = structuredClone(first.conversationState);
+  threadState.operational!.proposalDraft!.propertyId = "98765";
+  const updated = resolveImobTurn({
+    message: "continuar proposta",
+    threadState,
+    access: { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(first.executionRequest?.input.propertyId, "4455");
+  assert.equal(updated.conversationState.operational?.status, "ready_for_review");
+  assert.equal(updated.conversationState.operational?.proposalDraft?.propertyId, "98765");
+  assert.equal(updated.executionRequest?.input.propertyId, "98765");
+  assert.match(updated.executionRequest?.prompt ?? "", /para 98765\./);
+});
+
+test("proposal.create leaves a missing property null even when all other required fields are filled", () => {
+  const turn = resolveProposalFromDraft({ propertyId: null });
+
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, ["propertyId"]);
+  assert.equal(turn.conversationState.operational?.proposalDraft?.propertyId, null);
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  assert.equal(turn.executionRequest?.input.offerAmount, 2000000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.doesNotMatch(turn.executionRequest?.prompt ?? "", /property-|\bnull\b/);
+});
+
+test("proposal.create does not interchange the collected property and offer amount", () => {
+  const turn = resolveProposalFromDraft({ propertyId: "4455", offerAmount: 100000 });
+
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 100000);
+});
+
+test("proposal.create collecting tem precedência para sim e campos isolados, preservando draft canônico", () => {
+  const access = { tenantId: "tenant-test", workspaceId: "workspace-test", entitlements: { REAL_ESTATE_CORE: true } };
+  let turn = resolveImobTurn({ message: "Gerar proposta", access });
+  assert.equal(turn.conversationState.operational?.status, "collecting");
+  assert.equal(turn.presentation.form?.entity, "proposta");
+  assert.equal(turn.executionRequest?.input.propertyId, null);
+  for (const input of ["sim", "Carlos", "47999999999", "4455", "100000"]) {
+    turn = resolveImobTurn({ message: input, threadState: turn.conversationState, access });
+    assert.equal(turn.conversationState.operational?.flow, "proposal.create", input);
+    assert.equal(turn.executionRequest?.operation, "proposal.create", input);
+    assert.equal(turn.executionRequest?.input.propertyId, turn.conversationState.operational?.proposalDraft?.propertyId, input);
+    if (input === "sim") assert.equal(turn.conversationState.operational?.proposalDraft?.buyerName, null);
+  }
+  assert.equal(turn.conversationState.operational?.status, "ready_for_review");
+  assert.deepEqual(turn.conversationState.operational?.pendingFields, []);
+  const draft = turn.conversationState.operational?.proposalDraft;
+  assert.equal(draft?.buyerName, "Carlos");
+  assert.equal(draft?.buyerPhone, "47999999999");
+  assert.equal(draft?.propertyId, "4455");
+  assert.equal(draft?.offerAmount, 100000);
+  assert.equal(turn.executionRequest?.input.propertyId, "4455");
+  assert.equal(turn.executionRequest?.input.offerAmount, 100000);
+  assert.equal(turn.executionRequest?.input.buyerPhone, "47999999999");
+  assert.equal(turn.executionRequest?.input.clientRef, "Carlos");
 });
 
 test("IMOB turn resolver captures counteroffer and approval status inside proposal.create flow", () => {
