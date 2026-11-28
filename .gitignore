@@ -6,8 +6,8 @@
 # --------------------------------------------
 # Pacotes, builds e caches
 # --------------------------------------------
-node_modules/
-dist/
+node_modules
+dist
 build/
 apps/web/dist/
 .pnpm-store/
