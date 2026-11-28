@@ -294,3 +294,55 @@ O importador define seu próprio controle de versão (seção 8) e sua própria 
 ## 14. Limitações e lacunas de conhecimento
 
 Este documento é uma especificação: não implementa nem valida comportamento em execução. Não foram mapeados os consumidores de tokens de serviço no IMOB (seção 9). Branches históricas específicas de IMOB não foram comparadas em detalhe. **Nenhuma garantia de segurança é afirmada:** os requisitos de autorização, concorrência e isolamento são prospectivos e dependem de implementação, testes e revisão futuros.
+
+## 15. Adendo de reconciliação arquitetural — 28/11/2026
+
+### 15.1. Natureza e baseline
+
+As seções 0–14 permanecem integralmente preservadas como desenho histórico. Este adendo contextualiza suas premissas perante a arquitetura vigente na main de referência `c8706bac1b68148522fd0f20332cfa81968a37a4`; não reescreve nem ratifica as propostas anteriores.
+
+Esta especificação não constitui autorização de implementação. Nenhum schema, migration, importador ou fluxo operacional novo está sendo aprovado. A seção 12 histórica não é a próxima implementação automaticamente autorizada.
+
+**IPIG:** este adendo é candidato à representação PUBLIC, condicionado à autorização humana específica da versão e do destino, conforme [IA_EIAH.md §8.2](../../IA_EIAH.md). A classificação PÚBLICA da versão histórica não se estende automaticamente ao incremento nem autoriza sua divulgação.
+
+### 15.2. Capacidades encontradas na arquitetura atual
+
+O [serviço de locações](../../apps/api/src/services/imob/crm/imobRentalLeaseService.ts) já contém cadastro de locação vinculada ao imóvel sem criar lead, edição, encerramento e histórico. A representação utiliza `ImobCase` com fluxo `rental.lease` e metadados; há proveniência parcial por campo, valores ausentes tratados como desconhecidos e caução prevista, sem rastreamento de recebimento.
+
+O [serviço de vínculo documental](../../apps/api/src/services/imob/crm/imobDocumentLinkService.ts) persiste referências a documentos em metadados, reutilizando `UploadedDocument` e registrando eventos. Isso contextualiza a lacuna histórica de vínculo persistente mencionada na seção 11; não comprova equivalência com todo o modelo `RentalDocumentLink` proposto.
+
+As operações existentes seguem o [router CRM](../../apps/api/src/routes/imobCrmRouter.ts), o [contrato IMOB_CRM](../../apps/api/src/services/imob/crm/imobCrmAgentContract.ts) e o [schema vigente](../../packages/db/prisma/schema.prisma). Sua reutilização deve preceder a proposta de estruturas paralelas.
+
+Estas constatações resultam de inspeção do código na baseline indicada. Não constituem execução ou validação funcional nesta reconciliação, nem certificam um importador de lotes.
+
+### 15.3. Divergências e lacunas residuais
+
+| Tema | Reconciliação com o desenho histórico |
+| --- | --- |
+| Importação de lotes | Não foi demonstrado importador equivalente ao fluxo das seções 6–9. Cadastro individual e intake não comprovam essa equivalência. |
+| Revisão e aplicação | Não foi demonstrado fluxo equivalente com revisão persistida de lote, snapshot confirmado e aplicação transacional desse snapshot. Transações das operações atuais não comprovam o protocolo de importação proposto. |
+| Modelo de persistência | O modelo normalizado da seção 5 difere de `ImobCase.metadata` e dos eventos atuais. As entidades históricas continuam propostas; sua criação não está aprovada. |
+| Identidade e deduplicação | O cadastro atual deriva a chave de locação de imóvel e datas/contexto. Isso não equivale à identidade opaca estável, à resolução de candidatos e à deduplicação entre lotes propostas na seção 6. |
+| Múltiplas partes | Os metadados atuais representam uma `tenantParty`; não foi demonstrada equivalência com múltiplas partes e papéis de `RentalAgreementParty`. |
+| Simultaneidade | O serviço atual recusa uma segunda locação ativa para o mesmo imóvel. A recomendação histórica de permitir simultaneidade permanece decisão de negócio pendente e não altera esse controle. |
+| Permissões e concessão | O router utiliza permissões vigentes, incluindo `imob.chat.use` e a autorização da etapa aplicável. Os scopes específicos da seção 9 e seu provisionamento não estão aprovados nem são equivalentes por inferência a esses controles. |
+
+### 15.4. Direção arquitetural para decisão futura
+
+Recomenda-se avaliar a continuidade do importador pelos pontos abaixo, sujeita a decisão específica sobre seu desenho e execução. As obrigações já vigentes da [ADR-010](../adr/ADR-010-unificacao-chat-front-door-verticais.md) e da [arquitetura do runtime agêntico](../architecture/agent-chat-runtime.md) permanecem obrigatórias, não alternativas opcionais deste adendo.
+
+- Preservar o Front Door como superfície conversacional unificada e `IMOB_CRM` como autoridade do contexto operacional. Comportamentos conversacionais seguem contrato do agente e engine; o launcher renderiza, sem criar cockpit paralelo.
+- Exigir binding explícito do case nas operações em que o contrato o requer; nunca inferir `caseId` de `threadId`, texto da mensagem ou existência de um único case.
+- Reutilizar serviços, contratos, entidades, vínculos documentais e controles atuais antes de propor novas entidades ou mecanismos. A reconciliação do modelo histórico com a persistência vigente exige decisão própria.
+- Avaliar simulação, revisão, confirmação humana e aplicação governada, sem tomar o protocolo histórico como mecanismo já implementado ou ratificado.
+- Preservar isolamento tenant/workspace, revalidação de autoridade na aplicação, idempotência, controle de concorrência e rastreabilidade. As garantias específicas de um futuro importador dependerão de implementação e validação autorizadas.
+
+Este adendo não ratifica entidades, permissões, concessões de acesso, endpoints ou mecanismos de execução. A aprovação de uma direção documental não autoriza persistência de dados nem substitui decisões de implementação, divulgação ou operação.
+
+### 15.5. Limites e continuidade
+
+Permanecem fora do escopo cobrança, pagamentos, recebimento de caução, Radar/MKT, novas rotinas de Run, fila, agente ou LLM para importação, uso de dados reais e ativação produtiva.
+
+A próxima decisão deve delimitar o incremento funcional residual, sua reutilização da arquitetura vigente, permissões, identidade, revisão e aplicação, além da validação proporcional necessária. Nenhuma etapa executável é autorizada por esta especificação ou pelo presente adendo.
+
+AUTHZ-ROOT-001, freezes, holds e No-Go Ledgers permanecem preservados. Este registro não altera ADRs, Roadmap, Evidence Index ou controles operacionais.
