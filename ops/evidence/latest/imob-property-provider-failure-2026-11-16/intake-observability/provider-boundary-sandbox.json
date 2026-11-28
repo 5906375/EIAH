@@ -1,0 +1,16 @@
+{
+  "name": "provider-boundary-sandbox",
+  "command": [
+    "pnpm",
+    "check:provider-boundary"
+  ],
+  "exitCode": 1,
+  "result": "BLOQUEADO",
+  "source": "tool result chunk 1430fc",
+  "error": {
+    "code": "EPERM",
+    "syscall": "listen",
+    "origin": "tsx IPC pipe",
+    "testStarted": false
+  }
+}

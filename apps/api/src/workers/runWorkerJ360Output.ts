@@ -1,3 +1,4 @@
+import { ORACULO_UPLOAD_AGENT } from "@eiah/contracts";
 import type { J360LegalReport, RecipeOrchestration } from "@eiah/core";
 import { buildJ360LegalReport } from "../services/runAtivoUniversalAgent/interpreters/j360LegalInterpreter";
 import { loadStoredObject } from "../services/storage";
@@ -97,9 +98,12 @@ export async function collectJ360DocumentEvidence(
         storageKey: true,
         fileName: true,
         mimeType: true,
+        agentSlug: true,
       },
     });
     if (!record || record.mimeType !== "application/pdf") continue;
+    // Documentos do Oráculo só saem pelo contexto autorizado do próprio Oráculo (metadata de run é controlada por quem cria a run).
+    if (record.agentSlug === ORACULO_UPLOAD_AGENT) continue;
     const buffer = await loadStoredObject(record.storageKey);
     if (!buffer) continue;
     try {

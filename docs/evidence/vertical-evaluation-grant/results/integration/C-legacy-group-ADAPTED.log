@@ -1,0 +1,913 @@
+[guard] alvo descartável confirmado: banco=eiah_logistica_core_evaldisp_91320dd4 pg_porta=55432 redis_porta=56379 redis_pid=69558
+TAP version 13
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-b-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-b-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-b-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-b-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 1. IMOB NÃO INSTALADO: fundador ativo com permissão recebe 403 em todas as rotas, no upload e no histórico; nada é instalado nem alterado
+ok 1 - 1. IMOB NÃO INSTALADO: fundador ativo com permissão recebe 403 em todas as rotas, no upload e no histórico; nada é instalado nem alterado
+  ---
+  duration_ms: 1945.581686
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 2. IMOB DESABILITADO (instalação inativa; instalado sem os agentes do IMOB): 403 mesmo com vínculo ativo, permissão e dados residuais
+ok 2 - 2. IMOB DESABILITADO (instalação inativa; instalado sem os agentes do IMOB): 403 mesmo com vínculo ativo, permissão e dados residuais
+  ---
+  duration_ms: 741.702662
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# {"level":30,"time":"2026-11-14T15:17:30.746Z","service":"eiah","env":"test","component":"imob-intake-observability","event":"storage_provider_mode","mode":"local","msg":"imob-intake.storage_provider_mode"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] RunEvent:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 3. IMOB INSTALADO + vínculo ativo + permissão: acesso preservado (200 ×9), upload e download; a linha do vínculo e a instalação ficam idênticas
+ok 3 - 3. IMOB INSTALADO + vínculo ativo + permissão: acesso preservado (200 ×9), upload e download; a linha do vínculo e a instalação ficam idênticas
+  ---
+  duration_ms: 917.649938
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 4. instalado MAS sem vínculo / vínculo revogado / sem permissão: bloqueio (cumulativo)
+ok 4 - 4. instalado MAS sem vínculo / vínculo revogado / sem permissão: bloqueio (cumulativo)
+  ---
+  duration_ms: 1012.608066
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 5. token SEM userId continua negado (instalado ou não)
+ok 5 - 5. token SEM userId continua negado (instalado ou não)
+  ---
+  duration_ms: 593.457391
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-b-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-x-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 6. outro workspace e outro tenant: bloqueio; o usuário de A não ganha o IMOB de B nem de N com token de outro escopo
+ok 6 - 6. outro workspace e outro tenant: bloqueio; o usuário de A não ganha o IMOB de B nem de N com token de outro escopo
+  ---
+  duration_ms: 390.389841
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-d-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-g-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-a-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# Subtest: 7. chamadas REPETIDAS (5×) por todos os perfis em todos os estados: vínculos, instalações, políticas e atribuições idênticos
+ok 7 - 7. chamadas REPETIDAS (5×) por todos os perfis em todos os estados: vínculos, instalações, políticas e atribuições idênticos
+  ---
+  duration_ms: 15827.380047
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:create enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] Run:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# [tenantGuard] TenantActionPolicy:findMany enforced for in-t-1dcc0fc3-d059-41e5-93c7-167fd121c50d/in-n-1dcc0fc3-d059-41e5-93c7-167fd121c50d
+# MATRIX-INSTALLATION {"não instalado (fundador ativo)":"403/403/403/403/403/403/403/403/403","upload não instalado":"403","instalação inativa (fundador)":"403/403/403/403/403/403/403/403/403","agentes desabilitados (fundador)":"403/403/403/403/403/403/403/403/403","instalado, corretor":"200/200/200/200/200/200/200/200/200","instalado, fundador":"200/200/200/200/200/200/200/200/200","upload instalado":"200","instalado, sem vínculo":"403/403/403/403/403/403/403/403/403","instalado, revogado":"403/403/403/403/403/403/403/403/403","instalado, sem permissão":"403/403/403/403/403/403/403/403/403","serviço, instalado":"403/403/403/403/403/403/403/403/403","serviço, não instalado":"403/403/403/403/403/403/403/403/403","membro de A com token de N (não instalado, sem vínculo)":"403/403/403/403/403/403/403/403/403","N antes da instalação":"403/403/403/403/403/403/403/403/403","N depois da instalação governada":"200/200/200/200/200/200/200/200/200"}
+# Subtest: 8. fluxos de instalação/administração com autoridade própria NÃO foram bloqueados: o fundador de N instala o IMOB pelo fluxo governado e só então a API responde 200
+ok 8 - 8. fluxos de instalação/administração com autoridade própria NÃO foram bloqueados: o fundador de N instala o IMOB pelo fluxo governado e só então a API responde 200
+  ---
+  duration_ms: 690.711569
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# Subtest: LOGISTICA: jornada governada pelo canal de chat
+    # Subtest: sem autenticação ou sem papel, não pede nem ativa
+    ok 1 - sem autenticação ou sem papel, não pede nem ativa
+      ---
+      duration_ms: 237.503048
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+    # Subtest: liberação exige decisão humana da plataforma; quem não pode ativar não ativa
+    ok 2 - liberação exige decisão humana da plataforma; quem não pode ativar não ativa
+      ---
+      duration_ms: 129.925199
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-chat-44197908-62bb-4590-8b3b-59a06512dbd3
+    # Subtest: prévia é somente leitura; confirmação exige confirmed:true; instala só EIAH e nenhuma política
+    ok 3 - prévia é somente leitura; confirmação exige confirmed:true; instala só EIAH e nenhuma política
+      ---
+      duration_ms: 225.305797
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-14T15:17:51.316Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.357Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+    # Subtest: instalada e aprovada, sem política de contexto a sessão ainda é negada (instalação ≠ autorização)
+    ok 4 - instalada e aprovada, sem política de contexto a sessão ainda é negada (instalação ≠ autorização)
+      ---
+      duration_ms: 91.327539
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-14T15:17:51.396Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.434Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-market-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.475Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.520Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+    # Subtest: política exata do workspace libera apenas o contexto autenticado
+    ok 5 - política exata do workspace libera apenas o contexto autenticado
+      ---
+      duration_ms: 167.428642
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-14T15:17:51.563Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+    # Subtest: domínio desconhecido não é 403 e não concede logistica
+    ok 6 - domínio desconhecido não é 403 e não concede logistica
+      ---
+      duration_ms: 36.947325
+      type: 'test'
+      ...
+# {"level":30,"time":"2026-11-14T15:17:51.612Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.686Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+# {"level":30,"time":"2026-11-14T15:17:51.721Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-chat-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+    # Subtest: revogação: somente leitura mantém consulta e bloqueia nova ativação; bloqueio total retira o domínio
+    ok 7 - revogação: somente leitura mantém consulta e bloqueia nova ativação; bloqueio total retira o domínio
+      ---
+      duration_ms: 157.193197
+      type: 'test'
+      ...
+    # Subtest: token revogado perde o contexto (401, não 403)
+    ok 8 - token revogado perde o contexto (401, não 403)
+      ---
+      duration_ms: 8.083586
+      type: 'test'
+      ...
+    1..8
+ok 9 - LOGISTICA: jornada governada pelo canal de chat
+  ---
+  duration_ms: 1252.715513
+  type: 'test'
+  ...
+# Subtest: LOGISTICA: jornada governada pelo canal do Marketplace (mesmas barreiras)
+    # Subtest: sem liberação EIAH o Marketplace nega (403, não 400)
+    ok 1 - sem liberação EIAH o Marketplace nega (403, não 400)
+      ---
+      duration_ms: 61.159767
+      type: 'test'
+      ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for log-chan-44197908-62bb-4590-8b3b-59a06512dbd3/log-market-44197908-62bb-4590-8b3b-59a06512dbd3
+# {"level":30,"time":"2026-11-14T15:17:52.045Z","service":"eiah","env":"test","tenantId":"log-chan-44197908-62bb-4590-8b3b-59a06512dbd3","workspaceId":"log-market-44197908-62bb-4590-8b3b-59a06512dbd3","event":"imob.entitlement_shadow","installationActive":false,"sessionPolicyPresent":false,"sharedPolicyPresent":false,"marketplacePresent":false,"sessionLegacyAllowed":false,"sharedLegacyAllowed":false,"aligned":true,"sessionMatchedActions":[],"sharedMatchedActions":[],"msg":"imob.entitlement_shadow"}
+    # Subtest: com liberação humana, o Founder ativa: só EIAH, nenhuma política, IMOB intacto
+    ok 2 - com liberação humana, o Founder ativa: só EIAH, nenhuma política, IMOB intacto
+      ---
+      duration_ms: 258.497016
+      type: 'test'
+      ...
+    # Subtest: produto fora do catálogo continua rejeitado (400)
+    ok 3 - produto fora do catálogo continua rejeitado (400)
+      ---
+      duration_ms: 19.430834
+      type: 'test'
+      ...
+    1..3
+ok 10 - LOGISTICA: jornada governada pelo canal do Marketplace (mesmas barreiras)
+  ---
+  duration_ms: 339.945061
+  type: 'test'
+  ...
+# Subtest: migração: quem já usava fica 'aprovado na migração' e quem ativou recebe a chave, uma única vez
+ok 11 - migração: quem já usava fica 'aprovado na migração' e quem ativou recebe a chave, uma única vez
+  ---
+  duration_ms: 1500.935664
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:54.513Z","service":"eiah","env":"test","traceId":"36bcc01d-e9df-4eeb-97b9-4b9ca80310dd","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"171","durationMs":50.265926,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:54.627Z","service":"eiah","env":"test","traceId":"702fe7b6-4c04-4b44-a004-2b667635b666","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"296","durationMs":106.635006,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:54.700Z","service":"eiah","env":"test","traceId":"a61e7aaa-be41-49b2-8eff-409e7030638f","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"297","durationMs":69.486676,"msg":"http.request.completed"}
+# Subtest: sem liberação, nada é ativado (Marketplace e chat) — primeiro a liberação, depois a permissão
+ok 12 - sem liberação, nada é ativado (Marketplace e chat) — primeiro a liberação, depois a permissão
+  ---
+  duration_ms: 252.549026
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:54.782Z","service":"eiah","env":"test","traceId":"a0f0efeb-6aba-4326-90fc-5325f407454c","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":403,"contentLength":"177","durationMs":76.278172,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:54.873Z","service":"eiah","env":"test","traceId":"0e3a3567-7421-4729-8848-8a4bdb63a144","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":201,"contentLength":"184","durationMs":87.101952,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:54.942Z","service":"eiah","env":"test","traceId":"595a4718-94fc-4517-9aef-a723eec15e8c","component":"api","httpMethod":"POST","path":"/api/chat/vertical-activation/preview","statusCode":200,"contentLength":"283","durationMs":66.172933,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:54.995Z","service":"eiah","env":"test","traceId":"b8493151-a8ff-45e6-8cc7-be6b89472529","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":200,"contentLength":"192","durationMs":48.539418,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.026Z","service":"eiah","env":"test","traceId":"9086437a-802f-49a1-b747-a287c18fdce9","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"157","durationMs":27.817222,"msg":"http.request.completed"}
+# Subtest: pedido: corretor não pede; Founder pede e o agente pontua sem aprovar
+ok 13 - pedido: corretor não pede; Founder pede e o agente pontua sem aprovar
+  ---
+  duration_ms: 322.590327
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:55.057Z","service":"eiah","env":"test","traceId":"ed45d051-34d3-4514-896f-86ceaeeb7aea","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":404,"contentLength":"41","durationMs":27.34948,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.107Z","service":"eiah","env":"test","traceId":"51a4501e-a047-4ff1-9aad-d95e6fd77671","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"86062","durationMs":46.739341,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.141Z","service":"eiah","env":"test","traceId":"c2f549b0-f894-4123-9347-d4a3ede1e606","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/decision","statusCode":400,"contentLength":"178","durationMs":29.912802,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.174Z","service":"eiah","env":"test","traceId":"65bfa283-9723-4c19-ad42-5319bdf7beb3","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/decision","statusCode":404,"contentLength":"41","durationMs":31.171989,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.279Z","service":"eiah","env":"test","traceId":"18a93d57-404e-4e8e-ae53-a1a1246f235a","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/decision","statusCode":200,"contentLength":"1737","durationMs":103.012861,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.308Z","service":"eiah","env":"test","traceId":"70c2b64b-5640-458e-9c3b-f05e881a6ccf","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/decision","statusCode":409,"contentLength":"125","durationMs":26.420359,"msg":"http.request.completed"}
+# Subtest: fila do administrador EIAH: invisível para os demais; decisão humana com observação quando exigida
+ok 14 - fila do administrador EIAH: invisível para os demais; decisão humana com observação quando exigida
+  ---
+  duration_ms: 283.604504
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:55.362Z","service":"eiah","env":"test","traceId":"523f8dc2-448e-4b77-8b69-9a3913e27f5f","component":"api","httpMethod":"GET","path":"/api/vertical-access?vertical=IMOB","statusCode":200,"contentLength":"175","durationMs":49.457794,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# [tenantGuard] TenantActionPolicy:create enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:55.435Z","service":"eiah","env":"test","traceId":"662b1444-4392-4717-9258-8022025a0571","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":200,"contentLength":"359","durationMs":70.238955,"msg":"http.request.completed"}
+# Subtest: com liberação aprovada, o Founder ativa; o cliente vê só o estado
+ok 15 - com liberação aprovada, o Founder ativa; o cliente vê só o estado
+  ---
+  duration_ms: 125.935333
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:55.475Z","service":"eiah","env":"test","traceId":"a4eb11f1-1519-4138-8229-059c396c6c58","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"86117","durationMs":36.196164,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.508Z","service":"eiah","env":"test","traceId":"477a2342-0e02-42ca-a994-c26bd7279ffe","component":"api","httpMethod":"GET","path":"/api/admin/vertical-approvals","statusCode":200,"contentLength":"86117","durationMs":30.035344,"msg":"http.request.completed"}
+# Subtest: aprovados na migração: o agente calcula o score para revisão sem mudar o estado
+ok 16 - aprovados na migração: o agente calcula o score para revisão sem mudar o estado
+  ---
+  duration_ms: 73.891947
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:55.542Z","service":"eiah","env":"test","traceId":"3c9d0b91-5900-4b03-8358-475fbe95569e","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":404,"contentLength":"41","durationMs":28.914719,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.573Z","service":"eiah","env":"test","traceId":"bf49fdbe-a022-4bbf-8ae1-12454d60322a","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":400,"contentLength":"150","durationMs":29.356939,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.606Z","service":"eiah","env":"test","traceId":"43c81055-ea1a-4670-98be-6bc64d586456","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":409,"contentLength":"188","durationMs":31.217805,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.647Z","service":"eiah","env":"test","traceId":"b787eb5a-66df-4b81-9cd5-1eab9c4cf1ce","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":200,"contentLength":"1767","durationMs":38.373949,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:55.706Z","service":"eiah","env":"test","traceId":"e5a18fd2-b505-479f-83da-1c1f399062cd","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":56.471425,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.751Z","service":"eiah","env":"test","traceId":"b63c974d-9d73-4078-9854-fefc98ee78fb","component":"api","httpMethod":"POST","path":"/api/imob/owners","statusCode":403,"contentLength":"303","durationMs":42.764954,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.800Z","service":"eiah","env":"test","traceId":"e5313827-a76e-4273-9b67-60e0e5568fca","component":"api","httpMethod":"GET","path":"/api/vertical-access?vertical=IMOB","statusCode":200,"contentLength":"193","durationMs":46.819759,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.827Z","service":"eiah","env":"test","traceId":"cfdef32b-0f1e-4a1b-a576-94d7ee770450","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"148","durationMs":24.533869,"msg":"http.request.completed"}
+# Subtest: revogação: só o administrador, com observação; padrão somente leitura bloqueia escrita e mantém consulta
+ok 17 - revogação: só o administrador, com observação; padrão somente leitura bloqueia escrita e mantém consulta
+  ---
+  duration_ms: 318.293444
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:55.856Z","service":"eiah","env":"test","traceId":"f9098fce-533e-4b70-9801-a0c1c1d5ce6f","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":409,"contentLength":"119","durationMs":24.09312,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.882Z","service":"eiah","env":"test","traceId":"abb2461e-cdbb-4557-99c2-ce7f30abadef","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":400,"contentLength":"119","durationMs":25.307868,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.922Z","service":"eiah","env":"test","traceId":"e77a87aa-dd26-47f1-bce4-8c36245764f8","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":200,"contentLength":"1761","durationMs":37.76425,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:55.962Z","service":"eiah","env":"test","traceId":"2b985a16-e775-4c7c-a145-5ee88b987f7b","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":403,"contentLength":"266","durationMs":39.297118,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.001Z","service":"eiah","env":"test","traceId":"7ccd67bf-dcd7-4492-a3e1-b70578bda360","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":200,"contentLength":"1756","durationMs":36.373713,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:56.062Z","service":"eiah","env":"test","traceId":"ec053ceb-98a2-4384-9c4c-2500b8a2b127","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":60.282062,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:56.123Z","service":"eiah","env":"test","traceId":"69c02824-0d8b-483c-84a4-68e1b4c407ed","component":"api","httpMethod":"POST","path":"/api/imob/owners","statusCode":400,"contentLength":"111","durationMs":57.015218,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.151Z","service":"eiah","env":"test","traceId":"c8a6f8ee-e2ba-45cc-a96a-bf12321258f5","component":"api","httpMethod":"POST","path":"/api/marketplace/installations/activate","statusCode":403,"contentLength":"148","durationMs":26.593784,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.189Z","service":"eiah","env":"test","traceId":"0ced2c45-2390-4e9f-b86f-050931bf8e57","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":200,"contentLength":"1737","durationMs":35.546943,"msg":"http.request.completed"}
+# Subtest: troca de modo: bloqueio total nega tudo; sem nova ativação mantém o uso; restaurar volta ao normal
+ok 18 - troca de modo: bloqueio total nega tudo; sem nova ativação mantém o uso; restaurar volta ao normal
+  ---
+  duration_ms: 361.634326
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:56.232Z","service":"eiah","env":"test","traceId":"da945bf6-4a59-427d-869f-3d03d2713295","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/revocation","statusCode":200,"contentLength":"1762","durationMs":38.381918,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.315Z","service":"eiah","env":"test","traceId":"eaea69b9-b83d-4ebf-89d6-5376a1ddc5b8","component":"api","httpMethod":"POST","path":"/api/vertical-access/request","statusCode":201,"contentLength":"199","durationMs":81.431001,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.364Z","service":"eiah","env":"test","traceId":"bb884171-1585-484b-9b67-d661b660f269","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":403,"contentLength":"266","durationMs":46.326577,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.405Z","service":"eiah","env":"test","traceId":"27d5a0ca-867e-4abc-970b-35a008e201c2","component":"api","httpMethod":"POST","path":"/api/admin/vertical-approvals/999d788b-fc7f-4698-916b-e26812e23945/decision","statusCode":200,"contentLength":"1764","durationMs":33.71718,"msg":"http.request.completed"}
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-vaccess-mwgjv7w0-4p9tde/workspace-vaccess-mwgjv7w0-4p9tde
+# {"level":30,"time":"2026-11-14T15:17:56.466Z","service":"eiah","env":"test","traceId":"e08ee002-7c69-4af1-9534-39a9bea0548c","component":"api","httpMethod":"GET","path":"/api/imob/owners","statusCode":200,"contentLength":"31","durationMs":59.113476,"msg":"http.request.completed"}
+# Subtest: novo pedido depois da revogação mantém o modo até a EIAH aprovar de novo
+ok 19 - novo pedido depois da revogação mantém o modo até a EIAH aprovar de novo
+  ---
+  duration_ms: 276.10285
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-11-14T15:17:56.518Z","service":"eiah","env":"test","traceId":"1566b6b8-9726-4539-a751-9b45a06b238b","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1734","durationMs":49.234308,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.579Z","service":"eiah","env":"test","traceId":"5b41a338-def6-4937-b6f5-6228fe2395ae","component":"api","httpMethod":"POST","path":"/api/vertical-access/notices/97634651-803a-4a39-a6d4-d1077d77127a/read","statusCode":200,"contentLength":"11","durationMs":58.034996,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.622Z","service":"eiah","env":"test","traceId":"cb5a7c83-09f7-4318-9ebf-3747ee0ee3b1","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1509","durationMs":40.662182,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.667Z","service":"eiah","env":"test","traceId":"24916766-7f7b-4009-8ceb-c21af559d4e5","component":"api","httpMethod":"GET","path":"/api/vertical-access/notices","statusCode":200,"contentLength":"1734","durationMs":43.531813,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-11-14T15:17:56.727Z","service":"eiah","env":"test","traceId":"1bc522d8-94a0-46c5-8747-2754bc21b880","component":"api","httpMethod":"POST","path":"/api/vertical-access/notices/0064fd8a-c55b-4d58-bcdf-c8fc29405b05/read","statusCode":404,"contentLength":"48","durationMs":51.206836,"msg":"http.request.completed"}
+# Subtest: avisos no app: cada decisão vira aviso sem score nem observação; leitura por pessoa e por workspace
+ok 20 - avisos no app: cada decisão vira aviso sem score nem observação; leitura por pessoa e por workspace
+  ---
+  duration_ms: 260.894224
+  type: 'test'
+  ...
+1..20
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 32823.2875

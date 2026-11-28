@@ -1,3 +1,4 @@
+import type { LogisticaContextAccess } from "@eiah/contracts";
 import { useSyncExternalStore } from "react";
 import type { PreDuimpAccessState } from "../features/logistica/preDuimp";
 
@@ -8,8 +9,8 @@ type SessionState = {
   workspaceId: string;
   userId?: string;
   token?: string;
-  activeDomain?: "core" | "imob";
-  availableDomains?: Array<"core" | "imob">;
+  activeDomain?: "core" | "imob" | "logistica";
+  availableDomains?: Array<"core" | "imob" | "logistica">;
   entitlements?: {
     REAL_ESTATE_CORE?: boolean;
     EXPORTS_ADDON?: boolean;
@@ -18,10 +19,11 @@ type SessionState = {
   };
   installedProducts?: string[];
   preDuimpAccess: PreDuimpAccessState;
+  logisticaAccess?: LogisticaContextAccess | null;
   verticals?: Array<{
-    verticalId: "IMOB" | "LEGAL" | "HEALTH";
+    verticalId: "IMOB" | "LEGAL" | "HEALTH" | "LOGISTICA";
     label: string;
-    activeDomain: "core" | "imob";
+    activeDomain: "core" | "imob" | "logistica";
     installedProduct: string | null;
     rolloutStage: "context_only" | "installed_surface" | "operationalized";
     enabled: boolean;
@@ -168,6 +170,7 @@ const DEFAULTS: SessionState = {
   workspaceId: VITE_ENV.VITE_WORKSPACE_ID || "workspace-demo",
   token: VITE_ENV.VITE_API_TOKEN || undefined,
   preDuimpAccess: { status: "idle" },
+    logisticaAccess: null,
 };
 const LOGOUT_FLAG_KEY = "eiah_logged_out";
 
@@ -188,6 +191,7 @@ function loadState(): SessionState {
       workspaceId: DEFAULTS.workspaceId,
       token: DEFAULTS.token,
       preDuimpAccess: { status: "idle" },
+    logisticaAccess: null,
     };
   }
 
@@ -205,7 +209,8 @@ function loadState(): SessionState {
     // Server-authoritative capabilities are deliberately never hydrated
     // from localStorage.
     preDuimpAccess: { status: "idle" },
-    activeDomain: (storage.getItem("active_domain") as "core" | "imob" | null) ?? "core",
+    logisticaAccess: null,
+    activeDomain: (storage.getItem("active_domain") as "core" | "imob" | "logistica" | null) ?? "core",
     installedProducts: (storage.getItem("installed_products") || "")
       .split(",")
       .map((entry) => entry.trim().toUpperCase())
@@ -248,6 +253,17 @@ export function updateSession(patch: Partial<SessionState>) {
     ...patch,
   };
 
+  const identityChanged = (["tenantId", "workspaceId", "userId", "token"] as const)
+    .some((key) => Object.prototype.hasOwnProperty.call(patch, key) && patch[key] !== state[key]);
+  // A scope-only change discards old capabilities; a freshly resolved full context can replace them.
+  if (identityChanged && patch.logisticaAccess === undefined) {
+    next.logisticaAccess = null;
+    if (next.activeDomain === "logistica") next.activeDomain = "core";
+    next.availableDomains = next.availableDomains?.filter((domain) => domain !== "logistica");
+    next.verticals = next.verticals?.map((vertical) => vertical.verticalId === "LOGISTICA"
+      ? { ...vertical, enabled: false, frontDoorSurface: null } : vertical);
+  }
+
   if (storage) {
     if (patch.tenantId !== undefined) storage.setItem("tenant_id", patch.tenantId);
     if (patch.workspaceId !== undefined) storage.setItem("workspace_id", patch.workspaceId);
@@ -261,7 +277,7 @@ export function updateSession(patch: Partial<SessionState>) {
         storage.setItem(LOGOUT_FLAG_KEY, "1");
       }
     }
-    if (patch.activeDomain !== undefined) storage.setItem("active_domain", patch.activeDomain);
+    if (patch.activeDomain !== undefined || identityChanged) storage.setItem("active_domain", next.activeDomain ?? "core");
     if (patch.installedProducts !== undefined) {
       storage.setItem("installed_products", patch.installedProducts.join(","));
     }
@@ -301,6 +317,7 @@ export function clearSession() {
     token: undefined,
     activeDomain: "core",
     preDuimpAccess: { status: "idle" },
+    logisticaAccess: null,
   });
 }
 

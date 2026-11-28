@@ -1,0 +1,76 @@
+TAP version 13
+# Subtest: cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+ok 1 - cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita
+  ---
+  duration_ms: 37.129134
+  type: 'test'
+  ...
+# Subtest: cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+ok 2 - cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores
+  ---
+  duration_ms: 12.321844
+  type: 'test'
+  ...
+# Subtest: cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+ok 3 - cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações
+  ---
+  duration_ms: 5.324115
+  type: 'test'
+  ...
+# Subtest: cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+ok 4 - cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões
+  ---
+  duration_ms: 2.485341
+  type: 'test'
+  ...
+# Subtest: cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+ok 5 - cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho
+  ---
+  duration_ms: 16.190129
+  type: 'test'
+  ...
+# Subtest: cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+ok 6 - cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia
+  ---
+  duration_ms: 33.504228
+  type: 'test'
+  ...
+# Subtest: cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+ok 7 - cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa
+  ---
+  duration_ms: 8.690938
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+ok 8 - cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa
+  ---
+  duration_ms: 6.473023
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+ok 9 - cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto
+  ---
+  duration_ms: 3.294034
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+ok 10 - cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto
+  ---
+  duration_ms: 3.488133
+  type: 'test'
+  ...
+# Subtest: cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+ok 11 - cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake
+  ---
+  duration_ms: 3.698067
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 260.280036

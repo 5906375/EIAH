@@ -1,0 +1,72 @@
+{
+  "status": "PARCIAL",
+  "provenance": "Read-only Render MCP responses obtained before resume; no new Render calls during resume; only allowed fields projected, no keys/environment values retrieved",
+  "workspace": "My Workspace",
+  "workspaceId": "tea-db1rhr1srm7s73d00bcg",
+  "visibleServices": [
+    {
+      "name": "eiah-web-staging",
+      "id": "srv-dbljranf3r2c73abtk50",
+      "type": "static_site"
+    },
+    {
+      "name": "eiah-api-staging",
+      "id": "srv-db20abei0phs73cqbcgg",
+      "type": "web_service"
+    }
+  ],
+  "api": {
+    "serviceId": "srv-db20abei0phs73cqbcgg",
+    "liveSha": "64fe82daca311d171532c9f65511d8cab30df3ad",
+    "deployId": "dep-dbtj6dmtlv9c73adodvg",
+    "deployFinishedAt": "2026-11-16T16:47:57.566117Z",
+    "sourceBranch": "main",
+    "runtime": "docker",
+    "dockerfilePath": "apps/api/Dockerfile.prod",
+    "dockerContext": ".",
+    "dockerCommandOverride": "empty; Dockerfile CMD starts apps/api/dist/index.js",
+    "startupTopology": {
+      "timestamp": "2026-11-16T16:47:49.182539983Z",
+      "logId": "3ef2e2e2-414f-46d8-bcd0-0f516c656f61",
+      "environmentId": "staging",
+      "serviceRole": "api",
+      "runQueueConsumerMode": "disabled",
+      "runAtivoConsumerMode": "disabled",
+      "consumes": {
+        "runs": false,
+        "runAtivoUniversal": false
+      }
+    }
+  },
+  "worker": {
+    "separateVisibleService": false,
+    "liveSha": null,
+    "providerEnvironmentPresence": "not verified",
+    "limit": "No worker visible in this accessible workspace; does not exclude external workers. imob-worker.started is a different worker, not proof of runQueue consumer."
+  },
+  "profileSource": {
+    "shared": "getAgentProfile: database agentProfile first, then core seed/registry; workspace availability applied",
+    "intake": "EIAH, authenticated route-scoped Prisma client; rejects absent/disabled chat runtime; profile.model passed directly to executeLlmStep",
+    "runs": "agent from run execution via getAgentProfile; executeCapability plan uses non-empty profile.model first, else capability policy/environment defaults and declared routes",
+    "configurationDifference": "Same lower layers do not prove same agent, effective profile/model, Prisma client or active environment. No run was executed to compare."
+  },
+  "providerVariables": {
+    "OPENAI_API_KEY": "not verified",
+    "ANTHROPIC_API_KEY": "not verified",
+    "GEMINI_API_KEY": "not verified",
+    "DEEPSEEK_API_KEY": "not verified"
+  },
+  "configurationOrigin": {
+    "topology": "Required process environment, validated startup values evidenced above",
+    "credentialsAndLlmSettings": "process.env read by existing executor/completion/capability policy; live key presence/values/env-group origin unavailable through available read tools; no secret inventory performed",
+    "profileModel": "DB/seed/registry; effective EIAH model not proven by historical failed turn"
+  },
+  "publicationServices": {
+    "requiredForIntake": "eiah-api-staging with rebuilt API + core/providers packages",
+    "web": "No source change or redeploy required for this instrumentation",
+    "separateWorker": "None identified for rollout here; if another service is later confirmed, shared-package adoption must be considered separately; do not enable queue consumption"
+  },
+  "retestGap": "Correlate profile/policy/provider resolution and actual transport/response/failure on the API request; do not use a successful run as substitute",
+  "historicalCause": "not proven",
+  "financialBinding": "separate administrative verification; no credential or project/organization association inferred"
+}

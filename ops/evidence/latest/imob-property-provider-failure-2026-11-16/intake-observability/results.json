@@ -1,0 +1,360 @@
+{
+  "status": "PARCIAL",
+  "baseHead": "a047a1b20a6dd0558fbe3a374b49e7aa4480a475",
+  "branch": "fix/llm-provider-failure-propagation",
+  "executions": "executions.json",
+  "sourceHashes": "source-hashes.json",
+  "counts": {
+    "providers-final": {
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "skipped": 0
+    },
+    "runtime-final": {
+      "tests": 8,
+      "pass": 8,
+      "fail": 0,
+      "skipped": 0
+    },
+    "intake-final": {
+      "tests": 16,
+      "pass": 16,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "providerBoundary": {
+    "exitCode": 0,
+    "tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "blockedSandboxExit": 1
+  },
+  "registration": {
+    "existingTestFilesRegistered": true,
+    "newTestFiles": 0,
+    "officialRegistryUnchanged": true,
+    "kind": "read-only assertions of existing script paths and CI steps; prior official registration result reused"
+  },
+  "inspection": {
+    "files": 16,
+    "credentialPatternFindings": [],
+    "scope": "new evidence and six production files; no environment/credential inventory; pattern scan is not administrative account verification",
+    "diffCheckExit": 0
+  },
+  "protectedHashes": {
+    "CLAUDE.md": "66c82eb6465ab1b5c6d3c5142b591f8b5a6ee82b4840e4b4a74c578fdc2e5f37",
+    "CODEX.md": "2cad8b66e0cb2d35eb71308cbc8d3b10c3ba031ef7a18ac72622ab0ccf179525",
+    "ops/evidence/latest/imob-property-guided-draft-2026-11-14/changes.diff": "4f30ca206258285db9b05914ea2d8943185b2a61ac52267f8359765abb450ac2"
+  },
+  "realProviderCalls": 0,
+  "domainWrites": 0,
+  "configurationChanges": false,
+  "financialChanges": false,
+  "stagingIncidentCause": "not_proven",
+  "retrospectiveRecovery": false,
+  "localTestsOnly": true,
+  "limitations": [
+    "Focal typecheck remains failed (17 roots): 2 old focal +16 dependency diagnostics, no introduced diagnostic in compared scope",
+    "Core/providers builds and formal packaged smoke passed locally",
+    "No live provider, HTTP/database, browser, remote CI or deploy",
+    "Only OpenAI transport has added physical-attempt/response events",
+    "Accessible staging API does not consume runs; no separate run-worker visible; provider variable presence unverified",
+    "Historical staging cause remains unproven; financial organization/project binding is separate",
+    "Other transversal policies remain PROPOSTA; no financial/configuration/retry/fallback changes",
+    "API official build now passed after documented contracts build; does not replace the failed focal test-inclusive typecheck or validate runtime/staging"
+  ],
+  "finalVerification": {
+    "exitCode": 0,
+    "sourceHashesMatch": true,
+    "readmeResultsReferencesExist": true,
+    "gitDiffCheckExit": 0,
+    "stageEmpty": true,
+    "scope": "read-only integrity checks; no test rerun"
+  },
+  "evidenceSha256": {
+    "README.md": "244c850a345ce0a47fe1b66cb31476c865c7234b1d15016327e59eec51293a9b",
+    "affected-tests-first.log": "76abbae75e1811f5788d71052f4e6029f4f14344468205f60e6ba3df3d6b7248",
+    "executions.json": "42ed7f09fa24ac89cfd373dc175e541493b956225d893945c3804537f8d2893b",
+    "intake-final.log": "ea22703d6427313f5cf0be3f36eae26c2ec968a4e5cae9a4a83659c2882e3d0d",
+    "provider-boundary-sandbox.json": "92f26ed41277009de90728c698344bf8249e32565dc3399008fafab8a9eff95e",
+    "provider-boundary.log": "9a7b021bc868d2f49f77bcad27d4db10125d237c5496f0fbffc0f9b8aaa56baa",
+    "providers-final.log": "20e89b502cf7937d67c984138ae5b7e14622b4213c12e3138f84bfe7578ca642",
+    "runtime-final.log": "a87fad81c6bdece20f976245eccbc4a6070fba9da3496d6a245dbda6084a5803",
+    "source-hashes.json": "156437fac96645291e00dc0db615a7c199c278564faf1c412d466360a95db59b",
+    "verification-first.json": "8881e69fd838adac1b6cadbb25e0e094f75d2cec095af851e2142e8ebce33633"
+  },
+  "publication": {
+    "logs": [
+      {
+        "original": "affected-tests-first.log",
+        "published": "published/affected-tests-first.log",
+        "originalSha256": "76abbae75e1811f5788d71052f4e6029f4f14344468205f60e6ba3df3d6b7248",
+        "publishedSha256": "76abbae75e1811f5788d71052f4e6029f4f14344468205f60e6ba3df3d6b7248",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "api-build.log",
+        "published": "published/api-build.log",
+        "originalSha256": "a9afb022796c2db62f19266ebe83a0346f17640b540d77830e0566a4d7de912a",
+        "publishedSha256": "61745d79e086bfb117583ac6fa60e29119a0ba694517b39122bb21292ac1e8ca",
+        "repositoryPathReplacements": 4,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "core-build.log",
+        "published": "published/core-build.log",
+        "originalSha256": "e199e303f27159f9be7c8f977e6e76a927d42328893c8494700c8079d039502d",
+        "publishedSha256": "f9788a5c812c44187aff7d2c2e73ee05b8ebbf0df7164f2aa23aec3405d38749",
+        "repositoryPathReplacements": 4,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "intake-final.log",
+        "published": "published/intake-final.log",
+        "originalSha256": "ea22703d6427313f5cf0be3f36eae26c2ec968a4e5cae9a4a83659c2882e3d0d",
+        "publishedSha256": "ea22703d6427313f5cf0be3f36eae26c2ec968a4e5cae9a4a83659c2882e3d0d",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "packaging-smoke-final.log",
+        "published": "published/packaging-smoke-final.log",
+        "originalSha256": "02f87d536b1b4a141506760f2c96ab1f4c1a2f658339db2048c7a004b58dd444",
+        "publishedSha256": "02f87d536b1b4a141506760f2c96ab1f4c1a2f658339db2048c7a004b58dd444",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "packaging-smoke.log",
+        "published": "published/packaging-smoke.log",
+        "originalSha256": "8a6a741b7049f17fcb60af4907bf771ff937602ed8c381d3dd6f072efda16902",
+        "publishedSha256": "41cf648f4adff4bf3c030e4fe658feaaed8fa1cf187c56c49f16ba1f762a4b38",
+        "repositoryPathReplacements": 2,
+        "inlineSourcePayloadOmissions": 2,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "preparation-typecheck-outside.log",
+        "published": "published/preparation-typecheck-outside.log",
+        "originalSha256": "265aa586066ca64db4a0be343de28d55aa440d60d41ed732716e2205e67b84da",
+        "publishedSha256": "265aa586066ca64db4a0be343de28d55aa440d60d41ed732716e2205e67b84da",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "preparation-typecheck.log",
+        "published": "published/preparation-typecheck.log",
+        "originalSha256": "db1646c2dc360777485a9a8c8e669a05bb63e804aa206209ccef77b8256a4f51",
+        "publishedSha256": "031601f106fd2b17414f55aa01753da8af5758e59524e5632025cff80bad0b6d",
+        "repositoryPathReplacements": 1,
+        "inlineSourcePayloadOmissions": 1,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "provider-boundary.log",
+        "published": "published/provider-boundary.log",
+        "originalSha256": "9a7b021bc868d2f49f77bcad27d4db10125d237c5496f0fbffc0f9b8aaa56baa",
+        "publishedSha256": "6257ff55aba69eaa102b394e3f01f664381e2ee71bb7c8fe83da9952e3147e26",
+        "repositoryPathReplacements": 1,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "providers-build.log",
+        "published": "published/providers-build.log",
+        "originalSha256": "ee18fdacd2924f9af8341d8fa1c92ab0604ff7870435763234de3a9e0f21b570",
+        "publishedSha256": "d59dab34e344226dfe0bb7de956df3996f9af43ffcf69dbda6ab73aac67efbe3",
+        "repositoryPathReplacements": 2,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "providers-final.log",
+        "published": "published/providers-final.log",
+        "originalSha256": "20e89b502cf7937d67c984138ae5b7e14622b4213c12e3138f84bfe7578ca642",
+        "publishedSha256": "20e89b502cf7937d67c984138ae5b7e14622b4213c12e3138f84bfe7578ca642",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "runtime-final.log",
+        "published": "published/runtime-final.log",
+        "originalSha256": "a87fad81c6bdece20f976245eccbc4a6070fba9da3496d6a245dbda6084a5803",
+        "publishedSha256": "a87fad81c6bdece20f976245eccbc4a6070fba9da3496d6a245dbda6084a5803",
+        "repositoryPathReplacements": 0,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement and complete inline data-URL source payload omission; ANSI/newlines/diagnostic text otherwise unchanged"
+      },
+      {
+        "original": "contracts-build.log",
+        "published": "published/contracts-build.log",
+        "originalSha256": "e7ccd8b16529d2676a6ae08ceb47e3a5d5c53c88b2745064762c03d21d98c9fa",
+        "publishedSha256": "4ae4a0d7d84036f9dc25dd3ffb64e97319b15436929ddcac084d57c30d24bcbf",
+        "repositoryPathReplacements": 2,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement; no other content, ANSI or newline transformation"
+      },
+      {
+        "original": "api-build-after-contracts.log",
+        "published": "published/api-build-after-contracts.log",
+        "originalSha256": "4668109e7d8872ff95261818b12fd1d2ca6c24798fa08f62f3a982fdd4a44a37",
+        "publishedSha256": "795a4f7ee043a97eb49a472e99ed867880a69f37ebe752b3636ad772d8b2b069",
+        "repositoryPathReplacements": 4,
+        "inlineSourcePayloadOmissions": 0,
+        "treatment": "Only literal repository path replacement; no other content, ANSI or newline transformation"
+      }
+    ],
+    "originalsExcluded": true,
+    "logTreatment": "Originals retained byte-for-byte locally. Public copies identify all transformations individually; no silent whitespace or ANSI normalization. Inline source payload is checker code, not provider response.",
+    "historicalHashScope": "Top-level evidenceSha256 and source-hashes.json describe initial instrumented-test phase; updated docs/preparation files are covered by preparation-manifest.json."
+  },
+  "preparation": {
+    "status": "PARCIAL",
+    "executionRecords": [
+      "preparation-executions.json",
+      "packaging-executions.json"
+    ],
+    "typecheck": {
+      "exitCode": 1,
+      "result": "REPROVADO",
+      "roots": 17,
+      "baselineHead": "a047a1b20a6dd0558fbe3a374b49e7aa4480a475",
+      "focusedOld": 2,
+      "dependencyDiagnostics": 16,
+      "introduced": 0,
+      "comparison": "fresh virtual HEAD baseline; no checkout or source changes",
+      "initialAttempt": {
+        "exitCode": 1,
+        "result": "BLOQUEADO",
+        "error": "spawnSync git EPERM before compiler comparison"
+      },
+      "details": "preparation-typecheck.json"
+    },
+    "coreBuild": {
+      "exitCode": 0,
+      "result": "APROVADO"
+    },
+    "providersBuild": {
+      "exitCode": 0,
+      "result": "APROVADO"
+    },
+    "packagedSmoke": {
+      "exitCode": 0,
+      "result": "APROVADO",
+      "intermediateExitCode": 1,
+      "intermediateCause": "checker data-URL module could not import a raw absolute path for node-fetch; checker-only pathToFileURL adaptation",
+      "scope": "formal dist exports/declarations and synthetic OpenAI transport stages; no application HTTP/DB/network"
+    },
+    "apiBuild": {
+      "exitCode": 0,
+      "result": "APROVADO",
+      "log": "published/api-build-after-contracts.log",
+      "diagnostics": 0,
+      "scope": "Official API build: tsc -p tsconfig.build.json --noEmit then tsup; excludes test files per existing build config",
+      "previousFailurePreserved": "published/api-build.log"
+    },
+    "reusedTests": {
+      "providers": 5,
+      "runtime": 8,
+      "intakeRoute": 16,
+      "providerBoundary": 1,
+      "rerun": false
+    },
+    "realProviderCalls": 0,
+    "deploymentPerformed": false,
+    "operationalComparison": "operational-comparison.json",
+    "verificationIntermediate": {
+      "exitCode": 1,
+      "scope": "publication integrity helper, not test/build/typecheck",
+      "cause": "Credential pattern scanner found the three deliberate Bearer synthetic-private fixtures used to prove sanitization",
+      "treatment": "Review exact known synthetic strings only; no broad pattern exception or source change; all other matches remain blocking"
+    },
+    "verification": {
+      "exitCode": 0,
+      "uniquePaths": 40,
+      "normalPaths": 26,
+      "forcePaths": 14,
+      "hashesForOtherPaths": 39,
+      "originalLogsPreserved": 14,
+      "nineTestedSourcesUnchanged": true,
+      "protectedFilesUnchanged": true,
+      "referencesResolved": true,
+      "ignoredSetMatches": true,
+      "whitespaceFindings": [],
+      "reviewedSyntheticCredentialMatches": [
+        {
+          "file": "apps/api/src/tests/imob-property-capture-intake.test.ts",
+          "classification": "deliberate synthetic test fixture, exact match reviewed"
+        },
+        {
+          "file": "apps/api/src/tests/llm-provider-failure.test.ts",
+          "classification": "deliberate synthetic test fixture, exact match reviewed"
+        },
+        {
+          "file": "packages/providers/tests/openai-provider-failure.test.ts",
+          "classification": "deliberate synthetic test fixture, exact match reviewed"
+        }
+      ],
+      "unexpectedCredentialPatternFindings": [],
+      "credentialScanScope": "37 selected files only; not exhaustive secret audit; no environment/credential inventory",
+      "stageEmpty": true,
+      "planHistoryPreserved": true,
+      "testsBuildsRenderRerun": false,
+      "note": "Builds contracts/API newly authorized; other valid checks reused. Previous failed API build and focal typecheck retained."
+    },
+    "apiBuildBeforeContracts": {
+      "exitCode": 2,
+      "result": "REPROVADO",
+      "phase": "tsc -p tsconfig.build.json --noEmit; tsup not reached",
+      "diagnostics": 24,
+      "firstError": "TS2305: @eiah/contracts has no exported member imobPropertyCaptureRequestSchema",
+      "staticDependencyFinding": "packages/contracts/src/index.ts exports imobPropertyCapture; existing local dist/index.d.ts does not",
+      "attributionLimit": "No baseline comparison using the full API build configuration; do not call all 24 diagnostics old or introduced based on focal check",
+      "nextVerification": "Separately authorize preparation of contracts compiled dependency, then API build; do not modify sources/gates to mask dependency output"
+    },
+    "contractsBuild": {
+      "exitCode": 0,
+      "result": "APROVADO",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/contracts",
+        "build"
+      ],
+      "officialScript": "tsc -p tsconfig.json",
+      "log": "published/contracts-build.log",
+      "outputsIgnored": true,
+      "exportsConfirmed": true,
+      "sourceChanges": false
+    },
+    "dependencyPreparation": "dependency-preparation.json",
+    "dependencyVerification": {
+      "contractsBuildExit": 0,
+      "apiBuildExit": 0,
+      "remainingApiDiagnostics": 0,
+      "staticExportsConfirmed": true,
+      "outputsIgnored": true,
+      "trackedDiffUnchangedDuringBuilds": true,
+      "noUnexpectedTrackedPaths": true,
+      "stageEmpty": true,
+      "uniquePaths": 40,
+      "normalPaths": 26,
+      "forcePaths": 14,
+      "protectedHashesPreserved": true,
+      "originalLogsPreserved": 14,
+      "previousFocalTypecheckUnchanged": "REPROVADO, not rerun",
+      "noOtherChecksRepeated": true
+    }
+  }
+}

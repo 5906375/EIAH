@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: apps/api/src/tests/channel-binding.test.ts
+ok 1 - apps/api/src/tests/channel-binding.test.ts
+  ---
+  duration_ms: 380.349591
+  type: 'test'
+  ...
+# Subtest: apps/api/src/tests/replay-guard.test.ts
+ok 2 - apps/api/src/tests/replay-guard.test.ts
+  ---
+  duration_ms: 370.964295
+  type: 'test'
+  ...
+# Subtest: apps/api/src/tests/whatsapp.meta-adapter.test.ts
+not ok 3 - apps/api/src/tests/whatsapp.meta-adapter.test.ts
+  ---
+  duration_ms: 872.34762
+  type: 'test'
+  location: '/home/jusall/projects/EIAH_BUILDER/apps/api/src/tests/whatsapp.meta-adapter.test.ts:1:1'
+  failureType: 'testCodeFailure'
+  exitCode: 1
+  signal: ~
+  error: 'test failed'
+  code: 'ERR_TEST_FAILURE'
+  ...
+# Subtest: apps/api/src/tests/whatsapp.webhook-read-only.test.ts
+ok 4 - apps/api/src/tests/whatsapp.webhook-read-only.test.ts
+  ---
+  duration_ms: 831.646198
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 3
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 891.708923

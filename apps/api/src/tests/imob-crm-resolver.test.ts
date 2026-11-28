@@ -1,10 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  resolveImobCrmOperationalConsult,
+  resolveImobCrmOperationalConsult as resolveImobCrmOperationalConsultBase,
   resolveImobCrmOperationalUpdate,
 } from "../services/imob/crm/imobCrmResolver";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS } from "../services/imob/imobSpecialistBridge";
+
+// Estes cenários verificam o conteúdo da leitura com os especialistas comprovadamente disponíveis; sem disponibilidade
+// informada o resolvedor falha fechado e não apresenta nenhum apoio (ver imob-specialist-bridge.test.ts).
+const resolveImobCrmOperationalConsult: typeof resolveImobCrmOperationalConsultBase = (params) =>
+  resolveImobCrmOperationalConsultBase({
+    readBackingSpecialistAvailability: async () => Object.fromEntries(IMOB_BACKING_SPECIALIST_AGENT_IDS.map((id) => [id, "available"])),
+    ...params,
+  } as any);
 
 function createThreadState() {
   return {
@@ -305,8 +314,8 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.action, "crm.case.pipeline_status");
   assert.match(resolved?.presentation?.text ?? "", /Lead Merlo/);
   assert.match(resolved?.presentation?.text ?? "", /Fase:/);
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on:/);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando:/);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação:/);
   assert.match(resolved?.presentation?.text ?? "", /Specialist de apoio:/);
   assert.match(resolved?.presentation?.text ?? "", /não assume ownership do caso/i);
   assert.match(resolved?.presentation?.text ?? "", /Próximo movimento/);

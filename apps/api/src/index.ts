@@ -10,6 +10,7 @@ import { uploadsRouter } from "./routes/uploads";
 import { opsRouter } from "./routes/ops";
 import { delegationsRouter } from "./routes/delegations";
 import { marketplaceRouter } from "./routes/marketplace";
+import { commercialAuthorityRouter } from "./routes/commercialAuthority";
 import { governanceRouter } from "./routes/governance";
 import { startRunQueueBullMqWorker } from "./workers/runWorker";
 import { createLogger, requireRedisUrl } from "@eiah/core";
@@ -22,9 +23,10 @@ import { metricsRouter } from "./routes/metrics";
 import { metricsPromRouter } from "./routes/metrics-prom";
 import { memoryRouter } from "./routes/memory";
 import toolsRouter from "./routes/tools";
-import { startRunEventOutboxProcessor } from "./services/runEventOutbox";
+import { startRunEventOutboxProcessor, stopRunEventOutboxProcessor } from "./services/runEventOutbox";
 import { assertGovernanceEnv } from "./services/intentValidator";
 import { sessionRouter } from "./routes/session";
+import { oraculoPreparationRouter } from "./routes/oraculoPreparation";
 import { onboardingRouter } from "./routes/onboarding";
 import { workspacesRouter } from "./routes/workspaces";
 import { authRouter } from "./routes/auth";
@@ -34,21 +36,33 @@ import { economyOpportunitiesRouter } from "./routes/economy-opportunities";
 import { shadowExecutionsRouter } from "./routes/shadow-executions";
 import { onboardingContextRouter } from "./routes/onboarding-context";
 import { tenantRecipesRouter } from "./routes/tenant-recipes";
-import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
+import { startTenantBillingReconciler, stopTenantBillingReconciler } from "./services/tenantBillingReconciler";
 import { imobRouter } from "./routes/imob";
 import { chatVerticalsRouter } from "./routes/chatVerticals";
 import { verticalAccessRouter } from "./routes/verticalAccess";
 import { frontDoorAccessRouter } from "./routes/frontDoorAccess";
 import { frontDoorBillingRouter } from "./routes/frontDoorBilling";
+import { frontDoorIntakeRouter } from "./routes/frontDoorIntake";
 import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRuntimeShadow";
 import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
 import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
 import { isPreDuimpRuntimeShadowRouteEnabled } from "./routes/preDuimpRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
 import { whatsappRouter } from "./routes/whatsapp";
-import { startRunArchiveWorker } from "./workers/runArchiveWorker";
-import { startImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
-import { startUploadRetentionWorker } from "./workers/uploadRetentionWorker";
+import { createMetaWhatsappRouter, META_WHATSAPP_WEBHOOK_PATH } from "./routes/whatsappMeta";
+import { createMetaPostgresStore } from "./services/whatsappMetaPostgresStore";
+import { startRunArchiveWorker, stopRunArchiveWorker } from "./workers/runArchiveWorker";
+import { startImobPostRunMutationWorker, stopImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
+import { startUploadRetentionWorker, stopUploadRetentionWorker } from "./workers/uploadRetentionWorker";
+import { createShutdownCoordinator, drainHttpServer, resolveHttpDrainMs, resolveShutdownTimeoutMs } from "./services/gracefulShutdown";
+import { closeRunEventsTransport } from "./services/runEvents";
+import { closeRunEventStream } from "./services/runEventStream";
+import { closeMemoryResources } from "./services/memory";
+import { closeDraftStoreResources } from "./services/imob/intake/imobContractDraftService";
+import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
+import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
+import { closeCriticalKillSwitchRedis } from "@eiah/core/security/killSwitch";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
 import { acquireWorkerOwnershipLease } from "@eiah/core/queue/workerOwnershipLease";
 import { setWorkerOwnershipState } from "./services/health";
@@ -65,8 +79,8 @@ const bootstrapLogger = createLogger({ component: "api-bootstrap" });
 // nao implica estado corrompido). uncaughtException: loga e sai limpo — o
 // processo pode estar em estado inconsistente apos uma excecao sincrona nao
 // tratada; deixamos o orquestrador (systemd/pm2/k8s) reiniciar, mesmo padrao
-// de "sair para deixar o supervisor recuperar" do shutdown gracioso via
-// process.once(SIGINT/SIGTERM) mais abaixo.
+// de "sair para deixar o supervisor recuperar" do shutdown gracioso
+// (createShutdownCoordinator, SIGINT/SIGTERM) mais abaixo.
 process.on("unhandledRejection", (reason) => {
   bootstrapLogger.error({ err: reason }, "api.unhandled_rejection");
 });
@@ -80,6 +94,13 @@ const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Native Meta ingress precedes generic URL logging (GET token) and JSON parsing (signed bytes).
+// No enabled default, credential fallback, eager DB operation or outbound transport.
+app.use(META_WHATSAPP_WEBHOOK_PATH, createMetaWhatsappRouter({
+  environment: () => process.env,
+  store: config => createMetaPostgresStore(() => prismaGlobal, config.limits.retentionMs),
+  observe: metric => bootstrapLogger.info({ metric: metric.metric, value: metric.value, reasonCode: metric.reasonCode }, "whatsapp.meta.ingress"),
+}));
 app.use(requestLogger);
 app.use(
   cors({
@@ -117,11 +138,14 @@ app.use("/api", runsRouter);
 app.use("/api", agentsRouter);
 app.use("/api", defiRouter);
 app.use("/api", uploadsRouter);
+// Prefixo estreito exclusivo: o enforceTenant desse router não alcança as demais rotas de /api.
+app.use("/api/commercial-authority", commercialAuthorityRouter);
 app.use("/api", marketplaceRouter);
 app.use("/api", delegationsRouter);
 app.use("/api", governanceRouter);
 app.use("/api", memoryRouter);
 app.use("/api", sessionRouter);
+app.use("/api", oraculoPreparationRouter);
 app.use("/api", workspacesRouter);
 app.use("/api", profileRouter);
 app.use("/api", operationalInsightsRouter);
@@ -134,6 +158,7 @@ app.use("/api", chatVerticalsRouter);
 app.use("/api", verticalAccessRouter);
 app.use("/api", frontDoorAccessRouter);
 app.use("/api", frontDoorBillingRouter);
+app.use("/api", frontDoorIntakeRouter);
 if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
   app.use("/api", chatVerticalImobRuntimeShadowRouter);
 }
@@ -166,11 +191,47 @@ if (process.env.NODE_ENV !== "test") {
     "worker.topology_resolved"
   );
   assertGovernanceEnv();
+
+  const shutdownTimeoutMs = resolveShutdownTimeoutMs(process.env.API_SHUTDOWN_TIMEOUT_MS);
+  const shutdownCoordinator = createShutdownCoordinator({
+    logger: bootstrapLogger,
+    exit: (code) => process.exit(code),
+    timeoutMs: shutdownTimeoutMs,
+    onDeadline: () => httpServer?.closeAllConnections(),
+  });
+  shutdownCoordinator.installSignalHandlers(process);
+  let httpServer: ReturnType<typeof app.listen> | null = null;
+
   startRunEventOutboxProcessor();
   startTenantBillingReconciler();
   startRunArchiveWorker();
   startUploadRetentionWorker();
   startImobPostRunMutationWorker();
+
+  shutdownCoordinator.register({
+    name: "http-server",
+    phase: "http",
+    run: async () => {
+      if (httpServer) await drainHttpServer(httpServer, resolveHttpDrainMs(shutdownTimeoutMs), bootstrapLogger);
+    },
+  });
+  shutdownCoordinator.register({ name: "imob-post-run-mutation-worker", phase: "consumers", run: stopImobPostRunMutationWorker });
+  shutdownCoordinator.register({ name: "run-event-outbox", phase: "schedulers", run: stopRunEventOutboxProcessor });
+  shutdownCoordinator.register({ name: "tenant-billing-reconciler", phase: "schedulers", run: stopTenantBillingReconciler });
+  shutdownCoordinator.register({ name: "run-archive-worker", phase: "schedulers", run: stopRunArchiveWorker });
+  shutdownCoordinator.register({ name: "upload-retention-worker", phase: "schedulers", run: stopUploadRetentionWorker });
+  for (const [name, close] of [
+    ["run-events-transport", closeRunEventsTransport],
+    ["run-event-stream", closeRunEventStream],
+    ["memory", closeMemoryResources],
+    ["imob-draft-store", closeDraftStoreResources],
+    ["run-queue", closeRunQueueConnections],
+    ["tenant-policy-store", closeTenantPolicyStoreResources],
+    ["kill-switch", closeCriticalKillSwitchRedis],
+    ["prisma", closePrismaResources],
+  ] as const) {
+    shutdownCoordinator.register({ name, phase: "connections", run: close });
+  }
 
   // Worker ownership lease — async, runs in background while HTTP server starts
   void (async () => {
@@ -206,6 +267,13 @@ if (process.env.NODE_ENV !== "test") {
         return;
       }
 
+      if (shutdownCoordinator.isShuttingDown()) {
+        // Lease obtido depois do início do encerramento: não inicia consumidor novo.
+        await lease.release();
+        void leaseRedis.quit().catch(() => undefined);
+        return;
+      }
+
       setWorkerOwnershipState("runs", {
         owned: true,
         ownerId: leaseOwnerId,
@@ -222,13 +290,22 @@ if (process.env.NODE_ENV !== "test") {
         "worker.started"
       );
 
-      for (const signal of ["SIGINT", "SIGTERM"]) {
-        process.once(signal as NodeJS.Signals, () => {
-          bootstrapLogger.info({ signal }, "api.worker_shutdown — releasing ownership lease");
-          setWorkerOwnershipState("runs", { owned: false, ownerId: null, acquiredAt: null });
-          void lease.release().finally(() => void leaseRedis.quit().catch(() => undefined));
-        });
-      }
+      // Ordem: o consumidor para (aguardando os jobs ativos) ANTES de o lease ser liberado,
+      // para que nenhum job seja processado sem ownership.
+      shutdownCoordinator.register({
+        name: "run-queue-worker+ownership-lease",
+        phase: "consumers",
+        run: async () => {
+          try {
+            await runWorkerInstance?.close();
+          } finally {
+            bootstrapLogger.info({ worker: "runQueue", ownerId: leaseOwnerId }, "api.worker_shutdown — releasing ownership lease");
+            setWorkerOwnershipState("runs", { owned: false, ownerId: null, acquiredAt: null });
+            await lease.release();
+            await leaseRedis.quit().catch(() => undefined);
+          }
+        },
+      });
     } else {
       bootstrapLogger.info(
         {
@@ -245,7 +322,7 @@ if (process.env.NODE_ENV !== "test") {
     process.exit(1);
   });
 
-  app.listen(port, () =>
+  httpServer = app.listen(port, () =>
     bootstrapLogger.info(
       {
         port,

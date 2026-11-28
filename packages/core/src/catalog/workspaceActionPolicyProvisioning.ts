@@ -1,3 +1,5 @@
+import type { ActivatableProductId } from "@eiah/contracts";
+
 /**
  * Workspace Action Policy Provisioning Catalog — ADR-010, PR A2.
  *
@@ -17,12 +19,14 @@
  * This module declares data only; it does not authorize execution by itself.
  */
 
-export const WORKSPACE_ACTION_POLICY_PROVISIONING_VERSION = 1;
+export const WORKSPACE_ACTION_POLICY_PROVISIONING_VERSION = 2;
 
-export type ActionPolicyProvisionableProduct = "IMOB";
+export type ActionPolicyProvisionableProduct = ActivatableProductId;
 
 const PRODUCT_DEFAULT_ACTION_POLICIES: Readonly<Record<ActionPolicyProvisionableProduct, readonly string[]>> =
   Object.freeze({
+    // No action or context-reading grant is inferred from installation.
+    LOGISTICA: Object.freeze([]),
     IMOB: Object.freeze([
       "realestate.register_property",
       "realestate.qualify_lead",

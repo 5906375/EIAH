@@ -44,6 +44,8 @@ import {
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
+import { filterActionsByEvaluationGate, productForAction } from "../services/products/verticalEvaluationContract";
 import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 
 /* ──────────────────────────────────────────────
@@ -601,9 +603,14 @@ async function resolveActionsForExecution(
       }))
   );
 
-  const dbAllowedCanonical = decisions
+  const dbAllowedByPolicy = decisions
     .filter(({ decision }) => decision.allowed)
     .map(({ actionName }) => actionName);
+  // Avaliação gratuita: run enfileirado antes do fim da validade e executado depois NÃO pode usar as policies que a ativação
+  // provisionou. A leitura só ocorre se há action do IMOB e só restringe workspaces com grant (sem grant: conjunto idêntico).
+  const dbAllowedCanonical = dbAllowedByPolicy.some((action) => productForAction(action) === "IMOB")
+    ? [...filterActionsByEvaluationGate(new Set(dbAllowedByPolicy), await readEvaluationGrantGate({ prisma: prismaGlobal as never, tenantId, workspaceId }))]
+    : dbAllowedByPolicy;
 
   return mergeActionsForExecution({
     configured: {},
@@ -1068,8 +1075,15 @@ function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
     finalizeCancelledRunPartial,
     getAgentProfile,
     getRegisteredActionDefinitions,
-    resolveScopeDecision: (tenantId, workspaceId, action) =>
-      TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action),
+    resolveScopeDecision: async (tenantId, workspaceId, action) => {
+      const decision = await TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action);
+      if (!decision.allowed || productForAction(action) !== "IMOB") return decision;
+      // Mesma regra da lista de actions: com grant de avaliação que não está ativo e válido AGORA, a action do IMOB é negada.
+      const gate = await readEvaluationGrantGate({ prisma: prismaGlobal as never, tenantId, workspaceId });
+      return gate.applies && !gate.allowed
+        ? { allowed: false as const, reasonCode: "SCOPE_NOT_ALLOWED" as const, tenantId, workspaceId, scope: action }
+        : decision;
+    },
     emitRunEvent,
     updateRunStatus,
     persistRunFailureEvidence,

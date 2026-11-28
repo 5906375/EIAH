@@ -2,6 +2,65 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
 
+test("intake de unidades usa boundary semântica e retorna sem chamar persistência ou outros fluxos", async (t) => {
+  const previous = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "synthetic-test-only";
+  t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; });
+  let confidence = 0.96;
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ output_text: JSON.stringify({
+    entity: "imovel", action: "create", confidence, needsClarification: false, composedIntents: [],
+    propertyUnits: { status: "resolved", confidence, expressions: [{ kindText: "kitnets", identifiersText: "102 à 104" }], singleLabel: null },
+  }) })));
+  let writes = 0;
+  const params = createEngineParams({ body: { message: "Tenho três kitnets de teste, da 102 à 104.", intake: "property_units" } });
+  params.helpers.upsertImobCaseFromResolvedTurn = async () => { writes++; throw new Error("write indevido"); };
+  params.helpers.resolveImobOperationalUpdate = async () => { throw new Error("outro fluxo indevido"); };
+  const result = await resolveImobCrmTurnEngine(params);
+  assert.deepEqual(result.propertyUnitIntake?.unitLabels, ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+  assert.equal(result.executionRequest, undefined);
+  assert.equal(writes, 0);
+  confidence = 0.3;
+  const unclear = await resolveImobCrmTurnEngine(params);
+  assert.equal(unclear.propertyUnitIntake?.status, "needs_clarification");
+  assert.equal(writes, 0);
+  assert.equal(unclear.executionRequest, undefined);
+  confidence = 0.96;
+  const normal = createEngineParams({ body: { message: "Quero cadastrar três kitnets de teste, da 102 à 104." } });
+  normal.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+  const captured = await resolveImobCrmTurnEngine(normal);
+  assert.deepEqual(captured.conversationState.operational?.propertyDraft?.unitLabels, ["Kitnet 102", "Kitnet 103", "Kitnet 104"], "turno normal alimenta o draft estruturado pelo mesmo intake");
+  assert.equal(captured.presentation.form?.fields.find((field: { name: string }) => field.name === "unitLabel")?.value, "Kitnet 102, Kitnet 103, Kitnet 104");
+  delete process.env.OPENAI_API_KEY;
+  params.body.message = "Tenho três kitnets";
+  const unavailable = await resolveImobCrmTurnEngine(params);
+  assert.equal(unavailable.propertyUnitIntake?.status, "needs_clarification");
+  assert.equal(unavailable.executionRequest, undefined);
+  assert.equal(writes, 0, "entrada natural sem provider não pode gravar nem virar single");
+});
+
+test("ambiguidade no turno normal de captação clarifica antes de writes e preserva a demanda", async (t) => {
+  const previous = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "synthetic-test-only";
+  t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; });
+  let entity: string | null = "imovel";
+  let action: string | null = "create";
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify({ output_text: JSON.stringify({
+    entity, action, confidence: 0.96, needsClarification: false, composedIntents: [],
+    propertyUnits: { status: "needs_clarification", confidence: 0.3, expressions: [], singleLabel: null },
+  }) })));
+  const params = createEngineParams({ body: { message: "Cadastre três kitnets, ainda não sei quais." } });
+  params.helpers.upsertImobCaseFromResolvedTurn = async () => assert.fail("não pode persistir");
+  params.helpers.resolveImobOperationalUpdate = async () => assert.fail("não pode mudar operação");
+  const result = await resolveImobCrmTurnEngine(params);
+  assert.equal(result.action, "property.units.clarify");
+  assert.equal(result.executionRequest, undefined);
+  assert.match(result.presentation.text, /Quais unidades/);
+  entity = null;
+  action = null;
+  params.body.message = "Tenho três kitnets";
+  assert.equal((await resolveImobCrmTurnEngine(params)).action, "property.units.clarify", "classificação incompleta não autoriza fallback para outra operação");
+});
+
 function createEngineParams(overrides?: Partial<any>) {
   const baseState = {
     mode: "execute",

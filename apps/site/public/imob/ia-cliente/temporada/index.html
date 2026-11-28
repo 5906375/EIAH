@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Pedido de temporada · EIAH IMOB</title>
+  <link rel="stylesheet" href="../../catalog.css">
+  <link rel="stylesheet" href="../../visual.css">
+</head>
+<body data-product="ia-cliente">
+<header class="topbar"><div class="wrap">
+  <a class="brand" id="back-to-store" href="../"><span class="brand-monogram" data-client-logo aria-hidden="true">IM</span><span data-client-name>Minha imobiliária</span></a>
+  <a class="quiet-link" href="../../operacao-eiah/equipe/#temporada">Visão da equipe na demo</a>
+</div></header>
+<main class="team wrap">
+  <h1 data-demo-guide-topic="temporada">Pedido de temporada</h1>
+  <p class="demo-notice">Demonstração. Use dados fictícios. O pedido e o acompanhamento ficam neste navegador.</p>
+  <section class="stay-panel" id="seasonal-request" aria-labelledby="stay-request-title" hidden>
+    <h2 data-demo-guide-topic="pedido-datas" id="stay-request-title">Peça a confirmação das datas</h2>
+    <p class="lead" id="seasonal-property"></p>
+    <form id="seasonal-form">
+      <div class="stay-fields">
+        <label>Entrada<input name="arrival" type="date" required></label>
+        <label>Saída<input name="departure" type="date" required></label>
+        <label>Hóspedes<input name="guests" type="number" value="2" min="1" max="12" required></label>
+      </div>
+      <div class="next-actions">
+        <button class="btn btn-primary" type="submit">Enviar pedido à equipe</button>
+      </div>
+    </form>
+  </section>
+  <section class="stay-panel" id="seasonal-tracking" aria-labelledby="tracking-title" hidden>
+    <h2 data-demo-guide-topic="acompanhar" id="tracking-title">Acompanhe seu pedido</h2>
+    <p class="lead" id="tracking-property"></p>
+    <p class="team-status" id="tracking-status" role="status"></p>
+    <dl class="request-summary" id="tracking-summary"></dl>
+    <div class="next-actions">
+      <a class="btn btn-ghost" id="tracking-link" href="./">Link deste pedido</a>
+    </div>
+    <div class="next-actions">
+      <a class="btn btn-ghost" id="contact-eiah" href="mailto:contato@eiah.ia.br">Falar com a EIAH sobre o IMOB</a>
+    </div>
+    <p class="field-help">Este pedido é uma demonstração. Para usar o IMOB na sua imobiliária, fale com a EIAH: o botão abre o seu aplicativo de e-mail com uma mensagem para você completar. O site não envia nada.</p>
+  </section>
+  <p class="field-help" role="status" id="seasonal-message"></p>
+</main>
+<script type="module" src="../../seasonal-request.mjs"></script>
+<script type="module" src="../../demo-guide.mjs"></script>
+</body>
+</html>

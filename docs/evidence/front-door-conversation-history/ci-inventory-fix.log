@@ -1,0 +1,94 @@
+TAP version 13
+# Subtest: inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+ok 1 - inventário válido: ignora comentários e linhas vazias e devolve ordem determinística
+  ---
+  duration_ms: 1.776691
+  type: 'test'
+  ...
+# Subtest: a ordem de saída não depende da ordem do manifesto nem do fim de linha
+ok 2 - a ordem de saída não depende da ordem do manifesto nem do fim de linha
+  ---
+  duration_ms: 0.25224
+  type: 'test'
+  ...
+# Subtest: entrada duplicada é reprovada, inclusive após normalização
+ok 3 - entrada duplicada é reprovada, inclusive após normalização
+  ---
+  duration_ms: 0.631103
+  type: 'test'
+  ...
+# Subtest: caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+ok 4 - caminhos absolutos, travessia e caracteres inválidos são reprovados com códigos estáveis
+  ---
+  duration_ms: 1.447304
+  type: 'test'
+  ...
+# Subtest: extensão fora de .test.ts/.test.tsx é reprovada
+ok 5 - extensão fora de .test.ts/.test.tsx é reprovada
+  ---
+  duration_ms: 0.332161
+  type: 'test'
+  ...
+# Subtest: mais de um caminho na mesma linha ou comentário inline não é aceito
+ok 6 - mais de um caminho na mesma linha ou comentário inline não é aceito
+  ---
+  duration_ms: 0.122404
+  type: 'test'
+  ...
+# Subtest: todos os problemas são reportados de uma vez, na ordem das linhas
+ok 7 - todos os problemas são reportados de uma vez, na ordem das linhas
+  ---
+  duration_ms: 0.110286
+  type: 'test'
+  ...
+# Subtest: manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+ok 8 - manifesto sem entradas é reprovado (fail-closed), mesmo com cabeçalho
+  ---
+  duration_ms: 0.113361
+  type: 'test'
+  ...
+# Subtest: conteúdo que não é texto é reprovado sem lançar
+ok 9 - conteúdo que não é texto é reprovado sem lançar
+  ---
+  duration_ms: 0.465472
+  type: 'test'
+  ...
+# Subtest: entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+ok 10 - entradas aceitas cobrem o padrão usado pelo gate de órfãos (nomes com ponto e hífen)
+  ---
+  duration_ms: 0.351211
+  type: 'test'
+  ...
+# Subtest: manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+ok 11 - manifesto versionado: válido, sem duplicatas e todos os caminhos existem no repositório
+  ---
+  duration_ms: 2.289615
+  type: 'test'
+  ...
+# Subtest: manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+ok 12 - manifesto == comando test:ci-unit-suite: mesmo conjunto, mesma ordem, nenhuma exclusão silenciosa
+  ---
+  duration_ms: 1.095974
+  type: 'test'
+  ...
+# Subtest: o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+ok 13 - o comando é reproduzível a partir do manifesto, byte a byte, pelo snippet documentado no cabeçalho
+  ---
+  duration_ms: 1.062363
+  type: 'test'
+  ...
+# Subtest: arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+ok 14 - arquivos que dependem de Postgres real estão no manifesto e permanecem classificados como condicionais
+  ---
+  duration_ms: 1.117507
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 259.742248

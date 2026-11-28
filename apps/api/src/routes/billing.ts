@@ -7,6 +7,20 @@ import {
 } from "@eiah/core/services/tenantInvoiceService";
 import { prismaGlobal } from "@repo/db";
 import { enforceTenant, TenantAwareRequest } from "../middlewares/enforceTenant";
+import { FINANCIAL_AUTHORITY_SCOPES } from "@eiah/core";
+import { requireFinancialAuthority, type FinancialAuthorityRequest } from "../middlewares/requireFinancialAuthority";
+import { recordFinancialDenial } from "../services/financialAuthority";
+import {
+  adjustmentAmountFailure,
+  adjustmentBodySchema,
+  adjustmentCeilingFailure,
+  applyQuotaUpdate,
+  applyWorkspaceGrantUpdate,
+  grantBodySchema,
+  invalidPayload,
+  quotasBodySchema,
+  type WriteFailure,
+} from "../services/financialBillingWrites";
 import {
   chargeRun,
   estimateCostCents,
@@ -14,9 +28,7 @@ import {
   listRunUsageBreakdowns,
 } from "../services/billing";
 import {
-  BillingLedgerService,
   QuotaUsageService,
-  ensureTenantBillingDefaults,
   getAgentBillingSummary,
   getWorkspaceBillingSummary,
 } from "../services/tenantBilling";
@@ -1988,153 +2000,105 @@ billingRouter.get("/billing/tenant/workspaces", async (req, res) => {
   });
 });
 
-billingRouter.patch("/billing/tenant/workspaces/:id/grant", async (req, res) => {
-  const { authContext, prisma } = req as TenantAwareRequest;
-  if (!authContext || !prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
-    });
-  }
-
-  const workspaceId = req.params.id;
-  const enabled = req.body?.enabled;
-  const localRunLimit = parseOptionalInt(req.body?.localRunLimit);
-  const localCostCentsLimit = parseOptionalInt(req.body?.localCostCentsLimit);
-
-  if (
-    enabled === undefined &&
-    localRunLimit === null &&
-    localCostCentsLimit === null
-  ) {
-    return res.status(400).json({
-      ok: false,
-      error: {
-        code: "MISSING_REQUIRED",
-        message: "enabled and/or localRunLimit and/or localCostCentsLimit",
-      },
-    });
-  }
-
-  const client = getTenantBillingV2Client(prisma);
-  if (!client) {
-    return res.status(409).json({
-      ok: false,
-      error: {
-        code: "TENANT_BILLING_V2_UNAVAILABLE",
-        message: "Tenant billing v2 not available in current runtime",
-      },
-    });
-  }
-  const workspace = await client.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { id: true, tenantId: true },
-  });
-  if (!workspace || workspace.tenantId !== authContext.tenantId) {
-    return res.status(404).json({
-      ok: false,
-      error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
-    });
-  }
-
-  await ensureTenantBillingDefaults(prisma, {
-    tenantId: authContext.tenantId,
-    workspaceId,
-  });
-
-  const grant = await client.workspaceQuotaGrant.upsert({
-    where: {
-      workspace_quota_grant_unique: {
-        tenantId: authContext.tenantId,
-        workspaceId,
-      },
+/**
+ * AUTHZ-FIN-1 (proposta) / EIAH-GOV-BILLING-003: as três escritas financeiras abaixo exigem autoridade financeira DESIGNADA
+ * (`requireFinancialAuthority`, por rota; nunca `billingRouter.use`), corpo estrito e confirmação explícita, e gravam o efeito
+ * e o evento de auditoria numa única transação. Especificação: docs/ops/billing-financial-authority-spec.md.
+ */
+function sendWriteFailure(res: import("express").Response, failure: WriteFailure & { details?: unknown }) {
+  return res.status(failure.status).json({
+    ok: false,
+    error: {
+      code: failure.code,
+      message: failure.message,
+      ...(failure.details !== undefined ? { details: failure.details } : {}),
     },
-    create: {
-      tenantId: authContext.tenantId,
-      workspaceId,
-      enabled: typeof enabled === "boolean" ? enabled : true,
+  });
+}
+
+billingRouter.patch(
+  "/billing/tenant/workspaces/:id/grant",
+  requireFinancialAuthority(FINANCIAL_AUTHORITY_SCOPES.limitsManage, "workspace_grant.update"),
+  async (req, res) => {
+    const { financialAuthority } = req as FinancialAuthorityRequest;
+    const { prisma } = req as TenantAwareRequest;
+    if (!financialAuthority || !prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      });
+    }
+
+    const parsed = grantBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return sendWriteFailure(res, invalidPayload(parsed.error));
+    const { enabled, reason, evidenceRef } = parsed.data;
+    const localRunLimit = parsed.data.localRunLimit ?? null;
+    const localCostCentsLimit = parsed.data.localCostCentsLimit ?? null;
+    if (enabled === undefined && localRunLimit === null && localCostCentsLimit === null) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: "MISSING_REQUIRED",
+          message: "enabled and/or localRunLimit and/or localCostCentsLimit",
+        },
+      });
+    }
+
+    const result = await applyWorkspaceGrantUpdate(prisma, {
+      authority: financialAuthority,
+      workspaceId: String(req.params.id),
+      enabled,
       localRunLimit,
       localCostCentsLimit,
-    },
-    update: {
-      ...(typeof enabled === "boolean" ? { enabled } : {}),
-      ...(localRunLimit !== null ? { localRunLimit } : {}),
-      ...(localCostCentsLimit !== null ? { localCostCentsLimit } : {}),
-      updatedAt: new Date(),
-    },
-  });
-
-  return res.json({ ok: true, data: grant });
-});
-
-billingRouter.patch("/billing/tenant/quotas", async (req, res) => {
-  const { authContext, prisma } = req as TenantAwareRequest;
-  if (!authContext || !prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      reason,
+      evidenceRef,
     });
-  }
+    if (!result.ok) return sendWriteFailure(res, result);
+    return res.json({ ok: true, data: result.grant });
+  },
+);
 
-  const softLimitPct = parseOptionalInt(req.body?.softLimitPct);
-  const hardLimitPct = parseOptionalInt(req.body?.hardLimitPct);
-  const monthlyRunsLimit = parseOptionalInt(req.body?.monthlyRunsLimit);
-  const monthlyCostCentsLimit = parseOptionalInt(req.body?.monthlyCostCentsLimit);
+billingRouter.patch(
+  "/billing/tenant/quotas",
+  requireFinancialAuthority(FINANCIAL_AUTHORITY_SCOPES.limitsManage, "quota.update"),
+  async (req, res) => {
+    const { financialAuthority } = req as FinancialAuthorityRequest;
+    const { prisma } = req as TenantAwareRequest;
+    if (!financialAuthority || !prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      });
+    }
 
-  if (
-    softLimitPct === null &&
-    hardLimitPct === null &&
-    monthlyRunsLimit === null &&
-    monthlyCostCentsLimit === null
-  ) {
-    return res.status(400).json({
-      ok: false,
-      error: { code: "MISSING_REQUIRED", message: "No quota field provided" },
+    const parsed = quotasBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return sendWriteFailure(res, invalidPayload(parsed.error));
+    const softLimitPct = parsed.data.softLimitPct ?? null;
+    const hardLimitPct = parsed.data.hardLimitPct ?? null;
+    const monthlyRunsLimit = parsed.data.monthlyRunsLimit ?? null;
+    const monthlyCostCentsLimit = parsed.data.monthlyCostCentsLimit ?? null;
+    if (
+      softLimitPct === null &&
+      hardLimitPct === null &&
+      monthlyRunsLimit === null &&
+      monthlyCostCentsLimit === null
+    ) {
+      return res.status(400).json({
+        ok: false,
+        error: { code: "MISSING_REQUIRED", message: "No quota field provided" },
+      });
+    }
+
+    const result = await applyQuotaUpdate(prisma, {
+      authority: financialAuthority,
+      quotas: { softLimitPct, hardLimitPct, monthlyRunsLimit, monthlyCostCentsLimit },
+      reason: parsed.data.reason,
+      evidenceRef: parsed.data.evidenceRef,
     });
-  }
-
-  const client = getTenantBillingV2Client(prisma);
-  if (!client) {
-    return res.status(409).json({
-      ok: false,
-      error: {
-        code: "TENANT_BILLING_V2_UNAVAILABLE",
-        message: "Tenant billing v2 not available in current runtime",
-      },
-    });
-  }
-  const existing = await client.tenantQuotaPolicy.findUnique({
-    where: { tenantId: authContext.tenantId },
-  });
-  const nextSoft = softLimitPct ?? existing?.softLimitPct ?? 80;
-  const nextHard = hardLimitPct ?? existing?.hardLimitPct ?? 100;
-  if (nextSoft < 0 || nextSoft > 100 || nextHard < 0 || nextHard > 100 || nextSoft > nextHard) {
-    return res.status(400).json({
-      ok: false,
-      error: { code: "INVALID_LIMITS", message: "soft/hard limits must be 0-100 and soft<=hard" },
-    });
-  }
-
-  const policy = await client.tenantQuotaPolicy.upsert({
-    where: { tenantId: authContext.tenantId },
-    create: {
-      tenantId: authContext.tenantId,
-      softLimitPct: nextSoft,
-      hardLimitPct: nextHard,
-      monthlyRunsLimit,
-      monthlyCostCentsLimit,
-    },
-    update: {
-      softLimitPct: nextSoft,
-      hardLimitPct: nextHard,
-      ...(monthlyRunsLimit !== null ? { monthlyRunsLimit } : {}),
-      ...(monthlyCostCentsLimit !== null ? { monthlyCostCentsLimit } : {}),
-      updatedAt: new Date(),
-    },
-  });
-
-  return res.json({ ok: true, data: policy });
-});
+    if (!result.ok) return sendWriteFailure(res, result);
+    return res.json({ ok: true, data: result.policy });
+  },
+);
 
 billingRouter.get("/billing/tenant/ledger", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;
@@ -2194,82 +2158,75 @@ billingRouter.get("/billing/tenant/ledger", async (req, res) => {
   });
 });
 
-billingRouter.post("/billing/tenant/adjustment", async (req, res) => {
-  const { authContext, prisma } = req as TenantAwareRequest;
-  if (!authContext || !prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
-    });
-  }
-
-  const amountCents = parseOptionalInt(req.body?.amountCents);
-  const workspaceId = typeof req.body?.workspaceId === "string" ? req.body.workspaceId : null;
-  const runId = typeof req.body?.runId === "string" ? req.body.runId : null;
-  const currency = typeof req.body?.currency === "string" ? req.body.currency : "BRL";
-  const description = typeof req.body?.description === "string" ? req.body.description : null;
-  const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : null;
-  const provider = typeof req.body?.provider === "string" ? req.body.provider : null;
-  const model = typeof req.body?.model === "string" ? req.body.model : null;
-
-  if (amountCents == null || amountCents === 0) {
-    return res.status(400).json({
-      ok: false,
-      error: { code: "INVALID_AMOUNT", message: "amountCents must be a non-zero integer" },
-    });
-  }
-
-  const client = getTenantBillingV2Client(prisma);
-  if (!client) {
-    return res.status(409).json({
-      ok: false,
-      error: {
-        code: "TENANT_BILLING_V2_UNAVAILABLE",
-        message: "Tenant billing v2 not available in current runtime",
-      },
-    });
-  }
-  if (workspaceId) {
-    const workspace = await client.workspace.findUnique({
-      where: { id: workspaceId },
-      select: { id: true, tenantId: true },
-    });
-    if (!workspace || workspace.tenantId !== authContext.tenantId) {
-      return res.status(404).json({
+billingRouter.post(
+  "/billing/tenant/adjustment",
+  requireFinancialAuthority(FINANCIAL_AUTHORITY_SCOPES.ledgerAdjust, "adjustment.apply"),
+  async (req, res) => {
+    const { financialAuthority } = req as FinancialAuthorityRequest;
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!financialAuthority || !authContext || !prisma) {
+      return res.status(500).json({
         ok: false,
-        error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
       });
     }
-  }
 
-  const ledgerService = new BillingLedgerService(prisma);
-  const quotaUsageService = new QuotaUsageService(prisma);
-  const ledgerResult = await ledgerService.insertAdjustment({
-    tenantId: authContext.tenantId,
-    workspaceId,
-    runId,
-    amountCents,
-    currency,
-    description,
-    requestId,
-    provider,
-    model,
-  });
+    const parsed = adjustmentBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) return sendWriteFailure(res, invalidPayload(parsed.error));
+    const amountFailure = adjustmentAmountFailure(parsed.data.amountCents);
+    if (amountFailure) return sendWriteFailure(res, amountFailure);
 
-  const usageSnapshot = await quotaUsageService.incrementFromEvent({
-    tenantId: authContext.tenantId,
-    amountCents,
-    entryType: "adjustment",
-  });
+    const client = getTenantBillingV2Client(prisma);
+    if (!client) {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: "TENANT_BILLING_V2_UNAVAILABLE",
+          message: "Tenant billing v2 not available in current runtime",
+        },
+      });
+    }
+    if (parsed.data.workspaceId) {
+      const workspace = await client.workspace.findUnique({
+        where: { id: parsed.data.workspaceId },
+        select: { id: true, tenantId: true },
+      });
+      if (!workspace || workspace.tenantId !== authContext.tenantId) {
+        return res.status(404).json({
+          ok: false,
+          error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+        });
+      }
+    }
+    const ceiling = adjustmentCeilingFailure(financialAuthority.limits, parsed.data.amountCents);
+    if (ceiling) return sendWriteFailure(res, ceiling);
 
-  return res.status(201).json({
-    ok: true,
-    data: {
-      inserted: ledgerResult.inserted,
-      ledger: ledgerResult.entry,
-      usage: usageSnapshot.usage,
-      cycleStart: usageSnapshot.cycle.cycleStart.toISOString(),
-      cycleEnd: usageSnapshot.cycle.cycleEnd.toISOString(),
-    },
-  });
-});
+    // Ajuste financeiro exige aprovação de DUAS pessoas distintas. Esse mecanismo ainda não está ratificado, então a rota
+    // permanece NEGADA por padrão: não existe bypass por Founder, administrador, papel, token técnico ou sinalizador de
+    // ambiente, e nenhuma aprovação é simulada. A execução atômica já existe em `applyApprovedFinancialAdjustment`
+    // (financialBillingWrites.ts), sem nenhuma rota que a alcance até a ratificação.
+    await recordFinancialDenial(
+      prisma,
+      {
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        userId: authContext.userId ?? null,
+        tokenId: authContext.tokenId ?? null,
+      },
+      FINANCIAL_AUTHORITY_SCOPES.ledgerAdjust,
+      {
+        reasonCode: "ADJUSTMENT_TWO_PERSON_APPROVAL_NOT_AVAILABLE",
+        code: "BILLING_ADJUSTMENT_APPROVAL_REQUIRED",
+        operation: "adjustment.apply",
+      },
+    );
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "BILLING_ADJUSTMENT_APPROVAL_REQUIRED",
+        message:
+          "O ajuste financeiro exige aprovação por duas pessoas distintas e esse mecanismo ainda não foi ratificado. Nada foi alterado.",
+      },
+    });
+  },
+);

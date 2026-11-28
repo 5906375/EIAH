@@ -1,0 +1,7 @@
+3c8e8e7bc1c21d6efe20b3ecc912d89d581619906bb68e7756e0931baeefee1c  ./IMPLEMENTATION.md
+9cba25fe9ef119c245ec58ae987e6ee38cf1b9fcf8a8ad7ea14caa43e4e0359c  ./OPERACAO.md
+24ab97aebe52c2afde8100de076ee0958ea47ef5f0e0523d0ef2a1e9f90c3b9a  ./units/backup-a-capture-daily.timer
+b2cc0198d7f15b73d8853b28c9219b76fbca8dad1fe5c2384ac4a66678ce699a  ./units/backup-a-capture-weekly.timer
+7c64875f5c441c603a6c7e1e0c6b8f1dafdc1ade67eec02a245c0458c9ae07b8  ./units/backup-a-capture@.service
+dbeda23a953ddba334bd69b637ecfe14b754c9bcbd87f18c4536ffcda5ba538b  ./units/install-capture-timers.sh
+2be3e156a3664e0258edb3434655a1a0ea5001ea78ec27cb4626bb986767e7a7  ./verification-installed-timers.txt

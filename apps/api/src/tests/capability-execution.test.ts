@@ -117,8 +117,9 @@ test("executeCapability normalizes output and exposes attempted route metadata",
   assert.equal(result.status, "ok");
   assert.equal(result.normalized, true);
   assert.equal(result.output.text, "Resumo pronto.");
-  assert.equal(result.providerUsed, "openai");
-  assert.equal(result.modelUsed, "gpt-4o-mini");
+  assert.equal(result.providerUsed, undefined, "resposta determinística não chama provider");
+  assert.equal(result.modelUsed, undefined, "modelo solicitado não comprova geração");
+  assert.equal(result.modelRequested, "gpt-4o-mini");
   assert.deepEqual(result.routeAttempted, [
     {
       provider: "openai",

@@ -6,6 +6,8 @@ import os from "node:os";
 import path from "node:path";
 import supertest from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { cleanupImobInstallationForTest, installImobForTest } from "./support/imobInstallationFixture";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalDLQ, runAtivoUniversalQueue } from "@eiah/core";
@@ -49,9 +51,14 @@ before(async () => {
       revoked: false,
     },
   });
+  // AUTHZ-IMOB-CRM-001: o upload do IMOB exige vínculo ATIVO (onboarding explícito, pelo serviço existente).
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: o upload do IMOB também exige o IMOB instalado e habilitado (instalação pelo serviço de ativação existente).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId, workspaceId, userId });
 });
 
 after(async () => {
+  await cleanupImobInstallationForTest(prismaGlobal as any, [tenantId]);
   await prismaGlobal.uploadedDocument.deleteMany({ where: { tenantId } });
   await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
   await prismaGlobal.user.deleteMany({ where: { tenantId } });

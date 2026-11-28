@@ -14,6 +14,13 @@ export interface ChatCompletionRequest {
   temperature?: number;
   topP?: number;
   metadata?: Record<string, any>;
+  // Total de tentativas de ENVIO (não "retries além da primeira") repassadas
+  // a packages/core/src/utils/retry.ts — preserva o default global
+  // (LLM_RETRIES) quando ausente. Ver
+  // docs/architecture/radar-social-construction-plan-v1.md, Atualização
+  // 1.31/1.32: `retries: 1` significa exatamente um envio, nunca `0`
+  // (`0` nunca chamaria a função protegida nem uma vez).
+  retries?: number;
 }
 
 export interface ChatCompletionUsage {
@@ -24,12 +31,18 @@ export interface ChatCompletionUsage {
 }
 
 export interface ChatCompletionResponse {
+  /** Legacy completion identity; empty when the provider did not supply one. */
   id: string;
   output: string;
   raw: any;
   finishReason: string;
   provider: string;
+  /** Requested model; does not prove generation by this model. */
   model: string;
+  completionId?: string;
+  providerRequestId?: string;
+  modelUsed?: string;
+  /** Existing accounting reference (completion ID preferred). Not a provider request ID. */
   requestId?: string;
   usage?: ChatCompletionUsage | null;
 }

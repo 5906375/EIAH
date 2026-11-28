@@ -1,4 +1,4 @@
-import type { ImobCaseContext, ImobPresentationForm, ImobThreadConversationState } from "@/lib/api";
+import type { ImobCaseContext, ImobPresentationForm, ImobPresentationWidget, ImobThreadConversationState } from "@/lib/api";
 
 /**
  * Mensagem mínima que os formulários estruturados do IMOB precisam para
@@ -31,12 +31,20 @@ export type StructuredCard = {
 export type StructuredQuickReply = { id: string; label: string; reply?: string; onSelect?: () => void };
 
 export type StructuredMessage = {
+  /** Pending editable property form; a topic change pauses interpretation without losing the form values. */
+  propertyCaptureContext?: "active" | "paused";
+  /** Ephemeral proposal bound to this unsaved form; never a save confirmation. */
+  propertyCaptureProposal?: import("@eiah/contracts").ImobPropertyCaptureProposal | null;
+  /** Resultado efêmero do campo, reutilizável somente enquanto sua identificação não mudar. */
+  propertyUnitIntake?: import("@eiah/contracts").ImobPropertyUnitIntake;
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
   form?: ImobPresentationForm;
   thread?: StructuredThreadRef;
   card?: StructuredCard;
+  /** Apresentação estruturada devolvida pela vertical (ex.: cartão do especialista transversal). Só leitura. */
+  widget?: ImobPresentationWidget;
   quickReplies?: StructuredQuickReply[];
   /** Estado devolvido pelo resolver; continuidade conversacional, sem contrato paralelo. */
   conversationState?: ImobThreadConversationState;
@@ -45,6 +53,10 @@ export type StructuredMessage = {
 
 /** O que cada chat precisa oferecer para hospedar os formulários do IMOB. */
 export type ImobStructuredFormsHost = {
+  /** Revisão de transporte: muda quando outro turno ou resposta toma a conversa. */
+  getFormContextKey?: () => string;
+  /** Guarda de transporte: ignora respostas de formulário encerrado ou de outra conversa. */
+  isFormCurrent?: (message: StructuredMessage) => boolean;
   /** Thread ativa da conversa (os formulários abrem nela). */
   activeThreadId: string | null;
   appendMessage: (message: StructuredMessage) => void;
@@ -68,9 +80,24 @@ export function normalizeImobFormValue(value: string) {
 }
 
 export function normalizeCepValue(value: string) {
+  if (/[^\d\s-]/.test(value) || value.replace(/\D/g, "").length > 8) return value;
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+/** Lookup só completa lacunas. Divergências com informação humana ficam explícitas. */
+export function planImobCepAutofill(current: Record<string, string>, candidates: Array<[string, string | null]>, cepField: string) {
+  const applied: Record<string, string> = {};
+  const conflicts: Array<{ field: string; informed: string; lookup: string }> = [];
+  const fold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  for (const [field, value] of candidates) {
+    if (!field || !value) continue;
+    const informed = current[field]?.trim();
+    if (field === cepField || !informed) applied[field] = value;
+    else if (fold(informed) !== fold(value)) conflicts.push({ field, informed, lookup: value });
+  }
+  return { applied, conflicts };
 }
 
 export function resolveFieldAutofillTarget(

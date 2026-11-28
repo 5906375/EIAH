@@ -1,0 +1,6 @@
+{
+  "error": {
+    "type": "insufficient_quota",
+    "code": "credit_balance_exhausted"
+  }
+}

@@ -3,7 +3,8 @@ import {
   apiMarkVerticalAccessNoticeRead,
   type VerticalAccessNotice,
 } from "@/lib/api";
-import { ACTIVATION_REQUEST_REPLY } from "./verticalActivationEngine";
+import { ACTIVATION_REQUEST_REPLY, verticalActivationCopy } from "./verticalActivationEngine";
+import { EVALUATION_VIEW_TERMS_REPLY } from "./verticalEvaluationEngine";
 
 /**
  * ADR-011 §2.4: avisos da liberação EIAH entregues dentro da conversa do front door (`/app/chat`).
@@ -21,7 +22,12 @@ export type VerticalAccessNoticeSnapshot = {
 
 /** Depois de "liberado pela EIAH", o próximo passo útil é ativar; nos demais avisos não há ação a oferecer. */
 function nextRepliesFor(latest: VerticalAccessNotice): string[] {
-  return latest.kind === "aprovado" && latest.vertical === "IMOB" ? [ACTIVATION_REQUEST_REPLY] : [];
+  // Avaliação: o aviso de termos propostos leva a VER as condições (proposta), nunca direto à ativação.
+  if (latest.kind === "avaliacao_termos_propostos") return [EVALUATION_VIEW_TERMS_REPLY];
+  if (latest.kind !== "aprovado") return [];
+  if (latest.vertical === "IMOB") return [ACTIVATION_REQUEST_REPLY];
+  if (latest.vertical === "LOGISTICA") return [verticalActivationCopy("log").activateReply];
+  return [];
 }
 
 const formatWhen = (value: string) =>

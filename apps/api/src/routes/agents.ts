@@ -3,6 +3,8 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { publishRun } from "@eiah/core";
 import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
+import { readEvaluationGrantGate } from "../services/products/verticalEvaluation";
+import { filterActionsByEvaluationGate, productForAction } from "../services/products/verticalEvaluationContract";
 import { enforceTenant } from "../middlewares/enforceTenant";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, listAgents, resolveAgentId } from "../services/agents";
@@ -19,6 +21,7 @@ import {
   resolveAllowedActionNames,
 } from "./agentsPolicy";
 import { toPublicAgentListing, toPublicAgentProfile } from "./agentsPublicView";
+import { discoverCapabilityNeed } from "../services/capabilityDiscovery";
 
 export const agentsRouter = Router();
 agentsRouter.use(enforceTenant);
@@ -312,8 +315,14 @@ async function resolveAllowedActions(req: TenantAwareRequest) {
       .map(({ actionName }) => actionName),
   );
 
-  if (allowed.size > 0) {
-    return allowed;
+  // Avaliação gratuita: policies provisionadas na ativação persistem depois do fim da validade; por isso as actions do IMOB só valem
+  // enquanto o grant de avaliação (se houver) está ativo e válido AGORA. A leitura só ocorre se há action do IMOB e só restringe
+  // workspaces com grant: sem grant, o conjunto sai idêntico (comportamento legado).
+  const gated = [...allowed].some((action) => productForAction(action) === "IMOB")
+    ? filterActionsByEvaluationGate(allowed, await readEvaluationGrantGate({ prisma: req.prisma as never, tenantId, workspaceId }))
+    : allowed;
+  if (gated.size > 0) {
+    return gated;
   }
 
   throw new PolicyNotFoundError({
@@ -709,6 +718,36 @@ agentsRouter.get("/agents", async (_req, res) => {
 
   const items = await listAgents(req.authContext.tenantId, req.authContext.workspaceId, req.prisma);
   return res.json({ items: items.map(toPublicAgentListing) });
+});
+
+/**
+ * Descoberta SOMENTE LEITURA de uma capacidade transversal (domínio + capacidade), no escopo do tenant e do workspace
+ * autenticados. Não assina, não habilita, não cria política nem delegação e não inicia handoff.
+ * Ex.: GET /api/agents/capabilities/discover?domain=marketing&capability=campaign
+ */
+agentsRouter.get("/agents/capabilities/discover", async (req, res) => {
+  const request = req as TenantAwareRequest;
+  if (!request.authContext || !request.prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+  const token = /^[a-z0-9][a-z0-9_.-]{0,63}$/;
+  const domain = typeof req.query.domain === "string" ? req.query.domain.trim().toLowerCase() : "";
+  const capability = typeof req.query.capability === "string" ? req.query.capability.trim().toLowerCase() : "";
+  if (!token.test(domain) || !token.test(capability)) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_QUERY", message: "domain and capability are required" } });
+  }
+  const item = await discoverCapabilityNeed({
+    need: { needId: `adhoc.${domain}.${capability}`, domain, capability },
+    tenantId: request.authContext.tenantId,
+    workspaceId: request.authContext.workspaceId,
+    client: request.prisma,
+    actor: { userId: request.authContext.userId ?? null },
+  });
+  res.set("Cache-Control", "no-store");
+  return res.json({ ok: true, item });
 });
 
 agentsRouter.get("/agents/:name", async (req, res) => {

@@ -4,6 +4,7 @@ import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContra
 import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
 import { ImobRentalLeaseLifecycleService, ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
+import { ImobAssetDealService } from "../services/imob/crm/imobAssetDealService";
 import { ImobDocumentLinkService } from "../services/imob/crm/imobDocumentLinkService";
 import { ImobRentalContractService } from "../services/imob/crm/imobRentalContractService";
 import { ImobSaleContractService } from "../services/imob/crm/imobSaleContractService";
@@ -77,6 +78,8 @@ export type RegisterImobCrmRoutesParams = {
     imobCaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCloseSchema: SafeParseSchema;
+    imobAssetDealCreateSchema: SafeParseSchema;
+    imobAssetDealCompleteSchema: SafeParseSchema;
     imobDocumentLinkSchema: SafeParseSchema;
     imobRentalContractGenerateSchema: SafeParseSchema;
     imobSaleContractGenerateSchema: SafeParseSchema;
@@ -203,16 +206,41 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     return res.json({ ok: true, data: withRouteCanonicalCaseContext(applied.data) });
   });
 
+  // P12.2 — owner, imóvel e lead: permissão do workspace (imob.chat.use) e etapa da entidade (owner/imóvel: `status`;
+  // lead: `stage`), com a mesma regra dos casos: lista filtra, leitura/alteração de etapa não permitida responde 403.
+  async function readImobEntityAccess(req: TenantAwareRequest, res: Response) {
+    const { authContext, prisma } = req;
+    if (!authContext || !prisma) return null;
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(req, res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return null;
+    }
+    return workspaceAccess.permissions;
+  }
+
+  function ensureImobEntityStage(req: TenantAwareRequest, res: Response, permissions: string[], label: string, stage: string | null | undefined) {
+    return ensureImobStagePermission(req, res, permissions, stage, `Sua função atual não pode operar ${label} na etapa ${stage} neste workspace.`);
+  }
+
+  function requestedEntityStage(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
   router.get("/owners", async (req, res) => {
     const { authContext, prisma } = req as TenantAwareRequest;
     if (!authContext || !prisma) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
-    const items = await new ImobCrmRepository(prisma).listOwners({
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
+    const listed = await new ImobCrmRepository(prisma).listOwners({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
     });
+
+    const items = listed.filter((item) => canWorkspaceOperateImobStage(entityPermissions, item.status));
 
     return res.json({ ok: true, data: { items } });
   });
@@ -226,6 +254,13 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobOwnerCreateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const targetStage = requestedEntityStage((parsed.data as { status?: unknown }).status);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o proprietário", targetStage)) {
+      return;
     }
 
     const created = await new ImobCrmMutationService(prisma).createOwner({
@@ -243,6 +278,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
     const item = await new ImobCrmRepository(prisma).getOwner({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
@@ -250,6 +288,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
 
     if (!item) {
       return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found" } });
+    }
+    if (!ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o proprietário", item.status)) {
+      return;
     }
 
     return res.json({ ok: true, data: item });
@@ -264,6 +305,20 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobOwnerUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const existing = await new ImobCrmRepository(prisma).getOwner({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, req.params.ownerId);
+    if (existing && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o proprietário", existing.status)) {
+      return;
+    }
+    const targetStage = requestedEntityStage((parsed.data as { status?: unknown }).status);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o proprietário", targetStage)) {
+      return;
     }
 
     const updated = await new ImobCrmMutationService(prisma).updateOwner({
@@ -282,6 +337,16 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const { authContext, prisma } = req as TenantAwareRequest;
     if (!authContext || !prisma) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const existing = await new ImobCrmRepository(prisma).getOwner({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, req.params.ownerId);
+    if (existing && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o proprietário", existing.status)) {
+      return;
     }
 
     const archived = await new ImobCrmMutationService(prisma).archiveOwner({
@@ -313,10 +378,15 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
-    const items = await new ImobCrmRepository(prisma).listProperties({
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
+    const listed = await new ImobCrmRepository(prisma).listProperties({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
     });
+
+    const items = listed.filter((item) => canWorkspaceOperateImobStage(entityPermissions, item.status));
 
     return res.json({ ok: true, data: { items } });
   });
@@ -330,6 +400,13 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobPropertyCreateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const targetStage = requestedEntityStage((parsed.data as { status?: unknown }).status);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o imóvel", targetStage)) {
+      return;
     }
 
     const created = await new ImobCrmMutationService(prisma).createProperty({
@@ -350,6 +427,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
     const item = await new ImobCrmRepository(prisma).getProperty({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
@@ -357,6 +437,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
 
     if (!item) {
       return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found" } });
+    }
+    if (!ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o imóvel", item.status)) {
+      return;
     }
 
     return res.json({ ok: true, data: item });
@@ -371,6 +454,20 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobPropertyUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const existing = await new ImobCrmRepository(prisma).getProperty({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, req.params.propertyId);
+    if (existing && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o imóvel", existing.status)) {
+      return;
+    }
+    const targetStage = requestedEntityStage((parsed.data as { status?: unknown }).status);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o imóvel", targetStage)) {
+      return;
     }
 
     const updated = await new ImobCrmMutationService(prisma).updateProperty({
@@ -392,6 +489,16 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const { authContext, prisma } = req as TenantAwareRequest;
     if (!authContext || !prisma) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const existing = await new ImobCrmRepository(prisma).getProperty({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, req.params.propertyId);
+    if (existing && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o imóvel", existing.status)) {
+      return;
     }
 
     const archived = await new ImobCrmMutationService(prisma).archiveProperty({
@@ -423,10 +530,15 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
-    const items = await new ImobCrmRepository(prisma).listLeads({
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
+    const listed = await new ImobCrmRepository(prisma).listLeads({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
     });
+
+    const items = listed.filter((item) => canWorkspaceOperateImobStage(entityPermissions, item.stage));
 
     return res.json({ ok: true, data: { items } });
   });
@@ -440,6 +552,13 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobLeadCreateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const targetStage = requestedEntityStage((parsed.data as { stage?: unknown }).stage);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o lead", targetStage)) {
+      return;
     }
 
     const created = await new ImobCrmMutationService(prisma).createLead({
@@ -457,6 +576,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+
     const item = await new ImobCrmRepository(prisma).getLead({
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
@@ -464,6 +586,9 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
 
     if (!item) {
       return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found" } });
+    }
+    if (!ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o lead", item.stage)) {
+      return;
     }
 
     return res.json({ ok: true, data: item });
@@ -478,6 +603,20 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const parsed = schemas.imobLeadUpdateSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+
+    const entityPermissions = await readImobEntityAccess(req as TenantAwareRequest, res);
+    if (!entityPermissions) return;
+    const existing = await new ImobCrmRepository(prisma).getLead({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, req.params.leadId);
+    if (existing && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o lead", existing.stage)) {
+      return;
+    }
+    const targetStage = requestedEntityStage((parsed.data as { stage?: unknown }).stage);
+    if (targetStage && !ensureImobEntityStage(req as TenantAwareRequest, res, entityPermissions, "o lead", targetStage)) {
+      return;
     }
 
     const updated = await new ImobCrmMutationService(prisma).updateLead({
@@ -1000,6 +1139,15 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     if (result.status === "lease_already_active") {
       return res.status(409).json({ ok: false, error: { code: "RENTAL_LEASE_ALREADY_ACTIVE", message: "Este imóvel já tem uma locação ativa", caseId: result.caseId } });
     }
+    if (result.status === "lease_already_registered") {
+      return res.status(409).json({ ok: false, error: { code: "RENTAL_LEASE_ALREADY_REGISTERED", message: "Esta locação encerrada já está registrada neste imóvel", caseId: result.caseId } });
+    }
+    if (result.status === "ended_before_start") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_BEFORE_START", message: "A saída não pode ser antes do início da locação" } });
+    }
+    if (result.status === "ended_in_future") {
+      return res.status(400).json({ ok: false, error: { code: "ENDED_IN_FUTURE", message: "A data de saída não pode ser futura" } });
+    }
     if (result.status !== "created") {
       return res.status(422).json({ ok: false, error: { code: "RENTAL_LEASE_NOT_CREATED", message: `Locação não criada: ${result.status}` } });
     }
@@ -1081,6 +1229,58 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const result = await ctx.service.history(ctx.scope, propertyId);
     if (result.status === "property_not_found") {
       return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    return res.json({ ok: true, data: result.data });
+  });
+
+  /** Venda e permuta do ativo (`sale.deal` / `exchange.deal`): mesmo acesso das rotas de locação. */
+  router.post("/deals", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode registrar negócios neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobAssetDealCreateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).register(ctx.scope, parsed.data);
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    if (result.status === "deal_already_active") {
+      return res.status(409).json({ ok: false, error: { code: "ASSET_DEAL_ALREADY_ACTIVE", message: "Este imóvel já tem um negócio em andamento deste tipo", caseId: result.caseId } });
+    }
+    if (result.status !== "created") {
+      return res.status(422).json({ ok: false, error: { code: "ASSET_DEAL_NOT_CREATED", message: `Negócio não criado: ${result.status}` } });
+    }
+    return res.status(201).json({ ok: true, data: result.data });
+  });
+
+  router.get("/deals", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode consultar negócios neste workspace.");
+    if (!ctx) return;
+    const propertyId = typeof req.query.propertyId === "string" ? req.query.propertyId.trim() : "";
+    if (!propertyId) return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", message: "propertyId is required" } });
+    const kindRaw = typeof req.query.kind === "string" ? req.query.kind : "";
+    const kind = kindRaw === "venda" || kindRaw === "permuta" ? kindRaw : undefined;
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).list(ctx.scope, propertyId, kind);
+    if (result.status === "property_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Imóvel não encontrado neste workspace" } });
+    }
+    return res.json({ ok: true, data: result.data });
+  });
+
+  router.post("/deals/complete", async (req, res) => {
+    const ctx = await rentalLifecycleScope(req, res, "Sua função atual não pode concluir negócios neste workspace.");
+    if (!ctx) return;
+    const parsed = schemas.imobAssetDealCompleteSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    const result = await new ImobAssetDealService((req as TenantAwareRequest).prisma!).complete(ctx.scope, parsed.data);
+    if (result.status === "deal_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "ASSET_DEAL_NOT_FOUND", message: "Negócio não encontrado neste workspace" } });
+    }
+    if (result.status === "deal_not_active") {
+      return res.status(409).json({ ok: false, error: { code: "ASSET_DEAL_NOT_ACTIVE", message: "Este negócio já está concluído" } });
     }
     return res.json({ ok: true, data: result.data });
   });

@@ -62,7 +62,13 @@ export type RentalLeaseFormResult =
   | { ok: true; request: ImobRentalLeaseCreateRequest }
   | { ok: false; errors: Record<string, string> };
 
-export function buildRentalLeaseRequest(values: Record<string, string>): RentalLeaseFormResult {
+const CLOSE_REASONS = ["fim_contrato", "rescisao_locatario", "rescisao_locador", "inadimplencia", "venda_imovel", "outro"] as const;
+
+/**
+ * `todayIso` só é necessário para locação encerrada (a saída não pode ser futura);
+ * sem ele a checagem fica com o servidor, que também a recusa.
+ */
+export function buildRentalLeaseRequest(values: Record<string, string>, todayIso?: string): RentalLeaseFormResult {
   const errors: Record<string, string> = {};
 
   const propertyId = clean(values.propertyId);
@@ -97,6 +103,17 @@ export function buildRentalLeaseRequest(values: Record<string, string>): RentalL
     errors.condominioAmount = "Informe o valor no formato 350,00.";
   } else if (condominioAmountCents && clean(values.condominio) === "nao_existe") {
     errors.condominioAmount = "Condomínio marcado como \"Não existe\": deixe o valor em branco.";
+  }
+
+  // Locação encerrada (histórica): nasce no histórico, exige saída e motivo.
+  const historical = clean(values.leaseState) === "encerrada";
+  const endedOn = historical ? parseBrDate(values.endedOn) : null;
+  const closeReason = clean(values.closeReason);
+  if (historical) {
+    if (!endedOn) errors.endedOn = endedOn === null ? "Informe a data de saída." : "Use o formato DD/MM/AAAA.";
+    else if (startDate && endedOn < startDate) errors.endedOn = "A saída não pode ser antes do início da locação.";
+    else if (todayIso && endedOn > todayIso) errors.endedOn = "A data de saída não pode ser futura.";
+    if (!(CLOSE_REASONS as readonly string[]).includes(closeReason)) errors.closeReason = "Escolha o motivo do encerramento.";
   }
 
   const dueDay = parseIntInRange(values.dueDay, 1, 31);
@@ -134,6 +151,9 @@ export function buildRentalLeaseRequest(values: Record<string, string>): RentalL
       iptu: pick(values.iptu, chargePayers, "desconhecido"),
       condominio: pick(values.condominio, chargePayers, "desconhecido"),
       condominioAmountCents: condominioAmountCents as number | null,
+      ...(historical
+        ? { closure: { endedOn: endedOn as string, reason: closeReason as (typeof CLOSE_REASONS)[number] } }
+        : {}),
     },
   };
 }
@@ -152,8 +172,12 @@ export function buildRentalLeaseConfirmationText(data: {
   tenantName: string;
   tenantDocumentMasked: string | null;
   pendingItems: string[];
+  historical?: boolean;
 }) {
   const tenant = data.tenantDocumentMasked ? `${data.tenantName} (${data.tenantDocumentMasked})` : data.tenantName;
+  if (data.historical) {
+    return `Locação encerrada registrada no histórico: ${data.propertyLabel} — inquilino ${tenant}. O imóvel não foi marcado como locado.`;
+  }
   const pending = data.pendingItems.map((item) => PENDING_LABELS[item] ?? item);
   return [
     `Locação cadastrada: ${data.propertyLabel} — inquilino ${tenant}.`,

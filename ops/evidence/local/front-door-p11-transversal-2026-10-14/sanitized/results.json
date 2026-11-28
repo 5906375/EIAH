@@ -1,0 +1,290 @@
+{
+  "date": "2026-10-14",
+  "status": "parcial",
+  "publication": "local_only_not_published",
+  "originalVerdict": "P11_FRONT_DOOR_TRANSVERSAL_VALIDATED",
+  "originalVerdictScope": "historical local validation on worktree base 88bb3a2 with then-uncommitted changes (later local commit e4575b03); NOT re-executed against origin/main",
+  "criteriaMatrix": {
+    "header": [
+      "#",
+      "Critério",
+      "Resultado",
+      "Evidência"
+    ],
+    "rows": [
+      [
+        "1",
+        "Divulgação em conversa nova de /app/chat recebe, na mesma conversa, a recomendação governada de MKT",
+        "PASS",
+        "`*-03-divulgacao`, `*-03b-card-mkt`; `claimOnly=true`, `claimed=true`, ação `crm.case.transversal.request_capability`"
+      ],
+      [
+        "2",
+        "Ana: sem autoridade → sem CTA acionável; detalhes só de consulta",
+        "PASS",
+        "`A-03b`, `A-07`; `controlesDeAssinatura=[]`"
+      ],
+      [
+        "3",
+        "Bruno: autoridade (servidor) reconhecida; MKT correto no Self-service; sem assinar",
+        "PASS",
+        "`B-03b`, `B-07`; \"Assinar\" visível, 0 mutações"
+      ],
+      [
+        "4",
+        "\"Contratou o Marketing?\" não vira contrato imobiliário/jurídico",
+        "PASS",
+        "`*-05-ja-contratou`; sem \"caso jurídico\"; \"Ainda não…\""
+      ],
+      [
+        "5",
+        "Conversa e caso preservados (turnos seguintes, ida ao Self-service e volta)",
+        "PASS",
+        "`*-05b`, `*-08-retorno-a-conversa`, `*-09`; cartões restaurados; `caseId` reenviado"
+      ],
+      [
+        "6",
+        "Perguntas de plataforma, convite, contrato, cadastro e \"bom dia\" não são interceptados",
+        "PASS",
+        "`*-06-protegido-*`; billing/convite/contrato: 0 chamadas de reivindicação; cadastro: handoff existente; \"bom dia\": `claimed=false`"
+      ],
+      [
+        "7",
+        "Convite governado do Front Door intacto (Ana restrita; Bruno vê o formulário, não enviado)",
+        "PASS",
+        "`A-06-protegido-convidar`, `B-06-protegido-convidar`"
+      ],
+      [
+        "8",
+        "Sem navegação para /app/imob/chat; resposta renderizada com `ImobChatWidgets`",
+        "PASS",
+        "`urls-visitadas` em `*-result.json`"
+      ],
+      [
+        "9",
+        "Nenhuma contratação/habilitação/delegação/cobrança/campanha; 0 mutações no navegador; banco idêntico antes x depois",
+        "PASS",
+        "`db_snapshot_*`; `blocked-mutations=[]`"
+      ],
+      [
+        "10",
+        "Celular sem overflow horizontal (Front Door e Self-service)",
+        "PASS",
+        "`*-10`..`*-13`; overflow=false"
+      ],
+      [
+        "11",
+        "Erros de console",
+        "PARCIAL",
+        "2× 404 por execução (`runtime-shadow-state` do handoff IMOB existente; sem efeito visível)"
+      ],
+      [
+        "12",
+        "Seleção do agente após navegar e voltar",
+        "NOT_DEMONSTRATED (limite herdado)",
+        "o seletor volta a \"Selecione um agente\" no celular ao recarregar; as mensagens são restauradas; não alterado (launcher restrito)"
+      ]
+    ],
+    "tally": {
+      "PASS": 10,
+      "PARCIAL": 1,
+      "NOT_DEMONSTRATED": 1
+    }
+  },
+  "directedTests": {
+    "files": [
+      {
+        "file": "imob-specialist-bridge.test.ts",
+        "rc": 0,
+        "pass": 27,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "vertical-access-resolver.test.ts",
+        "rc": 0,
+        "pass": 20,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chat-vertical-registry.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chat-vertical-imob-handoff.test.ts",
+        "rc": 0,
+        "pass": 13,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "vertical-access-revocation.test.ts",
+        "rc": 0,
+        "pass": 5,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "agents-public-view.contract.test.ts",
+        "rc": 0,
+        "pass": 37,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "createImobStructuredForms.test.ts",
+        "rc": 0,
+        "pass": 124,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "chatLauncherEngine.test.ts",
+        "rc": 0,
+        "pass": 112,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "verticalHandoffEngine.test.ts",
+        "rc": 0,
+        "pass": 30,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "frontDoorAccessEngine.test.ts",
+        "rc": 0,
+        "pass": 3,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "frontDoorBillingEngine.test.ts",
+        "rc": 0,
+        "pass": 6,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "FrontDoorSessionHeader.test.tsx",
+        "rc": 0,
+        "pass": 23,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "verticalActivationEngine.test.ts",
+        "rc": 0,
+        "pass": 15,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "ImobChatWidgets.test.tsx",
+        "rc": 0,
+        "pass": 16,
+        "fail": 0,
+        "note": null
+      },
+      {
+        "file": "imobCommandCenterHelper.test.ts",
+        "rc": 0,
+        "pass": 14,
+        "fail": 0,
+        "note": null
+      }
+    ],
+    "otherLines": [
+      "integration: # pass 29 # fail 0  netguard BLOCK=0",
+      "typecheck api: p11=430 baseline(88bb3a2)=430 diagnosticos idênticos ao baseline=SIM",
+      "typecheck web: p11=62 baseline(88bb3a2)=62 diagnosticos idênticos ao baseline=SIM"
+    ],
+    "allFilesFailZero": true
+  },
+  "mutationChecks": "7/8 detected; the surviving one (ignore pending-proposal review in the engine) is defense in depth (per original README)",
+  "notDemonstrated": [
+    "execution against origin/main or the current IMOB integration branch",
+    "GitHub Actions / CI run",
+    "production or staging deployment",
+    "complete manually accepted journey",
+    "real bootstrap of the first commercial authority (fixtures only)",
+    "agent selection after reload on mobile (inherited limit, criterion 12)"
+  ],
+  "originalEvidenceSha256": {
+    "A-01-front-door-entry.png": "3dd474aa5e897e34a88ff5da381e81d047a48f8fbce17ca732e0f0ad58fd6317",
+    "A-02-agent-eiah.png": "f31023fd21ca049089da62d231e269e0213e7a9560f13e2e3fb73464d9b9cd98",
+    "A-03-divulgacao.png": "13c7d12519a369129901d538016aa53f9f2c3f1ab9a73973ce0906f2cfee0209",
+    "A-03b-card-mkt.png": "9945a4ff66d821957ccd8e6b6a6d43934a177c8693a7c4ae280b9bfad37abc25",
+    "A-04-marketing-ajuda.png": "3556cafaa1a475e5b33f31b12f8a1688178b2e93c55129d5ba5b33cd7bec797e",
+    "A-05-ja-contratou.png": "f314f6f88d5be5b671efdfbcd1137855c6decf4cb9a14a38c0b93955a85a04de",
+    "A-05b-conversa-completa.png": "f314f6f88d5be5b671efdfbcd1137855c6decf4cb9a14a38c0b93955a85a04de",
+    "A-06-protegido-billing.png": "c56510dfa33070faf5d0a85e866e785e509c395542ad4c25381f994dcb4a91ce",
+    "A-06-protegido-bomdia.png": "fdf3a62beee3dab317b49fb690a2ac214f28487905946578d9a6e528f75073ed",
+    "A-06-protegido-cadastrar.png": "d53439517990e73dbc1492696e5e8ed9d26679f30eb84ed1199a66bbf4cc9c45",
+    "A-06-protegido-contrato.png": "14508eee776d3a340b35e0bd63e26e35b6bf8c20795cf3af880480e4bb3d2a58",
+    "A-06-protegido-convidar.png": "dee4536563351ff7f01eae3b73cbc22b3383dce35ba6e8f815fb44c7dd525b20",
+    "A-07-self-service-mkt.png": "fd01f6e5e5e7e697cab9f1181078ea71105b705380cb67555374abdda95f4de6",
+    "A-08-retorno-a-conversa.png": "cd32ddf8373d1ff08e18c8cac773e6be7d059ccc5b17f5e7fb1be79bce75a7eb",
+    "A-09-continua-apos-retorno.png": "c00f5df88a48fb038de027f123b2fdcf9e1af5f2bf1c0e5644ce53c10d472325",
+    "A-10-mobile-front-door.png": "1c29efc696c77ae7e75d33e189cab48c0c24b9224d3d92448ea682b4bdadb1a5",
+    "A-11-mobile-cartao.png": "a3f5aaa7dc88b3031a80e6d3dd33699df1ae4b857a49d749d0d4224dfca15905",
+    "A-12-mobile-self-service.png": "658e1b0501ec2573119c9697c4a80f0e39643cadd9f09bc9d1497a1c5c3ddf20",
+    "A-13-mobile-retorno.png": "6c12c2f55a3a190eda796b0d87c2abe4a520706cfe293cf013952304e12f8c91",
+    "A-console.txt": "6148dc368fa580af8f4ad16b09909a2e56a4f9ca9ca76a2649e8a5cc87badc5d",
+    "A-result.json": "a1b4c5eb582da98d3fe9a1eed28a74336a5dad16e24f925cad632bbc09ab2786",
+    "B-01-front-door-entry.png": "3dd474aa5e897e34a88ff5da381e81d047a48f8fbce17ca732e0f0ad58fd6317",
+    "B-02-agent-eiah.png": "f31023fd21ca049089da62d231e269e0213e7a9560f13e2e3fb73464d9b9cd98",
+    "B-03-divulgacao.png": "11b51c9d3a8c1edc2a524f5d891a761298cc17a375171f05ff28d3abd1ab90ca",
+    "B-03b-card-mkt.png": "a323ee182162691059573e5f681e537cf450b570f3527f1b3710b387a5ee8057",
+    "B-04-marketing-ajuda.png": "27a703eb9f3b0ffdb1f2a61b823ae9f53a161f59e755cb994efebef0100b7f81",
+    "B-05-ja-contratou.png": "6b246c46604372da020354dbe79c52aaf7c22975b1044831cc59e1b9a1d26677",
+    "B-05b-conversa-completa.png": "6b246c46604372da020354dbe79c52aaf7c22975b1044831cc59e1b9a1d26677",
+    "B-06-protegido-billing.png": "adafffc7c0930cfd9e6808a87f1e6e42055d3a02b3e1de44850d6de253b37fd6",
+    "B-06-protegido-bomdia.png": "ca5109129329ec7703f05297b320752501331260f05c3d8a6205c973769e7b43",
+    "B-06-protegido-cadastrar.png": "8a8a7139ac62e2c672d74640a4371449b41923eb3d2596df17c4883d229bf76d",
+    "B-06-protegido-contrato.png": "3618d8e86accf9f47307936f53e117ae6fad4a1b57459709a5b7ed90f3dd6bac",
+    "B-06-protegido-convidar.png": "31eabc3a392cf93883e25bf99f70097a95bf5469b8e3faa9785b35de1cc17254",
+    "B-07-self-service-mkt.png": "8de90445b5b948530172aa60c88e3bdc7736468e6e5e13102d75b0c00b12b461",
+    "B-08-retorno-a-conversa.png": "cd32ddf8373d1ff08e18c8cac773e6be7d059ccc5b17f5e7fb1be79bce75a7eb",
+    "B-09-continua-apos-retorno.png": "38cba93d76e1951ec11a3d8bc254364fec58e6ee742615b664663b9e7f7351cc",
+    "B-10-mobile-front-door.png": "1c27cf90b44306f6ced9c2ccc16757db553abec842ac9e70035c4163941d3606",
+    "B-11-mobile-cartao.png": "dee1c50e6ce834815f28f5931e00240b159416dac68011ac706c345ffd52b20f",
+    "B-12-mobile-self-service.png": "0ed88d5a4aafb6bf208ff00c234dee008d10fe6e81e88ad368ddd6a8a83acc45",
+    "B-13-mobile-retorno.png": "9f95639240cf7215c6f37cc3f68349ac4266a6ffa1fd325bbb47951e674e0194",
+    "B-console.txt": "bf15fd70d8ec3f7f9011f22e7eb46033f4265c9282da1ee33f0ca6e52bb739e6",
+    "B-result.json": "d7425828c41d1066dc163600987eae0a33f658ff05a7dfd62c0e4ab6c60f6990",
+    "README.md": "26438e71b76930d037280283b05763186c880f4c31c9efc21ca429e119c8ad46",
+    "db_snapshot_0_before.txt": "2ac8c7166bc05fcab9bf11d527e9cefeae09e72f87dca8b23931f82e01a878f0",
+    "db_snapshot_after_A.txt": "43b9f55aa508b2d2ae826dfa65a90a6bd5d3304aead6c1a8999458697fd89551",
+    "db_snapshot_after_B.txt": "6f8202563b7236be4d4695d7f10ed40df02ec830497d28412a815efcd71fb8e0",
+    "git_state_main_0.txt": "4d355408345916110185699d76d92eca2be342e44d1b559afeee0a6273c22e2f",
+    "git_state_main_1.txt": "8ab8964febeec6c86925f9a9dd9ab4f5832c82dea8d498580ed9cb749045f341",
+    "git_state_p11_final.txt": "966064fc6af386c1409b47d5798230288e06bbcb6afd04a11ba4e2b11c02ee1b",
+    "isolation_proof.txt": "f13472ba1666f34faa3cb6ffcb8ba8d7fa110c5f0abd20ae169c5d861d95a620",
+    "logs/FrontDoorSessionHeader.test.tsx.tap": "dbbcb2047b0633d151e4ddcdcbd8feff62a31b1277da5bec8bc2d8619c138998",
+    "logs/ImobChatWidgets.test.tsx.tap": "c9975ddafaaf5aa5fd970669c7c32e5643eb0d62e2b9a9df750ad57097e6beb3",
+    "logs/agents-public-view.contract.test.ts.tap": "fc1fb6da7bc27f4e237d691fec0890511e0f97d5a26aa1ac534f6966629c012a",
+    "logs/chat-vertical-imob-handoff.test.ts.tap": "bc6b2552a72ca79bf634848d53dba011b2ff2b38c9a2754d5f6e76858a4cb1d2",
+    "logs/chat-vertical-registry.test.ts.tap": "7bbbb0d63c0c8a00a7d270c2f46de2486248522172066ac45eb62dea070a40db",
+    "logs/chatLauncherEngine.test.ts.tap": "7f2ec4b7bd16305b1568e5c5156b655a7c0c128b63994ad5132ce6046336c58f",
+    "logs/createImobStructuredForms.test.ts.tap": "dfd32032665f6e7add3074ee0e51bcadb4965083e88cf39bc4a57108e6958412",
+    "logs/frontDoorAccessEngine.test.ts.tap": "0f4eb9f449c704fe60df9ebcfb5865fb58bc972e1da673b005989922d18f4ee7",
+    "logs/frontDoorBillingEngine.test.ts.tap": "5b8e26f90dbca76829f2719f865dcec714d422d9fb32c1109f6249d373d8cbd9",
+    "logs/imob-specialist-bridge.test.ts.tap": "3bc305de1e963c8a24934b3abc34732651ce0676a73d6445138791c810310f0a",
+    "logs/imobCommandCenterHelper.test.ts.tap": "3cec3c94d0f8111a40be55a694a816453ec1464c4e4934c9d66adb49178e26ae",
+    "logs/marketplace.installations.activate.test.integration.tap": "e4ccf18e9b43875ab6997402ca686ca05a3ad254799bd0d8f0917408ee3d163c",
+    "logs/tsc_api_p11_normalizado.txt": "50cef3b8332b32b65f70b19496596f967a11de4a8ba736bd4c172b711995ce6f",
+    "logs/tsc_web_p11_normalizado.txt": "2595b5b1395b21448e4b83e495e12ae8ce71e345bbc8332b689dea327fc45836",
+    "logs/vertical-access-resolver.test.ts.tap": "a542dc23ea4a74bcbcb51fc968aebd14166453e1e1c2f9fad1c3bb968004aed1",
+    "logs/vertical-access-revocation.test.ts.tap": "256805fc6ffbe52432522a6a44941a7d8b924572b45ee377ef01df2c44c64207",
+    "logs/verticalActivationEngine.test.ts.tap": "2140c6d3a218f12f974a30dcbe05293debd458092c08bdb63b6dedb2b121a8c4",
+    "logs/verticalHandoffEngine.test.ts.tap": "0612cf10efa9728ce51b172ef5a1639b35f7d8d48c9415e09e0649ad7dffcc86",
+    "tests_summary.txt": "cf742e439ca9c97d2c9aeee5f45bf3d88f98759c983207d19632d891a73a203d"
+  },
+  "redaction": "aggregate results and verbatim sections of the original README with local paths/identifiers replaced by markers; synthetic fixture labels (Ana, Bruno, Batel) kept as in the original; no user, tenant, workspace, request or event records copied"
+}

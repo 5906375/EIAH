@@ -1,10 +1,23 @@
-import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
+import { Prisma, PrismaClient, RunStatus, prismaGlobal, type TransactableClient } from "@repo/db";
 import { randomUUID } from "node:crypto";
 import { prepareRunRequestAction } from "./imob/control/imobRunActionCatalog";
 import { assertWorkspaceAgentEnabled } from "./workspaceAgentAssignments";
 import { getRunArchiveMetadataMap, listArchivedRunIds } from "./runArchiveService";
 
 function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
+  return client ?? prismaGlobal;
+}
+
+// Resolução dedicada para o único chamador (createRunRecord) que pode
+// participar de uma transação interativa (prisma.$transaction(async tx => ...)).
+// Isolada de resolveClient() acima para não alargar o tipo de client aceito
+// pelos demais 7 chamadores deste arquivo (listRuns, getRun, finalizeRunRecord,
+// etc.), que continuam exigindo PrismaClient normal, sem mudança.
+function resolveTransactableClient(
+  tenantId: string,
+  workspaceId: string,
+  client?: TransactableClient
+): TransactableClient {
   return client ?? prismaGlobal;
 }
 
@@ -178,7 +191,7 @@ export async function listRunsWithArchiveMetadata(opts: {
 }
 
 export async function createRunRecord(params: {
-  prisma?: PrismaClient;
+  prisma?: TransactableClient;
   tenantId: string;
   workspaceId: string;
   userId?: string;
@@ -196,7 +209,7 @@ export async function createRunRecord(params: {
   approvedAt?: Date | null;
   requireCanonicalImobAction?: boolean;
 }) {
-  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const client = resolveTransactableClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
   const assignment = await assertWorkspaceAgentEnabled({
     prisma: client,
@@ -280,7 +293,19 @@ export async function finalizeRunRecord(params: {
   });
 
   return client.run.update({
-    where: { id: scopedRunId },
+    // tenantId/workspaceId incluídos explicitamente no where (achado desta
+    // rodada, autorizado pontualmente): assertRunScope, acima, já garante
+    // que scopedRunId pertence a este tenant/workspace antes de chegar
+    // aqui — adicioná-los ao where não muda o conjunto de linhas afetadas
+    // para nenhum chamador existente (todos passam pelo mesmo assertRunScope
+    // antes), só torna explícito o que já era garantido. Necessário para
+    // que esta chamada funcione através de um client tenant-guarded real
+    // (getPrismaForTenant, packages/db/src/middleware/tenantGuard.ts, modo
+    // "tenant+workspace" para o model Run) — antes desta correção, todo
+    // chamador de produção usava prismaGlobal (sem guarda) a partir de
+    // workers em background; nenhuma rota HTTP chamava finalizeRunRecord
+    // até a demonstração do Radar Social (runGovernedAnalysis).
+    where: { id: scopedRunId, tenantId: params.tenantId, workspaceId: params.workspaceId },
     data: {
       status: params.status,
       response: responseData,

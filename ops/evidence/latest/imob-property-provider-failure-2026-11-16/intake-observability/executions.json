@@ -1,0 +1,97 @@
+[
+  {
+    "name": "affected-tests-first",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "--test-reporter=tap",
+      "--test",
+      "packages/providers/tests/openai-provider-failure.test.ts",
+      "apps/api/src/tests/llm-provider-failure.test.ts",
+      "apps/api/src/tests/imob-property-capture-intake.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json"
+    },
+    "startedAt": "2026-11-16T17:45:04.358199+00:00",
+    "finishedAt": "2026-11-16T17:45:06.173989+00:00",
+    "exitCode": 0,
+    "log": "affected-tests-first.log"
+  },
+  {
+    "name": "providers-final",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "packages/providers/tests/openai-provider-failure.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json"
+    },
+    "startedAt": "2026-11-16T17:47:10.443535+00:00",
+    "finishedAt": "2026-11-16T17:47:11.511991+00:00",
+    "exitCode": 0,
+    "log": "providers-final.log"
+  },
+  {
+    "name": "runtime-final",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/llm-provider-failure.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json"
+    },
+    "startedAt": "2026-11-16T17:47:11.513312+00:00",
+    "finishedAt": "2026-11-16T17:47:12.655102+00:00",
+    "exitCode": 0,
+    "log": "runtime-final.log"
+  },
+  {
+    "name": "intake-final",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "apps/api/src/tests/imob-property-capture-intake.test.ts"
+    ],
+    "env": {
+      "TSX_TSCONFIG_PATH": "tsconfig.base.json"
+    },
+    "startedAt": "2026-11-16T17:47:12.655810+00:00",
+    "finishedAt": "2026-11-16T17:47:14.014326+00:00",
+    "exitCode": 0,
+    "log": "intake-final.log"
+  },
+  {
+    "name": "provider-boundary-sandbox",
+    "command": [
+      "pnpm",
+      "check:provider-boundary"
+    ],
+    "exitCode": 1,
+    "result": "BLOQUEADO",
+    "source": "tool result chunk 1430fc",
+    "error": {
+      "code": "EPERM",
+      "syscall": "listen",
+      "origin": "tsx IPC pipe",
+      "testStarted": false
+    }
+  },
+  {
+    "name": "provider-boundary-outside",
+    "command": [
+      "pnpm",
+      "check:provider-boundary"
+    ],
+    "exitCode": 0,
+    "result": "APROVADO",
+    "scope": "outside sandbox, authorized; no provider network",
+    "log": "provider-boundary.log"
+  }
+]

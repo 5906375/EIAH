@@ -1,0 +1,297 @@
+﻿2026-11-14T18:12:49.8220321Z Current runner version: '2.338.2'
+2026-11-14T18:12:49.8241165Z ##[group]Runner Image Provisioner
+2026-11-14T18:12:49.8242019Z Hosted Compute Agent
+2026-11-14T18:12:49.8242494Z Version: 20261103.629
+2026-11-14T18:12:49.8243035Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+2026-11-14T18:12:49.8243649Z Build Date: 2026-11-03T17:26:59Z
+2026-11-14T18:12:49.8244192Z Worker ID: {7fe1cf52-82aa-47f2-bcd1-40069a18ea64}
+2026-11-14T18:12:49.8244793Z Region: centralus
+2026-11-14T18:12:49.8245470Z Cloud: Azure
+2026-11-14T18:12:49.8245918Z ##[endgroup]
+2026-11-14T18:12:49.8247088Z ##[group]Operating System
+2026-11-14T18:12:49.8247593Z Ubuntu
+2026-11-14T18:12:49.8248069Z 26.04.1
+2026-11-14T18:12:49.8248482Z LTS
+2026-11-14T18:12:49.8248913Z ##[endgroup]
+2026-11-14T18:12:49.8249383Z ##[group]Runner Image
+2026-11-14T18:12:49.8249878Z Image: ubuntu-26.04
+2026-11-14T18:12:49.8250344Z Version: 20261111.196.1
+2026-11-14T18:12:49.8251462Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261111.196/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-14T18:12:49.8252742Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261111.196
+2026-11-14T18:12:49.8253508Z ##[endgroup]
+2026-11-14T18:12:49.8256318Z ##[group]GITHUB_TOKEN Permissions
+2026-11-14T18:12:49.8258338Z Actions: write
+2026-11-14T18:12:49.8258887Z ArtifactMetadata: write
+2026-11-14T18:12:49.8259375Z Attestations: write
+2026-11-14T18:12:49.8259938Z Checks: write
+2026-11-14T18:12:49.8260470Z CodeQuality: write
+2026-11-14T18:12:49.8260924Z Contents: write
+2026-11-14T18:12:49.8261418Z CopilotRequests: write
+2026-11-14T18:12:49.8261891Z Deployments: write
+2026-11-14T18:12:49.8262342Z Discussions: write
+2026-11-14T18:12:49.8262850Z Drives: write
+2026-11-14T18:12:49.8263283Z Issues: write
+2026-11-14T18:12:49.8263823Z Metadata: read
+2026-11-14T18:12:49.8264252Z Models: read
+2026-11-14T18:12:49.8264668Z Packages: write
+2026-11-14T18:12:49.8265376Z Pages: write
+2026-11-14T18:12:49.8265846Z PullRequests: write
+2026-11-14T18:12:49.8266348Z RepositoryProjects: write
+2026-11-14T18:12:49.8266856Z SecurityEvents: write
+2026-11-14T18:12:49.8267344Z Statuses: write
+2026-11-14T18:12:49.8267823Z VulnerabilityAlerts: read
+2026-11-14T18:12:49.8268303Z ##[endgroup]
+2026-11-14T18:12:49.8270123Z Secret source: Actions
+2026-11-14T18:12:49.8270848Z Cache mode: write
+2026-11-14T18:12:49.8271442Z Prepare workflow directory
+2026-11-14T18:12:49.8593033Z Prepare all required actions
+2026-11-14T18:12:49.8634798Z Getting action download info
+2026-11-14T18:12:50.0910284Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-14T18:12:50.1698794Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+2026-11-14T18:12:50.6593043Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+2026-11-14T18:12:50.8299826Z Complete job name: P1ReconciliationRecurring
+2026-11-14T18:12:50.9041578Z ##[group]Run actions/checkout@v4
+2026-11-14T18:12:50.9042448Z with:
+2026-11-14T18:12:50.9042937Z   repository: 5906375/EIAH
+2026-11-14T18:12:50.9046739Z   token: ***
+2026-11-14T18:12:50.9047266Z   ssh-strict: true
+2026-11-14T18:12:50.9047740Z   ssh-user: git
+2026-11-14T18:12:50.9048231Z   persist-credentials: true
+2026-11-14T18:12:50.9048785Z   clean: true
+2026-11-14T18:12:50.9049269Z   sparse-checkout-cone-mode: true
+2026-11-14T18:12:50.9049832Z   fetch-depth: 1
+2026-11-14T18:12:50.9050301Z   fetch-tags: false
+2026-11-14T18:12:50.9050765Z   show-progress: true
+2026-11-14T18:12:50.9051288Z   lfs: false
+2026-11-14T18:12:50.9051804Z   submodules: false
+2026-11-14T18:12:50.9052297Z   set-safe-directory: true
+2026-11-14T18:12:50.9052832Z   allow-unsafe-pr-checkout: false
+2026-11-14T18:12:50.9053546Z env:
+2026-11-14T18:12:50.9054034Z   NODE_VERSION: 20
+2026-11-14T18:12:50.9054520Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:50.9055132Z ##[endgroup]
+2026-11-14T18:12:51.1854296Z Syncing repository: 5906375/EIAH
+2026-11-14T18:12:51.1857232Z ##[group]Getting Git version info
+2026-11-14T18:12:51.1859258Z Working directory is '/home/runner/work/EIAH/EIAH'
+2026-11-14T18:12:51.1861262Z [command]/usr/bin/git version
+2026-11-14T18:12:51.1880742Z git version 2.56.1
+2026-11-14T18:12:51.1896259Z ##[endgroup]
+2026-11-14T18:12:51.1913793Z Temporarily overriding HOME='/home/runner/work/_temp/d1367e9d-4ac6-4ff1-88ef-2b8e38456d57' before making global git config changes
+2026-11-14T18:12:51.1917235Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:12:51.1920020Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+2026-11-14T18:12:51.1975327Z Deleting the contents of '/home/runner/work/EIAH/EIAH'
+2026-11-14T18:12:51.1981379Z ##[group]Initializing the repository
+2026-11-14T18:12:51.1985404Z [command]/usr/bin/git init /home/runner/work/EIAH/EIAH
+2026-11-14T18:12:51.2093841Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-14T18:12:51.2096340Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-14T18:12:51.2098248Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-14T18:12:51.2099877Z hint: call:
+2026-11-14T18:12:51.2100764Z hint:
+2026-11-14T18:12:51.2101849Z hint: 	git config --global init.defaultBranch <name>
+2026-11-14T18:12:51.2103113Z hint:
+2026-11-14T18:12:51.2104302Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-14T18:12:51.2106396Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-14T18:12:51.2108015Z hint:
+2026-11-14T18:12:51.2108955Z hint: 	git branch -m <name>
+2026-11-14T18:12:51.2110000Z hint:
+2026-11-14T18:12:51.2111395Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-14T18:12:51.2124693Z Initialized empty Git repository in /home/runner/work/EIAH/EIAH/.git/
+2026-11-14T18:12:51.2133571Z [command]/usr/bin/git remote add origin https://github.com/5906375/EIAH
+2026-11-14T18:12:51.2179721Z ##[endgroup]
+2026-11-14T18:12:51.2181930Z ##[group]Disabling automatic garbage collection
+2026-11-14T18:12:51.2183704Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-14T18:12:51.2212801Z ##[endgroup]
+2026-11-14T18:12:51.2214614Z ##[group]Setting up auth
+2026-11-14T18:12:51.2220764Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:12:51.2252346Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:12:51.2657565Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:12:51.2684332Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:12:51.2878285Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:12:51.2904716Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:12:51.3102094Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-14T18:12:51.3135438Z ##[endgroup]
+2026-11-14T18:12:51.3137300Z ##[group]Fetching the repository
+2026-11-14T18:12:51.3145178Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +67250024941e64760e577b152f77be15f638dbdf:refs/remotes/pull/536/merge
+2026-11-14T18:12:56.2598621Z From https://github.com/5906375/EIAH
+2026-11-14T18:12:56.2599261Z  * [new ref]         67250024941e64760e577b152f77be15f638dbdf -> pull/536/merge
+2026-11-14T18:12:56.2602024Z ##[endgroup]
+2026-11-14T18:12:56.2602517Z ##[group]Determining the checkout info
+2026-11-14T18:12:56.2604276Z ##[endgroup]
+2026-11-14T18:12:56.2617749Z [command]/usr/bin/git sparse-checkout disable
+2026-11-14T18:12:56.2661151Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-14T18:12:56.2683640Z ##[group]Checking out the ref
+2026-11-14T18:12:56.2687176Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/536/merge
+2026-11-14T18:12:56.9911669Z Note: switching to 'refs/remotes/pull/536/merge'.
+2026-11-14T18:12:56.9912206Z
+2026-11-14T18:12:56.9912536Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-14T18:12:56.9913115Z changes and commit them, and you can discard any commits you make in this
+2026-11-14T18:12:56.9913765Z state without impacting any branches by switching back to a branch.
+2026-11-14T18:12:56.9914185Z
+2026-11-14T18:12:56.9914504Z If you want to create a new branch to retain commits you create, you may
+2026-11-14T18:12:56.9915260Z do so (now or later) by using -c with the switch command. Example:
+2026-11-14T18:12:56.9915757Z
+2026-11-14T18:12:56.9915935Z   git switch -c <new-branch-name>
+2026-11-14T18:12:56.9916220Z
+2026-11-14T18:12:56.9916415Z Or undo this operation with:
+2026-11-14T18:12:56.9916640Z
+2026-11-14T18:12:56.9922272Z   git switch -
+2026-11-14T18:12:56.9922990Z
+2026-11-14T18:12:56.9923545Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-14T18:12:56.9924255Z
+2026-11-14T18:12:56.9924856Z HEAD is now at 6725002 Merge 780eafb8abef0630d0ae1c9cafe69decfe3a1726 into 751cbc3c7e23bc92db5a986136e221178af0c24b
+2026-11-14T18:12:56.9946520Z ##[endgroup]
+2026-11-14T18:12:56.9997182Z [command]/usr/bin/git log -1 --format=%H
+2026-11-14T18:12:57.0029757Z 67250024941e64760e577b152f77be15f638dbdf
+2026-11-14T18:12:57.0225453Z ##[group]Run pnpm/action-setup@v4
+2026-11-14T18:12:57.0225712Z with:
+2026-11-14T18:12:57.0225912Z   version: 10.12.4
+2026-11-14T18:12:57.0226102Z   run_install: false
+2026-11-14T18:12:57.0226305Z   dest: ~/setup-pnpm
+2026-11-14T18:12:57.0226493Z   cache: false
+2026-11-14T18:12:57.0226693Z   cache_dependency_path: pnpm-lock.yaml
+2026-11-14T18:12:57.0226991Z   package_json_file: package.json
+2026-11-14T18:12:57.0227207Z   standalone: false
+2026-11-14T18:12:57.0227388Z env:
+2026-11-14T18:12:57.0227601Z   NODE_VERSION: 20
+2026-11-14T18:12:57.0227801Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:57.0227997Z ##[endgroup]
+2026-11-14T18:12:57.1478972Z ##[group]Running self-installer...
+2026-11-14T18:12:57.4921607Z (node:2195) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:12:57.4922660Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:12:57.6317438Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:12:57.6393023Z Packages: +1
+2026-11-14T18:12:57.6393435Z +
+2026-11-14T18:12:57.9551883Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+2026-11-14T18:12:58.0840089Z
+2026-11-14T18:12:58.0840556Z dependencies:
+2026-11-14T18:12:58.0840928Z + pnpm 10.12.4 (12.18.0 is available)
+2026-11-14T18:12:58.0841173Z
+2026-11-14T18:12:58.1431130Z Done in 843ms
+2026-11-14T18:12:58.1575132Z ##[endgroup]
+2026-11-14T18:12:58.1575502Z Installation Completed!
+2026-11-14T18:12:58.2357671Z ##[group]Run actions/setup-node@v4
+2026-11-14T18:12:58.2357910Z with:
+2026-11-14T18:12:58.2358081Z   node-version: 22
+2026-11-14T18:12:58.2358262Z   cache: pnpm
+2026-11-14T18:12:58.2358452Z   cache-dependency-path: pnpm-lock.yaml
+2026-11-14T18:12:58.2358682Z   always-auth: false
+2026-11-14T18:12:58.2358865Z   check-latest: false
+2026-11-14T18:12:58.2360712Z   token: ***
+2026-11-14T18:12:58.2360880Z env:
+2026-11-14T18:12:58.2361037Z   NODE_VERSION: 20
+2026-11-14T18:12:58.2361218Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:12:58.2361446Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:12:58.2361700Z ##[endgroup]
+2026-11-14T18:12:58.3795914Z (node:2209) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-14T18:12:58.3796776Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-14T18:12:58.3797897Z Found in cache @ /opt/hostedtoolcache/node/22.23.4/x64
+2026-11-14T18:12:58.3799245Z ##[group]Environment details
+2026-11-14T18:12:58.7843914Z node: v22.23.4
+2026-11-14T18:12:58.7844276Z npm: 10.9.9
+2026-11-14T18:12:58.7844558Z yarn: 1.22.22
+2026-11-14T18:12:58.7845578Z ##[endgroup]
+2026-11-14T18:12:58.7861953Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+2026-11-14T18:12:59.0907075Z /home/runner/setup-pnpm/node_modules/.bin/store/v10
+2026-11-14T18:12:59.2428424Z Cache hit for: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:12:59.2518262Z (node:2209) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-11-14T18:13:00.2997720Z Received 108395777 of 108395777 (100.0%), 114.0 MBs/sec
+2026-11-14T18:13:00.2998217Z Cache Size: ~103 MB (108395777 B)
+2026-11-14T18:13:00.3058047Z [command]/usr/bin/tar -xf /home/runner/work/_temp/a7a8a91a-7f8b-407e-bbc9-66526ac294bc/cache.tzst -P -C /home/runner/work/EIAH/EIAH --use-compress-program unzstd
+2026-11-14T18:13:01.1487542Z Cache restored successfully
+2026-11-14T18:13:01.1529226Z Cache restored from key: node-cache-Linux-x64-pnpm-fcf0f8e8c6960a63bf1b373b3132a40309ff47350e266777d315f8dd32eeeee1
+2026-11-14T18:13:01.1687081Z ##[group]Run pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:13:01.1687519Z pnpm install --frozen-lockfile --ignore-scripts
+2026-11-14T18:13:01.1726733Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:01.1726975Z env:
+2026-11-14T18:13:01.1727158Z   NODE_VERSION: 20
+2026-11-14T18:13:01.1727350Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:01.1727589Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:01.1727857Z ##[endgroup]
+2026-11-14T18:13:01.4125976Z Scope: all 12 workspace projects
+2026-11-14T18:13:01.4699645Z Lockfile is up to date, resolution step is skipped
+2026-11-14T18:13:01.5103570Z Progress: resolved 1, reused 0, downloaded 0, added 0
+2026-11-14T18:13:01.6089503Z Packages: +812
+2026-11-14T18:13:01.6090325Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+2026-11-14T18:13:02.5126790Z Progress: resolved 812, reused 811, downloaded 0, added 65
+2026-11-14T18:13:03.2809220Z Progress: resolved 812, reused 811, downloaded 0, added 812, done
+2026-11-14T18:13:03.7146809Z
+2026-11-14T18:13:03.7148050Z dependencies:
+2026-11-14T18:13:03.7148467Z + @prisma/client 7.2.0
+2026-11-14T18:13:03.7148786Z + prisma 7.2.0
+2026-11-14T18:13:03.7148949Z
+2026-11-14T18:13:03.7149090Z devDependencies:
+2026-11-14T18:13:03.7149394Z + @eslint/js 9.39.2
+2026-11-14T18:13:03.7149698Z + @prisma/config 7.2.0
+2026-11-14T18:13:03.7150001Z + @types/node 25.0.3
+2026-11-14T18:13:03.7150370Z + @typescript-eslint/eslint-plugin 8.50.0
+2026-11-14T18:13:03.7150694Z + @typescript-eslint/parser 8.50.0
+2026-11-14T18:13:03.7150962Z + @typescript-eslint/utils 8.50.0
+2026-11-14T18:13:03.7151181Z + eslint 9.39.2
+2026-11-14T18:13:03.7151413Z + eslint-config-prettier 10.1.8
+2026-11-14T18:13:03.7151676Z + eslint-plugin-import 2.32.0
+2026-11-14T18:13:03.7151943Z + eslint-plugin-unused-imports 4.3.0
+2026-11-14T18:13:03.7152199Z + playwright 1.61.1
+2026-11-14T18:13:03.7152389Z + tsx 4.21.0
+2026-11-14T18:13:03.7152577Z + typescript 5.9.3
+2026-11-14T18:13:03.7152709Z
+2026-11-14T18:13:03.7272794Z Done in 2.5s using pnpm v10.12.4
+2026-11-14T18:13:03.7418846Z ##[group]Run pnpm check:p1-reconciliation-recurring
+2026-11-14T18:13:03.7419322Z pnpm check:p1-reconciliation-recurring
+2026-11-14T18:13:03.7448696Z shell: /usr/bin/bash -e {0}
+2026-11-14T18:13:03.7448942Z env:
+2026-11-14T18:13:03.7449125Z   NODE_VERSION: 20
+2026-11-14T18:13:03.7449319Z   PNPM_VERSION: 10.12.4
+2026-11-14T18:13:03.7449570Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+2026-11-14T18:13:03.7449991Z ##[endgroup]
+2026-11-14T18:13:03.9631934Z
+2026-11-14T18:13:03.9633106Z > eiah-builder@ check:p1-reconciliation-recurring /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:03.9634195Z > node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts
+2026-11-14T18:13:03.9634736Z
+2026-11-14T18:13:04.0309109Z {
+2026-11-14T18:13:04.0309463Z   "ok": false,
+2026-11-14T18:13:04.0309969Z   "check": "check:p1-reconciliation-recurring",
+2026-11-14T18:13:04.0310496Z   "message": "weekly_cycle_evidence_too_old",
+2026-11-14T18:13:04.0310848Z   "details": {
+2026-11-14T18:13:04.0311275Z     "maxAgeDays": 14,
+2026-11-14T18:13:04.0311488Z     "tooOld": [
+2026-11-14T18:13:04.0311669Z       {
+2026-11-14T18:13:04.0311909Z         "file": "ape-weekly-cycle-run48-2026-07-27.md",
+2026-11-14T18:13:04.0312190Z         "auditGap": 0,
+2026-11-14T18:13:04.0312423Z         "duplicateSideEffects": 0,
+2026-11-14T18:13:04.0312654Z         "ageDays": 110.76
+2026-11-14T18:13:04.0312860Z       },
+2026-11-14T18:13:04.0313043Z       {
+2026-11-14T18:13:04.0313271Z         "file": "ape-weekly-cycle-run47-2026-07-23.md",
+2026-11-14T18:13:04.0313540Z         "auditGap": 0,
+2026-11-14T18:13:04.0313759Z         "duplicateSideEffects": 0,
+2026-11-14T18:13:04.0313981Z         "ageDays": 114.76
+2026-11-14T18:13:04.0314168Z       },
+2026-11-14T18:13:04.0314335Z       {
+2026-11-14T18:13:04.0314556Z         "file": "ape-weekly-cycle-run46-2026-07-20.md",
+2026-11-14T18:13:04.0314806Z         "auditGap": 0,
+2026-11-14T18:13:04.0315484Z         "duplicateSideEffects": 0,
+2026-11-14T18:13:04.0315925Z         "ageDays": 117.76
+2026-11-14T18:13:04.0316198Z       }
+2026-11-14T18:13:04.0316916Z     ]
+2026-11-14T18:13:04.0317113Z   }
+2026-11-14T18:13:04.0317280Z }
+2026-11-14T18:13:04.0487384Z  ELIFECYCLE  Command failed with exit code 1.
+2026-11-14T18:13:04.0641127Z ##[error]Process completed with exit code 1.
+2026-11-14T18:13:04.0718705Z Post job cleanup.
+2026-11-14T18:13:04.1951500Z Pruning is unnecessary.
+2026-11-14T18:13:04.2119290Z Post job cleanup.
+2026-11-14T18:13:04.2888242Z [command]/usr/bin/git version
+2026-11-14T18:13:04.2922552Z git version 2.56.1
+2026-11-14T18:13:04.2961911Z Temporarily overriding HOME='/home/runner/work/_temp/15b4904b-57b8-404a-be69-028cff789708' before making global git config changes
+2026-11-14T18:13:04.2962865Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-14T18:13:04.2967538Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+2026-11-14T18:13:04.3001905Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-14T18:13:04.3032974Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-14T18:13:04.3259241Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-14T18:13:04.3278576Z http.https://github.com/.extraheader
+2026-11-14T18:13:04.3287747Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-14T18:13:04.3329266Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-14T18:13:04.3583824Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-14T18:13:04.3615614Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-14T18:13:04.3929072Z Cleaning up orphan processes
+2026-11-14T18:13:04.4189535Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

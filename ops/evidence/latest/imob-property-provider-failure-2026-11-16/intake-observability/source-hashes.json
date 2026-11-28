@@ -1,0 +1,19 @@
+{
+  "apps/api/src/routes/imob.ts": "7211c01cfccd1d0821bff147df8c0306534404cc7f873a52c64b91341168582a",
+  "apps/api/src/orchestrator/llmExecutor.ts": "5e6e9fed1a84d087de53cef928a41fd3cb8092a7918a52d3d6c6384a687911ec",
+  "apps/api/src/services/imob/intake/imobPropertyCaptureIntake.ts": "5ae236175aee65e467a880b6fc3d256d7a42cee61e1024e1ee4950158cf7783b",
+  "packages/core/src/llm/LLMProviderError.ts": "25685bfc34a55b95d8d8bed707977da29f136fe495bcb1d0bcc55dea95eb729f",
+  "packages/core/src/llm/completionEngine.ts": "ef1dd963390d88400037c2a9e6659a6425c40978d72c8809ce93ef345daac7de",
+  "packages/providers/src/OpenAIProvider.ts": "7953eb836663cb4695343172f03f28a62e02c934937eaa81ece6cbd611ead162",
+  "apps/api/src/tests/imob-property-capture-intake.test.ts": "2077175ddfb69bc81b0c0332fdcf3b53ab31a8334f6ce6fc41b4a5a5b688517a",
+  "apps/api/src/tests/llm-provider-failure.test.ts": "ce73b893e0f27cd11498104e7469d56b2737610aa12f62d87c34d0bdaa5d4abc",
+  "packages/providers/tests/openai-provider-failure.test.ts": "f877d64dfcd49954b96087a96a1b7014191b1127d2b6bee2822c39c1df59ca8e",
+  "apps/api/src/services/imob/crm/imobCrmTurnEngine.ts": "26c56dea91e41d633bdbbcca5359ecd8e0b09ad69252b3c4078dc7c82325630b",
+  "package.json": "bd853f2ebd9aa754e5753ebaae305d222a721eb3fd9f23e2b2401b4e3a712e22",
+  ".github/workflows/ci.yml": "9b5de29a6ccebf731b823a2ac6bc3c2d0fa4b36738c7c07f3e3875df1dfe6fa9",
+  "packages/core/package.json": "9d7bad94f056848d489f7c9629169c1a170651d2f8001e7dff5aff0e118fda15",
+  "packages/providers/package.json": "bb88f7d5e1570911323d57c7bd00ba22442b3452379d3eb3600a874e6bbab84f",
+  "packages/core/tsup.config.ts": "c206e777bbb7f2ec4a492b920ad7ce6a5834104fb9879bc86f8adc97897b582b",
+  "packages/providers/tests/fixtures/openai-credit-balance-exhausted.json": "2ed341ba4cb248568f62fad53d1feffaf0a5efd9e3c70c5503cc5394cee8955b",
+  "docs/architecture/agent-chat-runtime.md": "739704809f6fcc0f42a56739e10f7732c5e3cf1a8bc6190e04137e0e08fa2ae7"
+}

@@ -18,7 +18,7 @@ export type HelpDictionaryAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
   roleProfile?: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator" | null;
-  activeDomain?: "core" | "imob" | null;
+  activeDomain?: "core" | "imob" | "logistica" | null;
   installedProducts?: string[] | null;
   entitlements?: {
     REAL_ESTATE_CORE?: boolean;

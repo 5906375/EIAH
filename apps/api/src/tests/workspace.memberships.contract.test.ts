@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
 import { ensureWorkspaceMembershipForUser, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
+import { cleanupImobInstallationForTest, installImobForTest } from "./support/imobInstallationFixture";
 
 let request: ReturnType<typeof supertest>;
 
@@ -94,6 +95,8 @@ before(async () => {
     roleKey: "assistente",
     permissions: ["imob.chat.use", "imob.stage.pending_data"],
   });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB (casos) exigem o IMOB instalado e habilitado; a fixture instala pelo serviço de ativação existente.
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId, workspaceId, userId: inviterUserId });
   await prismaGlobal.imobCase.createMany({
     data: [
       {
@@ -117,12 +120,20 @@ before(async () => {
 });
 
 after(async () => {
+  await cleanupImobInstallationForTest(prismaGlobal as any, [tenantId]);
+  // Linhas de memória escritas pelo PATCH de caso do próprio teste (sintéticas, deste tenant); sem isso o `workspace.deleteMany` viola a FK
+  // memory_events_workspace_id_fkey (falha de limpeza preexistente na `main`). Não toca o ledger de auditoria.
+  await prismaGlobal.$executeRaw`DELETE FROM memory_events WHERE tenant_id = ${tenantId}`;
   await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId } }).catch(() => undefined);
   await prismaGlobal.imobCase.deleteMany({ where: { tenantId } }).catch(() => undefined);
   await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
   await prismaGlobal.user.deleteMany({ where: { tenantId } });
   await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  // O ledger de auditoria é append-only por desenho e referencia o tenant: não se apagam linhas dele (nem se desabilita a FK). Havendo
+  // linhas, o tenant sintético permanece no PostgreSQL descartável do teste, que é destruído por inteiro ao final.
+  if ((await prismaGlobal.guardrailAuditLedger.count({ where: { tenantId } })) === 0) {
+    await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  }
   await prismaGlobal.$disconnect();
 });
 

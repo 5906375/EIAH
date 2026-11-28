@@ -2,7 +2,7 @@
 
 ## Status
 
-Aprovada pelo administrador único (ADR-008) — implementação pendente
+Aprovada pelo administrador único (ADR-008) — implementação pendente; **Emenda 1 (EIAH-FD-001, 21/10/2026): Front Door como superfície operacional única**
 
 ## Data
 
@@ -82,6 +82,33 @@ Conforme `vertical-context-imob.md`, aplicado a cada vertical: continuidade de t
 RBAC/entitlements, fail-closed, comportamento read-only e mutacional governado, E2E das jornadas críticas e plano de
 rollout/rollback.
 
-## 6. Evidência
+## 6. Emenda 1 — EIAH-FD-001: superfície operacional única (21/10/2026)
+
+**Decisão do proprietário (Carlos Alberto Merlo), registrada a partir da instrução EIAH-FD-001; registro textual, sem assinatura digital.**
+Esta emenda **substitui o caráter permanente** do que o §4 e o `vertical-context-imob.md` tratam como "rotas dedicadas que permanecem
+disponíveis" e torna **vinculante** o que o contexto já afirmava:
+
+> O Front Door é a interface operacional única dos produtos EIAH. A administração técnica mantém a plataforma funcionando. Nenhuma
+> vertical poderá exigir ou oferecer um cockpit operacional paralelo.
+
+- Vale para IMOB, Logística & Comex, Legal/J360, Radar e qualquer vertical futura; a operação de negócio acontece **dentro da árvore de
+  apresentação conversacional do Chat Agent Launcher** (estar em `/app/chat` não basta).
+- É **expressamente proibido** criar, manter ou disponibilizar páginas, cockpits, dashboards, formulários ou interfaces operacionais independentes
+  fora da conversa do Front Door — **mesmo denominadas opcionais, administrativas ou legadas**. Menus levam exclusivamente ao Front Door e URLs
+  operacionais legadas **redirecionam** a ele (só referências de continuidade válidas; nunca permissões nem parâmetros arbitrários).
+- Rotas dedicadas existentes (ex.: `/app/imob/*`) são **não conformidade registrada**, não opção: só permanecem enquanto a função equivalente
+  não existe na conversa (não se perde funcionalidade nem se exclui antes da equivalência comprovada por E2E, §5), e **a existência de uma página
+  operacional paralela impede declarar a conformidade, ainda que as funções também estejam no Front Door**. O §4 ("permanecem disponíveis") fica
+  limitado a essa janela de migração; a decisão de redirecionar cada rota, uma vez comprovada a paridade, passa a ser obrigação, não opção.
+- Proibido criar cockpits paralelos, launchers especializados, chats por vertical, páginas de vertical com chat secundário, painéis de
+  operação de negócio fora da conversa e navegações obrigatórias fora do Front Door — nem "como opção".
+- Aprovação operacional, gestão de casos e acompanhamento de processos **não** são administração técnica.
+- Critérios, separação de responsabilidades, registro das superfícies legadas e planos de integração:
+  [`docs/architecture/front-door-single-operational-surface.md`](../architecture/front-door-single-operational-surface.md).
+  Verificação: `pnpm check:front-door-single-surface` (encadeado em `pnpm check:arch-chat-contracts`).
+- Esta emenda não migra vertical alguma, não remove serviço/componente/dado, não altera billing, ruleset, Evidence Index, contratos
+  `vertical.registry.v1`/`chat.vertical_handoff.v2`, ADR-011/012 nem o PR #507.
+
+## 7. Evidência
 
 Esta ADR é uma decisão, não evidência de execução, e não é indexada em `docs/EVIDENCE_INDEX.md`.

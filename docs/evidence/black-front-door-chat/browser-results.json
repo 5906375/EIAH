@@ -1,0 +1,38 @@
+{
+  "fixture": "synthetic session and restored messages, mocked API, no real mutations",
+  "results": [
+    {
+      "width": 320,
+      "status": "pass",
+      "checks": [
+        "black background",
+        "plain user/assistant messages",
+        "borderless quick reply",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 390,
+      "status": "pass",
+      "checks": [
+        "black background",
+        "plain user/assistant messages",
+        "borderless quick reply",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    },
+    {
+      "width": 1440,
+      "status": "pass",
+      "checks": [
+        "black background",
+        "plain user/assistant messages",
+        "borderless quick reply",
+        "no horizontal overflow",
+        "no runtime errors"
+      ]
+    }
+  ]
+}

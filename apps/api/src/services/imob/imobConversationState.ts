@@ -1,3 +1,4 @@
+import { parseCanonicalImobUnits, type ImobPropertyUnitIntake } from "@eiah/contracts";
 import { parseProposalContinuity } from "./crm/imobProposalReviewContinuity";
 import {
   createEmptyImobSlots,
@@ -654,7 +655,15 @@ function hasExplicitOwnerCreateRequest(message: string) {
   return wantsCreate && hasOwner;
 }
 
-function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
+/** Frase livre vem do intake; aqui só se normaliza uma expressão canônica completa. */
+function extractMultiUnitLabels(message: string, intake?: ImobPropertyUnitIntake) {
+  if (intake?.status === "resolved") return intake.unitLabels;
+  const canonical = parseCanonicalImobUnits(message);
+  return canonical && !canonical.invalidRanges.length && canonical.units.length
+    ? canonical.units.map((unit) => unit.label) : null;
+}
+
+function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots, intake?: ImobPropertyUnitIntake): ImobPropertyDraft {
   const validation = validateImobInput({ rawInput: message, scope: "property.create" });
   const normalizedAddress = validation.normalized.address
     ? [
@@ -688,6 +697,7 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
     address: normalizedAddress ?? extractAddress(message) ?? previous?.address ?? null,
     ownerNameHint: extractOwnerNameHint(message) ?? previous?.ownerNameHint ?? null,
+    unitLabels: extractMultiUnitLabels(message, intake) ?? previous?.unitLabels ?? null,
     origin: previous?.origin ?? null,
   };
 }
@@ -1635,7 +1645,8 @@ export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
   message: string,
-  slots: ImobSearchSlots
+  slots: ImobSearchSlots,
+  propertyUnitIntake?: ImobPropertyUnitIntake,
 ): ImobOperationalState | null {
   const missionContext = buildMissionContext(previous, message, slots);
   if (intent === "capture") {
@@ -1730,6 +1741,7 @@ export function createNextImobOperationalState(
         previous?.flow === "property.create" ? previous.propertyDraft : undefined,
         message,
         inheritedSlots,
+        propertyUnitIntake,
       );
       const preserveResolvedMarketScanSelection = Boolean(
         previous?.flow === "property.create"

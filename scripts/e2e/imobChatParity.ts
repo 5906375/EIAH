@@ -122,7 +122,7 @@ const pick = async (page: Page, menu: string, item: string) => {
 };
 const send = async (page: Page, text: string) => {
   await page.locator("textarea").last().fill(text);
-  await page.getByRole("button", { name: /^Enviar$/i }).last().click();
+  await page.getByRole("button", { name: /^Enviar(?: mensagem)?$/i }).last().click();
 };
 const selectContaining = async (page: Page, button: string, label: string, text: string) => {
   await page.waitForFunction(
@@ -139,9 +139,12 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
   const { page, runs } = await openPage(browser, session, surface);
   const tag = surface === "/app/chat" ? "FD" : "IC";
   const ownerName = `Dona Paridade ${tag} ${STAMP}`;
-  const unit = `Kit ${tag} ${STAMP}`;
+  const unitNumber = `${tag === "FD" ? "9" : "8"}${STAMP}`;
+  const unit = `Kitnet ${unitNumber}`;
   const shot = (name: string) => page.screenshot({ path: path.join(ARTIFACTS, `${tag}-${name}.png`), fullPage: true }).catch(() => undefined);
   let stop = false;
+  // caseId da locação criada NESTA jornada (resposta de POST /imob/rentals); o histórico do imóvel é validado por ele.
+  let createdRentalCaseId = "";
   const step = async (name: string, fn: () => Promise<void>) => {
     if (stop) {
       results.push({ surface, step: name, ok: false, error: "não executado (passo anterior falhou)" });
@@ -183,15 +186,19 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
       { timeout: 20000 },
     );
     await field(page, "Salvar cadastro", "Tipo").selectOption("kitnet");
-    await field(page, "Salvar cadastro", "Finalidade").selectOption("locacao");
+    await field(page, "Salvar cadastro", "Destinação inicial").selectOption("locacao");
     await field(page, "Salvar cadastro", "Identificação da unidade").fill(unit);
     await field(page, "Salvar cadastro", "Cidade").fill("Cidade Paridade");
     await field(page, "Salvar cadastro", "Endereço").fill(`Rua Paridade ${tag}, ${STAMP}`);
     await formWith(page, "Salvar cadastro").getByRole("button", { name: "Salvar cadastro", exact: true }).click();
     await page.getByText(`Imóvel cadastrado: ${unit}`, { exact: false }).last().waitFor({ timeout: 20000 });
+    // Destinação "Locação" → próximos passos resolvidos pelo contrato; nenhum abre locação ou contrato sozinho.
+    for (const chip of ["Registrar locação atual", "Registrar locação encerrada", "Iniciar nova locação"]) {
+      await page.getByRole("button", { name: chip, exact: true }).last().waitFor({ timeout: 20000 });
+    }
   });
   await step("salvar locação e abrir contrato preenchido", async () => {
-    await page.getByRole("button", { name: "Gerar contrato de locação" }).last().click();
+    await page.getByRole("button", { name: "Iniciar nova locação", exact: true }).last().click();
     await field(page, "Salvar locação", "Nome do inquilino").waitFor({ timeout: 30000 });
     await page.waitForFunction(
       (ref) => [...document.querySelectorAll("select")].some((select) => (select as HTMLSelectElement).selectedOptions[0]?.textContent?.includes(ref)),
@@ -203,7 +210,19 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     await field(page, "Salvar locação", "Fim do contrato").fill("31/03/2026");
     await field(page, "Salvar locação", "Aluguel mensal (R$)").fill("900,00");
     await field(page, "Salvar locação", "Dia do vencimento").fill("10");
+    const leaseCreated = page.waitForResponse(
+      (response) => response.request().method() === "POST" && new URL(response.url()).pathname.endsWith("/imob/rentals"),
+      { timeout: 30000 },
+    );
     await formWith(page, "Salvar locação").getByRole("button", { name: "Salvar locação", exact: true }).click();
+    const leaseResponse = await leaseCreated;
+    if (leaseResponse.status() !== 201) throw new Error(`POST /imob/rentals → ${leaseResponse.status()}`);
+    const leaseBody = (await leaseResponse.json().catch(() => null)) as { data?: { caseId?: unknown } } | null;
+    if (typeof leaseBody?.data?.caseId !== "string" || !leaseBody.data.caseId) throw new Error("resposta da criação da locação sem caseId");
+    createdRentalCaseId = leaseBody.data.caseId;
+    // O contrato só é oferecido depois que a locação foi criada: confirmação + chip, e só então o formulário da minuta.
+    await page.getByText("Locação cadastrada:", { exact: false }).last().waitFor({ timeout: 20000 });
+    await page.getByRole("button", { name: "Gerar contrato desta locação", exact: true }).last().click();
     await formWith(page, "Gerar minuta").waitFor({ timeout: 30000 });
     await page.waitForFunction((name) => [...document.querySelectorAll("input")].some((input) => input.value === name), ownerName, { timeout: 20000 });
     if ((await field(page, "Gerar minuta", "Locatário (nome)").inputValue()) !== `Inquilino ${tag}`) throw new Error("locatário não veio da locação");
@@ -214,13 +233,28 @@ async function runSurface(browser: Browser, session: Session, surface: "/app/imo
     await formWith(page, "Encerrar locação").waitFor({ timeout: 15000 });
     await selectContaining(page, "Encerrar locação", "Imóvel da locação", unit);
     await field(page, "Encerrar locação", "Motivo").selectOption("fim_contrato");
+    // Correlacionar a operação real antes de consultar o histórico: texto restaurado
+    // de uma conversa anterior não prova que o POST desta jornada terminou.
+    const closeCompleted = page.waitForResponse(
+      (response) => response.request().method() === "POST"
+        && new URL(response.url()).pathname.endsWith("/imob/rentals/close"),
+      { timeout: 30000 },
+    );
     await formWith(page, "Encerrar locação").getByRole("button", { name: "Encerrar locação", exact: true }).click();
-    await page.getByText("O imóvel voltou a vago", { exact: false }).last().waitFor({ timeout: 20000 });
+    const closeResponse = await closeCompleted;
+    const closeBody = await closeResponse.json().catch(() => null) as { data?: { caseId?: string } } | null;
+    if (closeResponse.status() !== 200) throw new Error(`POST /imob/rentals/close → ${closeResponse.status()}`);
+    if (closeBody?.data?.caseId !== createdRentalCaseId) {
+      throw new Error(`encerramento atingiu outra locação: criada=${createdRentalCaseId}, encerrada=${closeBody?.data?.caseId ?? "ausente"}`);
+    }
+    await page.getByText(`Locação de ${unit}`, { exact: false }).filter({ hasText: "O imóvel voltou a vago" }).last().waitFor({ timeout: 20000 });
     const properties = await api<{ data: { items: Array<{ id: string; metadata?: { externalPropertyRef?: string } }> } }>(session, "GET", "/imob/properties");
     const property = properties.data.items.find((item) => item.metadata?.externalPropertyRef === unit);
     if (!property) throw new Error("imóvel não encontrado");
-    const history = await api<{ data: { items: Array<{ status: string }> } }>(session, "GET", `/imob/rentals/history?propertyId=${property.id}`);
-    if (history.data.items.length !== 1 || history.data.items[0].status !== "closed") throw new Error("locação não ficou encerrada no histórico");
+    const history = await api<{ data: { items: Array<{ caseId: string; status: string }> } }>(session, "GET", `/imob/rentals/history?propertyId=${property.id}`);
+    const created = history.data.items.find((item) => item.caseId === createdRentalCaseId);
+    if (!created) throw new Error("locação criada nesta jornada não encontrada no histórico do imóvel");
+    if (created.status !== "closed") throw new Error(`locação criada nesta jornada encontrada no histórico, mas com status "${created.status}" (esperado "closed")`);
   });
   await step("nenhuma run criada", async () => {
     if (runs.length) throw new Error(`${runs.length} run(s) criada(s)`);

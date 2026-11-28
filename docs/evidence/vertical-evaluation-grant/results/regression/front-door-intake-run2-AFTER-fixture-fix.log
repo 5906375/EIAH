@@ -1,0 +1,88 @@
+TAP version 13
+# Subtest: perguntas equivalentes sobre gratuidade, trial e começar sem pagar: o modelo só interpreta, a resposta vem do catálogo e é a mesma
+ok 1 - perguntas equivalentes sobre gratuidade, trial e começar sem pagar: o modelo só interpreta, a resposta vem do catálogo e é a mesma
+  ---
+  duration_ms: 52.834172
+  type: 'test'
+  ...
+# Subtest: contexto estruturado chega ao provider: vertical, etapa, situação e planos do catálogo, sem preços nem decisão
+ok 2 - contexto estruturado chega ao provider: vertical, etapa, situação e planos do catálogo, sem preços nem decisão
+  ---
+  duration_ms: 0.912492
+  type: 'test'
+  ...
+# Subtest: campos extras do modelo (resposta, plano, preço) são ignorados: nada comercial vem do provider
+ok 3 - campos extras do modelo (resposta, plano, preço) são ignorados: nada comercial vem do provider
+  ---
+  duration_ms: 0.432396
+  type: 'test'
+  ...
+# Subtest: plano gratuito só é afirmado se existir no catálogo
+ok 4 - plano gratuito só é afirmado se existir no catálogo
+  ---
+  duration_ms: 0.211771
+  type: 'test'
+  ...
+# Subtest: diferença entre planos e forma de pagamento: dados do catálogo; sem escolher plano nem pagar
+ok 5 - diferença entre planos e forma de pagamento: dados do catálogo; sem escolher plano nem pagar
+  ---
+  duration_ms: 0.763792
+  type: 'test'
+  ...
+# Subtest: ambiguidade, baixa confiança, fora de contexto e saída: desfechos contextuais, sem trocar de assunto sozinho
+ok 6 - ambiguidade, baixa confiança, fora de contexto e saída: desfechos contextuais, sem trocar de assunto sozinho
+  ---
+  duration_ms: 0.38595
+  type: 'test'
+  ...
+# Subtest: provider indisponível, erro, timeout e resposta inválida: desfecho explícito, sem inventar condição comercial
+ok 7 - provider indisponível, erro, timeout e resposta inválida: desfecho explícito, sem inventar condição comercial
+  ---
+  duration_ms: 42.267826
+  type: 'test'
+  ...
+# Subtest: autorização antes da interpretação: sem permissão de billing o provider nem é chamado
+ok 8 - autorização antes da interpretação: sem permissão de billing o provider nem é chamado
+  ---
+  duration_ms: 0.188251
+  type: 'test'
+  ...
+# Subtest: JSON em bloco de código é aceito; a interpretação nunca carrega efeito (intent/topic fechados)
+ok 9 - JSON em bloco de código é aceito; a interpretação nunca carrega efeito (intent/topic fechados)
+  ---
+  duration_ms: 0.368396
+  type: 'test'
+  ...
+# Subtest: contrato da requisição: mensagem obrigatória e limitada, etapa fechada, sem campos extras
+ok 10 - contrato da requisição: mensagem obrigatória e limitada, etapa fechada, sem campos extras
+  ---
+  duration_ms: 0.883193
+  type: 'test'
+  ...
+# Subtest: contexto do cliente divergente do servidor: etapa que o estado real da conta não comporta não chama o provider
+ok 11 - contexto do cliente divergente do servidor: etapa que o estado real da conta não comporta não chama o provider
+  ---
+  duration_ms: 1.124785
+  type: 'test'
+  ...
+# Subtest: rótulo de plano inventado pelo cliente não chega ao provider; só rótulos do catálogo autorizado
+ok 12 - rótulo de plano inventado pelo cliente não chega ao provider; só rótulos do catálogo autorizado
+  ---
+  duration_ms: 0.48197
+  type: 'test'
+  ...
+# Subtest: o contrato da requisição rejeita catálogo, permissão e escopo enviados pelo cliente (o servidor só usa os da sessão)
+ok 13 - o contrato da requisição rejeita catálogo, permissão e escopo enviados pelo cliente (o servidor só usa os da sessão)
+  ---
+  duration_ms: 0.230096
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 388.305787

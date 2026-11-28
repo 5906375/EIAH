@@ -1,0 +1,106 @@
+{
+  "fixture": "synthetic API responses; UI only, no real backend operations",
+  "browser": "Chromium",
+  "results": [
+    {
+      "width": 320,
+      "path": "/app/chat",
+      "status": "pass"
+    },
+    {
+      "width": 320,
+      "path": "/profile",
+      "status": "pass"
+    },
+    {
+      "width": 320,
+      "path": "/app/chat?domain=imob",
+      "status": "pass"
+    },
+    {
+      "width": 320,
+      "path": "/app/chat?domain=logistica",
+      "status": "pass"
+    },
+    {
+      "width": 390,
+      "path": "/app/chat",
+      "status": "pass"
+    },
+    {
+      "width": 390,
+      "path": "/profile",
+      "status": "pass"
+    },
+    {
+      "width": 390,
+      "path": "/app/chat?domain=imob",
+      "status": "pass"
+    },
+    {
+      "width": 390,
+      "path": "/app/chat?domain=logistica",
+      "status": "pass"
+    },
+    {
+      "width": 768,
+      "path": "/app/chat",
+      "status": "pass"
+    },
+    {
+      "width": 768,
+      "path": "/profile",
+      "status": "pass"
+    },
+    {
+      "width": 768,
+      "path": "/app/chat?domain=imob",
+      "status": "pass"
+    },
+    {
+      "width": 768,
+      "path": "/app/chat?domain=logistica",
+      "status": "pass"
+    },
+    {
+      "width": 1024,
+      "path": "/app/chat",
+      "status": "pass"
+    },
+    {
+      "width": 1024,
+      "path": "/profile",
+      "status": "pass"
+    },
+    {
+      "width": 1024,
+      "path": "/app/chat?domain=imob",
+      "status": "pass"
+    },
+    {
+      "width": 1024,
+      "path": "/app/chat?domain=logistica",
+      "status": "pass"
+    },
+    {
+      "width": 1440,
+      "path": "/app/chat",
+      "status": "pass"
+    },
+    {
+      "width": 1440,
+      "path": "/profile",
+      "status": "pass"
+    },
+    {
+      "width": 1440,
+      "path": "/app/chat?domain=imob",
+      "status": "pass"
+    },
+    {
+      "width": 1440,
+      "path": "/app/chat?domain=logistica",
+      "status": "pass"
+    }
+  ]
+}

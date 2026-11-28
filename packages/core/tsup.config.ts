@@ -4,6 +4,7 @@ export default defineConfig({
   entry: [
     "src/index.ts",
     "src/policy/TenantPolicyStore.ts",
+    "src/events/redisPublisher.ts",
     "src/queue/*.ts",
     "src/llm/*.ts",
     "src/logging/*.ts",
@@ -24,7 +25,7 @@ export default defineConfig({
   target: "node20",
   sourcemap: true,
   clean: false,
-  splitting: false,
+  splitting: true,
   bundle: true,
   shims: false,
   dts: false,

@@ -1,0 +1,172 @@
+TAP version 13
+# Subtest: título único segue imob, com agente EIAH
+ok 1 - título único segue imob, com agente EIAH
+  ---
+  duration_ms: 22.069455
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente Especialista
+ok 2 - título único segue imob, com agente Especialista
+  ---
+  duration_ms: 1.676321
+  type: 'test'
+  ...
+# Subtest: título único segue imob, com agente ausente
+ok 3 - título único segue imob, com agente ausente
+  ---
+  duration_ms: 0.647608
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente EIAH
+ok 4 - título único segue logistica, com agente EIAH
+  ---
+  duration_ms: 1.118819
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente Especialista
+ok 5 - título único segue logistica, com agente Especialista
+  ---
+  duration_ms: 1.306793
+  type: 'test'
+  ...
+# Subtest: título único segue logistica, com agente ausente
+ok 6 - título único segue logistica, com agente ausente
+  ---
+  duration_ms: 0.545163
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente EIAH
+ok 7 - título único segue core, com agente EIAH
+  ---
+  duration_ms: 0.838807
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente Especialista
+ok 8 - título único segue core, com agente Especialista
+  ---
+  duration_ms: 0.566746
+  type: 'test'
+  ...
+# Subtest: título único segue core, com agente ausente
+ok 9 - título único segue core, com agente ausente
+  ---
+  duration_ms: 1.085359
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente EIAH
+ok 10 - título único segue domínio inicial, com agente EIAH
+  ---
+  duration_ms: 1.213332
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente Especialista
+ok 11 - título único segue domínio inicial, com agente Especialista
+  ---
+  duration_ms: 0.56342
+  type: 'test'
+  ...
+# Subtest: título único segue domínio inicial, com agente ausente
+ok 12 - título único segue domínio inicial, com agente ausente
+  ---
+  duration_ms: 6.097096
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta imob e preserva o controle de agente
+ok 13 - cabeçalho projeta imob e preserva o controle de agente
+  ---
+  duration_ms: 0.526876
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core e preserva o controle de agente
+ok 14 - cabeçalho projeta core e preserva o controle de agente
+  ---
+  duration_ms: 0.135434
+  type: 'test'
+  ...
+# Subtest: cabeçalho projeta core inicial e preserva o controle de agente
+ok 15 - cabeçalho projeta core inicial e preserva o controle de agente
+  ---
+  duration_ms: 0.122004
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: none
+ok 16 - entrada Marketplace renderiza somente resposta atual: none
+  ---
+  duration_ms: 25.885016
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: conversation
+ok 17 - entrada Marketplace renderiza somente resposta atual: conversation
+  ---
+  duration_ms: 14.052318
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: user
+ok 18 - entrada Marketplace renderiza somente resposta atual: user
+  ---
+  duration_ms: 10.233172
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: workspace
+ok 19 - entrada Marketplace renderiza somente resposta atual: workspace
+  ---
+  duration_ms: 7.586205
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: agent
+ok 20 - entrada Marketplace renderiza somente resposta atual: agent
+  ---
+  duration_ms: 11.173923
+  type: 'test'
+  ...
+# Subtest: entrada Marketplace renderiza somente resposta atual: new_turn
+ok 21 - entrada Marketplace renderiza somente resposta atual: new_turn
+  ---
+  duration_ms: 7.679786
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+ok 22 - barra real aparece em conversa vazia IMOB, independente do agente não selecionado
+  ---
+  duration_ms: 1.519655
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente EIAH
+ok 23 - barra real aparece em conversa vazia IMOB, independente do agente EIAH
+  ---
+  duration_ms: 0.510571
+  type: 'test'
+  ...
+# Subtest: barra real aparece em conversa vazia IMOB, independente do agente J_360
+ok 24 - barra real aparece em conversa vazia IMOB, independente do agente J_360
+  ---
+  duration_ms: 0.474556
+  type: 'test'
+  ...
+# Subtest: AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+ok 25 - AUTHZ-IMOB-HANDOFF-001: sem a autoridade confirmada pelo Core (bloqueado ou ainda não verificado) a barra do IMOB não existe, mesmo com o IMOB disponível na sessão
+  ---
+  duration_ms: 0.420826
+  type: 'test'
+  ...
+# Subtest: snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+ok 26 - snapshot IMOB antigo não sobrepõe sessão core, desabilitação ou revogação
+  ---
+  duration_ms: 0.378061
+  type: 'test'
+  ...
+# Subtest: handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+ok 27 - handler real de Nova conversa limpa histórico e preserva domínio/superfície canônica sem fabricar snapshot
+  ---
+  duration_ms: 6.826367
+  type: 'test'
+  ...
+1..27
+# tests 27
+# suites 0
+# pass 27
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1493.296303

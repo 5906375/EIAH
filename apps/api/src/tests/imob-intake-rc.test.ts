@@ -22,6 +22,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import supertest from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { installImobForTest } from "./support/imobInstallationFixture";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
@@ -89,9 +91,14 @@ before(async () => {
   await (prismaGlobal as any).apiToken.create({
     data: { token: apiToken, tenantId, workspaceId, userId, description: "rc-test", revoked: false },
   });
+  // AUTHZ-IMOB-CRM-001: as rotas do IMOB exigem vínculo ATIVO (onboarding explícito, pelo serviço existente); o handoff/CRM não cria mais vínculo.
+  await ensureWorkspaceMembershipForUser({ tenantId: tenantId, workspaceId: workspaceId, userId: userId, roleKey: "corretor" });
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado (instalação pelo serviço de ativação, em banco descartável).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId: tenantId, workspaceId: workspaceId, userId: userId });
   const assignmentIdentity = await resolveCanonicalEiahAssignmentIdentity();
-  await prismaGlobal.workspaceAgentAssignment.create({
-    data: { tenantId, workspaceId, ...assignmentIdentity, enabled: true },
+  await prismaGlobal.workspaceAgentAssignment.createMany({
+    data: [{ tenantId, workspaceId, ...assignmentIdentity, enabled: true }],
+    skipDuplicates: true,
   });
   await setTenantCapabilityFlag({
     capabilityId: "imob.contract.intake",
@@ -102,6 +109,7 @@ before(async () => {
 });
 
 after(async () => {
+  await (await import("./support/imobInstallationFixture")).cleanupImobInstallationForTest((typeof prismaGlobal !== "undefined" ? prismaGlobal : undefined) as any, [tenantId]);
   await clearTenantCapabilityFlag({ capabilityId: "imob.contract.intake", tenantId, workspaceId });
   await (prismaGlobal as any).imobCaseEvent.deleteMany({ where: { tenantId } });
   await (prismaGlobal as any).imobCase.deleteMany({ where: { tenantId } });

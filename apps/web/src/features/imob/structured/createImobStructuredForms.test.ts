@@ -1,16 +1,25 @@
-import test from "node:test";
+import test, { type TestContext } from "node:test";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { LLMProviderError } from "@eiah/core/llm/LLMProviderError";
 import assert from "node:assert/strict";
 import { IMOB_ACTION_MENUS, type ImobActionMenuItem } from "@/features/imob/imobActionMenus";
 import { createImobStructuredForms } from "./createImobStructuredForms";
 import type { ImobFormState } from "./useImobFormState";
 import type { ImobStructuredFormsHost, StructuredMessage } from "./types";
-import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD } from "./useImobFrontDoorForms";
+import { createImobFrontDoorForms, useImobFrontDoorForms, FRONT_DOOR_IMOB_THREAD, toLauncherMessage } from "./useImobFrontDoorForms";
+import { IMOB_PROPERTY_CAPTURE_POLICY as propertyPolicy } from "@eiah/contracts";
+import { interpretImobPropertyCapture } from "../../../../../api/src/services/imob/intake/imobPropertyCaptureIntake";
+import { buildPropertyCreateForm } from "../../../../../api/src/services/imob/imobTurnResolver";
+import { resolveSnapshotInputPlaceholder, resolveSnapshotQuickReplies } from "@/components/agents/chatPresentationSnapshot";
+import { createPendingWorkTracker } from "@/lib/frontDoorPendingWork";
 import { resolveImobTurn } from "../../../../../api/src/services/imob/imobTurnResolver";
 import { proposalDraftRef } from "../../../../../api/src/services/imob/crm/imobProposalReviewContinuity";
 import { resolveImobCrmTurnEngine } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
+import { resolveImobPropertyUnitIntakeTurn } from "../../../../../api/src/services/imob/crm/imobCrmTurnEngine";
+import { resolveImobSemanticIntent } from "../../../../../api/src/services/imob/imobSemanticIntentResolver";
 import { withInlineDocumentFields } from "@/pages/app/imob/documentAttachForm";
+import { buildPropertyBulkArchiveForm } from "@/pages/app/imob/propertyBulkArchive";
 import type { apiResolveImobTurn, ImobResolveTurnResponse } from "@/lib/api";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -22,7 +31,15 @@ import { detectLauncherRouteIntent, resolveLauncherTurnDecision } from "@/compon
 function fakeState() {
   let values: Record<string, Record<string, string>> = {};
   let errors: Record<string, Record<string, string>> = {};
+  const bulkArchiveRef = { current: {} as Record<string, any> };
   const state = {
+    bulkArchiveRef,
+    get bulkArchiveByMessageId() { return bulkArchiveRef.current; },
+    setBulkArchiveByMessageId: (update: unknown) => {
+      bulkArchiveRef.current = typeof update === "function" ? (update as (prev: Record<string, any>) => Record<string, any>)(bulkArchiveRef.current) : (update as Record<string, any>);
+    },
+    bulkArchiveScopeRef: { current: {} as Record<string, unknown> },
+    bulkArchiveStopRef: { current: new Set<string>() },
     formValuesByMessageId: values,
     setFormValuesByMessageId: (update: unknown) => {
       values = typeof update === "function" ? (update as (prev: typeof values) => typeof values)(values) : (update as typeof values);
@@ -70,14 +87,40 @@ const localItems = IMOB_ACTION_MENUS.flatMap((menu) => menu.items).filter(
   (item): item is Extract<ImobActionMenuItem, { kind: "local" }> => item.kind === "local",
 );
 
+// "Registrar locação encerrada" usa o formulário de locação do servidor: envia o pedido e pré-configura o formulário.
+const FORMS_VIA_SERVER = new Set(["rental_historical"]);
+
 test("todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro", () => {
-  for (const item of localItems) {
+  for (const item of localItems.filter((candidate) => !FORMS_VIA_SERVER.has(candidate.form))) {
     const { state } = fakeState();
     const { host, appended } = fakeHost();
     createImobStructuredForms(state, host).handleActionMenuSelect(item);
     assert.equal(appended.length, 1, item.id);
     assert.ok(appended[0].form?.submitTarget, `${item.id} sem submitTarget`);
     assert.equal(appended[0].thread?.id, "thread-1", item.id);
+  }
+});
+
+test("menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada", () => {
+  const { state, raw } = fakeState();
+  const { host, sent, appended } = fakeHost();
+  const item = localItems.find((candidate) => candidate.form === "rental_historical");
+  assert.ok(item, "item de menu existe");
+  createImobStructuredForms(state, host).handleActionMenuSelect(item);
+  assert.equal(appended.length, 0);
+  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { leaseState: "encerrada" } });
+  assert.deepEqual(sent, [["cadastrar locatário", "Registrar locação encerrada"]]);
+});
+
+test("menus Negócios: venda e permuta abrem o formulário com o tipo certo", () => {
+  for (const [form, kind] of [["deal_sale", "venda"], ["deal_exchange", "permuta"]] as const) {
+    const item = localItems.find((candidate) => candidate.form === form);
+    assert.ok(item, form);
+    const { state } = fakeState();
+    const { host, appended } = fakeHost();
+    createImobStructuredForms(state, host).handleActionMenuSelect(item);
+    assert.equal(appended[0].form?.submitTarget, "imob.deals.create");
+    assert.equal(appended[0].form?.action, kind);
   }
 });
 
@@ -132,8 +175,11 @@ function proposalTurn() {
 }
 
 function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok: true, data: proposalTurn() }), conversationGenerationRef = { current: 0 }, prepareForms = false,
-  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId"> = {}) {
+  transport: Pick<Parameters<typeof createImobFrontDoorForms>[0], "getConversationScopeKey" | "getLatestAssistantMessageId" | "trackPending" | "getPropertyHistory" | "propertyIntakeTimeoutMs"> = {},
+  // P11: por padrão a vertical NÃO reivindica o turno (os testes antigos seguem herméticos, sem rede).
+  claim: NonNullable<Parameters<typeof createImobFrontDoorForms>[0]["claimTurn"]> = async () => ({ ok: true, claimed: false, data: null })) {
   const { state, raw, getValues, getErrors } = fakeState();
+  const claimCalls: Parameters<typeof apiResolveImobTurn>[0][] = [];
   if (prepareForms) {
     // Executa o callback real do hook, com setters em memória, sem copiar a regra de prefill.
     const source = ts.createSourceFile("useImobFormState.ts", readFileSync(new URL("./useImobFormState.ts", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true);
@@ -160,19 +206,22 @@ function frontDoorHarness(resolve: typeof apiResolveImobTurn = async () => ({ ok
     patchStructured: (id, update) => { messages = messages.map((message) => message.id === id ? update(message) : message); },
     echoUser: (text) => echoed.push(text),
     resolveTurn: async (request) => { calls.push(JSON.parse(JSON.stringify(request))); return resolve(request); },
+    claimTurn: async (request) => { claimCalls.push(JSON.parse(JSON.stringify(request))); return claim(request); },
   });
   function fill(message: StructuredMessage, values: Record<string, string> = {}) {
     raw.setFormValuesByMessageId((previous: Record<string, Record<string, string>>) => ({
       ...previous, [message.id]: { propertyId: "4455", offerAmount: "100000", buyerName: "Maria", buyerPhone: "47999998888", contractType: "venda", ...values },
     }));
   }
-  return { ...adapter, imobForms: state, messages: () => messages, calls, echoed, fill, getValues, getErrors, raw,
+  return { ...adapter, imobForms: state, messages: () => messages, calls, claimCalls, echoed, fill, getValues, getErrors, raw,
     setMessages: (next: StructuredMessage[]) => { messages = next; }, conversationGenerationRef };
 }
 
 test("paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run", async (t) => {
   const harness = frontDoorHarness(async (request) => ({ ok: true, data: {
     ...resolveImobTurn({ ...request, threadState: request.threadState as never, access }),
+    // Este teste isola a continuidade; a interpretação real é exercitada nos testes de intake abaixo.
+    ...(request.intake === "property_units" ? { propertyUnitIntake: { status: "resolved", source: "openai", unitLabels: ["Kit Paridade"] } } : {}),
   } as unknown as ImobResolveTurnResponse }), { current: 0 }, true);
   let owner: Record<string, unknown> = {};
   let property: Record<string, unknown> = {};
@@ -233,7 +282,12 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   assert.match(nextForm().text, /Imóvel cadastrado: Kit Paridade/);
   assert.equal(property.ownerId, owner.id);
 
-  await follow("next-rental-contract");
+  // Destinação "locação": três próximos passos do contrato, nenhum abre contrato direto.
+  assert.deepEqual(nextForm().quickReplies?.map((reply) => reply.id).filter((id) => id.startsWith("next-lease")), [
+    "next-lease_register_current", "next-lease_register_historical", "next-lease_start_new",
+  ]);
+  assert.match(nextForm().text, /Você definiu Kit Paridade para locação/);
+  await follow("next-lease_start_new");
   const leaseForm = nextForm();
   assert.equal(leaseForm.form?.submitTarget, "imob.rentals.create", "depois do imóvel, deve abrir locação, não repetir captação");
   assert.equal(harness.calls.at(-1)?.threadState?.operational, null);
@@ -241,6 +295,10 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   fill(leaseForm, { tenantName: "Inquilino Paridade", startDate: "01/04/2025", endDate: "31/03/2026", rent: "900,00", dueDay: "10" });
   await harness.structuredForms.handleStructuredFormAction(leaseForm, "submit");
   await new Promise<void>((resolve) => setImmediate(resolve));
+  // O contrato só é oferecido depois que a locação foi criada com sucesso (fluxo existente).
+  assert.equal(nextForm().form, undefined);
+  assert.ok(nextForm().quickReplies?.some((reply) => reply.id === "next-contract"));
+  await follow("next-contract");
   const contract = nextForm();
   assert.equal(contract.form?.submitTarget, "imob.contracts.rental");
   assert.equal(contract.thread?.id, leaseForm.thread?.id);
@@ -253,7 +311,8 @@ test("paridade Front Door: proprietário → imóvel → locação → contrato 
   assert.match(html, /Gerar minuta/);
   assert.match(html, /value="Dona Paridade"/);
   assert.match(html, /value="Inquilino Paridade"/);
-  assert.equal(harness.calls.length, 3, "contrato aberto pelo handler compartilhado sem novo resolve-turn");
+  assert.equal(harness.calls.filter((call) => !call.intake).length, 3, "contrato aberto pelo handler compartilhado sem novo turno operacional");
+  assert.equal(harness.calls.filter((call) => call.intake === "property_units").length, 1, "identificação livre reutiliza o intake consultivo");
   assert.deepEqual(requests.filter((request) => request.method === "POST").map((request) => request.path), ["/imob/owners", "/imob/properties", "/imob/rentals"]);
   assert.equal(requests.filter((request) => request.path === "/imob/contracts/rental/prefill").length, 1);
   assert.equal(requests.filter((request) => request.path === "/runs").length, 0);
@@ -755,8 +814,12 @@ function launcherEnvironment(harness: ReturnType<typeof frontDoorHarness>, stora
     session: { ...access, activeDomain: "imob" }, effectiveWorkspaceId: access.workspaceId,
     activeAgentId: "EIAH", historyScope: "conversation", FALLBACK_AGENT: { id: "EIAH" }, launcherContext: undefined,
     skipHistoryPersistRef: { current: false }, runId: null, messages: [],
-    conversationGenerationRef: harness.conversationGenerationRef, setMessages: harness.setMessages,
+    conversationGenerationRef: harness.conversationGenerationRef, setMessages: harness.setMessages, imobPersistence: { startNew: () => undefined },
     threadKey: "", baseLedger: () => [],
+    // Acompanhamento de run (ciclo de vida): sem run em andamento, nada a cancelar, avisar ou retomar nestes cenários de IMOB.
+    runTrackingRef: { current: null }, abandonTracking: async () => null, pushMessage: () => undefined, describeAbandonResult: () => null, trackedRun: null,
+    pendingWork: { tracker: { scope: () => "scope-forms-test" } }, getSession: () => ({ token: null }), credentialOf: () => ({ token: null, tenantId: null, workspaceId: null, userId: null }), sameCredential: () => true,
+    readPersistedTracking: () => null, resumeTrackingRef: { current: () => undefined },
     window: { sessionStorage: { getItem: (key: string) => storage.get(key), setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) } },
   };
   for (const key of ["stopStreaming", "setRunId", "onRunIdChange", "setLedger", "onLedgerChange", "setEvidenceEvent", "setCopyToast", "setLastRouteIntent", "clearAttachmentComposer", "setAttachmentDocumentType", "setAttachmentAnalysisMode"]) env[key] = () => undefined;
@@ -1283,3 +1346,1455 @@ for (const outcome of ["success", "transport_failure"]) {
   }
 }
 }
+
+
+// ---------------------------------------------------------------------------------------------
+// P11 — o Front Door deixa a VERTICAL reivindicar o turno (somente leitura) e mostra o resultado na MESMA conversa.
+// O engine geral não tem regra de IMOB: só pergunta ao servidor. Sem reivindicação o fluxo do Front Door é idêntico.
+// ---------------------------------------------------------------------------------------------
+
+const mktCapability = {
+  need: { needId: "imob.listing.promotion", domain: "marketing", capability: "campaign", label: "Campanha de divulgação do imóvel" },
+  state: "habilitavel", authority: { status: "somente_consulta", reasonCode: "MEMBERSHIP_PERMISSION_MISSING" }, reasons: ["NOT_ENABLED_IN_WORKSPACE"],
+  provider: { agentId: "MKT", name: "Marketing GPS", description: "Planeja campanhas.", origin: "agent_registry", declaredCapabilities: ["Planejamento de campanha"] },
+  recipes: { status: "ok", items: [] }, enablement: null,
+  nextAction: { kind: "request_approval", actionDomain: "agent_enablement", enabled: false, reason: "APPROVAL_REQUEST_NOT_IMPLEMENTED", requiredAuthority: "marketplace.subscribe",
+    marketplaceItemId: "mkt-1", workspaceId: "workspace-test", detailsPath: "/self-service?marketplaceItem=mkt-1&workspaceId=workspace-test" },
+};
+function claimedMarketingTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.request_capability", threadLabel: "Anúncio",
+    conversationState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null },
+    caseContext: { ...caseContext, caseId: "case-batel", threadId: "thread-batel", flow: "listing.activate", stage: "listing", status: "running" },
+    presentation: { text: "Para divulgar este imóvel você pode contar com um especialista de Marketing.",
+      widget: { kind: "case_summary", title: "Resumo do negócio", journeyLabel: "Captação", stageLabel: "Anúncio", nextStep: "ativar anúncio", blocker: null,
+        recommendedActions: [{ id: "publish", label: "Publicar anúncio", autoprompt: "publicar anúncio deste caso" }], specialists: [], transversalCapabilities: [mktCapability] } },
+  } as unknown as ImobResolveTurnResponse;
+}
+
+test("P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const consumed = await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  assert.equal(consumed, true);
+  assert.deepEqual(harness.echoed, [], "o eco do usuário é do launcher; a vertical só acrescenta a resposta");
+  assert.equal(harness.calls.length, 0, "a reivindicação não passa pelo resolve-turn completo");
+  assert.equal(harness.claimCalls.length, 1);
+  assert.equal(harness.claimCalls[0].message, "Quero divulgar este apartamento do Batel.");
+  const message = harness.messages().at(-1)!;
+  assert.equal(message.caseContext?.caseId, "case-batel", "o caso fica na conversa para os próximos turnos");
+  assert.deepEqual((message.widget as { recommendedActions: unknown[] }).recommendedActions, [], "o Front Door não oferece ações de recomendação do caso");
+  assert.equal((message.widget as { transversalCapabilities: unknown[] }).transversalCapabilities.length, 1);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Especialistas transversais/);
+  assert.match(html, /Marketing GPS \(MKT\)/);
+  assert.match(html, /data-capability-authority="somente_consulta"/);
+  assert.match(html, /href="\/self-service\?marketplaceItem=mkt-1&(amp;)?workspaceId=workspace-test"/);
+  assert.doesNotMatch(html, /Publicar anúncio|<button/, "sem botões nem ações executáveis no Front Door");
+  // o próximo turno da conversa já leva o caso (preservado entre mensagens)
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId, "case-batel");
+  assert.equal(harness.claimCalls[1].threadId, "thread-batel");
+});
+
+test("P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal", async () => {
+  const unclaimed = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: false, data: null, reasonCode: "VERTICAL_ACCESS_PERMISSION_DENIED" }));
+  assert.equal(await unclaimed.consumeOperationalTurn("claim", "Como funciona o billing?"), false);
+  assert.deepEqual(unclaimed.messages(), []);
+  const failing = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => { throw new Error("HTTP 503"); });
+  assert.equal(await failing.consumeOperationalTurn("claim", "Quero divulgar este apartamento"), false);
+  assert.deepEqual(failing.messages(), [], "falha silenciosa: nenhuma mensagem de erro do IMOB é inventada");
+  assert.equal(failing.calls.length, 0);
+});
+
+test("P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam", async () => {
+  const claimed = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const decision = await sendFrontDoorTurn(claimed, "Quero divulgar este apartamento do Batel.", { activeDomain: "core" });
+  assert.equal(decision?.turnConsumed, true);
+  assert.equal(decision?.kind, "imob_operational_continuation");
+  assert.equal(claimed.claimCalls.length, 1);
+  assert.equal(claimed.messages().length, 1);
+  // sem reivindicação: decisão local normal (não consumida) e nenhuma mensagem do IMOB
+  const none = frontDoorHarness();
+  const local = await sendFrontDoorTurn(none, "Quero divulgar este apartamento do Batel.", { activeDomain: "core" });
+  assert.notEqual(local?.turnConsumed, true);
+  assert.equal(none.claimCalls.length, 1, "a vertical foi consultada e não reivindicou");
+  assert.deepEqual(none.messages(), []);
+  assert.equal(local?.kind, "contextual_fallback", "o fallback do Front Door segue exatamente como antes");
+  // pergunta de plataforma com resposta própria do Front Door (help) não consulta a vertical
+  const help = frontDoorHarness();
+  assert.equal((await sendFrontDoorTurn(help, "Posso ver o billing deste mês?", { activeDomain: "core" }))?.kind, "help_reply");
+  assert.equal(help.claimCalls.length, 0);
+  // protegidos: IMOB indisponível, agente selecionado (não é o EIAH unificado), pergunta exata do tutor, pedido operacional (handoff),
+  // e revisão de proposta pendente (FDC-03A) não chegam a consultar a vertical
+  const guarded = frontDoorHarness(async (request) => ({ ok: true, data: { ...resolveImobTurn({ ...request, threadState: request.threadState as never, access }), caseContext } as unknown as ImobResolveTurnResponse }));
+  await sendFrontDoorTurn(guarded, "Posso ver o billing deste mês?", { available: false });
+  await sendFrontDoorTurn(guarded, "Posso ver o billing deste mês?", { selectedAgent: "MKT" });
+  await sendFrontDoorTurn(guarded, "O que o EIAH pode fazer por mim?");
+  const operational = await sendFrontDoorTurn(guarded, "Quero cadastrar um imóvel");
+  assert.equal(operational?.kind, "vertical_handoff", "operações do IMOB seguem o handoff governado existente");
+  assert.equal(guarded.claimCalls.length, 0);
+  await guarded.forwardToImob("Gerar proposta");
+  assert.ok(guarded.getConversationState()?.operational, "revisão/coleta de proposta em andamento");
+  await sendFrontDoorTurn(guarded, "sim");
+  assert.equal(guarded.claimCalls.length, 0, "a revisão de proposta (FDC-03A) continua só com o fluxo de continuidade");
+});
+
+test("P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente", async () => {
+  const claims = frontDoorHarness(undefined, { current: 0 }, false, {}, async (request) => ({ ok: true, claimed: /marketing/i.test(request.message), ...(/marketing/i.test(request.message)
+    ? { data: claimedMarketingTurn() } : { data: null }) } as never));
+  const engagement = await sendFrontDoorTurn(claims, "Isso já contratou o Marketing?", { activeDomain: "core" });
+  assert.equal(engagement?.turnConsumed, true, "a conversa responde pela vertical, na mesma conversa");
+  assert.equal(claims.claimCalls.length, 1);
+  const legal = await sendFrontDoorTurn(claims, "Quero revisar um contrato de locação", { activeDomain: "core" });
+  assert.notEqual(legal?.turnConsumed, true, "contrato real segue o roteamento existente do Front Door");
+  assert.equal(claims.claimCalls.length, 1, "e nem consulta a vertical (resposta de contexto exata)");
+});
+
+test("P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')", async () => {
+  const savedSession = { ...getSession() };
+  try {
+    updateSession({ activeDomain: "imob" });
+    const { harness, ready } = reviewIntegrationHarness();
+    await ready();
+    assert.ok(harness.getConversationState()?.operational?.continuity?.pending, "há revisão pendente");
+    const claimsBefore = harness.claimCalls.length;
+    await sendFrontDoorTurn(harness, "Isso já contratou o Marketing?", { activeDomain: "imob" });
+    assert.equal(harness.claimCalls.length, claimsBefore, "a continuidade da revisão não é interceptada");
+  } finally {
+    updateSession(savedSession);
+  }
+});
+
+test("P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedMarketingTurn() }));
+  const decision = await resolveLauncherTurnDecision({
+    input: "Quero divulgar este apartamento do Batel.", trimmedInput: "Quero divulgar este apartamento do Batel.", routeIntent: detectLauncherRouteIntent("Quero divulgar este apartamento do Batel.", false),
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    accessContext: { ...access, entitlements: { IMOB_INSTALLED: true }, activeDomain: "core" },
+    imobOperationalContinuation: { threadState: harness.getConversationState(), available: false, consume: harness.consumeOperationalTurn },
+  });
+  assert.equal(decision?.turnConsumed, true);
+  assert.equal(harness.claimCalls.length, 1);
+  // sem o produto instalado (nem superfície), a vertical nem é consultada
+  const none = frontDoorHarness();
+  await resolveLauncherTurnDecision({
+    input: "Quero divulgar este apartamento do Batel.", trimmedInput: "Quero divulgar este apartamento do Batel.", routeIntent: "help",
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    accessContext: { ...access, entitlements: { IMOB_INSTALLED: false }, activeDomain: "core" },
+    imobOperationalContinuation: { threadState: none.getConversationState(), available: false, consume: none.consumeOperationalTurn },
+  });
+  assert.equal(none.claimCalls.length, 0);
+});
+
+// ---------------------------------------------------------------------------------------------
+// P11-FIX — vínculo conversa↔caso FAIL-CLOSED no Front Door: o caso só existe se o SERVIDOR o devolveu (explícito); resposta sem caso
+// ou negada limpa o caso da conversa e o próximo turno NÃO reenvia um caseId antigo; o cartão sem caso é renderizado.
+// ---------------------------------------------------------------------------------------------
+
+const emptyConversationState = { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null };
+function claimedCaselessTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.request_capability", threadLabel: "IMOB", conversationState: emptyConversationState, caseContext: null,
+    presentation: { text: "Para divulgar um imóvel você pode contar com um especialista de Marketing. Ainda não vinculei esta conversa a nenhum imóvel ou caso: diga qual imóvel você quer divulgar.", blocks: [],
+      widget: { kind: "document_checklist", title: "Especialista de Marketing para divulgação", checklist: [], blocker: null, nextStep: null, specialists: [], transversalCapabilities: [mktCapability] } },
+  } as unknown as ImobResolveTurnResponse;
+}
+function claimedDeniedTurn(): ImobResolveTurnResponse {
+  return { mode: "consult", action: "crm.case.transversal.case_denied", reasonCode: "CASE_NOT_IN_SCOPE", threadLabel: "IMOB", conversationState: emptyConversationState, caseContext: null,
+    presentation: { text: "Não encontrei esse caso neste workspace, então não vinculei nenhum imóvel nem usei outro caso no lugar. Diga qual imóvel ou caso você quer divulgar.", blocks: [] },
+  } as unknown as ImobResolveTurnResponse;
+}
+
+test("P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa", async () => {
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: claimedCaselessTurn() }));
+  assert.equal(await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel."), true);
+  const message = harness.messages().at(-1)!;
+  assert.equal(message.caseContext, null);
+  assert.equal(harness.claimCalls[0].caseId ?? null, null);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Especialistas transversais/);
+  assert.match(html, /Marketing GPS \(MKT\)/);
+  assert.match(html, /Ainda não vinculei esta conversa a nenhum imóvel ou caso/);
+  assert.doesNotMatch(html, /imóvel deste caso|<button/);
+  // o turno seguinte continua sem caso: nada foi "lembrado"
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId ?? null, null);
+});
+
+test("P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)", async () => {
+  const sequence: ImobResolveTurnResponse[] = [claimedMarketingTurn(), claimedMarketingTurn(), claimedDeniedTurn(), claimedCaselessTurn()];
+  const harness = frontDoorHarness(undefined, { current: 0 }, false, {}, async () => ({ ok: true, claimed: true, data: sequence.shift()! }));
+  await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  assert.equal(harness.messages().at(-1)!.caseContext?.caseId, "case-batel", "confirmado pelo servidor");
+  await harness.consumeOperationalTurn("claim", "O Marketing pode ajudar a anunciar essa unidade?");
+  assert.equal(harness.claimCalls[1].caseId, "case-batel", "caso confirmado é reenviado");
+  await harness.consumeOperationalTurn("claim", "Quero divulgar este apartamento do Batel.");
+  const denied = harness.messages().at(-1)!;
+  assert.equal(denied.caseContext, null, "negado: o caso não é herdado");
+  assert.match(denied.text, /Não encontrei esse caso neste workspace/);
+  assert.equal(denied.widget, undefined, "sem cartão nem dados na negativa");
+  await harness.consumeOperationalTurn("claim", "Quero divulgar meu apartamento.");
+  assert.equal(harness.claimCalls[3].caseId ?? null, null, "após a negativa o próximo turno não reenvia o caseId negado");
+});
+
+// ---------------------------------------------------------------------------
+// Destinação, lote de unidades, venda/permuta e locação encerrada — pelo Front Door (host compartilhado)
+// ---------------------------------------------------------------------------
+
+type Call = { path: string; method: string; body: Record<string, any> };
+
+function mockImobApi(t: { mock: { method: (target: object, name: string, impl: unknown) => unknown } }, options: { failPropertyPostAt?: number } = {}) {
+  const calls: Call[] = [];
+  const properties: Array<Record<string, any>> = [];
+  let postCount = 0;
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(String(input));
+    const path = url.pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    const body = init?.body ? JSON.parse(String(init.body)) : {};
+    calls.push({ path, method, body });
+    let data: unknown;
+    if (path === "/imob/properties" && method === "GET") data = { items: properties };
+    else if (path === "/imob/properties" && method === "POST") {
+      postCount += 1;
+      if (options.failPropertyPostAt === postCount) return new Response(JSON.stringify({ error: { code: "UNAVAILABLE" } }), { status: 503 });
+      const created = { ...body, id: `property-${properties.length + 1}`, ownerId: body.ownerId ?? null, owner: body.ownerId ? { id: body.ownerId, name: "Dona Lote" } : null };
+      properties.push(created);
+      data = created;
+    } else if (path === "/imob/deals" && method === "POST") {
+      data = { caseId: "deal-1", propertyId: body.propertyId, propertyLabel: "Kitnet 101", kind: body.kind, state: body.state, askingPriceCents: body.askingPriceCents ?? null, propertyProjection: body.kind === "venda" && body.askingPriceCents ? "applied" : "not_applicable" };
+    } else if (path === "/imob/rentals" && method === "POST") {
+      data = { propertyId: body.propertyId, caseId: "lease-1", propertyLabel: "Kitnet 101", tenantName: body.tenantName, pendingItems: [], tenantDocumentMasked: null, historical: Boolean(body.closure) };
+    } else throw new Error(`requisição indevida: ${method} ${path}`);
+    return new Response(JSON.stringify({ ok: true, data }), { status: method === "POST" ? 201 : 200 });
+  });
+  return { calls, properties, posts: (path: string) => calls.filter((call) => call.method === "POST" && call.path === path) };
+}
+
+function realResolverHarness(unitLabels?: string[]) {
+  return frontDoorHarness(async (request) => ({ ok: true, data: request.intake === "property_units"
+    ? await resolveImobPropertyUnitIntakeTurn(request.message, request.threadState as never) as unknown as ImobResolveTurnResponse
+    : resolveImobTurn({ ...request, threadState: request.threadState as never, access,
+        ...(unitLabels ? { propertyUnitIntake: { status: "resolved" as const, source: "openai" as const, unitLabels } } : {}),
+      }) as unknown as ImobResolveTurnResponse }), { current: 0 }, true);
+}
+
+/** Valores efetivos do formulário no chat real: padrões dos campos + o que o usuário digitou. */
+function withDefaults(harness: ReturnType<typeof frontDoorHarness>, message: StructuredMessage, typed: Record<string, string> = {}) {
+  const defaults = Object.fromEntries((message.form?.fields ?? []).map((field) => [field.name, String(field.value ?? "")]));
+  harness.raw.setFormValuesByMessageId((previous: Record<string, Record<string, string>>) => ({
+    ...previous, [message.id]: { ...defaults, ...(previous[message.id] ?? {}), ...typed },
+  }));
+}
+
+const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+function semanticUnitFixture(t: TestContext) {
+  const previous = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "synthetic-test-only";
+  t.after(() => { if (previous === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = previous; });
+  const api = mockImobApi(t);
+  const apiFetch = globalThis.fetch;
+  let units: Record<string, unknown> = { status: "not_mentioned", confidence: 0.99, expressions: [], singleLabel: null };
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    if (new URL(String(input)).hostname !== "api.openai.com") return apiFetch(input, init);
+    return new Response(JSON.stringify({ output_text: JSON.stringify({ entity: "imovel", action: "create", confidence: 0.97,
+      needsClarification: false, composedIntents: [], propertyUnits: units }) }));
+  });
+  const harness = frontDoorHarness(async (request) => {
+    if (request.intake === "property_units") return { ok: true, data: await resolveImobPropertyUnitIntakeTurn(request.message, request.threadState as never) as unknown as ImobResolveTurnResponse };
+    const semantic = await resolveImobSemanticIntent(request.message);
+    return { ok: true, data: resolveImobTurn({ ...request, access, threadState: request.threadState as never,
+      semanticIntent: semantic.parsedIntent, propertyUnitIntake: semantic.propertyUnits }) as unknown as ImobResolveTurnResponse };
+  }, { current: 0 }, true);
+  return { api, harness, setUnits: (value: Record<string, unknown>) => { units = value; } };
+}
+
+test("texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação", async (t) => {
+  const { api, harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "Tenho três kitnets de teste, da 102 à 104." });
+  renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message: form, frontDoor: harness, isLast: true }));
+  assert.equal(harness.calls.filter((call) => call.intake).length, 0, "editar e renderizar não interpreta o campo");
+  setUnits({ status: "resolved", confidence: 0.97, expressions: [{ kindText: "kitnets", identifiersText: "102 à 104" }], singleLabel: null });
+  await Promise.all([harness.structuredForms.handleStructuredFormAction(form, "submit"), harness.structuredForms.handleStructuredFormAction(form, "submit")]);
+  assert.equal(harness.calls.filter((call) => call.intake).length, 1, "submit concorrente não duplica interpretação");
+  assert.equal(harness.calls.at(-1)?.intake, "property_units");
+  const batch = harness.messages().at(-1)!;
+  assert.equal(batch.form?.submitTarget, "imob.properties.batch");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  assert.deepEqual(batch.form?.fields.filter((field) => /^unit_\d+$/.test(field.name)).map((field) => field.value), ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+  assert.deepEqual(batch.conversationState?.operational?.propertyDraft?.unitLabels, ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+  withDefaults(harness, batch);
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.deepEqual(api.posts("/imob/properties").map((call) => (call.body.metadata as any).externalPropertyRef), ["Kitnet 102", "Kitnet 103", "Kitnet 104"]);
+});
+
+test("campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados", async (t) => {
+  const { api, harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = { ...harness.messages().at(-1)!, caseContext: { ...caseContext, flow: "property.create" } };
+  harness.setMessages([form]);
+  withDefaults(harness, form, { propertyType: "sala", ownerId: "owner-known", goal: "venda", city: "Joinville", address: "Rua A, 783", unitLabel: "São três salas, mas ainda não sei quais." });
+  setUnits({ status: "needs_clarification", confidence: 0.3, expressions: [], singleLabel: null });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  assert.match(harness.messages().at(-1)!.text, /Quais unidades/);
+  assert.deepEqual(harness.messages().at(-1)!.caseContext, form.caseContext, "clarificação preserva o caso já conhecido");
+  assert.ok(harness.messages().find((item) => item.id === form.id)?.form);
+  assert.equal(harness.getValues()[form.id].unitLabel, "São três salas, mas ainda não sei quais.");
+  setUnits({ status: "resolved", confidence: 0.97, expressions: [{ kindText: "salas", identifiersText: "1, 2 e 3" }], singleLabel: null });
+  await harness.forwardToImob("São as salas 1, 2 e 3 desse endereço.");
+  const resumed = harness.messages().at(-1)!;
+  assert.equal(harness.getValues()[resumed.id].city, "Joinville");
+  assert.equal(harness.getValues()[resumed.id].address, "Rua A, 783");
+  assert.equal(harness.getValues()[resumed.id].ownerId, "owner-known");
+  assert.equal(harness.getValues()[resumed.id].goal, "venda");
+  assert.equal(harness.calls.at(-1)?.caseId, form.caseContext.caseId);
+  assert.equal(resumed.form?.fields.find((field) => field.name === "unitLabel")?.value, "Sala 1, Sala 2, Sala 3");
+  assert.equal(api.posts("/imob/properties").length, 0);
+});
+
+test("unidade singular livre usa intake e preserva seu nome no cadastro", async (t) => {
+  const { api, harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "É só a unidade do fundo." });
+  setUnits({ status: "resolved", confidence: 0.97, expressions: [], singleLabel: "unidade do fundo" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.equal(api.posts("/imob/properties").length, 1);
+  assert.equal((api.posts("/imob/properties")[0].body.metadata as any).externalPropertyRef, "unidade do fundo");
+});
+
+test("corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente", async (t) => {
+  const { api, harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "", address: "Rua A, 783", unitLabel: "É só a unidade do fundo." });
+  setUnits({ status: "resolved", confidence: 0.97, expressions: [], singleLabel: "unidade do fundo" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  const current = harness.messages().find((item) => item.id === form.id)!;
+  withDefaults(harness, current, { city: "Joinville" });
+  await harness.structuredForms.handleStructuredFormAction(current, "submit");
+  assert.equal(harness.calls.filter((call) => call.intake).length, 1);
+  assert.equal(api.posts("/imob/properties").length, 1);
+});
+
+test("novo turno iniciado durante intake impede aplicação e escrita da resposta antiga", async (t) => {
+  const api = mockImobApi(t);
+  type Response = Awaited<ReturnType<typeof apiResolveImobTurn>>;
+  let finishIntake!: (value: Response) => void;
+  let finishTurn!: (value: Response) => void;
+  const intake = new Promise<Response>((resolve) => { finishIntake = resolve; });
+  const turn = new Promise<Response>((resolve) => { finishTurn = resolve; });
+  const harness = frontDoorHarness(async (request) => request.intake ? intake : request.message === "outro assunto" ? turn : {
+    ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse,
+  }, { current: 0 }, true);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "unidade do fundo" });
+  const pending = harness.structuredForms.handleStructuredFormAction(form, "submit");
+  const next = harness.forwardToImob("outro assunto");
+  finishIntake({ ok: true, data: { action: "property.units.intake", mode: "consult", threadLabel: "IMOB",
+    conversationState: emptyConversationState, presentation: { text: "Identifiquei a unidade do fundo." },
+    propertyUnitIntake: { status: "resolved", source: "openai", unitLabels: ["unidade do fundo"] },
+  } as ImobResolveTurnResponse });
+  await pending;
+  finishTurn({ ok: true, data: proposalTurn() });
+  await next;
+  assert.equal(api.posts("/imob/properties").length, 0);
+});
+
+test("prefill de clarificação não transporta dados de imóvel para outra conversa", async (t) => {
+  const { harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { city: "Joinville", address: "Rua A, 783", ownerId: "owner-private", goal: "venda", unitLabel: "Não sei quais unidades." });
+  setUnits({ status: "needs_clarification", confidence: 0.3, expressions: [], singleLabel: null });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  harness.conversationGenerationRef.current += 1;
+  harness.setMessages([]);
+  harness.raw.prepareIncomingMessage({ ...form, id: "new-conversation-form" });
+  assert.equal(harness.getValues()["new-conversation-form"]?.ownerId, undefined);
+});
+
+test("adicionar unidades em linguagem natural volta à confirmação e preserva destinação", async (t) => {
+  const { api, harness, setUnits } = semanticUnitFixture(t);
+  await harness.forwardToImob("cadastrar imóvel");
+  const original = harness.messages().at(-1)!;
+  withDefaults(harness, original, { propertyType: "kitnet", city: "Joinville", address: "Rua A, 783", unitLabel: "Kitnets 102 a 104" });
+  await harness.structuredForms.handleStructuredFormAction(original, "submit");
+  const batch = harness.messages().at(-1)!;
+  withDefaults(harness, batch, { extraUnits: "Também as kitnets de teste 105 e 106.", dest_0: "uso_proprio" });
+  setUnits({ status: "resolved", confidence: 0.97, expressions: [{ kindText: "kitnets", identifiersText: "105 e 106" }], singleLabel: null });
+  const messageCount = harness.messages().length;
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.equal(harness.messages().length, messageCount, "interpretação apenas atualiza a confirmação existente");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  const revised = harness.messages().find((item) => item.id === batch.id)!;
+  assert.equal(revised.form?.fields.filter((field) => /^unit_\d+$/.test(field.name)).length, 5);
+  assert.equal(harness.getValues()[batch.id].dest_0, "uso_proprio");
+  withDefaults(harness, revised);
+  await harness.structuredForms.handleStructuredFormAction(revised, "submit");
+  assert.equal(api.posts("/imob/properties").length, 5);
+  assert.equal(api.posts("/imob/properties")[0].body.goal, "uso_proprio");
+});
+
+test("resposta tardia do intake não grava nem substitui edição, cancelamento ou outra conversa", async (t) => {
+  for (const change of ["edit", "cancel", "conversation"] as const) await t.test(change, async (subtest) => {
+    const api = mockImobApi(subtest);
+    let finish!: (response: Awaited<ReturnType<typeof apiResolveImobTurn>>) => void;
+    const delayed = new Promise<Awaited<ReturnType<typeof apiResolveImobTurn>>>((resolve) => { finish = resolve; });
+    const harness = frontDoorHarness(async (request) => request.intake ? delayed : {
+      ok: true, data: resolveImobTurn({ ...request, threadState: request.threadState as never, access }) as unknown as ImobResolveTurnResponse,
+    }, { current: 0 }, true);
+    await harness.forwardToImob("cadastrar imóvel");
+    const form = harness.messages().at(-1)!;
+    withDefaults(harness, form, { city: "Joinville", address: "Rua A, 783", unitLabel: "É a unidade do fundo." });
+    const pending = harness.structuredForms.handleStructuredFormAction(form, "submit");
+    if (change === "edit") withDefaults(harness, form, { address: "Rua Editada, 900" });
+    else if (change === "cancel") await harness.structuredForms.handleStructuredFormAction(form, "cancel");
+    else { harness.conversationGenerationRef.current += 1; harness.setMessages([]); }
+    const count = harness.messages().length;
+    finish({ ok: true, data: { action: "property.units.intake", mode: "consult", threadLabel: "IMOB",
+      conversationState: emptyConversationState, presentation: { text: "Identifiquei a unidade do fundo." },
+      propertyUnitIntake: { status: "resolved", source: "openai", unitLabels: ["unidade do fundo"] },
+    } as ImobResolveTurnResponse });
+    await pending;
+    assert.equal(api.posts("/imob/properties").length, 0);
+    assert.equal(harness.messages().length, count);
+    if (change === "edit") assert.equal(harness.getValues()[form.id].address, "Rua Editada, 900");
+  });
+});
+
+test("lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness(["Kitnet 101", "Kitnet 102", "Kitnet 103"]);
+
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 103 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  assert.equal(first.form?.submitTarget, "imob.properties.create");
+  const goalField = first.form?.fields.find((field) => field.name === "goal");
+  assert.equal(goalField?.required, false, "destinação é opcional no cadastro");
+  assert.match(String(first.form?.fields.find((field) => field.name === "unitLabel")?.value), /Kitnet 101, Kitnet 102, Kitnet 103/);
+
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", ownerId: "owner-1" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+
+  // Confirmação do lote aberta; NADA gravado ainda; formulário original fechado.
+  const batch = harness.messages().at(-1)!;
+  assert.equal(batch.form?.submitTarget, "imob.properties.batch");
+  assert.equal(api.posts("/imob/properties").length, 0, "nenhuma gravação antes da confirmação");
+  assert.equal(harness.messages().find((message) => message.id === first.id)?.form, undefined);
+  assert.match(batch.text, /Identifiquei 3 unidades/);
+
+  // Destinação geral = locação; Kitnet 102 = venda (override); Kitnet 103 removida; Kitnet 104 adicionada.
+  withDefaults(harness, batch, { generalDestination: "locacao", dest_1: "venda", unit_2: "", extraUnits: "Kitnet 104" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+
+  const posts = api.posts("/imob/properties");
+  assert.deepEqual(posts.map((call) => [call.body.metadata.externalPropertyRef, call.body.goal]), [
+    ["Kitnet 101", "locacao"], ["Kitnet 102", "venda"], ["Kitnet 104", "locacao"],
+  ]);
+  assert.ok(posts.every((call) => call.body.ownerId === "owner-1" && call.body.address === "Rua Alvin Bauer, 783" && call.body.city === "Joinville"));
+  assert.equal(harness.messages().find((message) => message.id === batch.id)?.form, undefined, "lote confirmado fecha o formulário");
+
+  const texts = harness.messages().map((message) => message.text);
+  assert.ok(texts.some((text) => /3 imóveis cadastrados em Rua Alvin Bauer, 783, Joinville: Kitnet 101, Kitnet 102, Kitnet 104/.test(text)));
+  // Locação (2 unidades): "as 2 unidades", chips sem imóvel fixo. Venda (1): leva o imóvel.
+  const leaseStep = harness.messages().find((message) => /Você definiu as 2 unidades para locação/.test(message.text));
+  assert.ok(leaseStep, "próximos passos da locação em lote");
+  assert.deepEqual(leaseStep.quickReplies?.map((reply) => reply.id), ["next-lease_register_current", "next-lease_register_historical", "next-lease_start_new"]);
+  const saleStep = harness.messages().find((message) => /Você definiu Kitnet 102 para venda/.test(message.text));
+  assert.deepEqual(saleStep?.quickReplies?.map((reply) => reply.id), ["next-sale_register_existing", "next-sale_start_new"]);
+  assert.equal(api.posts("/imob/deals").length + api.posts("/imob/rentals").length, 0, "próximo passo nunca abre nada sozinho");
+
+  // "Iniciar venda" da unidade 102 abre o formulário de venda já com imóvel e situação.
+  saleStep!.quickReplies!.find((reply) => reply.id === "next-sale_start_new")!.onSelect!();
+  const dealForm = harness.messages().at(-1)!;
+  assert.equal(dealForm.form?.submitTarget, "imob.deals.create");
+  assert.deepEqual([harness.getValues()[dealForm.id].propertyId, harness.getValues()[dealForm.id].state], ["property-2", "em_andamento"]);
+});
+
+test("lote: erro de pré-validação mantém o formulário e não grava nada", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness(["Kitnet 101", "Kitnet 102"]);
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 102 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+  const batch = harness.messages().at(-1)!;
+  withDefaults(harness, batch, { unit_1: "Kitnet 101" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.match(harness.getErrors()[batch.id].unit_1, /mais de uma vez/);
+  assert.ok(harness.messages().find((message) => message.id === batch.id)?.form, "formulário segue aberto");
+  assert.equal(api.posts("/imob/properties").length, 0);
+  // cancelar o lote também não grava
+  await harness.structuredForms.handleStructuredFormAction(batch, "cancel");
+  assert.match(harness.messages().at(-1)!.text, /Cadastro em lote cancelado\. Nada foi gravado\./);
+  assert.equal(api.posts("/imob/properties").length, 0);
+});
+
+test("lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes", async (t) => {
+  const api = mockImobApi(t, { failPropertyPostAt: 2 });
+  const harness = realResolverHarness(["Kitnet 101", "Kitnet 102", "Kitnet 103"]);
+  await harness.forwardToImob("cadastrar imóvel: kitnets 101 a 103 na Rua Alvin Bauer, 783 em Joinville");
+  const first = harness.messages().at(-1)!;
+  withDefaults(harness, first, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783" });
+  await harness.structuredForms.handleStructuredFormAction(first, "submit");
+  const batch = harness.messages().at(-1)!;
+  withDefaults(harness, batch, { generalDestination: "uso_proprio" });
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+
+  assert.equal(api.properties.length, 1, "só a primeira entrou");
+  assert.match(harness.getErrors()[batch.id]._form, /1 unidade\(s\) já gravada\(s\)\. Não foi possível cadastrar 2 unidade\(s\) \(HTTP 503\)/);
+  assert.ok(harness.messages().find((message) => message.id === batch.id)?.form, "formulário segue aberto para as pendentes");
+  assert.equal(harness.getValues()[batch.id].unit_0, "", "já gravada sai do lote");
+  assert.equal(harness.getValues()[batch.id].unit_1, "Kitnet 102");
+
+  // Tentar de novo grava apenas as pendentes (sem duplicar a primeira).
+  await harness.structuredForms.handleStructuredFormAction(batch, "submit");
+  assert.deepEqual(api.properties.map((row) => row.metadata.externalPropertyRef), ["Kitnet 101", "Kitnet 102", "Kitnet 103"]);
+  assert.equal(harness.messages().find((message) => message.id === batch.id)?.form, undefined);
+});
+
+test("uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 104", goal: "uso_proprio" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  const done = harness.messages().at(-1)!;
+  assert.equal(api.posts("/imob/properties")[0].body.goal, "uso_proprio");
+  assert.match(done.text, /Você definiu Kitnet 104 como uso próprio\. Nenhum contrato ou negócio foi iniciado/);
+  assert.deepEqual(done.quickReplies ?? [], []);
+});
+
+test("sem destinação informada: cadastra sem goal e sem sugerir próximo passo", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  await harness.forwardToImob("cadastrar imóvel");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, { propertyType: "kitnet", city: "Joinville", address: "Rua Alvin Bauer, 783", unitLabel: "Kitnet 105", goal: "" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.equal("goal" in api.posts("/imob/properties")[0].body, false);
+  assert.doesNotMatch(harness.messages().at(-1)!.text, /Você definiu/);
+});
+
+test("venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  harness.structuredForms.openAssetDealForm("venda", "property-1", "em_andamento");
+  const sale = harness.messages().at(-1)!;
+  assert.equal(sale.form?.action, "venda");
+  withDefaults(harness, sale, { askingPrice: "250.000,00", counterpartyName: "Comprador X" });
+  await harness.structuredForms.handleStructuredFormAction(sale, "submit");
+  assert.deepEqual(api.posts("/imob/deals")[0].body, {
+    propertyId: "property-1", kind: "venda", state: "em_andamento", askingPriceCents: 25_000_000, counterpartyName: "Comprador X", notes: null,
+  });
+  const done = harness.messages().at(-1)!;
+  assert.match(done.text, /Venda registrada: Kitnet 101 — em andamento\./);
+  assert.doesNotMatch(done.text, /Comprador X/);
+  assert.deepEqual(done.quickReplies?.map((reply) => reply.id), ["next-sale-contract"]);
+
+  harness.structuredForms.openAssetDealForm("permuta", "property-1");
+  const exchange = harness.messages().at(-1)!;
+  withDefaults(harness, exchange, { state: "concluida", receivedAssetDescription: "Terreno", torna: "5.000,00" });
+  await harness.structuredForms.handleStructuredFormAction(exchange, "submit");
+  const body = api.posts("/imob/deals")[1].body;
+  assert.deepEqual([body.kind, body.state, body.receivedAssetDescription, body.tornaCents], ["permuta", "concluida", "Terreno", 500_000]);
+  assert.deepEqual(harness.messages().at(-1)!.quickReplies ?? [], [], "permuta não oferece contrato de venda");
+});
+
+test("venda: erro de validação não chama a API; cancelar não registra", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  harness.structuredForms.openAssetDealForm("venda");
+  const form = harness.messages().at(-1)!;
+  withDefaults(harness, form, {});
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  assert.deepEqual(Object.keys(harness.getErrors()[form.id]).sort(), ["propertyId", "state"]);
+  await harness.structuredForms.handleStructuredFormAction(form, "cancel");
+  assert.match(harness.messages().at(-1)!.text, /Nenhum negócio foi registrado\./);
+  assert.equal(api.calls.length, 0);
+});
+
+test("locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura", async (t) => {
+  const api = mockImobApi(t);
+  const harness = realResolverHarness();
+  // chip do próximo passo → pedido de formulário com leaseState pré-configurado
+  harness.structuredForms.startRentalLeaseFor("property-1", { historical: true });
+  await tick();
+  await tick();
+  const form = harness.messages().at(-1)!;
+  assert.equal(form.form?.submitTarget, "imob.rentals.create");
+  assert.equal(harness.getValues()[form.id].propertyId, "property-1");
+  assert.equal(harness.getValues()[form.id].leaseState, "encerrada");
+  assert.ok(form.form?.fields.some((field) => field.name === "leaseState"));
+
+  withDefaults(harness, form, { tenantName: "Pessoa A", startDate: "01/03/2024", endedOn: "28/02/2025", closeReason: "fim_contrato" });
+  await harness.structuredForms.handleStructuredFormAction(form, "submit");
+  const body = api.posts("/imob/rentals")[0].body;
+  assert.deepEqual(body.closure, { endedOn: "2025-02-28", reason: "fim_contrato" });
+  const done = harness.messages().at(-1)!;
+  assert.match(done.text, /Locação encerrada registrada no histórico: Kitnet 101/);
+  assert.deepEqual(done.quickReplies?.map((reply) => reply.id), ["next-history"]);
+  assert.equal(harness.messages().some((message) => message.form?.submitTarget === "imob.contracts.rental"), false);
+});
+
+test("lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)", async (t) => {
+  mockImobApi(t);
+  const { state, raw } = fakeState();
+  const { host, sent } = fakeHost();
+  const forms = createImobStructuredForms(state, host);
+  forms.startRentalLeaseFor("property-7");
+  assert.deepEqual(raw.pendingFormPrefillRef.current, { submitTarget: "imob.rentals.create", values: { propertyId: "property-7" } });
+  assert.equal(raw.contractAfterLeaseRef.current, null, "não pula para o contrato");
+  assert.deepEqual(sent, [["cadastrar locatário", "Cadastrar locação"]]);
+});
+
+// ---------------------------------------------------------------------------
+// Arquivar imóveis (seleção múltipla): intenção → seleção → prévia sem escrita → confirmação → execução → resultado
+// Fixtures sintéticas e fetch mockado: nenhum arquivamento real é executado.
+// ---------------------------------------------------------------------------
+
+type BulkProperty = Record<string, any>;
+const bulkJson = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const bulkOwner = (id: string) => ({ id, name: `Proprietário Sintético ${id}` });
+const bulkProperty = (id: string, unit: string, owner: { id: string; name: string } | null): BulkProperty => ({
+  id, tenantId: "tenant-bulk", workspaceId: "workspace-bulk", ownerId: owner?.id ?? null, owner, propertyType: "kitnet", goal: "locacao",
+  address: "Rua Sintética, 100", city: "Cidade Exemplo", status: "ready", metadata: { externalPropertyRef: unit },
+});
+const defaultBulkProperties = () => [
+  bulkProperty("p1", "Kitnet 301", bulkOwner("a")),
+  bulkProperty("p2", "Kitnet 302", bulkOwner("b")),
+  bulkProperty("p3", "Kitnet 303", null),
+  bulkProperty("p4", "Apto 101", bulkOwner("a")),
+];
+
+function bulkArchiveHarness(t: TestContext, options: {
+  properties?: BulkProperty[];
+  cases?: Array<{ propertyId: string }>;
+  onDelete?: (id: string, attempt: number) => Response | undefined | Promise<Response | undefined>;
+  listGate?: Promise<void>;
+} = {}) {
+  const saved = { ...getSession() };
+  updateSession({ tenantId: "tenant-bulk", workspaceId: "workspace-bulk", token: "token-sintetico" });
+  t.after(() => updateSession(saved));
+  const properties = options.properties ?? defaultBulkProperties();
+  const calls: Array<{ path: string; method: string; headers: Headers }> = [];
+  const attempts: Record<string, number> = {};
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    const path = new URL(String(input)).pathname.replace(/^\/api/, "");
+    const method = init?.method ?? "GET";
+    calls.push({ path, method, headers: new Headers(init?.headers) });
+    if (path === "/imob/properties" && method === "GET") {
+      await options.listGate;
+      return bulkJson({ ok: true, data: { items: properties.filter((item) => item.status !== "archived") } });
+    }
+    if (path === "/imob/cases" && method === "GET") return bulkJson({ ok: true, data: { items: options.cases ?? [] } });
+    const match = path.match(/^\/imob\/properties\/([^/]+)$/);
+    if (match && method === "DELETE") {
+      const id = decodeURIComponent(match[1]);
+      attempts[id] = (attempts[id] ?? 0) + 1;
+      const custom = await options.onDelete?.(id, attempts[id]);
+      if (custom) return custom;
+      const found = properties.find((item) => item.id === id);
+      if (found) found.status = "archived";
+      return bulkJson({ ok: true, data: found });
+    }
+    throw new Error(`requisição indevida: ${method} ${path}`);
+  });
+  const messages: StructuredMessage[] = [];
+  const persisted: Array<{ message: StructuredMessage; meta: { intent: string; action: string } }> = [];
+  const openForms = new Set<string>();
+  const host: ImobStructuredFormsHost = {
+    activeThreadId: "thread-1",
+    appendMessage: (message) => { messages.push(message); if (message.form) openForms.add(message.id); },
+    updateMessage: (id, patch) => { if ("form" in patch && !patch.form) openForms.delete(id); },
+    patchMessage: () => undefined,
+    persistMessage: (message, meta) => { persisted.push({ message, meta }); },
+    sendText: () => undefined,
+    isFormCurrent: (message) => openForms.has(message.id),
+  };
+  const { state, raw } = fakeState();
+  const forms = createImobStructuredForms(state, host);
+  const item = localItems.find((candidate) => candidate.form === "property_archive")!;
+  const bulk = (message: StructuredMessage) => raw.bulkArchiveRef.current[message.id];
+  const until = async (predicate: () => boolean) => { for (let index = 0; index < 100 && !predicate(); index += 1) await tick(); assert.ok(predicate(), "condição não atingida a tempo"); };
+  const send = (message: StructuredMessage, event: Parameters<typeof forms.handlePropertyBulkArchiveEvent>[1]) => forms.handlePropertyBulkArchiveEvent(message, event);
+  const deletes = () => calls.filter((call) => call.method === "DELETE").map((call) => decodeURIComponent(call.path.split("/").pop()!));
+  async function open() {
+    forms.handleActionMenuSelect(item);
+    const message = messages.at(-1)!;
+    await until(() => bulk(message)?.stage === "select");
+    return message;
+  }
+  async function toReview(message: StructuredMessage, ...ids: string[]) {
+    for (const id of ids) await send(message, { type: "toggle", propertyId: id });
+    await send(message, { type: "review" });
+    assert.equal(bulk(message).stage, "review");
+  }
+  return { properties, calls, messages, persisted, openForms, forms, raw, bulk, until, send, deletes, open, toReview };
+}
+
+test("Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  assert.equal(message.form?.submitTarget, "imob.properties.archive_batch");
+  assert.equal(message.thread?.id, "thread-1");
+  assert.deepEqual(h.bulk(message).candidates.map((candidate: { id: string }) => candidate.id), ["p4", "p1", "p2", "p3"]);
+  assert.deepEqual(h.calls.map((call) => `${call.method} ${call.path}`), ["GET /imob/properties"]);
+  assert.deepEqual(h.bulk(message).selectedIds, []);
+});
+
+test("arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p2");
+  assert.deepEqual(h.deletes(), [], "a revisão não escreve");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p2"]);
+  assert.equal(h.properties.find((item) => item.id === "p2")!.status, "archived");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 0 não processados.");
+  assert.equal(h.openForms.has(message.id), false, "sem pendências o painel é encerrado");
+  assert.deepEqual(h.persisted.map((entry) => entry.meta), [{ intent: "property.bulk_archived", action: "imob.properties.archive" }]);
+});
+
+test("prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada", async (t) => {
+  const h = bulkArchiveHarness(t, { cases: [{ propertyId: "p2" }] });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.until(() => h.bulk(message).eligibilityChecked);
+  assert.deepEqual(h.bulk(message).eligibility, { p1: "no_case_known", p2: "case_linked", p3: "no_case_known" });
+  assert.ok(h.calls.every((call) => call.method === "GET"), "somente leituras até aqui");
+  await h.send(message, { type: "back" });
+  assert.equal(h.bulk(message).stage, "select");
+  assert.deepEqual(h.bulk(message).selectedIds, ["p1", "p2", "p3"], "voltar preserva a seleção para corrigir");
+  await h.send(message, { type: "cancel" });
+  assert.deepEqual(h.deletes(), []);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento cancelado. Nada foi alterado.");
+  assert.equal(h.openForms.has(message.id), false);
+});
+
+test("três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.properties.find((item) => item.id === "p4")!.status, "ready", "o não selecionado permanece ativo");
+  assert.ok(h.calls.every((call) => !call.path.startsWith("/imob/owners")), "arquivar imóvel não arquiva nem altera proprietário");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 3 arquivados · 0 bloqueados · 0 não processados.");
+  assert.deepEqual(h.messages.at(-1)!.card?.lines, ["Kitnet 301 — arquivado", "Kitnet 302 — arquivado", "Kitnet 303 — arquivado"]);
+});
+
+test("um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada", async (t) => {
+  const blocked = bulkJson({ ok: false, error: { code: "PROPERTY_DELETE_BLOCKED" } }, 409);
+  const h = bulkArchiveHarness(t, { onDelete: (id) => (id === "p2" ? undefined : blocked.clone()) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 2 bloqueados · 0 não processados.");
+  assert.deepEqual(h.messages.at(-1)!.card?.lines, [
+    "Kitnet 301 — bloqueado por dependência (locação ou caso ligado)", "Kitnet 302 — arquivado", "Kitnet 303 — bloqueado por dependência (locação ou caso ligado)",
+  ]);
+  assert.equal(h.properties.find((item) => item.id === "p1")!.status, "ready");
+  assert.equal(h.openForms.has(message.id), false, "bloqueados não são retomáveis");
+});
+
+test("falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id, attempt) => (id === "p2" && attempt === 1 ? bulkJson({ error: { code: "UNAVAILABLE" } }, 503) : undefined) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2"], "o terceiro não foi tentado depois da falha sistêmica");
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "failed", p3: "not_processed" });
+  assert.equal(h.bulk(message).stage, "result");
+  assert.equal(h.openForms.has(message.id), true, "o painel permanece para retomar");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 1 não processado · 1 com falha.");
+  assert.equal(h.persisted.length, 1);
+
+  await h.send(message, { type: "retry_pending" });
+  await h.until(() => h.bulk(message)?.stage === "review");
+  assert.deepEqual(h.bulk(message).reviewedIds, ["p2", "p3"], "p1 já arquivado não volta");
+  assert.deepEqual(h.deletes(), ["p1", "p2"], "retomar apenas recarrega e pede confirmação; não escreve");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p2", "p3"]);
+  assert.equal(h.deletes().filter((id) => id === "p1").length, 1, "arquivado nunca é repetido");
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 3 arquivados · 0 bloqueados · 0 não processados.");
+  assert.equal(h.openForms.has(message.id), false);
+});
+
+test("proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await Promise.all([h.send(message, { type: "confirm" }), h.send(message, { type: "confirm" }), h.send(message, { type: "confirm" })]);
+  assert.deepEqual(h.deletes(), ["p1", "p2", "p3"]);
+  assert.equal(h.messages.filter((entry) => entry.card).length, 1, "um único resultado registrado");
+});
+
+test("a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1");
+  await h.send(message, { type: "toggle", propertyId: "p2" }); // ignorado na etapa de revisão
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+});
+
+test("autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: () => bulkJson({ ok: false, error: { code: "FORBIDDEN" } }, 403) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1", "p2"]);
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 0 arquivados · 0 bloqueados · 0 não processados · 2 sem acesso.");
+  assert.equal(h.persisted.length, 0, "nada mudou: nada é gravado no histórico da conversa");
+  assert.equal(h.properties.every((item) => item.status === "ready"), true);
+});
+
+test("imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id) => (id === "p1" ? bulkJson({ error: { code: "PROPERTY_NOT_FOUND" } }, 404) : undefined) });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  await h.send(message, { type: "confirm" });
+  assert.equal(h.messages.at(-1)!.text, "Arquivamento de imóveis: 1 arquivado · 0 bloqueados · 0 não processados · 1 não encontrado.");
+  const deleteCall = h.calls.find((call) => call.method === "DELETE")!;
+  assert.equal(deleteCall.headers.get("x-tenant-id"), "tenant-bulk");
+  assert.equal(deleteCall.headers.get("x-workspace-id"), "workspace-bulk");
+});
+
+test("mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada", async (t) => {
+  const h = bulkArchiveHarness(t, { onDelete: (id) => { if (id === "p1") updateSession({ workspaceId: "workspace-outro" }); return undefined; } });
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "not_processed", p3: "not_processed" });
+  assert.match(h.bulk(message).notice, /mudou durante a operação/);
+  assert.deepEqual(h.bulk(message).reviewedIds, [], "seleção antiga não é reaproveitável");
+  assert.equal(h.messages.filter((entry) => entry.card).length, 0, "nada é registrado na conversa de outro contexto");
+  await h.send(message, { type: "retry_pending" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+});
+
+test("mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p2");
+  updateSession({ token: "outro-token-sintetico" });
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), []);
+  assert.equal(h.bulk(message).stage, "stale");
+  await h.send(message, { type: "toggle", propertyId: "p3" });
+  assert.deepEqual(h.deletes(), []);
+});
+
+test("lista que chega depois da troca de workspace não é aplicada", async (t) => {
+  let release!: () => void;
+  const h = bulkArchiveHarness(t, { listGate: new Promise<void>((resolve) => { release = resolve; }) });
+  h.forms.handleActionMenuSelect(localItems.find((candidate) => candidate.form === "property_archive")!);
+  const message = h.messages.at(-1)!;
+  updateSession({ workspaceId: "workspace-outro" });
+  release();
+  for (let index = 0; index < 10; index += 1) await tick();
+  assert.equal(h.bulk(message).stage, "loading");
+  assert.deepEqual(h.bulk(message).candidates, []);
+});
+
+test("interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis", async (t) => {
+  let message!: StructuredMessage;
+  const h = bulkArchiveHarness(t, { onDelete: (id) => { if (id === "p1") void h.send(message, { type: "cancel" }); return undefined; } });
+  message = await h.open();
+  await h.toReview(message, "p1", "p2", "p3");
+  await h.send(message, { type: "confirm" });
+  assert.deepEqual(h.deletes(), ["p1"]);
+  assert.deepEqual(h.bulk(message).outcomes, { p1: "archived", p2: "not_processed", p3: "not_processed" });
+  assert.match(h.bulk(message).notice, /interrompida/);
+  assert.equal(h.openForms.has(message.id), true);
+});
+
+test("mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const restored: StructuredMessage = { id: "restored-1", role: "assistant", text: "", form: buildPropertyBulkArchiveForm() };
+  h.openForms.add(restored.id);
+  await h.send(restored, { type: "confirm" });
+  await h.send(restored, { type: "review" });
+  assert.equal(h.raw.bulkArchiveRef.current[restored.id].stage, "stale");
+  assert.deepEqual(h.calls, []);
+});
+
+test("falha ao carregar a lista oferece nova tentativa sem alterar nada", async (t) => {
+  let fail = true;
+  const h = bulkArchiveHarness(t);
+  const original = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    if (fail && (init?.method ?? "GET") === "GET") return bulkJson({ error: { code: "UNAVAILABLE" } }, 503);
+    return original(input, init);
+  });
+  h.forms.handleActionMenuSelect(localItems.find((candidate) => candidate.form === "property_archive")!);
+  const message = h.messages.at(-1)!;
+  await h.until(() => h.bulk(message)?.stage === "error");
+  fail = false;
+  await h.send(message, { type: "reload" });
+  assert.equal(h.bulk(message).stage, "select");
+  assert.deepEqual(h.deletes(), []);
+});
+
+test("painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes", async (t) => {
+  const h = bulkArchiveHarness(t);
+  const message = await h.open();
+  await h.toReview(message, "p1", "p3");
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, {
+    message, isLast: true,
+    frontDoor: { imobForms: { ...h.raw, bulkArchiveByMessageId: h.raw.bulkArchiveRef.current }, structuredForms: h.forms } as never,
+  }));
+  assert.match(html, /Confirmar arquivamento de 2 imóveis/);
+  assert.match(html, /Sem proprietário vinculado/);
+  assert.match(html, /Nada foi arquivado ainda/);
+  assert.equal((html.match(/type="checkbox"/g) ?? []).length, 0);
+});
+
+// ARCHIVED-READ Front Door: consulta de imóveis arquivados no harness do Front Door (decisão de handoff, encaminhamento e render).
+// A resposta do servidor usa a forma que o engine produz para a consulta (validada nos testes da API com a cadeia governada real).
+test("ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura", async (t) => {
+  const phrase = "listar imóveis arquivados";
+  const requests: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request, init?: RequestInit) => {
+    requests.push(`${init?.method ?? "GET"} ${new URL(String(input)).pathname}`);
+    throw new Error("nenhuma requisição é esperada: a resposta vem do resolve-turn injetado");
+  });
+  const base = proposalTurn();
+  const archivedTurn: ImobResolveTurnResponse = {
+    ...base,
+    mode: "consult",
+    action: "crm.property.list",
+    threadLabel: "Imóvel",
+    conversationState: { ...base.conversationState, operational: null },
+    presentation: {
+      text: "Encontrei 2 imóvel(is) arquivado(s) neste workspace.\nConsulta somente leitura: imóveis arquivados saem das listas ativas e o histórico fica guardado.",
+      owner: "Corretor",
+      nextStep: "Consulta somente leitura; nenhum imóvel foi alterado.",
+      dedupeKey: "crm.property.list:archived",
+      card: {
+        title: "Imóveis arquivados",
+        lines: [
+          "Kitnet 301 | locacao | Cidade Exemplo | arquivado em 11/11/2026 | Proprietário: Sem proprietário vinculado",
+          "Kitnet 302 | locacao | Cidade Exemplo | arquivado em 10/11/2026 | Proprietário: Proprietário Sintético",
+        ],
+        ctas: [],
+      },
+    },
+  };
+  const harness = frontDoorHarness(async () => ({ ok: true, data: archivedTurn }));
+
+  // 1) A primeira resposta visível é o aviso de handoff (por desenho, ADR-010); a frase original segue para o IMOB.
+  const decision = await sendFrontDoorTurn(harness, phrase, { activeDomain: "core" });
+  assert.equal(decision?.kind, "vertical_handoff");
+  assert.match(decision?.content ?? "", /Verificando o acesso ao IMOB/);
+  assert.equal(decision?.verticalHandoffForwardInput, phrase);
+
+  // 2) O turno encaminhado chega ao resolve-turn com a frase original e a resposta final é a listagem, não a saudação.
+  assert.equal(await harness.forwardToImob(decision!.verticalHandoffForwardInput!), true);
+  assert.equal(harness.calls.length, 1);
+  assert.equal(harness.calls[0].message, phrase);
+  const message = harness.messages().at(-1)!;
+  assert.doesNotMatch(message.text ?? "", /Sigo com o IMOB/);
+  const html = renderToStaticMarkup(React.createElement(ImobFrontDoorPart, { message, frontDoor: harness, isLast: true }));
+  assert.match(html, /Imóveis arquivados/);
+  assert.match(html, /Kitnet 301/);
+  assert.match(html, /Kitnet 302/);
+  assert.match(html, /Sem proprietário vinculado/);
+  assert.match(html, /Consulta somente leitura/);
+  assert.doesNotMatch(html, /<button|Restaurar|Desarquivar/, "sem CTAs de escrita na resposta");
+  // O harness não comprova escrita no servidor (resolve-turn é injetado): isso é coberto pelos testes da API (sem escrita no banco).
+  assert.deepEqual(requests, [], "nenhuma requisição de rede pelo cliente");
+});
+
+// Espera pelo resultado: estado compartilhado do Front Door (lib/frontDoorPendingWork), com promessas controladas e sem timers.
+// Estes testes cobrem o ADAPTADOR IMOB ligado ao estado compartilhado; a regra transversal é provada em lib/frontDoorPendingWork.test.ts.
+function waitingHarness(resolve: (message: string) => Promise<{ ok: true; data: ImobResolveTurnResponse }>, generation = { current: 0 }) {
+  const tracker = createPendingWorkTracker(() => String(generation.current));
+  const events: string[] = [];
+  const view: { harness?: ReturnType<typeof frontDoorHarness> } = {};
+  // Cada mudança registra quantas solicitações estão pendentes e quantas mensagens já existem: a espera só pode acabar com a resposta na lista.
+  tracker.subscribe(() => events.push(`${tracker.pendingCount()}@${view.harness?.messages().length ?? 0}`));
+  const harness = frontDoorHarness(async (request) => resolve(request.message), generation, false, { trackPending: tracker.track });
+  view.harness = harness;
+  return { harness, tracker, events };
+}
+function archivedReply(text: string) {
+  const base = proposalTurn();
+  return { ok: true as const, data: { ...base, mode: "consult", action: "crm.property.list", conversationState: { ...base.conversationState, operational: null },
+    presentation: { text, owner: "Corretor", nextStep: "Consulta somente leitura.", dedupeKey: "crm.property.list:archived",
+      card: { title: "Imóveis arquivados", lines: ["Unidade 301 | locacao | Cidade Exemplo | arquivado em 11/11/2026 | Proprietário: Sem proprietário vinculado"], ctas: [] } } } as unknown as ImobResolveTurnResponse };
+}
+const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (error: Error) => void; const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; }); return { promise, resolve, reject }; };
+
+test("espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta", async () => {
+  const gate = deferred<ReturnType<typeof archivedReply>>();
+  const { harness, tracker, events } = waitingHarness(() => gate.promise);
+  const pending = harness.forwardToImob("listar imóveis arquivados");
+  assert.deepEqual(events, ["1@0"], "a espera começa quando a solicitação sai");
+  // O aviso de handoff e o card de contexto entram na lista enquanto a consulta segue pendente: a espera continua.
+  harness.setMessages([{ id: "handoff", role: "assistant", text: "Sigo com o IMOB nesta conversa." } as StructuredMessage, { id: "ctx", role: "assistant", text: "IMOB · Nesta conversa" } as StructuredMessage]);
+  assert.equal(tracker.pendingCount(), 1, "intermediárias não encerram a espera");
+  gate.resolve(archivedReply("Encontrei 1 imóvel(is) arquivado(s) neste workspace."));
+  assert.equal(await pending, true);
+  assert.deepEqual(events, ["1@0", "0@3"], "a espera termina com a resposta efetiva já na lista (2 intermediárias + 1 resposta)");
+  assert.match(harness.messages().at(-1)!.text ?? "", /arquivado/);
+});
+
+test("espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa", async () => {
+  const gate = deferred<ReturnType<typeof archivedReply>>();
+  const { harness, tracker, events } = waitingHarness(() => gate.promise);
+  const pending = harness.forwardToImob("listar imóveis arquivados");
+  assert.deepEqual(events, ["1@0"]);
+  gate.reject(new Error("falha de rede sintética"));
+  assert.equal(await pending, false);
+  assert.deepEqual(events, ["1@0", "0@1"]);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.match(harness.messages().at(-1)!.text ?? "", /Não consegui abrir o formulário do IMOB/);
+});
+
+test("espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual", async () => {
+  const generation = { current: 0 };
+  const gates: Record<string, ReturnType<typeof deferred<ReturnType<typeof archivedReply>>>> = { antiga: deferred(), nova: deferred() };
+  const { harness, tracker } = waitingHarness((message) => gates[message].promise, generation);
+  const antiga = harness.forwardToImob("antiga");
+  assert.equal(tracker.pendingCount(), 1);
+  generation.current += 1; // troca de conversa (o launcher incrementa a geração): a espera da anterior deixa de valer na hora
+  assert.equal(tracker.pendingCount(), 0, "a espera da conversa anterior não vale mais");
+  const nova = harness.forwardToImob("nova");
+  assert.equal(tracker.pendingCount(), 1, "só a nova solicitação conta na conversa atual");
+  // A resposta atrasada da conversa anterior chega primeiro: é descartada e NÃO encerra a espera da atual.
+  gates.antiga.resolve(archivedReply("RESPOSTA DA CONVERSA ANTERIOR"));
+  assert.equal(await antiga, false);
+  assert.equal(tracker.pendingCount(), 1, "resposta atrasada não encerra a espera da conversa atual");
+  assert.equal(harness.messages().length, 0, "nada da conversa anterior aparece");
+  gates.nova.resolve(archivedReply("RESPOSTA DA CONVERSA ATUAL"));
+  assert.equal(await nova, true);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.messages().map((message) => message.text), ["RESPOSTA DA CONVERSA ATUAL"]);
+});
+
+test("espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente", async () => {
+  const gates: Record<string, ReturnType<typeof deferred<ReturnType<typeof archivedReply>>>> = { primeira: deferred(), segunda: deferred() };
+  const { harness, tracker } = waitingHarness((message) => gates[message].promise);
+  const primeira = harness.forwardToImob("primeira");
+  const segunda = harness.forwardToImob("segunda");
+  assert.equal(tracker.pendingCount(), 2, "cada solicitação tem identidade própria");
+  gates.primeira.resolve(archivedReply("PRIMEIRA (obsoleta)"));
+  assert.equal(await primeira, false, "a resposta da solicitação superada é descartada");
+  assert.equal(tracker.pendingCount(), 1, "a mais antiga terminou, a mais nova continua pendente e a espera continua visível");
+  gates.segunda.resolve(archivedReply("SEGUNDA"));
+  assert.equal(await segunda, true);
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.messages().map((message) => message.text), ["SEGUNDA"]);
+});
+
+test("espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual", async () => {
+  const gate = deferred<{ ok: true; claimed: false; data: null }>();
+  const tracker = createPendingWorkTracker(() => "c");
+  const harness = frontDoorHarness(async () => archivedReply("x"), { current: 0 }, false, { trackPending: tracker.track }, () => gate.promise);
+  const pending = harness.forwardToImob("reivindicação", { claim: true });
+  assert.equal(tracker.pendingCount(), 1, "a reivindicação em andamento conta como trabalho pendente");
+  gate.resolve({ ok: true, claimed: false, data: null });
+  assert.equal(await pending, false, "claim não reivindicado");
+  assert.equal(tracker.pendingCount(), 0);
+});
+
+test("espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta", async () => {
+  const gate = deferred<void>();
+  let count = 0;
+  const tracker = createPendingWorkTracker(() => "f");
+  const harness = frontDoorHarness(async () => {
+    if (++count === 1) return { ok: true, data: proposalTurn() };
+    await gate.promise;
+    return { ok: true, data: { ...proposalTurn(), mode: "execute" } };
+  }, { current: 0 }, false, { trackPending: tracker.track });
+  await harness.forwardToImob("gerar proposta");
+  assert.equal(tracker.pendingCount(), 0, "sem pendência depois da primeira resposta");
+  const message = harness.messages()[0];
+  harness.fill(message);
+  const pending = harness.structuredForms.handleStructuredFormAction(message, "submit");
+  assert.ok(tracker.pendingCount() >= 1, "o envio do formulário está pendente enquanto aguarda o servidor");
+  gate.resolve();
+  await pending;
+  assert.equal(tracker.pendingCount(), 0, "terminou a ação, terminou a espera");
+});
+
+test("espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual", async () => {
+  const harness = frontDoorHarness(async () => archivedReply("Encontrei 1 imóvel(is) arquivado(s)."));
+  assert.equal(await harness.forwardToImob("comum"), true);
+});
+
+const propertyDraftMessage = (): StructuredMessage => ({ id: "property-form", role: "assistant", text: "Preencha o cadastro.",
+  thread: { id: "property-thread", label: "Captação" }, form: buildPropertyCreateForm({ propertyType: "apartamento", goal: "locacao", city: "Balneário Camboriú" }),
+  conversationState: resolveImobTurn({ message: "Cadastrar imóvel", access }).conversationState as never });
+const interpretedProperty = (message: string, changes: unknown[] = [], extra = {}) => JSON.stringify({ intent: "continue", confidence: 0.96, changes, ...extra });
+function propertyHarness(interpret: (request: any) => Promise<string> = async ({ message }) => interpretedProperty(message), transport: Parameters<typeof frontDoorHarness>[3] = {}) {
+  const harness = frontDoorHarness(async (body) => {
+    assert.equal(body.intake, "property_draft", "continuidade passa somente pelo intake consultivo, nunca pelo resolvedor operacional");
+    const propertyCapture = await interpretImobPropertyCapture(body.propertyCapture!, { interpret: async () => interpret(body.propertyCapture), scope: { tenantId: "test-tenant", workspaceId: "test-workspace", userId: "test-user" }, timeoutMs: 100 });
+    return { ok: true, data: { mode: "consult", action: "property.draft.intake", propertyCapture, threadLabel: "Captação", presentation: { text: propertyCapture.content }, conversationState: {} as never } };
+  }, { current: 0 }, false, transport);
+  const form = propertyDraftMessage();
+  harness.setMessages([form]);
+  harness.raw.setFormValuesByMessageId({ [form.id]: Object.fromEntries(form.form!.fields.map((field) => [field.name, String(field.value ?? "")])) });
+  let revision = 0;
+  (harness.imobForms as any).getFormRevision = () => revision;
+  const edit = (patch: Record<string, string>) => { revision += 1; harness.raw.setFormValuesByMessageId((previous: any) => ({ ...previous, [form.id]: { ...previous[form.id], ...patch } })); };
+  return { ...harness, form, edit };
+}
+
+test("cadastro pendente: reprodução e mensagem mista vão ao intake antes do jurídico, propõem e só aplicam após confirmação contextual, sem escrita", async (t) => {
+  const fetches: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: any) => { fetches.push(String(input)); throw new Error("nenhuma rede permitida"); });
+  const message = "Esse imóvel tem dois quartos e uma vaga. O que mais preciso informar?";
+  const harness = propertyHarness(async ({ pendingProposal }) => pendingProposal
+    ? interpretedProperty("", [], { intent: "confirm_changes", proposalRef: pendingProposal.ref }) : interpretedProperty(message, [
+    { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
+    { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
+  ]), { getPropertyHistory: () => [{ role: "user", text: "Quero cadastrar um apartamento para locação em Balneário Camboriú." }] });
+  harness.edit({ neighborhood: "Centro", ownerId: "owner-manual", documentType: "documento" });
+  harness.raw.setFormErrorsByMessageId({ [harness.form.id]: { bedrooms: "Use só números", address: "Informe o endereço" } });
+  const decision = await resolveLauncherTurnDecision({ input: message, trimmedInput: message, routeIntent: detectLauncherRouteIntent(message, false),
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    imobOperationalContinuation: { propertyCaptureContext: harness.getPropertyCaptureContext(), available: true, consume: harness.consumeOperationalTurn },
+  });
+  assert.equal(decision?.turnConsumed, true);
+  assert.equal(decision?.shouldCreateRun, false);
+  assert.equal(harness.calls.length, 1);
+  assert.equal(harness.calls[0].propertyCapture?.draft.neighborhood, "Centro");
+  assert.equal(harness.calls[0].propertyCapture?.history.length, 1);
+  assert.equal("ownerId" in harness.calls[0].propertyCapture!.draft, false);
+  assert.equal("documentType" in harness.calls[0].propertyCapture!.draft, false);
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "");
+  assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+  assert.deepEqual(harness.getErrors()[harness.form.id], { bedrooms: "Use só números", address: "Informe o endereço" });
+  const proposal = harness.messages()[0].propertyCaptureProposal;
+  assert.ok(proposal);
+  const proposed: any = toLauncherMessage(harness.messages().at(-1)!);
+  assert.equal(resolveSnapshotInputPlaceholder(proposed.presentationSnapshot), propertyPolicy.confirmationPlaceholder);
+  assert.deepEqual(resolveSnapshotQuickReplies(proposed.presentationSnapshot), [propertyPolicy.confirmReply, propertyPolicy.rejectReply, propertyPolicy.questionReply]);
+  await harness.consumeOperationalTurn("continue", "Pode colocar os dois dados que você propôs.");
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "2");
+  assert.equal(harness.getValues()[harness.form.id].garageSpots, "1");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /ainda não foi salvo/);
+  assert.equal(harness.getValues()[harness.form.id].city, "Balneário Camboriú");
+  assert.equal(harness.getValues()[harness.form.id].ownerId, "owner-manual");
+  assert.deepEqual(harness.getErrors()[harness.form.id], { address: "Informe o endereço" }, "limpa apenas o erro do campo atualizado");
+  assert.equal(harness.messages().filter((item) => item.form).length, 1);
+  assert.match(harness.messages().at(-1)!.text, /Endereço/);
+  assert.doesNotMatch(harness.messages().at(-1)!.text, /jurídico/);
+  assert.deepEqual(fetches, []);
+});
+
+test("cadastro: perguntas e correções preservam estado, campos manuais e alterações anteriores", async () => {
+  const harness = propertyHarness(async ({ message, pendingProposal }) => pendingProposal ? interpretedProperty("", [], { intent: "confirm_changes", proposalRef: pendingProposal.ref }) : interpretedProperty(message, message.startsWith("Corrigindo") ? [
+    { field: "city", value: "Itajaí", evidence: message, correction: true },
+  ] : []));
+  harness.edit({ bedrooms: "3", garageSpots: "2", address: "Rua Manual, 500" });
+  const state = harness.getConversationState();
+  await harness.consumeOperationalTurn("continue", "Proprietário é obrigatório?");
+  assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.deepEqual(harness.getConversationState(), state);
+  await harness.consumeOperationalTurn("continue", "Corrigindo: a cidade é Itajaí.");
+  assert.equal(harness.getValues()[harness.form.id].city, "Balneário Camboriú");
+  assert.ok(harness.messages()[0].propertyCaptureProposal);
+  await harness.consumeOperationalTurn("continue", "Sim, troque só a cidade como proposto.");
+  assert.equal(harness.getValues()[harness.form.id].city, "Itajaí");
+  assert.equal(harness.getValues()[harness.form.id].address, "Rua Manual, 500");
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "3");
+  assert.equal(harness.calls[1].propertyCapture?.draft.garageSpots, "2");
+  assert.equal(harness.messages().filter((item) => item.form).length, 1);
+});
+
+test("cadastro: conflito ou ambiguidade não aplicam mudanças silenciosas e mantêm formulário e ações", async () => {
+  for (const extra of [{ intent: "clarify", question: "A qual imóvel você se refere?" }, {}]) {
+    const harness = propertyHarness(async ({ message }) => interpretedProperty(message, [
+      { field: "city", value: "Itajaí", evidence: "Itajaí", correction: false },
+    ], extra));
+    const before = JSON.stringify(harness.getValues());
+    await harness.consumeOperationalTurn("continue", "A vaga daquele em Itajaí");
+    assert.equal(JSON.stringify(harness.getValues()), before);
+    assert.equal(harness.getPropertyCaptureContext(), "active");
+    assert.deepEqual(harness.messages()[0].form?.actions, harness.form.form?.actions);
+  }
+});
+
+test("cadastro: mudança explícita pausa e retoma o mesmo rascunho; snapshots resolvem placeholder e sugestões", async () => {
+  const harness = propertyHarness(async ({ message, contextState }) => interpretedProperty(message, [], { intent: contextState === "paused" ? "resume" : "change_subject" }));
+  harness.edit({ bedrooms: "4" });
+  const first: any = toLauncherMessage(harness.form);
+  assert.equal(resolveSnapshotInputPlaceholder(first.presentationSnapshot), propertyPolicy.placeholder);
+  assert.deepEqual(resolveSnapshotQuickReplies(first.presentationSnapshot), [propertyPolicy.questionReply, propertyPolicy.pauseReply]);
+  await harness.consumeOperationalTurn("continue", "Vamos deixar esse rascunho e conversar sobre outra coisa.");
+  assert.equal(harness.getPropertyCaptureContext(), "paused");
+  const paused: any = toLauncherMessage(harness.messages().at(-1)!);
+  assert.deepEqual(resolveSnapshotQuickReplies(paused.presentationSnapshot), [propertyPolicy.resumeReply]);
+  assert.equal(resolveSnapshotInputPlaceholder(paused.presentationSnapshot), propertyPolicy.pausedPlaceholder);
+  await harness.consumeOperationalTurn("continue", "Vamos voltar àquele apartamento que estávamos cadastrando.");
+  assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "4");
+  assert.equal(harness.calls.length, 2, "pausa e retomada semânticas passam pelo mesmo intake");
+  assert.equal(harness.messages().filter((item) => item.form).length, 1);
+});
+
+test("cadastro: retorno após edição manual, inclusive apagar e redigitar o mesmo valor, não altera o rascunho", async () => {
+  for (const editAgain of [false, true]) {
+    let finish!: (value: string) => void;
+    const harness = propertyHarness(() => new Promise((resolve) => { finish = resolve; }));
+    let revision = 0;
+    (harness.imobForms as any).getFormRevision = () => revision;
+    const pending = harness.consumeOperationalTurn("continue", "Ele tem dois quartos.");
+    harness.edit({ bedrooms: "3" }); revision += 1;
+    if (editAgain) { harness.edit({ bedrooms: "" }); revision += 1; }
+    finish(interpretedProperty("", [{ field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }]));
+    await pending;
+    assert.equal(harness.getValues()[harness.form.id].bedrooms, editAgain ? "" : "3");
+    assert.match(harness.messages().at(-1)!.text, /editou o formulário/);
+  }
+});
+
+test("cadastro: troca de usuário, sessão, workspace, tenant, domínio, conversa, formulário ou turno descarta resposta tardia", async () => {
+  const original = getSession();
+  try {
+    for (const kind of ["userId", "token", "tenantId", "workspaceId", "activeDomain", "conversation", "form", "thread", "case", "turn"] as const) {
+      let finish!: (value: string) => void;
+      let modelCalls = 0;
+      const harness = propertyHarness(() => ++modelCalls === 1 ? new Promise((resolve) => { finish = resolve; }) : Promise.resolve(interpretedProperty("", [], { intent: "pause" })));
+      const pending = harness.consumeOperationalTurn("continue", "Ele tem dois quartos.");
+      const reply = interpretedProperty("", [{ field: "bedrooms", value: "2", evidence: "dois quartos", correction: false }]);
+      if (kind === "conversation") harness.conversationGenerationRef.current += 1;
+      else if (kind === "form") harness.setMessages([{ ...harness.form, id: "new-form" }]);
+      else if (kind === "thread") harness.setMessages([{ ...harness.form, thread: { id: "new-thread", label: "Outro" } }]);
+      else if (kind === "case") harness.setMessages([{ ...harness.form, caseContext: { caseId: "new-case" } as never }]);
+      else if (kind === "turn") await harness.consumeOperationalTurn("continue", propertyPolicy.pauseReply);
+      else updateSession({ [kind]: kind === "activeDomain" ? "logistica" : `new-${kind}` });
+      const count = harness.messages().length;
+      finish(reply);
+      await pending;
+      assert.equal(harness.messages().length, count, kind);
+      assert.equal(harness.getValues()[harness.form.id].bedrooms, "", kind);
+      updateSession(original);
+    }
+  } finally { updateSession(original); }
+});
+
+test("cadastro: falhas, timeout do cliente e payload inválido encerram espera e permitem nova tentativa", async () => {
+  const tracker = createPendingWorkTracker(() => "property-scope");
+  let mode = "timeout";
+  const harness = frontDoorHarness(async () => {
+    if (mode === "timeout") return new Promise(() => {});
+    if (mode === "error") throw new Error("network unavailable");
+    return { ok: true, data: { propertyCapture: { outcome: "updated", patch: { ownerId: "inventado" }, content: "errado" } } as any };
+  }, { current: 0 }, false, { trackPending: tracker.track, propertyIntakeTimeoutMs: 5 });
+  const form = propertyDraftMessage();
+  harness.setMessages([form]);
+  harness.raw.setFormValuesByMessageId({ [form.id]: { city: "Balneário Camboriú" } });
+  for (mode of ["timeout", "error", "invalid"]) {
+    const pending = harness.consumeOperationalTurn("continue", "O que falta?");
+    assert.ok(tracker.pendingCount() > 0);
+    await pending;
+    assert.equal(tracker.pendingCount(), 0);
+    assert.equal(harness.getPropertyCaptureContext(), "active");
+    assert.deepEqual(harness.getValues()[form.id], { city: "Balneário Camboriú" });
+    assert.equal(harness.messages().at(-1)!.text, propertyPolicy[mode === "error" ? "unavailable" : mode === "timeout" ? "timeout" : "invalid"]);
+    const message: any = toLauncherMessage(harness.messages().at(-1)!);
+    assert.equal(resolveSnapshotInputPlaceholder(message.presentationSnapshot), propertyPolicy.placeholder);
+  }
+});
+
+
+test("cadastro: falha tipada do provider encerra espera e preserva formulário, proposta e contexto IMOB sem escrita", async (t) => {
+  const tracker = createPendingWorkTracker(() => "property-failure-scope");
+  const network: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: any) => { network.push(String(input)); throw new Error("nenhuma escrita ou rede permitida"); });
+  let fail = false;
+  let reject!: (error: Error) => void;
+  const delayed = new Promise<string>((_, no) => { reject = no; });
+  const harness = propertyHarness(async () => fail ? delayed : interpretedProperty("", [
+    { field: "bedrooms", value: "2", evidence: "dois quartos", correction: false },
+    { field: "garageSpots", value: "1", evidence: "uma vaga", correction: false },
+  ]), { trackPending: tracker.track });
+  harness.edit({ address: "Rua Sintética", ownerId: "synthetic-owner" });
+  await harness.consumeOperationalTurn("continue", "São dois quartos e uma vaga.");
+  const proposal = structuredClone(harness.messages().find((message) => message.id === harness.form.id)!.propertyCaptureProposal);
+  assert.ok(proposal);
+  const values = structuredClone(harness.getValues());
+  fail = true;
+  const pending = harness.consumeOperationalTurn("continue", "Pode aplicar a proposta?");
+  assert.ok(tracker.pendingCount() > 0);
+  reject(new LLMProviderError({ provider: "openai", model: "gpt-4.1", code: "credit_balance_exhausted", providerType: "insufficient_quota", httpStatus: 429 }));
+  assert.equal(await pending, true, "turno consumido no IMOB; não libera roteamento para outro domínio");
+  assert.equal(tracker.pendingCount(), 0);
+  assert.deepEqual(harness.getValues(), values);
+  assert.deepEqual(harness.messages().find((message) => message.id === harness.form.id)!.propertyCaptureProposal, proposal);
+  assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.equal(harness.messages().at(-1)!.text, propertyPolicy.unavailable);
+  assert.equal(harness.messages().find((message) => message.id === harness.form.id)!.form?.submitTarget, harness.form.form?.submitTarget);
+  assert.deepEqual(network, [], "nenhum save, run ou chamada real");
+  assert.equal(resolveSnapshotInputPlaceholder(toLauncherMessage(harness.messages().at(-1)!).presentationSnapshot), propertyPolicy.confirmationPlaceholder);
+});
+
+test("cadastro guiado: dúvida e recusa preservam campos; informações distribuídas criam nova proposta completa", async () => {
+  let step = "propose";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (step === "question") return interpretedProperty(message, [], { topics: ["ownerId"] });
+    if (step === "reject") return interpretedProperty(message, [], { intent: "reject_changes" });
+    if (step === "ambiguous") return interpretedProperty(message, [], { intent: "clarify", question: "Deseja incluir os dois dados ou revisar algum deles?" });
+    return interpretedProperty(message, [step === "more"
+      ? { field: "garageSpots", value: "1", evidence: message, correction: false }
+      : { field: "bedrooms", value: "2", evidence: message, correction: false }]);
+  });
+  const before = JSON.stringify(harness.getValues());
+  await harness.consumeOperationalTurn("continue", "Ele possui dois dormitórios.");
+  const first = harness.messages()[0].propertyCaptureProposal!;
+  step = "question"; await harness.consumeOperationalTurn("continue", "Preciso informar o proprietário agora?");
+  assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, first.ref);
+  assert.match(harness.messages().at(-1)!.text, /Proprietário: opcional/);
+  step = "ambiguous"; await harness.consumeOperationalTurn("continue", "Talvez, deixa eu ver.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, first.ref);
+  step = "more"; await harness.consumeOperationalTurn("continue", "E também tem uma vaga.");
+  const next = harness.messages()[0].propertyCaptureProposal!;
+  assert.notEqual(next.ref, first.ref); assert.deepEqual(next.changes, { bedrooms: "2", garageSpots: "1" });
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  step = "reject"; await harness.consumeOperationalTurn("continue", "Prefiro não incluir essas informações agora.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.equal(JSON.stringify(harness.getValues()), before); assert.equal(harness.messages().filter((m) => m.form).length, 1);
+});
+
+test("cadastro guiado: confirmação após edição manual descarta proposta inteira sem aplicar subconjunto", async () => {
+  const harness = propertyHarness(async ({ message, pendingProposal }) => pendingProposal
+    ? interpretedProperty(message, [], { intent: "confirm_changes", proposalRef: pendingProposal.ref })
+    : interpretedProperty(message, [{ field: "bedrooms", value: "2", evidence: message, correction: false }, { field: "garageSpots", value: "1", evidence: message, correction: false }]));
+  await harness.consumeOperationalTurn("continue", "São dois quartos e uma vaga.");
+  harness.edit({ bedrooms: "4" });
+  await harness.consumeOperationalTurn("continue", "Pode aplicar o que propôs.");
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, "4");
+  assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /Não há uma proposta vigente/);
+});
+
+test("cadastro guiado: resposta de confirmação tardia não altera conversa ou formulário de outro contexto", async () => {
+  let finish!: (value: string) => void;
+  let ref = "";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (pendingProposal) { ref = pendingProposal.ref; return new Promise((resolve) => { finish = resolve; }); }
+    return interpretedProperty(message, [{ field: "bedrooms", value: "2", evidence: message, correction: false }]);
+  });
+  await harness.consumeOperationalTurn("continue", "Esse tem dois quartos.");
+  const pending = harness.consumeOperationalTurn("continue", "Pode incluir os quartos.");
+  harness.conversationGenerationRef.current += 1;
+  const count = harness.messages().length;
+  finish(interpretedProperty("", [], { intent: "confirm_changes", proposalRef: ref }));
+  await pending;
+  assert.equal(harness.getValues()[harness.form.id].bedrooms, ""); assert.equal(harness.messages().length, count);
+});
+
+test("cadastro guiado: formulário pausado interpreta retomada livre e só libera tema diferente após intake", async () => {
+  let intent = "pause";
+  const harness = propertyHarness(async ({ message }) => interpretedProperty(message, [], { intent }));
+  await harness.consumeOperationalTurn("continue", "Deixe isso para depois.");
+  intent = "change_subject";
+  const other = "Quero falar de outro assunto agora.";
+  const released = await harness.consumeOperationalTurn("continue", other);
+  assert.equal(released, false); assert.equal(harness.getPropertyCaptureContext(), "paused");
+  intent = "resume";
+  const input = "Vamos seguir preenchendo aquele apartamento?";
+  const decision = await resolveLauncherTurnDecision({ input, trimmedInput: input, routeIntent: "help", proposalMode: false,
+    isUnifiedEiah: true, eiahMode: "help", agentProfile: null, catalogAgents: [], intentUnknown: true, confidence: 0,
+    imobOperationalContinuation: { propertyCaptureContext: "paused", available: true, consume: harness.consumeOperationalTurn } });
+  assert.equal(decision?.turnConsumed, true); assert.equal(harness.getPropertyCaptureContext(), "active");
+  assert.equal(harness.calls.length, 3);
+});
+
+test("cadastro guiado: adaptador rejeita confirmação parcial, ampliada ou de proposta substituída", async () => {
+  for (const invalid of ["partial", "extra", "old_ref"]) {
+    const harness = frontDoorHarness(async ({ propertyCapture }) => {
+      assert.ok(propertyCapture);
+      if (!propertyCapture.pendingProposal) {
+        const result = await interpretImobPropertyCapture(propertyCapture, {
+          scope: { tenantId: "test-tenant", workspaceId: "test-workspace", userId: "test-user" },
+          interpret: async () => interpretedProperty("", [
+            { field: "bedrooms", value: "2", evidence: propertyCapture.message, correction: false },
+            { field: "garageSpots", value: "1", evidence: propertyCapture.message, correction: false },
+          ]),
+        });
+        return { ok: true, data: { propertyCapture: result } as ImobResolveTurnResponse };
+      }
+      const proposal = propertyCapture.pendingProposal;
+      return { ok: true, data: { propertyCapture: { outcome: "updated", content: "Aplicado.", proposal: null,
+        confirmedProposalRef: invalid === "old_ref" ? "previous-proposal" : proposal.ref,
+        patch: invalid === "partial" ? { bedrooms: "2" } : invalid === "extra" ? { ...proposal.changes, bathrooms: "3" } : proposal.changes,
+      } } as ImobResolveTurnResponse };
+    });
+    const form = propertyDraftMessage();
+    harness.setMessages([form]);
+    harness.raw.setFormValuesByMessageId({ [form.id]: Object.fromEntries(form.form!.fields.map((field) => [field.name, String(field.value ?? "")])) });
+    const before = JSON.stringify(harness.getValues());
+    await harness.consumeOperationalTurn("continue", "Dois quartos e uma vaga.");
+    const proposal = harness.messages()[0].propertyCaptureProposal!;
+    assert.ok(proposal);
+    await harness.consumeOperationalTurn("continue", "Pode aplicar os dois dados.");
+    assert.equal(JSON.stringify(harness.getValues()), before, invalid);
+    assert.equal(harness.messages()[0].propertyCaptureProposal?.ref, proposal.ref);
+    assert.equal(harness.messages().at(-1)!.text, propertyPolicy.invalid);
+  }
+});
+
+test("cadastro guiado: edição manual durante confirmação descarta tudo, inclusive após desfazer a edição", async () => {
+  for (const revert of [false, true]) {
+    let finish!: (value: string) => void;
+    let ref = "";
+    const harness = propertyHarness(async ({ message, pendingProposal }) => {
+      if (pendingProposal) { ref = pendingProposal.ref; return new Promise((resolve) => { finish = resolve; }); }
+      return interpretedProperty(message, [
+        { field: "bedrooms", value: "2", evidence: message, correction: false },
+        { field: "garageSpots", value: "1", evidence: message, correction: false },
+      ]);
+    });
+    await harness.consumeOperationalTurn("continue", "Dois quartos e uma vaga.");
+    const pending = harness.consumeOperationalTurn("continue", "Quero aplicar essas duas inclusões.");
+    harness.edit({ bedrooms: "4" });
+    if (revert) harness.edit({ bedrooms: "" });
+    finish(interpretedProperty("", [], { intent: "confirm_changes", proposalRef: ref }));
+    await pending;
+    assert.equal(harness.getValues()[harness.form.id].bedrooms, revert ? "" : "4");
+    assert.equal(harness.getValues()[harness.form.id].garageSpots, "");
+    assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+    assert.match(harness.messages().at(-1)!.text, /descartei a resposta e a proposta anteriores por inteiro/);
+  }
+});
+
+test("cadastro guiado: correção sem diferenças remove proposta e impede reaplicar a versão anterior", async () => {
+  let step = "propose";
+  let oldRef = "";
+  const harness = propertyHarness(async ({ message, pendingProposal }) => {
+    if (step === "confirm") return interpretedProperty(message, [], { intent: "confirm_changes", proposalRef: oldRef });
+    if (pendingProposal) oldRef = pendingProposal.ref;
+    return interpretedProperty(message, [
+      { field: "bedrooms", value: step === "correct" ? "" : "2", evidence: message, correction: step === "correct" },
+    ]);
+  });
+  const before = JSON.stringify(harness.getValues());
+  await harness.consumeOperationalTurn("continue", "Ele tem dois quartos.");
+  assert.ok(harness.messages()[0].propertyCaptureProposal);
+  step = "correct";
+  await harness.consumeOperationalTurn("continue", "Corrigindo: deixe quartos vazio como estava.");
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  step = "confirm";
+  await harness.consumeOperationalTurn("continue", "Pode aplicar.");
+  assert.equal(JSON.stringify(harness.getValues()), before);
+  assert.equal(harness.messages()[0].propertyCaptureProposal, null);
+  assert.match(harness.messages().at(-1)!.text, /Não há uma proposta vigente/);
+});

@@ -7,6 +7,7 @@ import {
   type ExperienceDiagnosticsWindow,
 } from "../types/experienceDiagnosticSnapshot";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { COMMERCIAL_PERMISSION_NOT_GRANTABLE, containsReservedCommercialPermission } from "../services/commercialAuthority";
 import { readTenantOperationalInsight } from "../services/tenantOperationalInsight";
 import {
   createWorkspaceInvitation,
@@ -458,6 +459,11 @@ profileRouter.put("/profile/me", async (req, res) => {
     });
   }
 
+  // AUTHZ-SCOPE-1: papéis personalizados não concedem autoridade comercial (nem a nomeiam como permissão).
+  if (containsReservedCommercialPermission(parsed.data.workspaceRoleOptions)) {
+    return res.status(422).json({ ok: false, error: COMMERCIAL_PERMISSION_NOT_GRANTABLE });
+  }
+
   const payload = parsed.data;
   const normalizedEmail = payload.email?.trim().toLowerCase();
   const normalizedFullName = payload.fullName?.trim();
@@ -614,6 +620,11 @@ profileRouter.post("/profile/workspace-members/invitations", async (req, res) =>
       ok: false,
       error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
     });
+  }
+
+  // AUTHZ-SCOPE-1: convidar uma pessoa não lhe concede autoridade comercial.
+  if (containsReservedCommercialPermission(parsed.data.permissions)) {
+    return res.status(422).json({ ok: false, error: COMMERCIAL_PERMISSION_NOT_GRANTABLE });
   }
 
   try {

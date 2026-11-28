@@ -45,32 +45,35 @@ export default function AgentSelect({
     <div
       className={
         inline
-          ? "w-full sm:w-[300px]"
+          ? "w-full min-w-0 sm:w-[260px] sm:max-w-full"
           : "rounded-3xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20"
       }
     >
       <div className="flex flex-col gap-2">
         <label
           id="agent-label"
-          className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+          className={inline ? "sr-only" : "text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"}
         >
           Agente
         </label>
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger
             aria-labelledby="agent-label"
-            className={`w-full whitespace-nowrap border-white/10 bg-surface-strong/70 text-foreground shadow-lg shadow-black/20 ${
+            className={`w-full min-w-0 whitespace-normal text-left border-white/10 bg-surface-strong/70 text-foreground shadow-lg shadow-black/20 ${
               inline ? "h-10 rounded-xl" : ""
             }`}
           >
-            <SelectValue placeholder="Selecione um agente" />
+            <span className="min-w-0 flex-1 truncate"><SelectValue placeholder="Selecione um agente" /></span>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            style={{ width: "var(--radix-select-trigger-width)", minWidth: 0, maxWidth: "calc(100vw - 2rem)", maxHeight: "var(--radix-select-content-available-height)" }}
+            className="[&_[data-radix-select-viewport]]:max-h-[min(50dvh,var(--radix-select-content-available-height))]"
+          >
             {agents.length === 0 && (
-              <SelectItem disabled value="__empty">
+              <SelectItem disabled value="__empty" className="min-w-0 whitespace-normal break-words">
                 {isLoading
                   ? "Carregando..."
-                  : error ?? "Nenhum agente assinado no marketplace"}
+                  : error ?? "Nenhum agente disponível neste workspace."}
               </SelectItem>
             )}
             {agents.map((agent) => {
@@ -78,7 +81,7 @@ export default function AgentSelect({
                 ? ` - R$ ${(agent.pricing.perRunCents / 100).toFixed(2)}/run`
                 : "";
               return (
-                <SelectItem key={agent.id} value={agent.id}>
+                <SelectItem key={agent.id} value={agent.id} className="min-w-0 whitespace-normal break-words pr-8">
                   {getDisplayAgentName(agent)}
                   {pricingText}
                 </SelectItem>
@@ -86,6 +89,11 @@ export default function AgentSelect({
             })}
           </SelectContent>
         </Select>
+        {status === "ready" && agents.length === 0 ? (
+          <a href="/self-service#marketplace-assinaturas" className="text-xs text-accent underline-offset-2 hover:underline">
+            Ver agentes no Self-service
+          </a>
+        ) : null}
         {value && (
           <div className="space-y-2">
             {showPlaybook ? (

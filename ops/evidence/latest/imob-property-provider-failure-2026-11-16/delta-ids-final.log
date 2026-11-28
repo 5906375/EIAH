@@ -1,0 +1,55 @@
+{"level":30,"time":"2026-11-16T12:41:08.366Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+TAP version 13
+{"level":30,"time":"2026-11-16T12:41:08.367Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.371Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":5,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_success","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.371Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.371Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.373Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":2,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_success","msg":"llm.completion.success"}
+# Subtest: runtime: rate limit e transitório podem recuperar com a mesma policy; sucesso mantém conteúdo e uso
+ok 1 - runtime: rate limit e transitório podem recuperar com a mesma policy; sucesso mantém conteúdo e uso
+  ---
+  duration_ms: 8.852267
+  type: 'test'
+  ...
+# Subtest: IDs: generateText mantém completion e referência legada, sem inventar request ID do provider
+ok 2 - IDs: generateText mantém completion e referência legada, sem inventar request ID do provider
+  ---
+  duration_ms: 85.000194
+  type: 'test'
+  ...
+# Subtest: IDs: executor e capacidade preservam chave do breakdown; ausência bloqueia medição explicitamente sem fallback
+ok 3 - IDs: executor e capacidade preservam chave do breakdown; ausência bloqueia medição explicitamente sem fallback
+  ---
+  duration_ms: 70.895367
+  type: 'test'
+  ...
+{"level":30,"time":"2026-11-16T12:41:08.373Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.373Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.373Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":0,"traceId":"diagnostic-test-correlation","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.518Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.518Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.520Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":2,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_first","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.521Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.521Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.522Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":1,"traceId":"diagnostic-test-correlation","completionId":"completion_synthetic","providerRequestId":"req_synthetic_second","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.522Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.522Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.523Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":1,"traceId":"diagnostic-test-correlation","providerRequestId":"req_synthetic_second","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.524Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.524Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.525Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":1,"msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.525Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.526Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":30,"time":"2026-11-16T12:41:08.527Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4o-mini","latencyMs":2,"traceId":"diagnostic-test-correlation","msg":"llm.completion.success"}
+{"level":30,"time":"2026-11-16T12:41:08.527Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","traceId":"diagnostic-test-correlation","msg":"llm.completion.start"}
+{"level":30,"time":"2026-11-16T12:41:08.528Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","timeoutMs":15000,"traceId":"diagnostic-test-correlation","retries":3,"baseDelayMs":0,"maxDelayMs":0,"backoffFactor":1.6,"jitterRatio":0,"msg":"llm.completion.retry_config"}
+{"level":50,"time":"2026-11-16T12:41:08.530Z","service":"eiah","env":"development","component":"llm","provider":"openai","model":"gpt-4.1","latencyMs":3,"traceId":"diagnostic-test-correlation","failure":{"provider":"openai","model":"gpt-4.1","category":"financial_quota","retryable":false,"interventionRequired":true,"code":"credit_balance_exhausted","providerType":"insufficient_quota","httpStatus":200,"traceId":"diagnostic-test-correlation"},"msg":"llm.completion.error"}
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 201.580956

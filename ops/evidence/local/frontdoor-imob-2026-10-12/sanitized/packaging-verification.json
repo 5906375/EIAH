@@ -1,0 +1,119 @@
+{
+  "baseHead": "f093ba04f29d121057557ede0d56b10532697632",
+  "branch": "fix/imob-crm-write-authorization",
+  "commitA": "e8c32435705802a5644826d2122ea15615e4c0a5",
+  "commitB": "6905a4772e01126dc181b3802c50ef90979d92e6",
+  "initial": {
+    "modified": 21,
+    "untrackedFiles": 32,
+    "stashes": 16,
+    "stagedFiles": 0
+  },
+  "gatePackage": {
+    "files": [
+      ".github/workflows/ci-unit-suite-manual-informative.yml",
+      "package.json",
+      "scripts/ci/unitSuiteBaseline.ts",
+      "scripts/ci/unitSuiteDecision.ts",
+      "scripts/ci/unitSuiteGate.ts",
+      "scripts/ci/unitSuiteInventory.ts",
+      "scripts/ci/unitSuiteNodeEvents.ts",
+      "scripts/ci/unitSuiteReporter.mjs",
+      "scripts/ci/unitSuiteVerdict.ts",
+      "scripts/tests/unitSuiteBaseline.test.ts",
+      "scripts/tests/unitSuiteDecision.test.ts",
+      "scripts/tests/unitSuiteGate.test.ts",
+      "scripts/tests/unitSuiteInventory.test.ts",
+      "scripts/tests/unitSuiteNodeEvents.test.ts",
+      "scripts/tests/unitSuiteReporter.test.ts",
+      "scripts/tests/unitSuiteVerdict.test.ts",
+      "scripts/unit-tests-manifest.txt"
+    ],
+    "manifestFiles": 211,
+    "packageScriptChanged": "check:orphan-tests:unit",
+    "knownSecretScan": "PASS",
+    "patternFindings": [],
+    "stagedDiffSha256": "1e99c311f70b8a154885ba1d100528b4b7d4628eec26a4852491e04cf56b9789",
+    "stagedFilesSha256": {
+      ".github/workflows/ci-unit-suite-manual-informative.yml": "813f06be25bb0c998308e1f0c3cd5150514782de8050f9dc8c5cb15d931af6cf",
+      "package.json": "1f1a8d4dd72a954d3668c66c7e643b4869cc37cefb4746a781878bea074d2b9b",
+      "scripts/ci/unitSuiteBaseline.ts": "012bb8233844ee592827aab4357dcdf20ff397eeb318deac8cac6c21cb703e06",
+      "scripts/ci/unitSuiteDecision.ts": "d29d9b70936ad885731fa32dd72031cbb47fa0b80300862175d7fa83c9fd5fca",
+      "scripts/ci/unitSuiteGate.ts": "5f9d9cbb521dfa338fcb675ad5114bf6664b4c9d031f24771b377f1d9367a1b4",
+      "scripts/ci/unitSuiteInventory.ts": "357b004903c3c3ea69ae02220a527f7e1fcbf9756fae2a0af5a017e2803d4368",
+      "scripts/ci/unitSuiteNodeEvents.ts": "4bad88763ca9eeb8c15637b83e70f9f66c58da8fa736c06e5d87e336d22c030e",
+      "scripts/ci/unitSuiteReporter.mjs": "07a3fa4b469c7cefd19ba5bdea361b608557c28f8ff23e3586222df12d5ab2ab",
+      "scripts/ci/unitSuiteVerdict.ts": "3945bf05ccba53768cb8b31861c162295faea6bf6097088340ef9f3ed25feb35",
+      "scripts/tests/unitSuiteBaseline.test.ts": "7c44c05c06946cb6216898a579148367eefb2dfc439aeb1e5f10080f95e6a20a",
+      "scripts/tests/unitSuiteDecision.test.ts": "7a6be2624401f810976d3308d7d4734806e657c2e5ca19203344c53de5d6f74a",
+      "scripts/tests/unitSuiteGate.test.ts": "8f628bcd8b3d7f18398b0eea0d251c481d74a712e949e6da34476762ba91df10",
+      "scripts/tests/unitSuiteInventory.test.ts": "48b292f312b59a9660b3cd49ffefc7b494267945ed5857b0ad9506b61e8079f0",
+      "scripts/tests/unitSuiteNodeEvents.test.ts": "43a72a16e21aebf4e1760ae2dedc5de7ba2d235f1cd2cae1a8afa7aac4dbbe16",
+      "scripts/tests/unitSuiteReporter.test.ts": "d393b27fe6ce936fc1ae372ddb409184380cd30dc951867338ea59d43f53c927",
+      "scripts/tests/unitSuiteVerdict.test.ts": "fff8a418995ee008e79b33c80a47cad04031f3bf141a155a4ba7fb9deb85c1a2",
+      "scripts/unit-tests-manifest.txt": "f8f56983e5d245068fdf7a83a469475c89e8cdeadba4a08a947a616137ec9221"
+    }
+  },
+  "specialistPackage": {
+    "files": [
+      "apps/api/src/routes/imob.ts",
+      "apps/api/src/services/agents.ts",
+      "apps/api/src/services/imob/crm/imobCrmBusinessRead.ts",
+      "apps/api/src/services/imob/crm/imobCrmLegacyResolverCompat.ts",
+      "apps/api/src/services/imob/crm/imobCrmOperationalCase.ts",
+      "apps/api/src/services/imob/crm/imobCrmOperationalResolverShared.ts",
+      "apps/api/src/services/imob/imobConversationContract.ts",
+      "apps/api/src/services/imob/imobSpecialistBridge.ts",
+      "apps/api/src/tests/agents-public-view.contract.test.ts",
+      "apps/api/src/tests/imob-crm-resolver.test.ts",
+      "apps/api/src/tests/imob-cross-surface-regression.test.ts",
+      "apps/api/src/tests/imob-owner-blocker-consult.test.ts",
+      "apps/api/src/tests/imob-specialist-bridge.test.ts",
+      "apps/web/src/features/imob/ImobChatWidgets.test.tsx",
+      "apps/web/src/features/imob/ImobChatWidgets.tsx",
+      "apps/web/src/lib/api.ts"
+    ],
+    "approvedPatchExactMatch": true,
+    "workingTreePreserved": true,
+    "knownSecretScan": "PASS",
+    "diffSha256": "7c4319fad84c48dda82ea96cce813757f479b092e38d73857b2a602582980150"
+  },
+  "hooks": {
+    "customHooksPath": false,
+    "activeCommitHooks": []
+  },
+  "checks": {
+    "approvedPackageChecksums": "PASS",
+    "workingTreeOriginalHashesBeforeEvidence": "PASS",
+    "stashes": "PASS",
+    "cachedWhitespaceA": "PASS",
+    "cachedWhitespaceB": "PASS",
+    "realSuiteRun": false,
+    "remoteOperations": false,
+    "sanitizedEvidenceSecretScan": "PASS",
+    "evidenceIndex": {
+      "status": "PASS",
+      "tests": 8,
+      "passed": 8,
+      "refsChecked": 654
+    }
+  },
+  "excludedOriginalEvidence": [
+    "admin-review-queue.png",
+    "authenticated-frontdoor.png",
+    "browser-check-source.txt",
+    "disposable-environment-results.json",
+    "disposable-environment.md",
+    "fixture-source.txt",
+    "handoff-pack-probe-source.txt",
+    "local-access.png",
+    "local-admin-results.json",
+    "local-admin.md",
+    "login-diagnosis.md",
+    "report.md",
+    "results.json",
+    "selected-tests.tap",
+    "specialist-states.png"
+  ],
+  "exclusionReason": "Originals retained locally. Only allowlisted aggregate derivatives and scrubbed test logs are versioned; screenshots, raw DB results, local paths and operational infrastructure details are omitted."
+}

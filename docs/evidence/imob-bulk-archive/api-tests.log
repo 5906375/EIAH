@@ -1,0 +1,160 @@
+TAP version 13
+# Subtest: IMOB_CRM mutation service creates owners with workspace scope and audit event
+ok 1 - IMOB_CRM mutation service creates owners with workspace scope and audit event
+  ---
+  duration_ms: 2.836165
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service updates leads inside workspace and records audit
+ok 2 - IMOB_CRM mutation service updates leads inside workspace and records audit
+  ---
+  duration_ms: 35.843874
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service persists conversational lead case with audit trail
+ok 3 - IMOB_CRM mutation service persists conversational lead case with audit trail
+  ---
+  duration_ms: 3.638479
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service skips duplicate shadow execution for identical lead state
+ok 4 - IMOB_CRM mutation service skips duplicate shadow execution for identical lead state
+  ---
+  duration_ms: 1.070101
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service dedupes and preserves market scan origin before property creation
+ok 5 - IMOB_CRM mutation service dedupes and preserves market scan origin before property creation
+  ---
+  duration_ms: 3.33294
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service dedupes property by market scan origin even without externalPropertyRef
+ok 6 - IMOB_CRM mutation service dedupes property by market scan origin even without externalPropertyRef
+  ---
+  duration_ms: 1.531554
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service records auditable owner merge when reusing existing owner by dedupe
+ok 7 - IMOB_CRM mutation service records auditable owner merge when reusing existing owner by dedupe
+  ---
+  duration_ms: 1.591475
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service keeps property conversion idempotent on scan reconfirmation in the same thread
+ok 8 - IMOB_CRM mutation service keeps property conversion idempotent on scan reconfirmation in the same thread
+  ---
+  duration_ms: 1.509843
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service keeps owner capture replay formally idempotent in the same thread
+ok 9 - IMOB_CRM mutation service keeps owner capture replay formally idempotent in the same thread
+  ---
+  duration_ms: 1.054869
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service records dedupe merge only once on owner replay in the same thread
+ok 10 - IMOB_CRM mutation service records dedupe merge only once on owner replay in the same thread
+  ---
+  duration_ms: 1.324988
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service keeps linked lead context after property capture success
+ok 11 - IMOB_CRM mutation service keeps linked lead context after property capture success
+  ---
+  duration_ms: 1.864827
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service inherits lead context from latest thread case during property capture
+ok 12 - IMOB_CRM mutation service inherits lead context from latest thread case during property capture
+  ---
+  duration_ms: 0.951287
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service preserves owner context in returned caseContext after property save
+ok 13 - IMOB_CRM mutation service preserves owner context in returned caseContext after property save
+  ---
+  duration_ms: 0.888922
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service propagates ownerResponsible from resolved turn when available
+ok 14 - IMOB_CRM mutation service propagates ownerResponsible from resolved turn when available
+  ---
+  duration_ms: 1.02451
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service keeps approval event actor/evidence when updating case
+ok 15 - IMOB_CRM mutation service keeps approval event actor/evidence when updating case
+  ---
+  duration_ms: 0.545304
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service creates explicit terminal event once when case enters terminal state
+ok 16 - IMOB_CRM mutation service creates explicit terminal event once when case enters terminal state
+  ---
+  duration_ms: 0.729917
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service blocks terminal transition without ownerResponsible
+ok 17 - IMOB_CRM mutation service blocks terminal transition without ownerResponsible
+  ---
+  duration_ms: 0.199329
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service assigns owner manually and records a single owner_assigned event
+ok 18 - IMOB_CRM mutation service assigns owner manually and records a single owner_assigned event
+  ---
+  duration_ms: 0.896129
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service keeps owner assignment idempotent on retry
+ok 19 - IMOB_CRM mutation service keeps owner assignment idempotent on retry
+  ---
+  duration_ms: 1.186455
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service rolls back owner assignment when owner_assigned event creation fails
+ok 20 - IMOB_CRM mutation service rolls back owner assignment when owner_assigned event creation fails
+  ---
+  duration_ms: 0.745923
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service blocks manual overwrite of an existing ownerResponsible
+ok 21 - IMOB_CRM mutation service blocks manual overwrite of an existing ownerResponsible
+  ---
+  duration_ms: 0.214046
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM mutation service rejects assignResponsibleActor when canonical responsible actor contract is invalid
+ok 22 - IMOB_CRM mutation service rejects assignResponsibleActor when canonical responsible actor contract is invalid
+  ---
+  duration_ms: 0.690373
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM archiveProperty arquiva só o imóvel pedido (com ou sem proprietário), audita o operador e não toca o proprietário
+ok 23 - IMOB_CRM archiveProperty arquiva só o imóvel pedido (com ou sem proprietário), audita o operador e não toca o proprietário
+  ---
+  duration_ms: 1.151191
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM archiveProperty bloqueia imóvel com caso ou locação ligados e não deixa rastro de escrita
+ok 24 - IMOB_CRM archiveProperty bloqueia imóvel com caso ou locação ligados e não deixa rastro de escrita
+  ---
+  duration_ms: 0.618058
+  type: 'test'
+  ...
+# Subtest: IMOB_CRM archiveProperty respeita tenant/workspace e é idempotente: outro escopo e repetição retornam not_found sem escrever
+ok 25 - IMOB_CRM archiveProperty respeita tenant/workspace e é idempotente: outro escopo e repetição retornam not_found sem escrever
+  ---
+  duration_ms: 0.516071
+  type: 'test'
+  ...
+1..25
+# tests 25
+# suites 0
+# pass 25
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 632.71038

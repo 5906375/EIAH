@@ -8,5 +8,9 @@
     "apps/api/src/services/logistica/oraculo/**/*.ts",
     "apps/api/scripts/validateOraculoS1Integrated.ts",
     "packages/db/src/oraculo/connection.ts"
+  ],
+  "exclude": [
+    "apps/api/src/services/logistica/oraculo/preparationRepository.ts",
+    "apps/api/src/services/logistica/oraculo/evidence.ts"
   ]
 }

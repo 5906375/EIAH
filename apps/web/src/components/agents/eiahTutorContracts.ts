@@ -42,7 +42,7 @@ export type ResponsePatternV1 = {
 export type KnowledgeUnitV1 = {
   id: string;
   title: string;
-  vertical: "core" | "imob" | "legal";
+  vertical: "core" | "imob" | "logistica" | "legal";
   topic: string;
   problemItSolves: string;
   canonicalAnswer: string;

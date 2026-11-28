@@ -29,6 +29,12 @@ const policies: Array<Record<string, any>> = [];
 const versions: Array<Record<string, any>> = [];
 const tools: Array<Record<string, any>> = [];
 const configuredScopes: string[] = [];
+const marketplaceAgents: Array<Record<string, any>> = [];
+const audits: Array<Record<string, any>> = [];
+let auditFails = false;
+// Autoridade individual simulada (membership ativa + designação `holder`), injetada pelo seam de teste do serviço.
+let commercialHolders = new Set<string>();
+let marketplaceReadFails = false;
 
 const actionPrisma = {
   actionRegistry: {
@@ -53,6 +59,19 @@ const actionPrisma = {
       const count = versions.length - retained.length;
       versions.splice(0, versions.length, ...retained);
       return { count };
+    },
+  },
+  marketplaceItem: {
+    findMany: async () => {
+      if (marketplaceReadFails) throw new Error("marketplace read failure");
+      return marketplaceAgents;
+    },
+  },
+  guardrailAuditLedger: {
+    create: async ({ data }: any) => {
+      if (auditFails) throw new Error("audit ledger unavailable");
+      audits.push(data);
+      return data;
     },
   },
   tenantActionPolicy: {
@@ -111,6 +130,7 @@ function fakeEnforceTenant(
 
   const scopeByToken: Record<string, Set<string>> = {
     "actions-token": new Set([ACTIONS_SCOPE]),
+    "service-token": new Set([ACTIONS_SCOPE]),
     "tools-token": new Set([TOOLS_SCOPE]),
     "no-scope-token": new Set(),
   };
@@ -123,10 +143,11 @@ function fakeEnforceTenant(
   }
 
   req.authContext = {
-    tokenId: token,
+    // tokenId é o id do registro do token, nunca o valor do token
+    tokenId: `token-record-${token.length}`,
     tenantId: TENANT_ID,
     workspaceId: WORKSPACE_ID,
-    userId: "user-a",
+    userId: token === "service-token" ? (undefined as unknown as string) : "user-a",
   };
   req.prisma = toolPrisma;
   req.testScopes = scopes;
@@ -221,6 +242,12 @@ before(async () => {
     import("../routes/tools"),
   ]);
 
+  const authority = await import("../services/marketplaceSubscriptionAuthority");
+  authority.subscriptionAuthorityDeps.forClient = () => ({
+    readMembership: async (actor) => (actor.userId && commercialHolders.has(actor.userId) ? { status: "active" } : null),
+    readDesignation: async (actor) =>
+      actor.userId && commercialHolders.has(actor.userId) ? { id: "cad_unit_holder", limits: { allowedScopes: ["read", "execute"], maxValidityDays: 90 } } : null,
+  });
   actionsRouter = createActionsRouter({
     prisma: actionPrisma as any,
     enforceTenant: fakeEnforceTenant as any,
@@ -233,6 +260,11 @@ before(async () => {
 });
 
 beforeEach(() => {
+  audits.length = 0;
+  auditFails = false;
+  commercialHolders = new Set<string>();
+  marketplaceAgents.length = 0;
+  marketplaceReadFails = false;
   policies.length = 0;
   versions.length = 0;
   tools.length = 0;
@@ -462,4 +494,86 @@ test("authorized Tools admin creates and lists only its own tenant contracts", a
     list.body.map((entry: { tenantId: string }) => entry.tenantId),
     [TENANT_ID],
   );
+});
+
+test("AUTHZ-SCOPE-1: override nunca concede o escopo comercial; política de agente exige a autoridade individual, não só actions.admin", async () => {
+  marketplaceAgents.push({ name: "Partner Bot" });
+  const override = (body: unknown, token = "actions-token") =>
+    invoke({ router: actionsRouter, method: "post", routePath: "/override", token, body });
+
+  // o escopo comercial como política: nunca por aqui, nem para quem tem autoridade comercial
+  commercialHolders.add("user-a");
+  for (const actionName of ["marketplace.subscribe", " Marketplace.Subscribe "]) {
+    const result = await override({ actionName, allowed: true });
+    assert.equal(result.status, 409, actionName);
+    assert.equal(result.body.error.code, "COMMERCIAL_AUTHORITY_REQUIRED", actionName);
+  }
+  assert.equal(policies.length, 0);
+
+  // actions.admin sem autoridade individual: nenhuma política de agente (canônico ou do Marketplace)
+  commercialHolders.clear();
+  for (const actionName of ["MKT", "mkt", "Fin-Nexus", "partner bot", "PARTNER-BOT"]) {
+    const result = await override({ actionName, allowed: true });
+    assert.equal(result.status, 403, actionName);
+    assert.equal(result.body.error.code, "MARKETPLACE_SUBSCRIBE_FORBIDDEN", actionName);
+    assert.equal(result.body.error.reasonCode, "MEMBERSHIP_NOT_FOUND", actionName);
+  }
+  assert.equal(policies.length, 0, "nenhuma política comercial foi criada");
+  assert.ok(audits.every((entry) => entry.eventType === "actions.override.commercial.denied"), "as negações são registradas");
+  assert.equal(audits.length, 5);
+
+  // token de serviço (sem pessoa) nunca se apresenta como decisor humano, mesmo com actions.admin
+  const service = await override({ actionName: "MKT", allowed: true }, "service-token");
+  assert.equal(service.status, 403);
+  assert.equal(service.body.error.reasonCode, "IDENTITY_REQUIRED");
+  assert.equal(policies.length, 0);
+
+  // combinação: política já negada não é reaberta por quem só tem actions.admin
+  policies.push({ id: "policy-x", tenantId: TENANT_ID, workspaceId: WORKSPACE_ID, actionName: "MKT", allowed: false, maxVersion: null });
+  assert.equal((await override({ actionName: "MKT", allowed: true })).status, 403);
+  assert.equal(policies[0].allowed, false, "o bloqueio explícito segue valendo");
+
+  // com a autoridade individual vigente: a decisão é registrada ANTES e só então a política muda
+  commercialHolders.add("user-a");
+  audits.length = 0;
+  const authorized = await override({ actionName: "MKT", allowed: true });
+  assert.equal(authorized.status, 200);
+  assert.equal(policies[0].allowed, true);
+  assert.deepEqual(audits.map((entry) => entry.eventType), ["actions.override.commercial.authorized"]);
+  assert.equal(audits[0].metadata.decidedBy, "user-a");
+  assert.equal(audits[0].metadata.target.designationId, "cad_unit_holder");
+  assert.equal(audits[0].tenantId, TENANT_ID);
+  assert.equal(audits[0].workspaceId, WORKSPACE_ID);
+  assert.equal(JSON.stringify(audits).includes("actions-token"), false, "nenhum token no registro");
+  // falha do registro: nada muda
+  policies[0].allowed = false;
+  auditFails = true;
+  const blocked = await override({ actionName: "MKT", allowed: true });
+  assert.equal(blocked.status, 503);
+  assert.equal(blocked.body.error.code, "COMMERCIAL_DECISION_RECORD_UNAVAILABLE");
+  assert.equal(policies[0].allowed, false);
+  auditFails = false;
+
+  // negar continua permitido (revogar nunca amplia autoridade) e ações comuns não são afetadas
+  commercialHolders.clear();
+  assert.equal((await override({ actionName: "MKT", allowed: false })).status, 200);
+  assert.equal((await override({ actionName: "ping", allowed: true })).status, 200);
+  assert.equal(policies.find((entry) => entry.actionName === "ping")?.allowed, true);
+});
+
+test("AUTHZ-SCOPE-1: override falha fechado quando não consegue verificar o efeito comercial", async () => {
+  marketplaceReadFails = true;
+  const result = await invoke({
+    router: actionsRouter,
+    method: "post",
+    routePath: "/override",
+    token: "actions-token",
+    body: { actionName: "ping", allowed: true },
+  });
+  assert.equal(result.status, 503);
+  assert.equal(result.body.error.code, "COMMERCIAL_POLICY_CHECK_UNAVAILABLE");
+  assert.equal(policies.length, 0);
+  // sem a verificação, negar ainda funciona
+  const deny = await invoke({ router: actionsRouter, method: "post", routePath: "/override", token: "actions-token", body: { actionName: "ping", allowed: false } });
+  assert.equal(deny.status, 200);
 });

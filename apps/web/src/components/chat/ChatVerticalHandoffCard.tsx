@@ -1,5 +1,5 @@
 import type { ChatVerticalHandoffResult } from "@/lib/api";
-import { VERTICAL_HANDOFF_CAPABILITY_LABELS, verticalHandoffBlockLabel } from "@/components/agents/verticalHandoffEngine";
+import { VERTICAL_HANDOFF_CAPABILITY_LABELS, verticalDisplayName, verticalHandoffBlockLabel } from "@/components/agents/verticalHandoffEngine";
 
 /**
  * Card do handoff para vertical na mesma conversa (`chat.vertical_handoff.v2`,
@@ -23,7 +23,7 @@ export function ChatVerticalHandoffCard({ result }: { result: ChatVerticalHandof
       aria-label="Vertical indisponível nesta conversa"
       className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-50"
     >
-      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]">IMOB indisponível</span>
+      <span className="rounded-full border border-amber-300/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]">{verticalDisplayName(result.verticalId ?? "imob")} indisponível</span>
       <span>{verticalHandoffBlockLabel(result.reasonCode)}</span>
     </section>
   );

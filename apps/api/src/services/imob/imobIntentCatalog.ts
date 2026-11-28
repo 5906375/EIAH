@@ -702,10 +702,30 @@ export function findImobConversationalIntentById(intentId: string): ImobConversa
   return IMOB_CONVERSATIONAL_INTENT_CATALOG.find((item) => item.intentId === intentId) ?? null;
 }
 
+// Artigos e a cópula "é" não carregam a intenção: "qual o status desse caso" e "qual status desse caso" são o mesmo pedido.
+const FUNCTION_WORDS = new Set(["o", "a", "os", "as", "um", "uma", "e"]);
+
+function contentTokens(text: string): string[] {
+  return normalizeText(text)
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token && !FUNCTION_WORDS.has(token));
+}
+
+/** Frase do catálogo contida, em sequência, nos termos de conteúdo da mensagem (insensível a artigos). */
+function containsContentPhrase(text: string, phrase: string): boolean {
+  const wanted = contentTokens(phrase);
+  if (wanted.length === 0) return false;
+  const have = contentTokens(text);
+  for (let index = 0; index + wanted.length <= have.length; index += 1) {
+    if (wanted.every((token, offset) => have[index + offset] === token)) return true;
+  }
+  return false;
+}
+
 export function matchImobConversationalIntents(input: string): ImobConversationalIntentDefinition[] {
   const normalized = normalizeText(input);
   const matches = IMOB_CONVERSATIONAL_INTENT_CATALOG.filter((intent) =>
-    intent.triggerPhrases.some((phrase) => containsWholePhrase(normalized, phrase)),
+    intent.triggerPhrases.some((phrase) => containsWholePhrase(normalized, phrase) || containsContentPhrase(normalized, phrase)),
   );
   return matches.length > 0 ? matches : [];
 }

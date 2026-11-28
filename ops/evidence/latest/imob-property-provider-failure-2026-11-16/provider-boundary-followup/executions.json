@@ -1,0 +1,63 @@
+[
+  {
+    "label": "boundary",
+    "command": [
+      "pnpm",
+      "check:provider-boundary"
+    ],
+    "log": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/boundary.log",
+    "startedAt": "2026-11-16T16:04:32.405537+00:00",
+    "finishedAt": "2026-11-16T16:04:39.197351+00:00",
+    "exitCode": 1
+  },
+  {
+    "label": "tests",
+    "command": [
+      "pnpm",
+      "test:llm-provider-failure"
+    ],
+    "log": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/tests.log",
+    "startedAt": "2026-11-16T16:04:32.408730+00:00",
+    "finishedAt": "2026-11-16T16:04:48.394221+00:00",
+    "exitCode": 0
+  },
+  {
+    "label": "boundary-outside",
+    "command": [
+      "pnpm",
+      "check:provider-boundary"
+    ],
+    "env": {},
+    "log": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/boundary-outside.log",
+    "startedAt": "2026-11-16T16:12:24.092252+00:00",
+    "finishedAt": "2026-11-16T16:12:25.431680+00:00",
+    "exitCode": 0
+  },
+  {
+    "label": "registration",
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/checkOrphanTests.ts"
+    ],
+    "env": {
+      "ORPHAN_TESTS_COMPARE_REF": "aee16965f6de0829a105ce4a17a856851e2ad860"
+    },
+    "log": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/registration.log",
+    "startedAt": "2026-11-16T16:12:24.097033+00:00",
+    "finishedAt": "2026-11-16T16:12:25.432038+00:00",
+    "exitCode": 0
+  },
+  {
+    "label": "packaging",
+    "command": [
+      "node",
+      "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/packaging-check.mjs"
+    ],
+    "log": "ops/evidence/latest/imob-property-provider-failure-2026-11-16/provider-boundary-followup/packaging.log",
+    "startedAt": "2026-11-16T16:13:12.761626+00:00",
+    "finishedAt": "2026-11-16T16:13:13.192582+00:00",
+    "exitCode": 0
+  }
+]

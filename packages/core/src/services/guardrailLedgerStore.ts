@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Prisma, type PrismaClient } from "@repo/db";
+import { Prisma, type PrismaClient, type TransactableClient } from "@repo/db";
 
 export type GuardrailSeverity = "info" | "warn" | "error";
 
@@ -60,7 +60,7 @@ export async function recordGuardrailLedger(params: {
 }
 
 export async function recordGuardrailAudit(params: {
-  prisma: PrismaClient;
+  prisma: TransactableClient;
   tenantId: string;
   workspaceId?: string | null;
   runId?: string | null;

@@ -282,3 +282,40 @@ test("ADR-011 §2.4: quem pode ativar recebe a oferta de pedir a liberação; s�
   assert.equal(forbidden?.verticalActivation?.status, "failed");
   assert.match(forbidden?.content ?? "", /proprietário do tenant/);
 });
+
+test("Logística reusa a ativação e exige confirmação vinculada à vertical", () => {
+  const pending = { status: "proposed" as const, verticalId: "log" as const, registryVersion: "vr1-log" };
+  assert.deepEqual(resolveVerticalActivationStep("ativar Logística & Comex", null), { step: "preview", verticalId: "log" });
+  assert.equal(resolveVerticalActivationStep("ativar IMOB e Logística", null), null);
+  assert.equal(resolveVerticalActivationStep("sim", pending), null);
+  assert.equal(resolveVerticalActivationStep("Confirmar ativação do IMOB", pending), null);
+  assert.deepEqual(resolveVerticalActivationStep("Confirmar ativação de Logística", pending), { step: "confirm", verticalId: "log", registryVersion: "vr1-log" });
+  const view = describeActivationPreview({ status: "available", verticalId: "log", product: "LOGISTICA", registryVersion: "vr1-log", effects: ["sem ações operacionais"] });
+  assert.equal(view.activation.verticalId, "log");
+  assert.equal(view.quickReplies[0], "Confirmar ativação de Logística");
+  assert.equal(view.content.includes("IMOB"), false);
+});
+
+test("pedido de liberação logística usa a mesma API e preserva a identidade da proposta", async () => {
+  const result = await enrichLauncherDecisionWithVerticalActivation({ verticalActivationRequest: { step: "request_access" as const, verticalId: "log" as const } }, {
+    preview: async () => { throw new Error("unexpected preview"); },
+    confirm: async () => { throw new Error("unexpected confirm"); },
+    requestAccess: async (body) => {
+      assert.deepEqual(body, { vertical: "LOGISTICA", channel: "chat" });
+      return { ok: true, data: { outcome: "requested", vertical: "LOGISTICA", status: "aguardando_humano", usage: "blocked", revocationMode: null, requestedAt: null, decidedAt: null } } as any;
+    },
+  });
+  assert.equal(result?.verticalActivation?.verticalId, "log");
+  assert.equal(result?.verticalActivation?.status, "access_requested");
+});
+
+test("o pedido logístico entra pelo engine existente do Front Door", async () => {
+  const decision = await resolveLauncherTurnDecision({
+    trimmedInput: "ativar logística", input: "ativar logística", routeIntent: "help",
+    proposalMode: false, isUnifiedEiah: true, eiahMode: "help", agentProfile: null,
+    catalogAgents: [], intentUnknown: false, confidence: 0.9,
+  });
+  assert.equal(decision?.kind, "vertical_activation_preview");
+  assert.deepEqual(decision?.verticalActivationRequest, { step: "preview", verticalId: "log" });
+  assert.equal(decision?.shouldCreateRun, false);
+});

@@ -111,3 +111,51 @@ test("legacy registry still accepts its existing policy-derived entitlement fact
   assert.equal(composed.registry.verticals.find((entry) => entry.id === "imob")?.status, "enabled");
   assert.equal(composed.governance.imob.entitlement, "allowed");
 });
+
+// ---------------------------------------------------------------------------------------------
+// P11 — o Front Door consulta uma capability somente leitura do IMOB (`crm.case.consult`). O acesso exige o handoff v2 E o
+// vertical.access.v1, ambos sobre os MESMOS fatos de servidor do registry; nenhum fato novo e nenhuma autorização de action.
+// ---------------------------------------------------------------------------------------------
+import { IMOB_CASE_CONSULT_CAPABILITY, buildImobVerticalAccessFacts, evaluateImobFrontDoorCapabilityAccess, type VerticalRegistryFacts } from "../services/chat/verticalRegistryComposition";
+
+const registryFacts = (over: Partial<VerticalRegistryFacts["imob"]> = {}): VerticalRegistryFacts => ({
+  scope, imob: { installationStatus: "active", entitled: true, agentsReady: true, userCanUse: true, usage: "full", ...over },
+});
+const consult = (over: Partial<VerticalRegistryFacts["imob"]> = {}, capability = IMOB_CASE_CONSULT_CAPABILITY) =>
+  evaluateImobFrontDoorCapabilityAccess(registryFacts(over), capability, "claim-test");
+
+test("P11 crm.case.consult: capability somente leitura declarada uma única vez e usada pelo registry e pelo contrato de acesso", () => {
+  const registry = composeVerticalRegistry(registryFacts()).registry.verticals.find((entry) => entry.id === "imob")!;
+  assert.deepEqual(registry.capabilities.find((entry) => entry.id === IMOB_CASE_CONSULT_CAPABILITY)?.allowedModes, ["read_only"]);
+  assert.deepEqual(IMOB_VERTICAL_ACCESS_CONTRACT_V1.capabilities.find((entry) => entry.id === IMOB_CASE_CONSULT_CAPABILITY)?.allowedModes, ["read_only"]);
+  assert.equal(consult().allowed, true);
+});
+
+test("P11 acesso do Front Door: nega fail-closed sem instalação ativa, sem permissão, sem direito de uso, sem agentes ou com uso bloqueado", () => {
+  for (const [label, over] of [
+    ["instalação ausente", { installationStatus: "missing" }], ["instalação inativa", { installationStatus: "inactive" }],
+    ["sem permissão imob.chat.use", { userCanUse: false }], ["sem direito de uso (REAL_ESTATE_CORE)", { entitled: false }],
+    ["agentes do produto não prontos", { agentsReady: false }], ["liberação bloqueada", { usage: "blocked" }],
+  ] as const) {
+    assert.equal(consult(over as never).allowed, false, label);
+  }
+  assert.equal(consult({}, "crm.forms").allowed, false, "capability de escrita não é concedida por consulta (modo read_only)");
+  assert.equal(consult({}, "capability.inexistente").allowed, false);
+});
+
+test("P11 acesso do Front Door: liberação somente leitura MANTÉM a consulta (e continua negando escrita)", () => {
+  assert.equal(consult({ usage: "read_only" }).allowed, true);
+  const composed = composeVerticalRegistry(registryFacts({ usage: "read_only" })).registry.verticals.find((entry) => entry.id === "imob")!;
+  assert.equal(composed.capabilities.some((entry) => entry.id === "crm.forms"), false);
+});
+
+test("P11 fatos do vertical.access.v1: derivados dos fatos do registry, sem inventar instalação nem permissão", () => {
+  const derived = buildImobVerticalAccessFacts(registryFacts());
+  assert.deepEqual(derived.installation, { ...scope, product: "IMOB", status: "active" });
+  assert.deepEqual(derived.workspacePermission, { key: "imob.chat.use", allowed: true });
+  assert.equal(buildImobVerticalAccessFacts(registryFacts({ installationStatus: "missing" })).installation, null);
+  assert.equal(buildImobVerticalAccessFacts(registryFacts({ userCanUse: false })).workspacePermission.allowed, false);
+  assert.equal(buildImobVerticalAccessFacts(registryFacts({ usage: undefined })).usage, "full");
+  // o resultado nunca é autorização de action
+  assert.equal(resolveVerticalAccess([IMOB_VERTICAL_ACCESS_CONTRACT_V1], { scope, verticalId: "imob", capabilityId: IMOB_CASE_CONSULT_CAPABILITY, mode: "read_only" }, derived).actionAuthorization, "not_evaluated");
+});

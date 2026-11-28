@@ -8,7 +8,7 @@ import {
   type ResolvedExperience,
 } from "../types/experienceResolverContract";
 
-type SessionDomain = "core" | "imob";
+type SessionDomain = "core" | "imob" | "logistica";
 
 type SessionEntitlements = {
   REAL_ESTATE_CORE: boolean;

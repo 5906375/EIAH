@@ -28,3 +28,31 @@
 
 ## Publicação
 Faça backup da raiz atual e envie esta árvore preservando os diretórios.
+
+## Piloto IMOB de vitrines gratuitas
+
+O cadastro é enviado pelo interessado à caixa `contato@eiah.ia.br`. A equipe da EIAH confirma as vagas e recebe dos selecionados o arquivo exportado em **Baixar rascunho para publicação**. Revise os anúncios e os contatos públicos com a imobiliária antes de publicar.
+
+Na raiz do repositório, gere a vitrine com o endereço aprovado.
+
+```bash
+node apps/site/scripts/publish-imob-pilot.mjs horizonte /caminho/vitrine-imob.json
+pnpm dlx wrangler@4.165.0 deploy --dry-run --config apps/site/wrangler.jsonc
+```
+
+O comando escreve a página em `apps/site/public/imob/horizonte/index.html`. Revise e inclua a página na versão do site a publicar. Depois do deploy do Worker `eiah-site`, a vitrine fica disponível em `https://eiah.ia.br/imob/horizonte/`. Use o mesmo endereço ao atualizar a página da imobiliária. O Wrangler confere o teto de dez vitrines no conjunto de arquivos do deploy.
+
+### Vitrines de exemplo e lista de espera
+
+Enquanto o produto não está pronto, as 10 vagas do piloto são ocupadas por **vitrines de exemplo**: imobiliárias fictícias em `https://eiah.ia.br/imob/exemplo-*/`, com aviso visível de exemplo, sem contatos e fora dos buscadores (`noindex`). Como as vagas estão cheias, a tela **Criar meu site** mostra "As vagas do piloto estão fechadas por enquanto" e troca o cadastro pela **lista de espera**, que chega à caixa `contato@eiah.ia.br` com o assunto "Lista de espera do piloto de vitrines gratuitas IMOB".
+
+```bash
+# regravar as 10 vitrines de exemplo (idempotente)
+node apps/site/scripts/publish-imob-example-sites.mjs
+
+# reabrir as vagas: remove as pastas exemplo-* e atualiza apps/site/public/imob/piloto-vagas.json
+node apps/site/scripts/publish-imob-pilot.mjs --remover-exemplos
+pnpm dlx wrangler@4.165.0 deploy --config apps/site/wrangler.jsonc
+```
+
+Depois de reabrir, avise por e-mail quem está na lista de espera. O endereço de uma vitrine de exemplo sempre começa com `exemplo-`, e esse prefixo é recusado para vitrines de clientes.

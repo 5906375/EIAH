@@ -1,3 +1,5 @@
+import { describeChatTurnFailure } from "./chatFailureCopy";
+import { formatImobStageLabel } from "@/features/imob/imobCommandCenterHelper";
 import React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -1086,7 +1088,7 @@ function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): Messag
     title: "Próximas ações da jornada",
     lines: [
       `Jornada: ${formatCanonicalJourneyType(caseContext.canonical.journeyType)}`,
-      `Etapa atual: ${caseContext.stage}`,
+      `Etapa atual: ${formatImobStageLabel(caseContext.stage)}`,
       ...(caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
     ],
     ctas: mergeRecommendedActionCtas(undefined, caseContext),
@@ -1202,6 +1204,7 @@ function isLikelyPhone(value: string) {
 }
 
 function normalizeCepValue(value: string) {
+  if (/[^\d\s-]/.test(value) || value.replace(/\D/g, "").length > 8) return value;
   const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 5) return digits;
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
@@ -2146,6 +2149,8 @@ const ImobChatPage: React.FC = () => {
   const [uploadingDocuments, setUploadingDocuments] = React.useState(false);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const structuredMessagesRef = React.useRef(messages);
+  structuredMessagesRef.current = messages;
   const [pendingExecution, setPendingExecution] = React.useState<PendingExecution | null>(null);
   const [activeThread, setActiveThread] = React.useState<{ id: string; label: string } | null>(null);
   const [activeAssistantMessageId, setActiveAssistantMessageId] = React.useState<string | null>(null);
@@ -3103,17 +3108,12 @@ const ImobChatPage: React.FC = () => {
         });
         await runExecutionFlow(executionPending);
       } catch (error) {
-        const message =
-          error instanceof ApiError
-            ? `${error.message} (${error.status})`
-            : error instanceof Error
-              ? error.message
-              : "Falha ao orquestrar mensagem";
+        const failure = describeChatTurnFailure(error, "turn", "Falha ao orquestrar mensagem");
         setState("blocked");
         const blockedMessage: ChatMessage = {
           id: makeId("assistant"),
           role: "assistant",
-          text: "Não consegui continuar essa solicitação agora.",
+          text: failure.text,
           thread: {
             id: operationThread.id,
             label: operationThread.label,
@@ -3127,10 +3127,10 @@ const ImobChatPage: React.FC = () => {
               label: operationThread.label,
               status: "blocked",
             },
-            lines: ["Identifiquei uma restrição de segurança para este passo."],
+            lines: failure.lines,
             risk: {
-              level: "high",
-              reason: message,
+              level: failure.level,
+              reason: failure.reason,
             },
           },
         };
@@ -3198,17 +3198,12 @@ const ImobChatPage: React.FC = () => {
         metadata: { intent: plan.intent, action: plan.action, source: "command-center" },
       });
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `${error.message} (${error.status})`
-          : error instanceof Error
-            ? error.message
-            : "Falha ao preparar ação direcionada";
+      const failure = describeChatTurnFailure(error, "directed", "Falha ao preparar ação direcionada");
       setState("blocked");
       const blockedMessage: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: "Não consegui preparar esta ação agora.",
+        text: failure.text,
         thread: {
           id: operationThread.id,
           label: operationThread.label,
@@ -3222,10 +3217,10 @@ const ImobChatPage: React.FC = () => {
             label: operationThread.label,
             status: "blocked",
           },
-          lines: ["Identifiquei uma restrição de segurança para este passo."],
+          lines: failure.lines,
           risk: {
-            level: "high",
-            reason: message,
+            level: failure.level,
+            reason: failure.reason,
           },
         },
       };
@@ -4521,7 +4516,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
+  const formOriginRef = reviewOriginRef.current.ref;
   const structuredForms = createImobStructuredForms(imobForms, {
+    getFormContextKey: () => `${reviewOriginRef.current.ref}:${reviewOriginRef.current.sequence}:${latestAssistantMessageRef.current?.id ?? ""}`,
+    isFormCurrent: (message) => formOriginRef === reviewOriginRef.current.ref
+      && structuredMessagesRef.current.some((item) => item.id === message.id && Boolean(item.form)),
     activeThreadId: activeThread?.id ?? null,
     appendMessage: (message) => appendMessage(message as ChatMessage),
     updateMessage: (messageId, patch) => updateMessageById(messageId, patch as Partial<ChatMessage>),
@@ -5622,6 +5621,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             <ImobChatWidgets
                               widget={message.widget}
                               onAction={(action) => handleWidgetAction(action, message.caseContext)}
+                              returnTo={typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : undefined}
                             />
                           ) : null}
 
@@ -5807,6 +5807,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               onSelectChange={structuredForms.handleSelectChange}
                               onAction={(target, actionId) => handlePresentationFormAction(target as ChatMessage, actionId)}
                               onAttachmentClick={() => setAttachmentMenuOpen(true)}
+                              onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
                             />
                           ) : null}
                         </div>

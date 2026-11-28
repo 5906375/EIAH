@@ -1,6 +1,8 @@
+import React from "react";
 import { ImobFormCard } from "./ImobFormCard";
 import type { ImobFrontDoorForms } from "./useImobFrontDoorForms";
 import type { StructuredMessage } from "./types";
+import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 
 /**
  * Parte do IMOB numa mensagem do front door: texto, formulário, card de
@@ -16,11 +18,18 @@ export function ImobFrontDoorPart({
   isLast: boolean;
 }) {
   const { imobForms, structuredForms } = frontDoor;
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  // O launcher só rola quando ele mesmo empilha a mensagem; a resposta da vertical chega depois (assíncrona). Quando a última
+  // mensagem traz um cartão de vertical, ela entra na área visível ao aparecer (inclusive ao restaurar a conversa).
+  React.useEffect(() => {
+    if (isLast && message.widget) rootRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <div className="flex w-full flex-col gap-3 text-sm text-foreground">
+    <div ref={rootRef} className="flex w-full flex-col gap-3 text-sm text-foreground">
       {message.text ? <p className="whitespace-pre-line leading-relaxed">{message.text}</p> : null}
+      {message.widget ? <ImobChatWidgets widget={message.widget} onAction={() => undefined} /> : null}
       {message.card ? (
-        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs">
+        <div className="px-3 py-2 text-xs">
           <p className="font-semibold uppercase tracking-[0.18em] text-muted-foreground">{message.card.title}</p>
           <ul className="mt-1 space-y-0.5">
             {message.card.lines.map((line, index) => (
@@ -46,6 +55,7 @@ export function ImobFrontDoorPart({
           state={imobForms}
           onSelectChange={structuredForms.handleSelectChange}
           onAction={(target, actionId) => structuredForms.handleStructuredFormAction(target, actionId)}
+          onBulkArchive={structuredForms.handlePropertyBulkArchiveEvent}
         />
       ) : null}
       {isLast && message.quickReplies?.length ? (
@@ -55,7 +65,7 @@ export function ImobFrontDoorPart({
               key={`${message.id}-reply-${option.id}`}
               type="button"
               onClick={() => option.onSelect?.()}
-              className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-left text-[13px] text-foreground transition hover:border-accent/60 hover:bg-accent/20"
+              className="min-h-[44px] px-3 py-1.5 text-left text-[13px] text-accent transition hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               {option.label}
             </button>

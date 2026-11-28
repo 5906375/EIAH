@@ -1,0 +1,13 @@
+Código de saída lido no shell de cada execução, e o que no próprio arquivo ao lado o corrobora.
+Os .log são a saída bruta das ferramentas (só o caminho local do repositório foi trocado por <repo>).
+
+execução                                            exit  corroboração no arquivo
+suíte focal web (5 arquivos)                         0    unit-tests.log: tests 241, pass 241, fail 0, nenhum "not ok"
+propertyBulkArchive.test.ts (após ajuste plural)     0    unit-tests-panel-after-plural-fix.log: tests 24, pass 24, fail 0
+imob-crm-mutation-service.test.ts (API)              0    api-tests.log: tests 25, pass 25, fail 0
+script visual permanente, via runner, 4 viewports    0    qa-runner.log imprime QA_EXIT=0; browser-results.json: 4 viewports "pass"
+build apps/web (vite build)                          0    build.log termina em "built in 6.16s"
+tsc --noEmit -p apps/web/tsconfig.json               2    typecheck.log: 64 diagnósticos TS (ver README)
+check:orphan-tests                                   0    orphan-tests-check.log: ok=true, blockingOrphanCount=0 (rodou antes dos 2 últimos ajustes)
+check:chat-launcher-render-only                      0    render-only.log: ok=true, violations=[] (rodou antes dos 2 últimos ajustes)
+check:front-door-single-surface                      0    single-surface.log: ok=true, mas conformant=false (baseline legado do gate; não avaliado aqui)

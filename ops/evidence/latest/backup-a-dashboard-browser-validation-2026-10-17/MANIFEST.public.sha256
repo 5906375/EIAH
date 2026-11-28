@@ -1,0 +1,13 @@
+2e843d168f449ceeda3bc97e02db7f20256056d14e584a68fb104d659f0a7340  ./BROWSER.md
+96a6f3ef7c4cc1dce0c909813952f08dc17c649418c8b14f5364c5a841f086fa  ./fix.diff
+0dd1c426280fc8b631d9aeb3d41286f0a3b5ca6fbb8de6ca4653e5e76d6cb0fd  ./logs/before-fix-output.txt
+368ce531688a440f554f90d0e99ee877d51591020efc825d14873216f98c6c3f  ./logs/browser-mock-run.log
+c7716a5c4c123d0c494578b3b43eb825fe9d38d32b12c90f5a64ac06af17d3d1  ./logs/dashboard-tests-after-fix.log
+d34c97bbd1fd589449efdaf6fa8522b566b95afffcb0737909b03b5506aff38a  ./results/browser-mock-actions.json
+1ad58a1304332b876a1e80d29afaf9a3f5b1808adb4d54d2729838bfc0e84edd  ./results/browser-real-readonly.json
+67becc9accd16dd6a3639656e53582350fe7b979f4919d7eaf946a69b66689c4  ./source-after-fix/app.css
+dc5a1f47219c3d9bb53ab698d144312a92de9f1a378888f6cf2cf40390a79060  ./source-after-fix/app.js
+91e227d19a6d5434fd5c9a4fddd8893dd03bd2f00caecb13e4893a9b33319411  ./source-after-fix/browser-test.mjs
+c5dd19dc39a341130d4a6c5ba4e13fd23a36c269e6aa288ba814f7a29d8c94bd  ./source-after-fix/index.html
+cd0b0f5f89e3f7b0968d2098d6f8299854d82573783d3eae19d7de4fb8b4b17a  ./source-after-fix/run-browser-mock.sh
+c2d62b01a0337418a4bbb3468f1abbc659385c271d4fa70df8535287133aaefc  ./source-after-fix/test_dashboard.py

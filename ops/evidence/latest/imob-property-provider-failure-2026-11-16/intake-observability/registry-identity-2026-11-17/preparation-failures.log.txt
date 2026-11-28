@@ -1,0 +1,31 @@
+=== registry-harness.log ===
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Capture actual formal completion diagnostic
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '=='
+}
+
+Node.js v22.17.1
+[Omitidas 1 linhas de frames/base64 do código; original integral preservado externamente, hash em provenance.json.]
+
+=== consumer-harness-info.log ===
+node:internal/url:818
+      href = bindingUrl.parse(input, base, true);
+                        ^
+
+TypeError: Invalid URL
+    at new URL (node:internal/url:818:25)
+    at ModuleJob.run (node:internal/modules/esm/module_job:329:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:644:26)
+  code: 'ERR_INVALID_URL',
+  input: '../../../../',
+}
+
+Node.js v22.17.1
+[Omitidas 3 linhas de frames/base64 do código; original integral preservado externamente, hash em provenance.json.]

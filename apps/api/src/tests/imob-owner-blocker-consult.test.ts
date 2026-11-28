@@ -1,9 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveImobCrmOperationalConsult } from "../services/imob/crm/imobCrmResolver";
+import { resolveImobCrmOperationalConsult as resolveImobCrmOperationalConsultBase } from "../services/imob/crm/imobCrmResolver";
+import { IMOB_BACKING_SPECIALIST_AGENT_IDS } from "../services/imob/imobSpecialistBridge";
 import { buildImobCrmCaseContextFromRecord } from "../services/imob/crm/imobCrmCaseContext";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+
+// Estes cenários verificam o conteúdo da leitura com os especialistas comprovadamente disponíveis; sem disponibilidade
+// informada o resolvedor falha fechado e não apresenta nenhum apoio (ver imob-specialist-bridge.test.ts).
+const resolveImobCrmOperationalConsult: typeof resolveImobCrmOperationalConsultBase = (params) =>
+  resolveImobCrmOperationalConsultBase({
+    readBackingSpecialistAvailability: async () => Object.fromEntries(IMOB_BACKING_SPECIALIST_AGENT_IDS.map((id) => [id, "available"])),
+    ...params,
+  } as any);
 
 const tenantId = "tenant-owner-blocker";
 const workspaceId = "workspace-owner-blocker";
@@ -256,8 +265,8 @@ test("IMOB consultive blocked read keeps documentation blocker narrative aligned
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "legal");
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on: jur[ií]dico\/documenta[cç][aã]o/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação: Jurídico/i);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando: jur[ií]dico\/documenta[cç][aã]o/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação: Jurídico/i);
 });
 
 test("IMOB consultive blocked read keeps proposal blocker narrative aligned with broker waitingOn", async () => {
@@ -273,6 +282,6 @@ test("IMOB consultive blocked read keeps proposal blocker narrative aligned with
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "broker");
-  assert.match(resolved?.presentation?.text ?? "", /Waiting on: corretor/i);
-  assert.match(resolved?.presentation?.text ?? "", /Owner da ação: Corretor/i);
+  assert.match(resolved?.presentation?.text ?? "", /Aguardando: corretor/i);
+  assert.match(resolved?.presentation?.text ?? "", /Responsável pela ação: Corretor/i);
 });

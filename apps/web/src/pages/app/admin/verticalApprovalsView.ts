@@ -5,10 +5,11 @@ import type { VerticalApprovalAdminItem, VerticalRevocationMode } from "@/lib/ap
  * a regra de observação obrigatória espelha a do servidor, que continua sendo quem valida.
  */
 
-export type ApprovalTab = "aguardando" | "migracao" | "revogados" | "historico";
+export type ApprovalTab = "aguardando" | "avaliacoes" | "migracao" | "revogados" | "historico";
 
 export const APPROVAL_TABS: Array<{ key: ApprovalTab; label: string }> = [
   { key: "aguardando", label: "Aguardando decisão" },
+  { key: "avaliacoes", label: "Avaliações" },
   { key: "migracao", label: "Aprovados na migração" },
   { key: "revogados", label: "Revogados" },
   { key: "historico", label: "Histórico" },
@@ -22,11 +23,42 @@ export function isAwaitingDecision(item: VerticalApprovalAdminItem) {
 
 const isMigratedApproved = (item: VerticalApprovalAdminItem) => item.source === "migration" && item.status === "aprovado";
 
+/** Pedido de avaliação gratuita (grant). */
+export const isEvaluationItem = (item: Pick<VerticalApprovalAdminItem, "grantKind">) => item.grantKind === "evaluation";
+
+/**
+ * O administrador pode decidir (propor termos ou recusar) enquanto o pedido aguarda decisão ou enquanto os termos propostos
+ * ainda NÃO foram aceitos (reproposta). Depois do aceite não há decisão a tomar: o próximo passo é da pessoa.
+ */
+export function canDecide(item: VerticalApprovalAdminItem) {
+  return isAwaitingDecision(item) || (isEvaluationItem(item) && item.evaluationPhase === "terms_pending_acceptance");
+}
+
 export function itemsForTab(items: VerticalApprovalAdminItem[], tab: ApprovalTab) {
   if (tab === "aguardando") return items.filter(isAwaitingDecision);
+  if (tab === "avaliacoes") return items.filter((item) => isEvaluationItem(item) && !isAwaitingDecision(item));
   if (tab === "migracao") return items.filter(isMigratedApproved);
   if (tab === "revogados") return items.filter((item) => item.status === "revogado");
-  return items.filter((item) => !isAwaitingDecision(item) && !isMigratedApproved(item) && item.status !== "revogado");
+  return items.filter((item) => !isAwaitingDecision(item) && !isMigratedApproved(item) && item.status !== "revogado" && !isEvaluationItem(item));
+}
+
+/** Pedido, aprovação, aceite e ativação são fases distintas; a tela nunca mostra uma como se fosse a outra. */
+export const EVALUATION_PHASE_LABEL: Record<NonNullable<VerticalApprovalAdminItem["evaluationPhase"]>, string> = {
+  requested: "Pedido de avaliação (aguardando sua decisão)",
+  terms_pending_acceptance: "Condições propostas — aguardando o aceite do solicitante (sem uso)",
+  accepted_pending_activation: "Condições aceitas — aguardando a ativação (sem uso)",
+  active: "Avaliação ativa",
+  ended: "Avaliação encerrada",
+};
+
+export function evaluationPhaseLabel(item: VerticalApprovalAdminItem) {
+  return item.evaluationPhase ? EVALUATION_PHASE_LABEL[item.evaluationPhase] : null;
+}
+
+/** O que bloqueia a concessão (só o administrador vê): decisões obrigatórias pendentes e configuração. */
+export function evaluationBlockers(offer: { state: string; reasons: string[] } | undefined) {
+  if (!offer || offer.state === "enabled") return [];
+  return offer.reasons;
 }
 
 /** ADR-011 §2.5: o administrador escolhe o modo; somente leitura é o padrão. */
@@ -41,9 +73,10 @@ export function revocationModeLabel(mode: VerticalRevocationMode | null) {
 }
 
 /** Revogar só o que está aprovado; trocar o modo ou restaurar só o que está revogado. */
-export function revocationActionsFor(item: Pick<VerticalApprovalAdminItem, "status">) {
+export function revocationActionsFor(item: Pick<VerticalApprovalAdminItem, "status" | "grantKind">) {
   if (item.status === "aprovado") return ["revogar"] as const;
-  if (item.status === "revogado") return ["alterar_modo", "restaurar"] as const;
+  // Avaliação não é restaurável (restaurar devolveria acesso sem novos termos): renovar exige nova decisão com termos.
+  if (item.status === "revogado") return item.grantKind === "evaluation" ? (["alterar_modo"] as const) : (["alterar_modo", "restaurar"] as const);
   return [] as const;
 }
 
@@ -69,6 +102,8 @@ export const STATUS_LABEL: Record<VerticalApprovalAdminItem["status"], string> =
   aprovado: "Aprovado",
   recusado: "Recusado",
   revogado: "Revogado",
+  pre_ativacao: "Aprovação com condições (sem uso até a ativação)",
+  encerrado: "Encerrado (fim da validade)",
 };
 
 /** Observação obrigatória ao recusar e ao aprovar contra a recomendação do agente. */

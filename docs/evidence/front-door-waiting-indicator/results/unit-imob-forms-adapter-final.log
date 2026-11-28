@@ -1,0 +1,1049 @@
+TAP version 13
+# Subtest: todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro
+ok 1 - todo item local dos menus abre um formulário estruturado na thread ativa do chat hospedeiro
+  ---
+  duration_ms: 79.522009
+  type: 'test'
+  ...
+# Subtest: menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada
+ok 2 - menu 'Registrar locação encerrada' pede o formulário de locação já configurado como encerrada
+  ---
+  duration_ms: 1.464382
+  type: 'test'
+  ...
+# Subtest: menus Negócios: venda e permuta abrem o formulário com o tipo certo
+ok 3 - menus Negócios: venda e permuta abrem o formulário com o tipo certo
+  ---
+  duration_ms: 0.657974
+  type: 'test'
+  ...
+# Subtest: itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido
+ok 4 - itens de pedido (cadastrar) viram texto para o chat, com o rótulo exibido
+  ---
+  duration_ms: 0.349288
+  type: 'test'
+  ...
+# Subtest: próximo passo prepara o formulário seguinte já ligado ao cadastro
+ok 5 - próximo passo prepara o formulário seguinte já ligado ao cadastro
+  ---
+  duration_ms: 0.39885
+  type: 'test'
+  ...
+# Subtest: formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar
+ok 6 - formulário que não é do IMOB estruturado fica com o chat; cancelar um estruturado fecha sem gravar
+  ---
+  duration_ms: 0.915402
+  type: 'test'
+  ...
+# Subtest: enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API
+ok 7 - enviar sem escolher o imóvel mostra o erro no campo, sem chamar a API
+  ---
+  duration_ms: 0.523862
+  type: 'test'
+  ...
+# Subtest: paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+ok 8 - paridade Front Door: proprietário → imóvel → locação → contrato preenchido, sem criar run
+  ---
+  duration_ms: 212.844012
+  type: 'test'
+  ...
+# Subtest: falha ao salvar cadastro mantém coleta, form e valores no Front Door
+ok 9 - falha ao salvar cadastro mantém coleta, form e valores no Front Door
+  ---
+  duration_ms: 3.873219
+  type: 'test'
+  ...
+# Subtest: encerrar cadastro antigo não limpa estado de outra thread no Front Door
+ok 10 - encerrar cadastro antigo não limpa estado de outra thread no Front Door
+  ---
+  duration_ms: 6.199792
+  type: 'test'
+  ...
+# Subtest: regressão: Gerar proposta → sim oferece o segundo turno ao IMOB antes de help/preview/self-service
+ok 11 - regressão: Gerar proposta → sim oferece o segundo turno ao IMOB antes de help/preview/self-service
+  ---
+  duration_ms: 12.045986
+  type: 'test'
+  ...
+# Subtest: presentation sem texto continua renderizando o formulário com rótulo e descrição
+ok 12 - presentation sem texto continua renderizando o formulário com rótulo e descrição
+  ---
+  duration_ms: 2.27689
+  type: 'test'
+  ...
+# Subtest: composição de coleta não suprime bloqueio, resposta sem form ou form sem introdução
+ok 13 - composição de coleta não suprime bloqueio, resposta sem form ou form sem introdução
+  ---
+  duration_ms: 14.422824
+  type: 'test'
+  ...
+# Subtest: nova coleta depois de proposta pronta preserva presentation.text junto do formulário
+ok 14 - nova coleta depois de proposta pronta preserva presentation.text junto do formulário
+  ---
+  duration_ms: 4.033333
+  type: 'test'
+  ...
+# Subtest: coleta textual no Front Door preserva draft, campos curtos, caso e thread até revisão, sem executar run
+ok 15 - coleta textual no Front Door preserva draft, campos curtos, caso e thread até revisão, sem executar run
+  ---
+  duration_ms: 34.80326
+  type: 'test'
+  ...
+# Subtest: Front Door → engine CRM real: sim continua coleta sem passar pelo gate de confirmação de action
+ok 16 - Front Door → engine CRM real: sim continua coleta sem passar pelo gate de confirmação de action
+  ---
+  duration_ms: 43.815236
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: como criar um run?
+ok 17 - assunto explícito libera coleta: como criar um run?
+  ---
+  duration_ms: 13.340037
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: quero falar sobre billing
+ok 18 - assunto explícito libera coleta: quero falar sobre billing
+  ---
+  duration_ms: 10.037127
+  type: 'test'
+  ...
+# Subtest: assunto explícito libera coleta: voltar para core
+ok 19 - assunto explícito libera coleta: voltar para core
+  ---
+  duration_ms: 7.547796
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: cancelar proposta
+ok 20 - cancelamento textual reutiliza fechamento local sem chamar a API: cancelar proposta
+  ---
+  duration_ms: 4.559308
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: cancelar
+ok 21 - cancelamento textual reutiliza fechamento local sem chamar a API: cancelar
+  ---
+  duration_ms: 6.505558
+  type: 'test'
+  ...
+# Subtest: cancelamento textual reutiliza fechamento local sem chamar a API: não quero continuar
+ok 22 - cancelamento textual reutiliza fechamento local sem chamar a API: não quero continuar
+  ---
+  duration_ms: 11.496278
+  type: 'test'
+  ...
+# Subtest: domínio core ou disponibilidade não confirmada não consome continuidade histórica
+ok 23 - domínio core ou disponibilidade não confirmada não consome continuidade histórica
+  ---
+  duration_ms: 16.261078
+  type: 'test'
+  ...
+# Subtest: seleção de especialista não altera continuidade da vertical ativa
+ok 24 - seleção de especialista não altera continuidade da vertical ativa
+  ---
+  duration_ms: 3.416218
+  type: 'test'
+  ...
+# Subtest: continuidade textual funciona quando backend não entrega form; erro mantém coleta sem fallback genérico
+ok 25 - continuidade textual funciona quando backend não entrega form; erro mantém coleta sem fallback genérico
+  ---
+  duration_ms: 4.789416
+  type: 'test'
+  ...
+# Subtest: resposta tardia após cancelamento não reabre coleta e envio duplicado não repete query
+ok 26 - resposta tardia após cancelamento não reabre coleta e envio duplicado não repete query
+  ---
+  duration_ms: 5.272875
+  type: 'test'
+  ...
+# Subtest: Negócios → Gerar proposta usa o dispatcher existente e abre proposal.create no Front Door vazio
+ok 27 - Negócios → Gerar proposta usa o dispatcher existente e abre proposal.create no Front Door vazio
+  ---
+  duration_ms: 5.230006
+  type: 'test'
+  ...
+# Subtest: Front Door preserva e renderiza proposal.create sem submitTarget, texto e contexto do servidor
+ok 28 - Front Door preserva e renderiza proposal.create sem submitTarget, texto e contexto do servidor
+  ---
+  duration_ms: 4.654425
+  type: 'test'
+  ...
+# Subtest: Front Door mantém o dispatcher de form com submitTarget
+ok 29 - Front Door mantém o dispatcher de form com submitTarget
+  ---
+  duration_ms: 1.764276
+  type: 'test'
+  ...
+# Subtest: form desconhecido sem submitTarget mantém apresentação informativa sem inventar submissão
+ok 30 - form desconhecido sem submitTarget mantém apresentação informativa sem inventar submissão
+  ---
+  duration_ms: 1.245371
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 4455/100000 e continuidade
+ok 31 - Front Door → builder compartilhado → resolver mantém 4455/100000 e continuidade
+  ---
+  duration_ms: 4.105903
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 98765/450000 e continuidade
+ok 32 - Front Door → builder compartilhado → resolver mantém 98765/450000 e continuidade
+  ---
+  duration_ms: 3.171268
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém imovel-AB12/R$ 100.000,75 e continuidade
+ok 33 - Front Door → builder compartilhado → resolver mantém imovel-AB12/R$ 100.000,75 e continuidade
+  ---
+  duration_ms: 2.678971
+  type: 'test'
+  ...
+# Subtest: Front Door → builder compartilhado → resolver mantém 4455/100000.50 e continuidade
+ok 34 - Front Door → builder compartilhado → resolver mantém 4455/100000.50 e continuidade
+  ---
+  duration_ms: 2.971214
+  type: 'test'
+  ...
+# Subtest: cancelamento fecha e limpa erros sem chamar resolver, preservando valores e contexto
+ok 35 - cancelamento fecha e limpa erros sem chamar resolver, preservando valores e contexto
+  ---
+  duration_ms: 2.442437
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"propertyId":""}
+ok 36 - campos ausentes/inválidos no Front Door bloqueiam envio: {"propertyId":""}
+  ---
+  duration_ms: 1.555477
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":""}
+ok 37 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":""}
+  ---
+  duration_ms: 1.769928
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"inválido"}
+ok 38 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"inválido"}
+  ---
+  duration_ms: 1.252744
+  type: 'test'
+  ...
+# Subtest: campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"-100"}
+ok 39 - campos ausentes/inválidos no Front Door bloqueiam envio: {"offerAmount":"-100"}
+  ---
+  duration_ms: 0.993143
+  type: 'test'
+  ...
+# Subtest: sem conversationState, proposal.create não submete
+ok 40 - sem conversationState, proposal.create não submete
+  ---
+  duration_ms: 1.355563
+  type: 'test'
+  ...
+# Subtest: thread sintética continua consistente quando resposta não contém caseContext
+ok 41 - thread sintética continua consistente quando resposta não contém caseContext
+  ---
+  duration_ms: 1.321357
+  type: 'test'
+  ...
+# Subtest: erro HTTP ou bloqueio do engine não fecha formulário nem perde campos; duplo submit envia uma vez
+ok 42 - erro HTTP ou bloqueio do engine não fecha formulário nem perde campos; duplo submit envia uma vez
+  ---
+  duration_ms: 9.225574
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 1, sem reabrir form
+ok 43 - Nova conversa descarta resposta IMOB pendente da solicitação 1, sem reabrir form
+  ---
+  duration_ms: 16.985477
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 2, sem reabrir form
+ok 44 - Nova conversa descarta resposta IMOB pendente da solicitação 2, sem reabrir form
+  ---
+  duration_ms: 14.520961
+  type: 'test'
+  ...
+# Subtest: Nova conversa descarta resposta IMOB pendente da solicitação 3, sem reabrir form
+ok 45 - Nova conversa descarta resposta IMOB pendente da solicitação 3, sem reabrir form
+  ---
+  duration_ms: 14.510594
+  type: 'test'
+  ...
+# Subtest: erro IMOB tardio após Nova conversa também não escreve na conversa nova
+ok 46 - erro IMOB tardio após Nova conversa também não escreve na conversa nova
+  ---
+  duration_ms: 9.032858
+  type: 'test'
+  ...
+# Subtest: troca real de agente e hidratação mantêm draft na conversa Front Door, sem compartilhar outro workspace
+ok 47 - troca real de agente e hidratação mantêm draft na conversa Front Door, sem compartilhar outro workspace
+  ---
+  duration_ms: 128.321595
+  type: 'test'
+  ...
+# Subtest: geração de Nova conversa protege também cadastro IMOB, sem regra específica de proposta
+ok 48 - geração de Nova conversa protege também cadastro IMOB, sem regra específica de proposta
+  ---
+  duration_ms: 9.843357
+  type: 'test'
+  ...
+# Subtest: resposta IMOB não escreve após troca de workspace, mesmo antes de renderizar a chave nova
+ok 49 - resposta IMOB não escreve após troca de workspace, mesmo antes de renderizar a chave nova
+  ---
+  duration_ms: 1.656021
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Não mantém ownership IMOB e não cria run
+ok 50 - FDC-03A Front Door: coleta → revisão → Não mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 12.501742
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Sim mantém ownership IMOB e não cria run
+ok 51 - FDC-03A Front Door: coleta → revisão → Sim mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 13.177696
+  type: 'test'
+  ...
+# Subtest: FDC-03A Front Door: coleta → revisão → Talvez mantém ownership IMOB e não cria run
+ok 52 - FDC-03A Front Door: coleta → revisão → Talvez mantém ownership IMOB e não cria run
+  ---
+  duration_ms: 13.181028
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após unknown_version
+ok 53 - FDC-03A revisão não captura resposta após unknown_version
+  ---
+  duration_ms: 9.404506
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após expired
+ok 54 - FDC-03A revisão não captura resposta após expired
+  ---
+  duration_ms: 9.674189
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após answered
+ok 55 - FDC-03A revisão não captura resposta após answered
+  ---
+  duration_ms: 11.288754
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_thread
+ok 56 - FDC-03A revisão não captura resposta após other_thread
+  ---
+  duration_ms: 12.616944
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_case
+ok 57 - FDC-03A revisão não captura resposta após other_case
+  ---
+  duration_ms: 9.367263
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após other_assistant
+ok 58 - FDC-03A revisão não captura resposta após other_assistant
+  ---
+  duration_ms: 8.651865
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após conversation
+ok 59 - FDC-03A revisão não captura resposta após conversation
+  ---
+  duration_ms: 8.963748
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após workspace
+ok 60 - FDC-03A revisão não captura resposta após workspace
+  ---
+  duration_ms: 9.945162
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após user
+ok 61 - FDC-03A revisão não captura resposta após user
+  ---
+  duration_ms: 9.803492
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após agent
+ok 62 - FDC-03A revisão não captura resposta após agent
+  ---
+  duration_ms: 6.00662
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após vertical
+ok 63 - FDC-03A revisão não captura resposta após vertical
+  ---
+  duration_ms: 8.016667
+  type: 'test'
+  ...
+# Subtest: FDC-03A revisão não captura resposta após unavailable
+ok 64 - FDC-03A revisão não captura resposta após unavailable
+  ---
+  duration_ms: 9.484217
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Como vejo minha fatura?) suspende revisão e preserva draft
+ok 65 - FDC-03A pergunta explícita posterior (Como vejo minha fatura?) suspende revisão e preserva draft
+  ---
+  duration_ms: 13.76921
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Preciso de ajuda do Jurídico) suspende revisão e preserva draft
+ok 66 - FDC-03A pergunta explícita posterior (Preciso de ajuda do Jurídico) suspende revisão e preserva draft
+  ---
+  duration_ms: 11.055325
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Preciso de ajuda jurídica) suspende revisão e preserva draft
+ok 67 - FDC-03A pergunta explícita posterior (Preciso de ajuda jurídica) suspende revisão e preserva draft
+  ---
+  duration_ms: 10.341585
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Quero ativar o IMOB) suspende revisão e preserva draft
+ok 68 - FDC-03A pergunta explícita posterior (Quero ativar o IMOB) suspende revisão e preserva draft
+  ---
+  duration_ms: 9.531746
+  type: 'test'
+  ...
+# Subtest: FDC-03A pergunta explícita posterior (Quero sair do IMOB) suspende revisão e preserva draft
+ok 69 - FDC-03A pergunta explícita posterior (Quero sair do IMOB) suspende revisão e preserva draft
+  ---
+  duration_ms: 10.747913
+  type: 'test'
+  ...
+# Subtest: FDC-03A falha HTTP de revisão mantém pergunta e draft para retry, sem run
+ok 70 - FDC-03A falha HTTP de revisão mantém pergunta e draft para retry, sem run
+  ---
+  duration_ms: 5.500554
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após conversation não altera conversa
+ok 71 - FDC-03A resposta atrasada após conversation não altera conversa
+  ---
+  duration_ms: 6.556631
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após workspace não altera conversa
+ok 72 - FDC-03A resposta atrasada após workspace não altera conversa
+  ---
+  duration_ms: 6.783581
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após agent não altera conversa
+ok 73 - FDC-03A resposta atrasada após agent não altera conversa
+  ---
+  duration_ms: 6.265484
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após vertical não altera conversa
+ok 74 - FDC-03A resposta atrasada após vertical não altera conversa
+  ---
+  duration_ms: 5.086632
+  type: 'test'
+  ...
+# Subtest: FDC-03A resposta atrasada após question_replaced não altera conversa
+ok 75 - FDC-03A resposta atrasada após question_replaced não altera conversa
+  ---
+  duration_ms: 4.422232
+  type: 'test'
+  ...
+# Subtest: FDC-03A requisições fora de ordem no bootstrap só apresentam a resposta mais recente
+ok 76 - FDC-03A requisições fora de ordem no bootstrap só apresentam a resposta mais recente
+  ---
+  duration_ms: 1.961983
+  type: 'test'
+  ...
+# Subtest: FDC-03A duas respostas simultâneas à mesma pergunta enviam uma vez e preservam a primeira resposta
+ok 77 - FDC-03A duas respostas simultâneas à mesma pergunta enviam uma vez e preservam a primeira resposta
+  ---
+  duration_ms: 4.493537
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in remount
+ok 78 - FDC-03A-R1 restored descriptor cannot capture a reply in remount
+  ---
+  duration_ms: 5.503867
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in restored_history
+ok 79 - FDC-03A-R1 restored descriptor cannot capture a reply in restored_history
+  ---
+  duration_ms: 6.526876
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in another_conversation
+ok 80 - FDC-03A-R1 restored descriptor cannot capture a reply in another_conversation
+  ---
+  duration_ms: 4.76166
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in replaced_origin
+ok 81 - FDC-03A-R1 restored descriptor cannot capture a reply in replaced_origin
+  ---
+  duration_ms: 4.445879
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 restored descriptor cannot capture a reply in another_user
+ok 82 - FDC-03A-R1 restored descriptor cannot capture a reply in another_user
+  ---
+  duration_ms: 6.262413
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 Front Door presents draft summary → No → concrete details, without writes
+ok 83 - FDC-03A-R1 Front Door presents draft summary → No → concrete details, without writes
+  ---
+  duration_ms: 7.150117
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 Front Door cancellation preserves domain and approval
+ok 84 - FDC-03A-R1 Front Door cancellation preserves domain and approval
+  ---
+  duration_ms: 5.086563
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 real hook mounted with restored history invalidates old review before any effect
+ok 85 - FDC-03A-R1 real hook mounted with restored history invalidates old review before any effect
+  ---
+  duration_ms: 5.156208
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R1 actual history invalidation effect handles hydration after mount, preserves draft and is stable
+ok 86 - FDC-03A-R1 actual history invalidation effect handles hydration after mount, preserves draft and is stable
+  ---
+  duration_ms: 18.645123
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para IMOB releases review into governed handoff without running
+ok 87 - FDC-03A-R3 Quero mudar para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 4.600095
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para IMOB releases review into governed handoff without running
+ok 88 - FDC-03A-R3 Trocar para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 4.321979
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para IMOB releases review into governed handoff without running
+ok 89 - FDC-03A-R3 Ir para IMOB releases review into governed handoff without running
+  ---
+  duration_ms: 3.785037
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para LEGAL releases review into governed handoff without running
+ok 90 - FDC-03A-R3 Quero mudar para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 5.963054
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para LEGAL releases review into governed handoff without running
+ok 91 - FDC-03A-R3 Trocar para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 4.735421
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para LEGAL releases review into governed handoff without running
+ok 92 - FDC-03A-R3 Ir para LEGAL releases review into governed handoff without running
+  ---
+  duration_ms: 3.773065
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para COMEX releases review into governed handoff without running
+ok 93 - FDC-03A-R3 Quero mudar para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 4.417967
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para COMEX releases review into governed handoff without running
+ok 94 - FDC-03A-R3 Trocar para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 3.64213
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para COMEX releases review into governed handoff without running
+ok 95 - FDC-03A-R3 Ir para COMEX releases review into governed handoff without running
+  ---
+  duration_ms: 4.933782
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para HEALTH releases review into governed handoff without running
+ok 96 - FDC-03A-R3 Quero mudar para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 3.750857
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para HEALTH releases review into governed handoff without running
+ok 97 - FDC-03A-R3 Trocar para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 3.789299
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para HEALTH releases review into governed handoff without running
+ok 98 - FDC-03A-R3 Ir para HEALTH releases review into governed handoff without running
+  ---
+  duration_ms: 3.492722
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Quero mudar para financeiro releases review into governed handoff without running
+ok 99 - FDC-03A-R3 Quero mudar para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 3.958768
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Trocar para financeiro releases review into governed handoff without running
+ok 100 - FDC-03A-R3 Trocar para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 3.799475
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 Ir para financeiro releases review into governed handoff without running
+ok 101 - FDC-03A-R3 Ir para financeiro releases review into governed handoff without running
+  ---
+  duration_ms: 7.908641
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O valor de venda precisa ser 90000
+ok 102 - FDC-03A-R3 clarification stays with proposal domain: O valor de venda precisa ser 90000
+  ---
+  duration_ms: 6.715129
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: Quero corrigir o valor de venda
+ok 103 - FDC-03A-R3 clarification stays with proposal domain: Quero corrigir o valor de venda
+  ---
+  duration_ms: 5.88566
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O contrato precisa de outro valor
+ok 104 - FDC-03A-R3 clarification stays with proposal domain: O contrato precisa de outro valor
+  ---
+  duration_ms: 6.311178
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: A cláusula de pagamento precisa ser corrigida
+ok 105 - FDC-03A-R3 clarification stays with proposal domain: A cláusula de pagamento precisa ser corrigida
+  ---
+  duration_ms: 5.794352
+  type: 'test'
+  ...
+# Subtest: FDC-03A-R3 clarification stays with proposal domain: O imóvel informado está errado
+ok 106 - FDC-03A-R3 clarification stays with proposal domain: O imóvel informado está errado
+  ---
+  duration_ms: 8.204321
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Quero mudar para a vertical LEGAL) pede escolha sem transferir nem descartar contexto
+ok 107 - FDC mínimo: dúvida de ownership (Quero mudar para a vertical LEGAL) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 13.795137
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Mude para COMEX) pede escolha sem transferir nem descartar contexto
+ok 108 - FDC mínimo: dúvida de ownership (Mude para COMEX) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 10.599457
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Quero revisar o prazo de pagamento da proposta) pede escolha sem transferir nem descartar contexto
+ok 109 - FDC mínimo: dúvida de ownership (Quero revisar o prazo de pagamento da proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 14.693354
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Preciso avaliar o reajuste do valor da proposta) pede escolha sem transferir nem descartar contexto
+ok 110 - FDC mínimo: dúvida de ownership (Preciso avaliar o reajuste do valor da proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 11.964906
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Vamos revisar a cláusula de pagamento desta proposta) pede escolha sem transferir nem descartar contexto
+ok 111 - FDC mínimo: dúvida de ownership (Vamos revisar a cláusula de pagamento desta proposta) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 13.964884
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: dúvida de ownership (Gostaria de tratar outra coisa) pede escolha sem transferir nem descartar contexto
+ok 112 - FDC mínimo: dúvida de ownership (Gostaria de tratar outra coisa) pede escolha sem transferir nem descartar contexto
+  ---
+  duration_ms: 12.1529
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply success após changed_ref no mesmo ID
+ok 113 - FDC mínimo: Front Door rejeita reply success após changed_ref no mesmo ID
+  ---
+  duration_ms: 4.939079
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply success após invalidated_ref no mesmo ID
+ok 114 - FDC mínimo: Front Door rejeita reply success após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 4.098332
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply transport_failure após changed_ref no mesmo ID
+ok 115 - FDC mínimo: Front Door rejeita reply transport_failure após changed_ref no mesmo ID
+  ---
+  duration_ms: 4.638181
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita reply transport_failure após invalidated_ref no mesmo ID
+ok 116 - FDC mínimo: Front Door rejeita reply transport_failure após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 3.561085
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn success após changed_ref no mesmo ID
+ok 117 - FDC mínimo: Front Door rejeita direct_turn success após changed_ref no mesmo ID
+  ---
+  duration_ms: 5.238052
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn success após invalidated_ref no mesmo ID
+ok 118 - FDC mínimo: Front Door rejeita direct_turn success após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 4.791592
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn transport_failure após changed_ref no mesmo ID
+ok 119 - FDC mínimo: Front Door rejeita direct_turn transport_failure após changed_ref no mesmo ID
+  ---
+  duration_ms: 3.996006
+  type: 'test'
+  ...
+# Subtest: FDC mínimo: Front Door rejeita direct_turn transport_failure após invalidated_ref no mesmo ID
+ok 120 - FDC mínimo: Front Door rejeita direct_turn transport_failure após invalidated_ref no mesmo ID
+  ---
+  duration_ms: 3.40961
+  type: 'test'
+  ...
+# Subtest: P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações
+ok 121 - P11 reivindicação: a vertical responde na MESMA conversa, com o cartão governado, sem repetir o usuário nem executar ações
+  ---
+  duration_ms: 2.073495
+  type: 'test'
+  ...
+# Subtest: P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal
+ok 122 - P11 reivindicação: sem reivindicação (ou falha de transporte/acesso) nada é mostrado e o Front Door segue o fluxo normal
+  ---
+  duration_ms: 0.432588
+  type: 'test'
+  ...
+# Subtest: P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam
+ok 123 - P11 engine: a vertical reivindica antes do fallback local; sem reivindicação, o mesmo fluxo de antes; casos protegidos nunca consultam
+  ---
+  duration_ms: 14.81314
+  type: 'test'
+  ...
+# Subtest: P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente
+ok 124 - P11 engine: 'contratou o Marketing?' deixa de cair na regra jurídica quando a vertical reivindica; contrato real segue o fluxo existente
+  ---
+  duration_ms: 4.67631
+  type: 'test'
+  ...
+# Subtest: P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')
+ok 125 - P11 + FDC-03A: durante uma revisão de proposta pendente o Front Door NÃO consulta a vertical (nem para 'contratou o Marketing?')
+  ---
+  duration_ms: 5.931713
+  type: 'test'
+  ...
+# Subtest: P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado
+ok 126 - P11 engine: conversa ainda no EIAH (superfície IMOB inativa) também pergunta à vertical quando o produto está instalado
+  ---
+  duration_ms: 3.55872
+  type: 'test'
+  ...
+# Subtest: P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa
+ok 127 - P11-FIX Front Door: resposta SEM caso renderiza a recomendação sem afirmar imóvel e não grava caso na conversa
+  ---
+  duration_ms: 1.173425
+  type: 'test'
+  ...
+# Subtest: P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)
+ok 128 - P11-FIX Front Door: caso explícito confirmado pelo servidor fica na conversa; uma resposta sem caso/negada o LIMPA (não reenvia caseId antigo)
+  ---
+  duration_ms: 0.430338
+  type: 'test'
+  ...
+# Subtest: texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação
+ok 129 - texto direto no formulário usa intake existente, apresenta lote e só grava após confirmação
+  ---
+  duration_ms: 19.211014
+  type: 'test'
+  ...
+# Subtest: campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados
+ok 130 - campo ambíguo clarifica no Front Door com zero write e retoma com os dados já digitados
+  ---
+  duration_ms: 14.253157
+  type: 'test'
+  ...
+# Subtest: unidade singular livre usa intake e preserva seu nome no cadastro
+ok 131 - unidade singular livre usa intake e preserva seu nome no cadastro
+  ---
+  duration_ms: 10.773227
+  type: 'test'
+  ...
+# Subtest: corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente
+ok 132 - corrigir outro campo reutiliza unidade singular já resolvida sem chamar provider novamente
+  ---
+  duration_ms: 9.947555
+  type: 'test'
+  ...
+# Subtest: novo turno iniciado durante intake impede aplicação e escrita da resposta antiga
+ok 133 - novo turno iniciado durante intake impede aplicação e escrita da resposta antiga
+  ---
+  duration_ms: 15.479259
+  type: 'test'
+  ...
+# Subtest: prefill de clarificação não transporta dados de imóvel para outra conversa
+ok 134 - prefill de clarificação não transporta dados de imóvel para outra conversa
+  ---
+  duration_ms: 11.345605
+  type: 'test'
+  ...
+# Subtest: adicionar unidades em linguagem natural volta à confirmação e preserva destinação
+ok 135 - adicionar unidades em linguagem natural volta à confirmação e preserva destinação
+  ---
+  duration_ms: 11.144208
+  type: 'test'
+  ...
+# Subtest: resposta tardia do intake não grava nem substitui edição, cancelamento ou outra conversa
+    # Subtest: edit
+    ok 1 - edit
+      ---
+      duration_ms: 8.853434
+      type: 'test'
+      ...
+    # Subtest: cancel
+    ok 2 - cancel
+      ---
+      duration_ms: 8.489281
+      type: 'test'
+      ...
+    # Subtest: conversation
+    ok 3 - conversation
+      ---
+      duration_ms: 7.601659
+      type: 'test'
+      ...
+    1..3
+ok 136 - resposta tardia do intake não grava nem substitui edição, cancelamento ou outra conversa
+  ---
+  duration_ms: 25.543306
+  type: 'test'
+  ...
+# Subtest: lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação
+ok 137 - lote pelo Front Door: interpreta unidades, confirma ANTES de gravar, destinação geral + individual, próximos passos por destinação
+  ---
+  duration_ms: 11.29474
+  type: 'test'
+  ...
+# Subtest: lote: erro de pré-validação mantém o formulário e não grava nada
+ok 138 - lote: erro de pré-validação mantém o formulário e não grava nada
+  ---
+  duration_ms: 11.965634
+  type: 'test'
+  ...
+# Subtest: lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes
+ok 139 - lote: falha no meio mantém o que entrou e devolve ao formulário só as pendentes
+  ---
+  duration_ms: 10.429819
+  type: 'test'
+  ...
+# Subtest: uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio
+ok 140 - uma unidade com destinação sem operação (uso próprio) confirma e não oferece contrato nem negócio
+  ---
+  duration_ms: 8.162427
+  type: 'test'
+  ...
+# Subtest: sem destinação informada: cadastra sem goal e sem sugerir próximo passo
+ok 141 - sem destinação informada: cadastra sem goal e sem sugerir próximo passo
+  ---
+  duration_ms: 8.227097
+  type: 'test'
+  ...
+# Subtest: venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação
+ok 142 - venda e permuta pelo host compartilhado: formulário → POST /imob/deals → confirmação
+  ---
+  duration_ms: 6.948085
+  type: 'test'
+  ...
+# Subtest: venda: erro de validação não chama a API; cancelar não registra
+ok 143 - venda: erro de validação não chama a API; cancelar não registra
+  ---
+  duration_ms: 6.494365
+  type: 'test'
+  ...
+# Subtest: locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura
+ok 144 - locação encerrada pelo Front Door: closure no POST, sem contrato e sem ocupar; 'Registrar locação encerrada' pré-configura
+  ---
+  duration_ms: 44.284917
+  type: 'test'
+  ...
+# Subtest: lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)
+ok 145 - lease_start_new e lease_register_current reutilizam o formulário de locação com o imóvel (contrato só depois)
+  ---
+  duration_ms: 0.334408
+  type: 'test'
+  ...
+# Subtest: Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada
+ok 146 - Arquivar imóvel abre o painel de seleção múltipla, lista os imóveis ativos e não escreve nada
+  ---
+  duration_ms: 8.780978
+  type: 'test'
+  ...
+# Subtest: arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar
+ok 147 - arquivamento individual continua: um imóvel selecionado vira um único DELETE após confirmar
+  ---
+  duration_ms: 5.205084
+  type: 'test'
+  ...
+# Subtest: prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada
+ok 148 - prévia sem escrita: seleção + revisão só leem; cancelar antes de confirmar não arquiva nada
+  ---
+  duration_ms: 2.004488
+  type: 'test'
+  ...
+# Subtest: três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado
+ok 149 - três imóveis de proprietários diferentes (um sem proprietário): três DELETEs, só os selecionados, nenhum proprietário tocado
+  ---
+  duration_ms: 1.994219
+  type: 'test'
+  ...
+# Subtest: um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada
+ok 150 - um sucesso e dois bloqueios (locação/caso ligado): bloqueio não impede os demais e não gera retomada
+  ---
+  duration_ms: 2.822922
+  type: 'test'
+  ...
+# Subtest: falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação
+ok 151 - falha parcial preserva os resultados e a retomada tenta só os pendentes, após nova confirmação
+  ---
+  duration_ms: 3.278399
+  type: 'test'
+  ...
+# Subtest: proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez
+ok 152 - proteção contra duplo clique: confirmações simultâneas executam o lote uma única vez
+  ---
+  duration_ms: 1.609766
+  type: 'test'
+  ...
+# Subtest: a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote
+ok 153 - a confirmação age sobre o lote revisado: mudar a seleção sem nova revisão não amplia o lote
+  ---
+  duration_ms: 1.387078
+  type: 'test'
+  ...
+# Subtest: autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada
+ok 154 - autorização negada (403) em cada item: nada arquivado, resultado 'sem acesso', sem retomada
+  ---
+  duration_ms: 1.662274
+  type: 'test'
+  ...
+# Subtest: imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos
+ok 155 - imóvel de outro tenant/workspace ou já arquivado responde 404: 'não encontrado', sem afetar os demais; escopo vai nos cabeçalhos
+  ---
+  duration_ms: 2.023535
+  type: 'test'
+  ...
+# Subtest: mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada
+ok 156 - mudança de workspace durante a operação: o item em voo termina, nada novo é escrito e não há retomada
+  ---
+  duration_ms: 1.470771
+  type: 'test'
+  ...
+# Subtest: mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta
+ok 157 - mudança de sessão entre revisão e confirmação: confirmar não escreve e a seleção fica obsoleta
+  ---
+  duration_ms: 1.24634
+  type: 'test'
+  ...
+# Subtest: lista que chega depois da troca de workspace não é aplicada
+ok 158 - lista que chega depois da troca de workspace não é aplicada
+  ---
+  duration_ms: 1.515739
+  type: 'test'
+  ...
+# Subtest: interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis
+ok 159 - interromper durante a execução impede novas escritas; os restantes ficam não processados e retomáveis
+  ---
+  duration_ms: 2.878995
+  type: 'test'
+  ...
+# Subtest: mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve
+ok 160 - mensagem restaurada sem estado/escopo vira obsoleta e nunca escreve
+  ---
+  duration_ms: 0.629481
+  type: 'test'
+  ...
+# Subtest: falha ao carregar a lista oferece nova tentativa sem alterar nada
+ok 161 - falha ao carregar a lista oferece nova tentativa sem alterar nada
+  ---
+  duration_ms: 2.234849
+  type: 'test'
+  ...
+# Subtest: painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes
+ok 162 - painel renderizado no Front Door usa o estado do runtime e a revisão exibe o lote sem checkboxes
+  ---
+  duration_ms: 3.403792
+  type: 'test'
+  ...
+# Subtest: ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura
+ok 163 - ARCHIVED-READ Front Door: aviso de handoff primeiro, frase original encaminhada e resposta final é a lista somente leitura
+  ---
+  duration_ms: 2.155915
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta
+ok 164 - espera compartilhada (adaptador IMOB): começa com a solicitação, intermediárias não a encerram e termina junto com a resposta
+  ---
+  duration_ms: 1.729155
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa
+ok 165 - espera compartilhada (adaptador IMOB): erro também a encerra, e a mensagem de erro fica na conversa
+  ---
+  duration_ms: 0.361907
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual
+ok 166 - espera compartilhada (adaptador IMOB): troca de conversa limpa a espera e a resposta atrasada da outra conversa não afeta a atual
+  ---
+  duration_ms: 2.032045
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente
+ok 167 - espera compartilhada (adaptador IMOB): duas solicitações na mesma conversa; uma terminar não oculta a outra pendente
+  ---
+  duration_ms: 1.850922
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual
+ok 168 - espera compartilhada (adaptador IMOB): reivindicação (claim) assíncrona também é espera, mesmo sem ser consulta textual
+  ---
+  duration_ms: 0.294752
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta
+ok 169 - espera compartilhada (adaptador IMOB): submissão de formulário assíncrona é espera e termina com a resposta
+  ---
+  duration_ms: 1.936279
+  type: 'test'
+  ...
+# Subtest: espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual
+ok 170 - espera compartilhada (adaptador IMOB): sem trackPending o adaptador funciona igual
+  ---
+  duration_ms: 1.023509
+  type: 'test'
+  ...
+1..170
+# tests 173
+# suites 0
+# pass 173
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3294.36946

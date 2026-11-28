@@ -1,0 +1,185 @@
+
+> @eiah/api@ typecheck /home/jusall/projects/EIAH_BUILDER/apps/api
+> tsc -p tsconfig.build.json --noEmit
+
+src/middlewares/requireFinancialAuthority.ts(2,15): error TS2305: Module '"@eiah/core"' has no exported member 'FinancialAuthorityScope'.
+src/orchestrator/llmExecutor.ts(3,86): error TS2307: Cannot find module '@eiah/core/llm/LLMProviderError' or its corresponding type declarations.
+src/orchestrator/llmExecutor.ts(280,30): error TS2339: Property 'completionId' does not exist on type 'ChatCompletionResponse'.
+src/orchestrator/llmExecutor.ts(281,35): error TS2339: Property 'providerRequestId' does not exist on type 'ChatCompletionResponse'.
+src/orchestrator/llmExecutor.ts(282,27): error TS2339: Property 'modelUsed' does not exist on type 'ChatCompletionResponse'.
+src/routes/billing.ts(10,10): error TS2305: Module '"@eiah/core"' has no exported member 'FINANCIAL_AUTHORITY_SCOPES'.
+src/routes/help.ts(408,9): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/routes/imob.ts(2,63): error TS2307: Cannot find module '@eiah/core/llm/LLMProviderError' or its corresponding type declarations.
+src/routes/imob.ts(89,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/routes/marketplace.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'activatableProductSchema'.
+src/routes/marketplace.ts(698,5): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/routes/oraculoPreparation.ts(2,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_CONTENT_REVIEW_SCOPE'.
+src/routes/oraculoPreparation.ts(2,33): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_DECISION_SCOPE'.
+src/routes/oraculoPreparation.ts(2,57): error TS2305: Module '"@eiah/contracts"' has no exported member 'deriveOraculoDecisionTriggers'.
+src/routes/oraculoPreparation.ts(2,88): error TS2724: '"@eiah/contracts"' has no exported member named 'oraculoDecisionInputV1Schema'. Did you mean 'oraculoHumanDecisionV1Schema'?
+src/routes/oraculoPreparation.ts(2,118): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoDecisionRequestInputV1Schema'.
+src/routes/oraculoPreparation.ts(2,155): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoDocumentReviewRequestV1Schema'.
+src/routes/oraculoPreparation.ts(2,198): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDocumentReviewStateV1'.
+src/routes/oraculoPreparation.ts(2,228): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_PREPARATION_WRITE_SCOPE'.
+src/routes/oraculoPreparation.ts(2,261): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoEvidenceLinkV1Schema'.
+src/routes/oraculoPreparation.ts(2,290): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoPreparationWriteV1Schema'.
+src/routes/oraculoPreparation.ts(2,323): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoPreparationUpdateV1Schema'.
+src/routes/oraculoPreparation.ts(125,46): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/oraculoPreparation.ts(160,47): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/routes/session.ts(174,68): error TS7006: Parameter 'policy' implicitly has an 'any' type.
+src/routes/session.ts(175,110): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/routes/session.ts(352,59): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/session.ts(383,64): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/session.ts(582,59): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/routes/uploads.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_UPLOAD_AGENT'.
+src/routes/verticalAccess.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'activatableProductSchema'.
+src/routes/verticalAccess.ts(176,11): error TS2339: Property 'confirmed' does not exist on type '{} | { confirmed: true; }'.
+src/routes/verticalAccess.ts(181,5): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/routes/verticalAccess.ts(183,5): error TS2322: Type '{}' is not assignable to type '"marketplace" | "chat" | "tela" | undefined'.
+src/routes/verticalAccess.ts(194,69): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/financialAuthority.ts(2,10): error TS2305: Module '"@eiah/core"' has no exported member 'FINANCIAL_AUTHORITY_SCOPES'.
+src/services/financialAuthority.ts(2,43): error TS2305: Module '"@eiah/core"' has no exported member 'FinancialAuthorityScope'.
+src/services/financialBillingWrites.ts(2,10): error TS2305: Module '"@eiah/core"' has no exported member 'FINANCIAL_AUTHORITY_SCOPES'.
+src/services/frictionEventAggregator.ts(42,47): error TS2345: Argument of type 'unknown' is not assignable to parameter of type '"access_denied" | "chat_clarification_overuse" | "chat_generic_fallback" | "chat_too_systemic" | "chat_natural_request_not_understood" | "chat_unnecessary_run_creation" | "investigation_mode_entered" | "investigation_mode_exited" | "investigation_mode_changed" | "recommended_action_diverged"'.
+src/services/frictionEventAggregator.ts(54,9): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(54,28): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(58,9): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(58,30): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(63,9): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(63,21): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(68,9): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(68,21): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(73,9): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(73,21): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(78,9): error TS2538: Type '{}' cannot be used as an index type.
+src/services/frictionEventAggregator.ts(78,21): error TS2538: Type '{}' cannot be used as an index type.
+src/services/imob/crm/imobCrmPropertyGoals.ts(63,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_ASSET_DESTINATION_OPTIONS'.
+src/services/imob/crm/imobCrmPropertyGoals.ts(64,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'normalizeImobAssetDestination'.
+src/services/imob/crm/imobCrmPropertyGoals.ts(65,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'getImobAssetDestinationLabel'.
+src/services/imob/crm/imobCrmPropertyGoals.ts(67,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobAssetDestination'.
+src/services/imob/crm/imobCrmTurnEngine.ts(3,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/services/imob/crm/imobCrmTurnEngine.ts(7,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/crm/imobCrmTurnEngine.ts(7,44): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/imobAgentContract.ts(10,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobAgentContract.ts(10,44): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/imobAgentContract.ts(11,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/imobConversationContract.ts(644,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobConversationState.ts(1,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobConversationState.ts(663,28): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(2,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_MAX_UNITS_PER_BATCH'.
+src/services/imob/imobSemanticIntentResolver.ts(2,36): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_UNIT_INTAKE_POLICY'.
+src/services/imob/imobSemanticIntentResolver.ts(2,70): error TS2305: Module '"@eiah/contracts"' has no exported member 'looksLikeMultipleUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,94): error TS2305: Module '"@eiah/contracts"' has no exported member 'parseCanonicalImobUnits'.
+src/services/imob/imobSemanticIntentResolver.ts(2,124): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyUnitIntake'.
+src/services/imob/imobSemanticIntentResolver.ts(352,41): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobSemanticIntentResolver.ts(363,88): error TS7006: Parameter 'unit' implicitly has an 'any' type.
+src/services/imob/imobTurnResolver.ts(1161,65): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/services/imob/imobTurnResolver.ts(1201,61): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/services/imob/imobTurnResolver.ts(2191,58): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(3,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_FIELDS'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(3,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'IMOB_PROPERTY_CAPTURE_POLICY'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'imobPropertyCaptureRequestSchema'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,42): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureRequest'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(4,75): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureResult'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(5,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureDraft'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(5,39): error TS2305: Module '"@eiah/contracts"' has no exported member 'ImobPropertyCaptureProposal'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(11,110): error TS2307: Cannot find module '@eiah/core/llm/LLMProviderError' or its corresponding type declarations.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(59,91): error TS7006: Parameter 'field' implicitly has an 'any' type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(64,125): error TS7006: Parameter 'field' implicitly has an 'any' type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(71,86): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(83,112): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(84,58): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(121,109): error TS18046: 'error' is of type 'unknown'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(150,18): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(150,47): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(152,14): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(154,34): error TS18046: 'change.value' is of type 'unknown'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,38): error TS2538: Type 'unknown' cannot be used as an index type.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,69): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(155,114): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/services/imob/intake/imobPropertyCaptureIntake.ts(156,27): error TS18046: 'change.value' is of type 'unknown'.
+src/services/logistica/control/logisticaContextAccess.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'LOGISTICA_CONTEXT_SCOPE'.
+src/services/logistica/control/logisticaContextAccess.ts(1,40): error TS2305: Module '"@eiah/contracts"' has no exported member 'LogisticaContextAccess'.
+src/services/logistica/control/oraculoSourceQueryCoreWiring.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_SOURCE_QUERY_SCOPE'.
+src/services/logistica/control/oraculoSourceQueryCoreWiring.ts(1,38): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_SOURCE_SCOPE_PREFIX'.
+src/services/logistica/control/oraculoSourceQueryCoreWiring.ts(1,72): error TS2305: Module '"@eiah/contracts"' has no exported member 'LogisticaContextAccess'.
+src/services/logistica/control/oraculoUploadAccess.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_PREPARATION_WRITE_SCOPE'.
+src/services/logistica/oraculo/documentReview.ts(2,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoDocumentReviewV1Schema'.
+src/services/logistica/oraculo/documentReview.ts(2,46): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDocumentCheckV1'.
+src/services/logistica/oraculo/documentReview.ts(2,75): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDocumentReviewRequestV1'.
+src/services/logistica/oraculo/documentReview.ts(2,112): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDocumentReviewV1'.
+src/services/logistica/oraculo/documentReview.ts(2,142): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoEvidenceV1'.
+src/services/logistica/oraculo/documentReview.ts(2,166): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationRecordV1'.
+src/services/logistica/oraculo/evidence.ts(2,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_UPLOAD_AGENT'.
+src/services/logistica/oraculo/evidence.ts(2,32): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoEvidenceV1Schema'.
+src/services/logistica/oraculo/evidence.ts(2,62): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoEvidenceV1'.
+src/services/logistica/oraculo/evidence.ts(2,86): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoEvidenceLinkV1'.
+src/services/logistica/oraculo/evidence.ts(2,114): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoEvidenceCheckV1'.
+src/services/logistica/oraculo/evidence.ts(2,143): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationScope'.
+src/services/logistica/oraculo/humanDecision.ts(3,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'deriveOraculoDecisionTriggers'.
+src/services/logistica/oraculo/humanDecision.ts(3,34): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoDecisionBasis'.
+src/services/logistica/oraculo/humanDecision.ts(3,56): error TS2724: '"@eiah/contracts"' has no exported member named 'oraculoDecisionRecordV1Schema'. Did you mean 'oraculoHumanDecisionV1Schema'?
+src/services/logistica/oraculo/humanDecision.ts(3,87): error TS2724: '"@eiah/contracts"' has no exported member named 'oraculoDecisionRequestV1Schema'. Did you mean 'oraculoHumanDecisionV1Schema'?
+src/services/logistica/oraculo/humanDecision.ts(4,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionInputV1'.
+src/services/logistica/oraculo/humanDecision.ts(4,37): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionRecordV1'.
+src/services/logistica/oraculo/humanDecision.ts(4,67): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionRequestInputV1'.
+src/services/logistica/oraculo/humanDecision.ts(4,103): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionRequestStatus'.
+src/services/logistica/oraculo/humanDecision.ts(5,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionRequestV1'.
+src/services/logistica/oraculo/humanDecision.ts(5,39): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationRecordV1'.
+src/services/logistica/oraculo/humanDecision.ts(24,98): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/logistica/oraculo/humanDecision.ts(25,99): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/services/logistica/oraculo/humanDecision.ts(38,34): error TS7006: Parameter 'request' implicitly has an 'any' type.
+src/services/logistica/oraculo/humanDecision.ts(39,38): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/logistica/oraculo/humanDecision.ts(60,33): error TS7006: Parameter 'request' implicitly has an 'any' type.
+src/services/logistica/oraculo/humanDecision.ts(64,75): error TS7006: Parameter 'trigger' implicitly has an 'any' type.
+src/services/logistica/oraculo/preparation.ts(2,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_PREPARATION_FIELDS'.
+src/services/logistica/oraculo/preparation.ts(3,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoEmptyReturnPreparationV1Schema'.
+src/services/logistica/oraculo/preparation.ts(4,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationFieldKey'.
+src/services/logistica/oraculo/preparation.ts(5,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationScope'.
+src/services/logistica/oraculo/preparationRepository.ts(3,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_PREPARATION_CASE_TYPE'.
+src/services/logistica/oraculo/preparationRepository.ts(3,34): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoPreparationRecordV1Schema'.
+src/services/logistica/oraculo/preparationRepository.ts(4,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'oraculoPreparationWriteV1Schema'.
+src/services/logistica/oraculo/preparationRepository.ts(4,41): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationRecordV1'.
+src/services/logistica/oraculo/preparationRepository.ts(5,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoPreparationScope'.
+src/services/logistica/oraculo/preparationRepository.ts(5,38): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoEvidenceLinkV1'.
+src/services/logistica/oraculo/preparationRepository.ts(5,66): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDocumentReviewRequestV1'.
+src/services/logistica/oraculo/preparationRepository.ts(6,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionInputV1'.
+src/services/logistica/oraculo/preparationRepository.ts(6,37): error TS2305: Module '"@eiah/contracts"' has no exported member 'OraculoDecisionRequestInputV1'.
+src/services/logistica/oraculo/preparationRepository.ts(84,25): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/logistica/oraculo/preparationRepository.ts(95,47): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(4,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_SOURCE_SCOPE_PREFIX'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(5,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'caseUpdateProposalV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(6,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'checkAccessConditionsAgainstConnection'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(7,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'checkConnectionAgainstSourceV2'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(8,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'collectionResultV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(9,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'dataSourceAccessConditionsV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(10,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'dataSourceConnectionV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(11,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'dataSourceV2Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(12,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'isConnectionVisibleInScope'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(13,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'sourceQueryOutcomeV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(14,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'sourceQueryRequestV1Schema'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(15,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'CaseUpdateProposalV1'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(16,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'CollectionResultV1'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(17,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'SourceQueryDenialCode'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(18,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'SourceQueryOutcomeV1'.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(254,36): error TS2698: Spread types may only be created from object types.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(255,45): error TS2488: Type 'unknown' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/services/logistica/oraculo/sourceQuery/sourceQueryService.ts(286,37): error TS7006: Parameter 'change' implicitly has an 'any' type.
+src/services/logistica/oraculo/sourceQuery/types.ts(3,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'collectionResultWarningV1Schema'.
+src/services/logistica/oraculo/sourceQuery/types.ts(4,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'collectionRecordV1Schema'.
+src/services/logistica/oraculo/sourceQuery/types.ts(5,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'collectionResultDatesV1Schema'.
+src/services/logistica/oraculo/sourceQuery/types.ts(6,3): error TS2305: Module '"@eiah/contracts"' has no exported member 'COLLECTION_ERROR_CODES'.
+src/services/logistica/oraculo/sourceQuery/types.ts(7,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'DataSourceAccessConditionsV1'.
+src/services/logistica/oraculo/sourceQuery/types.ts(8,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'DataSourceAccessMode'.
+src/services/logistica/oraculo/sourceQuery/types.ts(9,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'DataSourceConnectionV1'.
+src/services/logistica/oraculo/sourceQuery/types.ts(10,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'DataSourceScopeV1'.
+src/services/logistica/oraculo/sourceQuery/types.ts(11,8): error TS2305: Module '"@eiah/contracts"' has no exported member 'DataSourceV2'.
+src/services/products/productActivation.ts(1,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'ActivatableProductId'.
+src/services/verticalExperienceRegistry.ts(1,15): error TS2305: Module '"@eiah/contracts"' has no exported member 'LogisticaContextAccess'.
+src/types/resolverAuditEvent.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'sessionDomainSchema'.
+src/types/verticalExperienceContract.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'sessionDomainSchema'.
+src/workers/runWorkerJ360Output.ts(1,10): error TS2305: Module '"@eiah/contracts"' has no exported member 'ORACULO_UPLOAD_AGENT'.
+/home/jusall/projects/EIAH_BUILDER/apps/api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @eiah/api@ typecheck: `tsc -p tsconfig.build.json --noEmit`
+Exit status 2

@@ -1,0 +1,117 @@
+{
+  "status": "parcial",
+  "date": "2026-11-16",
+  "head": "70e66db4e7eea727f0f3567d8291595b1f86243b",
+  "branch": "feat/imob-guided-property-draft",
+  "providerResults": [
+    {
+      "provider": "openai",
+      "configuration": "existing local API credential; canonical EIAH profile",
+      "logicalRequests": 1,
+      "requestedModel": "gpt-4.1",
+      "effectiveGeneratedModel": null,
+      "replyReceived": true,
+      "replyType": "provider error",
+      "errorType": "insufficient_quota",
+      "errorCode": "credit_balance_exhausted",
+      "runtimeReturnedOutput": "",
+      "rejectionStage": "json_parse",
+      "modelSchemaReached": false,
+      "domainValidationReached": false,
+      "intakeOutcome": "invalid",
+      "proposal": null,
+      "fixtureUnchanged": true,
+      "appliedPatch": {},
+      "providerDurationMs": 981,
+      "providerRequestId": null,
+      "providerRequestIdNote": "runtime strings openai are literal fallback identifiers, not verified provider request IDs",
+      "finishReason": null,
+      "usage": null,
+      "cost": null,
+      "correlation": "imob-provider-diag-86f766e2-f44f-4869-8cb6-cef593e2b77b",
+      "correlationKind": "operator diagnostic traceId; not an HTTP application request ID",
+      "startedAt": "2026-11-16T11:06:04.968Z",
+      "finishedAt": "2026-11-16T11:06:06.420Z",
+      "exitCode": 2
+    },
+    {
+      "provider": "anthropic",
+      "configuration": "not configured in inspected local process/API env",
+      "logicalRequests": 0,
+      "replyReceived": false,
+      "rejectionStage": "configuration preflight",
+      "intakeOutcome": "not executed",
+      "proposal": null,
+      "stagingConfiguration": "not accessible through available connector"
+    },
+    {
+      "provider": "gemini",
+      "configuration": "not configured in inspected local process/API env",
+      "logicalRequests": 0,
+      "replyReceived": false,
+      "rejectionStage": "configuration preflight",
+      "intakeOutcome": "not executed",
+      "proposal": null,
+      "stagingConfiguration": "not accessible through available connector"
+    }
+  ],
+  "actualRetryConfiguration": {
+    "timeoutMs": 45000,
+    "maxProviderInvocations": 5,
+    "baseDelayMs": 150,
+    "maxDelayMs": 10000,
+    "backoffFactor": 1,
+    "jitterRatio": 0
+  },
+  "timeouts": {
+    "clientMs": 30000,
+    "intakeMs": 20000,
+    "runtimeMs": 45000,
+    "cancellation": "intake and completion timeouts race promises and do not abort native provider requests"
+  },
+  "retriesObserved": {
+    "centralRetries": 0,
+    "evidence": "single llm.completion.start/success and resolved error object; retry() returns immediately after first fulfilled provider invocation",
+    "providerInvocations": 1,
+    "providerInvocationCountKind": "control-flow inference from recorded result; not independent network measurement",
+    "fallbacks": 0
+  },
+  "transportObservationLimitation": {
+    "rawReportHttpAttempts": [],
+    "meaning": "transport requests were NOT measured; not zero requests",
+    "cause": "probe only checked options.hostname or URL object; node-fetch 3.3.2 calls send(parsedURL.toString(), options) at src/index.js:94, with URL string as first argument",
+    "httpStatus": null,
+    "requestIdHeader": null,
+    "physicalRequestCount": null,
+    "noSecondAttemptPerformed": true
+  },
+  "confirmedFindings": [
+    "Render control-plane live web/API commit mismatch; deployed API source lacks property_draft",
+    "Real local central-runtime intake received credit_balance_exhausted",
+    "OpenAI adapter ignored error object and returned empty output; completion logged success; intake rejected empty JSON input"
+  ],
+  "stagingExactAttemptCause": "not_proven; no authenticated HTTP response/trace for the reported attempt, and actual workspace EIAH profile/credentials were not accessible",
+  "scopeLimitations": [
+    "no HTTP/browser/auth/session/entitlement/billing-gate validation",
+    "canonical policy exercised by executeLlmStep; actual workspace profile not resolved",
+    "no generated model output, token usage, cost or real provider request ID",
+    "no conclusion about Anthropic/Gemini credentials in staging"
+  ],
+  "minimalProposalsNotImplemented": [
+    "Align API and web to the same approved release in a separate authorized deployment; then capture one authenticated read-only intake request",
+    "OpenAIProvider must reject HTTP errors or json.error before extracting choices; preserve sanitized error/status/request correlation",
+    "Classify permanent quota/auth errors without automatic repetition while preserving central policy and limits; do not weaken interpretation schema or add phrase rules"
+  ],
+  "domainWrites": 0,
+  "stagingMessagesSent": 0,
+  "newModelOrProviderConfiguration": false,
+  "testsOrBuildSuitesRepeated": false,
+  "artifacts": {
+    "runner": "run-integrated.mjs",
+    "rawSanitizedRunResult": "openai-integrated.json",
+    "runtimeLog": "openai-runtime.log",
+    "deployAndPublicBundle": "staging-snapshot.json",
+    "summary": "diagnostic-summary.json"
+  },
+  "artifactLifecycle": "All files created by this diagnostic are preserved as local evidence. No old files or logs removed; no stage, commit, push or deploy."
+}

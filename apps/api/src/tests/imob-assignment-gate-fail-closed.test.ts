@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import supertest, { type Response as SupertestResponse } from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { cleanupImobInstallationForTest, installImobForTest } from "./support/imobInstallationFixture";
 import { runAtivoUniversalDLQ, runAtivoUniversalQueue } from "@eiah/core";
 
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
@@ -14,6 +16,7 @@ const workspaceId = `workspace-imob-assignment-${suffix}`;
 const userId = `user-imob-assignment-${suffix}`;
 const apiToken = `tok-imob-assignment-${suffix}`;
 const auditAgent = "imob-chat-audit";
+const STALE_AUDIT_AGENT_VERSION = "0.0.0-version-mismatch";
 
 let request: ReturnType<typeof supertest>;
 let createdAgentMetadata = false;
@@ -86,6 +89,8 @@ before(async () => {
       revoked: false,
     },
   });
+  // FD-IMOB-HISTORY-AUTHZ-001: o histórico do IMOB exige vínculo ATIVO (fixture pelo serviço existente do workspace).
+  await ensureWorkspaceMembershipForUser({ tenantId, workspaceId, userId, roleKey: "corretor" });
 
   const existingMetadata = await prismaGlobal.agentMetadata.findUnique({
     where: { agent: auditAgent },
@@ -106,9 +111,19 @@ before(async () => {
     auditAgentVersion = metadata.version;
     createdAgentMetadata = true;
   }
+
+  // AUTHZ-IMOB-INSTALLATION-001: as APIs do IMOB exigem o IMOB instalado e habilitado, e a instalação provisiona a atribuição de
+  // `imob-chat-audit` (agentsReady). "Sem atribuição" já é barrado pela porta de instalação; o que ESTE teste verifica é a porta de
+  // atribuição exata: instalação habilitada, mas a atribuição do agente de auditoria diverge em `agentVersion` (causa `version_mismatch`).
+  await installImobForTest({ prisma: prismaGlobal as any, tenantId, workspaceId, userId });
+  await prismaGlobal.workspaceAgentAssignment.updateMany({
+    where: { tenantId, workspaceId, agentKey: auditAgent },
+    data: { agentVersion: STALE_AUDIT_AGENT_VERSION },
+  });
 });
 
 after(async () => {
+  await cleanupImobInstallationForTest(prismaGlobal as any, [tenantId]);
   await prismaGlobal.runEvent.deleteMany({ where: { tenantId, workspaceId } });
   await prismaGlobal.memoryEvent.deleteMany({ where: { tenantId, workspaceId } });
   await prismaGlobal.guardrailAuditLedger.deleteMany({ where: { tenantId, workspaceId } });
@@ -128,7 +143,7 @@ after(async () => {
   await runAtivoUniversalDLQ.close();
 });
 
-test("IMOB conversation and message writes are assignment-gated fail-closed", async () => {
+test("IMOB conversation and message writes are assignment-gated fail-closed on audit-agent version mismatch (IMOB installed)", async () => {
   const beforeConversation = await operationalSnapshot();
   const deniedConversation = await request
     .post("/api/imob/chat/conversations")
@@ -142,6 +157,11 @@ test("IMOB conversation and message writes are assignment-gated fail-closed", as
     where: { tenantId, workspaceId, eventType: "agent.assignment.required" },
   });
   assert.equal(auditAfterConversation.length, 1, "assignment refusal must be audited");
+  assert.equal(
+    (auditAfterConversation[0]?.metadata as { failure?: string } | null)?.failure,
+    "version_mismatch",
+    "the refusal must come from the exact-assignment gate (version mismatch), not from a missing installation",
+  );
 
   const auditBeforeUnknownConversation = await prismaGlobal.guardrailAuditLedger.count({
     where: { tenantId, workspaceId, eventType: "agent.assignment.required" },
@@ -170,6 +190,13 @@ test("IMOB conversation and message writes are assignment-gated fail-closed", as
       key: "conversation.created",
       content: "Owned fixture conversation",
       metadata: { conversationId, title: "Owned fixture conversation", status: "active" },
+    },
+  });
+  // FD-IMOB-HISTORY-AUTHZ-001: a titularidade vem da execução de auditoria da conversa (userId do criador); sem ela a conversa é inacessível (404).
+  await prismaGlobal.run.create({
+    data: {
+      tenantId, workspaceId, userId, agent: auditAgent, status: "success",
+      request: { prompt: "fixture", metadata: { domain: "imob", kind: "conversation_audit", conversationId } },
     },
   });
 
