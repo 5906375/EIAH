@@ -68,6 +68,16 @@ jobs:
         id: prisma_generate
         run: pnpm --filter @repo/db generate
 
+      - name: Prepare workspace artifacts for Radar regression
+        id: radar_artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db exec tsup --config tsup.config.ts
+          pnpm --filter @repo/db run build:dts
+          pnpm --filter @repo/db exec node scripts/copy-publish-artifacts.mjs
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
       - name: Apply versioned migrations
         id: migrate
         run: pnpm --filter @repo/db migrate:deploy
@@ -75,6 +85,14 @@ jobs:
       - name: Verify migration status
         id: migration_status
         run: pnpm --filter @repo/db prisma migrate status
+
+      - name: Run governed Radar and SignalForward PostgreSQL suites
+        id: radar_tests
+        timeout-minutes: 10
+        env:
+          NODE_ENV: test
+          REDIS_URL: redis://127.0.0.1:1/15
+        run: pnpm test:radar-signalforward-ci
 
       - name: Run governed PostgreSQL schema test
         id: database_test
@@ -122,6 +140,8 @@ jobs:
           SETUP_NODE_OUTCOME: ${{ steps.setup_node.outcome }}
           INSTALL_OUTCOME: ${{ steps.install.outcome }}
           PRISMA_GENERATE_OUTCOME: ${{ steps.prisma_generate.outcome }}
+          RADAR_ARTIFACTS_OUTCOME: ${{ steps.radar_artifacts.outcome }}
+          RADAR_TESTS_OUTCOME: ${{ steps.radar_tests.outcome }}
           MIGRATE_OUTCOME: ${{ steps.migrate.outcome }}
           MIGRATION_STATUS_OUTCOME: ${{ steps.migration_status.outcome }}
           DATABASE_TEST_OUTCOME: ${{ steps.database_test.outcome }}
@@ -140,6 +160,8 @@ jobs:
             nodeSetup: process.env.SETUP_NODE_OUTCOME || 'skipped',
             dependencyInstall: process.env.INSTALL_OUTCOME || 'skipped',
             prismaGenerate: process.env.PRISMA_GENERATE_OUTCOME || 'skipped',
+            radarArtifacts: process.env.RADAR_ARTIFACTS_OUTCOME || 'skipped',
+            radarTests: process.env.RADAR_TESTS_OUTCOME || 'skipped',
             migrateDeploy: process.env.MIGRATE_OUTCOME || 'skipped',
             migrationStatus: process.env.MIGRATION_STATUS_OUTCOME || 'skipped',
             databaseTest: process.env.DATABASE_TEST_OUTCOME || 'skipped',

@@ -289,3 +289,6 @@ apps/api/src/tests/vertical-evaluation-contract.test.ts
 apps/api/src/tests/vertical-evaluation-guards.test.ts
 apps/api/src/tests/front-door-evaluation-intake.test.ts
 apps/web/src/components/agents/verticalEvaluationEngine.test.ts
+apps/api/src/services/radarSocial/__tests__/A-contract-validation.test.ts
+apps/api/src/services/signalForward/__tests__/L-radar-signal-result-validator.test.ts
+apps/api/src/services/signalForward/__tests__/P-suggested-prompt-generator.test.ts
