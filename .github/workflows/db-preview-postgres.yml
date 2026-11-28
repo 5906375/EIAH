@@ -75,8 +75,8 @@ jobs:
           pnpm --filter @repo/db exec tsup --config tsup.config.ts
           pnpm --filter @repo/db run build:dts
           pnpm --filter @repo/db exec node scripts/copy-publish-artifacts.mjs
-          pnpm --filter @eiah/providers build
           pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
 
       - name: Apply versioned migrations
         id: migrate
